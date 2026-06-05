@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin • Corners Radar</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <div class="adminLayout">
+
+    <aside class="sidebar">
+      <div>
+        <div class="logoArea">
+          <div class="logoGlow"></div>
+          <h1>Corners <b></b></h1>
+          <span>ADMIN PANEL</span>
+        </div>
+
+        <nav class="sidebarMenu">
+          <button class="menuItem active"><span>🏠</span> Dashboard <em>›</em></button>
+          <button class="menuItem"><span>📈</span> Analytics</button>
+          <button class="menuItem"><span>⚽</span> Jogos</button>
+          <button class="menuItem"><span>👥</span> Usuários</button>
+          <button class="menuItem"><span>📊</span> Estatísticas</button>
+          <button class="menuItem"><span>🧠</span> IA Radar</button>
+          <button class="menuItem"><span>💬</span> Mensagens <small>12</small></button>
+          <button class="menuItem"><span>🧾</span> Logs</button>
+          <button class="menuItem"><span>⚙️</span> Configurações</button>
+        </nav>
+      </div>
+
+      <div class="sidebarBottom">
+        <div class="adminProfile">
+          <div class="avatar">A</div>
+          <div>
+            <strong>Admin</strong>
+            <span>Super Administrador</span>
+          </div>
+        </div>
+        <button class="themeToggle">🌙 Tema Escuro <i></i></button>
+        <button class="logoutBtn">↪ Sair</button>
+      </div>
+    </aside>
+
+    <main class="mainContent">
+
+      <header class="topbar">
+        <div class="titleBlock">
+          <h2>Painel Administrativo</h2>
+          <p>Monitoramento em tempo real do Corners Radar</p>
+        </div>
+
+        <div class="topTools">
+          <div class="topStatus">
+            <div class="liveDot"></div>
+            ONLINE
+          </div>
+
+          <label class="searchBox">
+            <input type="text" placeholder="Buscar..." />
+            <span>⌕</span>
+          </label>
+
+          <button class="iconBtn">🔔<b>8</b></button>
+          <button class="iconBtn">📅</button>
+        </div>
+      </header>
+
+      <section class="statsGrid">
+        <div class="statCard green">
+          <div class="statIcon">👥</div>
+          <span>Usuários Online</span>
+          <strong>148</strong>
+          <small><b>+18.6%</b> nas últimas 24h</small>
+          <div class="miniChart up"></div>
+        </div>
+
+        <div class="statCard purple">
+          <div class="statIcon">🎮</div>
+          <span>Jogos Ativos</span>
+          <strong>86</strong>
+          <small><b>+12</b> novos hoje</small>
+          <div class="miniChart mid"></div>
+        </div>
+
+        <div class="statCard orange">
+          <div class="statIcon">〽️</div>
+          <span>Performance IA</span>
+          <strong>74%</strong>
+          <small><b>+5%</b> vs ontem</small>
+          <div class="miniChart warn"></div>
+        </div>
+
+        <div class="statCard blue">
+          <div class="statIcon">🖥️</div>
+          <span>Status do Sistema</span>
+          <strong>ATIVA</strong>
+          <small>Todos os sistemas operacionais</small>
+          <div class="statusLine"></div>
+        </div>
+
+        <div class="statCard money">
+          <div class="statIcon">💰</div>
+          <span>Precisão Geral</span>
+          <strong>82%</strong>
+          <small><b>+9.4%</b> em jogos premium</small>
+          <div class="miniChart up"></div>
+        </div>
+      </section>
+
+      <section class="dashboardGrid">
+
+        <div class="panelCard mapPanel">
+          <div class="panelHeader">
+            <div>
+              <div class="cardTitle">Usuários Online Agora</div>
+              <p>Mapa visual de acessos e dispositivos ativos</p>
+            </div>
+            <div class="tabs">
+              <button class="active">Todos</button>
+              <button>Linux</button>
+              <button>Windows</button>
+              <button>iOS</button>
+            </div>
+          </div>
+
+          <div class="mapBox">
+            <div class="worldShape"></div>
+            <span style="--x:18%;--y:40%"></span>
+            <span style="--x:24%;--y:46%"></span>
+            <span style="--x:38%;--y:34%"></span>
+            <span style="--x:51%;--y:42%"></span>
+            <span style="--x:63%;--y:36%"></span>
+            <span style="--x:71%;--y:52%"></span>
+            <span style="--x:79%;--y:48%"></span>
+            <span style="--x:84%;--y:63%"></span>
+          </div>
+
+          <div class="mapStats">
+            <div><strong>1.284</strong><span>Total Online</span></div>
+            <div><strong>42</strong><span>Países</span></div>
+            <div><strong>389</strong><span>Cidades</span></div>
+            <div><strong>92.7%</strong><span>Uptime</span></div>
+          </div>
+
+          <div id="onlineUsersList" class="onlineUsersList">
+            <div class="onlineUser">🟢 Carregando usuários...</div>
+          </div>
+        </div>
+
+        <div class="panelCard activityPanel">
+          <div class="cardTitle">Atividade em Tempo Real</div>
+
+          <div class="activityList">
+            <div><i>👤</i><strong>Novo usuário registrado</strong><span>17:59:21</span><small>User: johndoe123</small></div>
+            <div><i>✅</i><strong>Login realizado</strong><span>17:58:45</span><small>User: admin</small></div>
+            <div><i>⚽</i><strong>Jogo iniciado</strong><span>17:58:33</span><small>Counter Strike 2</small></div>
+            <div><i>🛡️</i><strong>Filtro IA aplicado</strong><span>17:58:12</span><small>Linha +10 cantos</small></div>
+            <div><i>💬</i><strong>Novo ticket criado</strong><span>17:57:33</span><small>ID: #TK-9842</small></div>
+          </div>
+        </div>
+
+        <div class="panelCard resourcesPanel">
+          <div class="cardTitle">Recursos do Sistema</div>
+
+          <div class="rings">
+            <div class="ring r1"><strong>34%</strong><span>2.1 GHz</span></div>
+            <div class="ring r2"><strong>68%</strong><span>10.8 / 16 GB</span></div>
+            <div class="ring r3"><strong>45%</strong><span>215 / 512 GB</span></div>
+            <div class="ring r4"><strong>33%</strong><span>1.2 Gbps</span></div>
+          </div>
+
+          <div class="resourceChart">
+            <div class="gridLines"></div>
+            <svg viewBox="0 0 500 160" preserveAspectRatio="none">
+              <polyline points="0,94 30,80 60,88 90,76 120,72 150,62 180,68 210,54 240,46 270,58 300,38 330,62 360,44 390,66 420,58 450,42 500,72"/>
+              <polyline points="0,110 30,105 60,98 90,93 120,84 150,90 180,82 210,88 240,78 270,86 300,74 330,84 360,88 390,80 420,86 450,82 500,90"/>
+              <polyline points="0,138 30,128 60,140 90,122 120,134 150,126 180,136 210,120 240,132 270,126 300,118 330,130 360,122 390,126 420,120 450,128 500,124"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="panelCard liveGamesPanel">
+          <div class="panelHeader">
+            <div>
+              <div class="cardTitle">Jogos de Hoje</div>
+              <p>Partidas analisadas pela IA em tempo real</p>
+            </div>
+            <button class="ghostBtn">Ver todos</button>
+          </div>
+
+          <div id="liveGamesList" class="liveGamesList">
+            <div class="liveGameEmpty">Carregando jogos de hoje...</div>
+          </div>
+        </div>
+
+        <div class="panelCard accessPanel">
+          <div class="panelHeader">
+            <div class="cardTitle">Jogos Mais Acessados</div>
+            <button class="ghostBtn">Ver todos</button>
+          </div>
+
+          <div class="rankingList">
+            <div><b>1</b><span>Arsenal x Fulham<small>Premier League</small></span><i style="--w:92%"></i><strong>32.5%</strong></div>
+            <div><b>2</b><span>PSG x Lorient<small>Ligue 1</small></span><i style="--w:76%"></i><strong>24.8%</strong></div>
+            <div><b>3</b><span>Leeds x Burnley<small>Premier League</small></span><i style="--w:62%"></i><strong>18.9%</strong></div>
+            <div><b>4</b><span>Benfica x Boavista<small>Liga Portugal</small></span><i style="--w:48%"></i><strong>12.8%</strong></div>
+          </div>
+        </div>
+
+        <div class="panelCard revenuePanel">
+          <div class="panelHeader">
+            <div>
+              <div class="cardTitle">IA Overview</div>
+              <p>Resumo dos filtros inteligentes</p>
+            </div>
+            <button class="ghostBtn">Relatório</button>
+          </div>
+
+          <strong class="bigMoney">74%</strong>
+          <span class="gain">+5.4% vs ontem</span>
+
+          <div class="barChart">
+            <span style="--h:42%"></span>
+            <span style="--h:56%"></span>
+            <span style="--h:70%"></span>
+            <span style="--h:84%"></span>
+            <span style="--h:78%"></span>
+            <span style="--h:90%" class="active"></span>
+          </div>
+        </div>
+
+        <div class="panelCard paymentPanel">
+          <div class="cardTitle">Distribuição de Mercados</div>
+          <div class="donutWrap">
+            <div class="donut"></div>
+            <div class="donutLegend">
+              <span><b></b> Linha +9.5 <em>45.2%</em></span>
+              <span><b></b> Linha +10.5 <em>31.7%</em></span>
+              <span><b></b> Laterais fortes <em>15.3%</em></span>
+              <span><b></b> Seguro IA <em>7.4%</em></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panelCard newUsersPanel">
+          <div class="panelHeader">
+            <div class="cardTitle">Novos Usuários</div>
+            <button class="ghostBtn">Ver todos</button>
+          </div>
+          <strong class="bigMoney">1.847</strong>
+          <span class="gain">+15.3% vs ontem</span>
+          <div class="areaChart"></div>
+        </div>
+
+        <div class="panelCard ordersPanel">
+          <div class="cardTitle">Últimos Eventos</div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Método</th>
+                <th>Status</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>#LOG-9854</td><td>admin</td><td>Atualizar Jogos</td><td>Manual</td><td><span class="ok">Aprovado</span></td><td>17:58</td></tr>
+              <tr><td>#LOG-9853</td><td>sistema</td><td>Cache Renovado</td><td>Auto</td><td><span class="ok">Aprovado</span></td><td>17:57</td></tr>
+              <tr><td>#LOG-9852</td><td>ia-radar</td><td>Filtro aplicado</td><td>IA</td><td><span class="ok">Aprovado</span></td><td>17:56</td></tr>
+              <tr><td>#LOG-9851</td><td>render</td><td>Health Check</td><td>Cloud</td><td><span class="warn">Pendente</span></td><td>17:55</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panelCard alertsPanel">
+          <div class="panelHeader">
+            <div class="cardTitle">Alertas do Sistema</div>
+            <button class="ghostBtn">Ver todos</button>
+          </div>
+
+          <div class="alertList">
+            <div class="dangerA"><i>⚠</i><span>Uso de CPU acima de 80%<small>Servidor: node-02</small></span><b>17:59</b></div>
+            <div class="warningA"><i>⚠</i><span>Espaço em disco baixo<small>Servidor: database-01</small></span><b>17:45</b></div>
+            <div class="infoA"><i>ℹ</i><span>Backup concluído com sucesso<small>Servidor: backup-01</small></span><b>17:30</b></div>
+            <div class="successA"><i>✓</i><span>Sistema atualizado com sucesso<small>Versão 2.4.1</small></span><b>17:15</b></div>
+          </div>
+        </div>
+
+        <div class="panelCard systemPanel">
+          <div class="cardTitle">Status do Sistema</div>
+          <div class="serverStatus">
+            <div class="serverItem"><span>API Football</span><div class="serverOk"></div></div>
+            <div class="serverItem"><span>Servidor Node.js</span><div class="serverOk"></div></div>
+            <div class="serverItem"><span>Banco de Cache</span><div class="serverOk"></div></div>
+            <div class="serverItem"><span>Render Cloud</span><div class="serverOk"></div></div>
+          </div>
+        </div>
+
+        <div class="panelCard actionsPanel">
+          <div class="cardTitle">Ações Rápidas</div>
+          <div class="quickActions">
+            <button class="actionBtn">Atualizar Jogos</button>
+            <button class="actionBtn">Limpar Cache</button>
+            <button class="actionBtn">Reiniciar IA</button>
+            <button class="actionBtn danger">Reiniciar Servidor</button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

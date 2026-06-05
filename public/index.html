@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Corners Radar</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="script.js" defer></script>
+</head>
+
+<body class="dashboard locked">
+
+  <!-- LOGIN SCREEN -->
+  <section id="loginScreen" class="loginScreen">
+    <div class="loginCard">
+      <div class="loginLogo">↗</div>
+
+      <div class="loginBadge">ACESSO RESTRITO</div>
+
+      <h1>Corners Radar</h1>
+      <p>Entre para acessar seu painel de análise de escanteios.</p>
+
+      <form id="loginForm" class="loginForm">
+        <div class="loginField">
+          <label for="loginUser">Usuário</label>
+          <input id="loginUser" type="text" placeholder="Digite seu usuário" autocomplete="username" />
+        </div>
+
+        <div class="loginField">
+          <label for="loginPass">Senha</label>
+          <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="loginButton">Entrar no painel</button>
+        <span id="loginError" class="loginError"></span>
+      </form>
+
+      <div class="loginHint">
+        Login temporário para teste. Depois trocamos por Google/Firebase.
+      </div>
+    </div>
+  </section>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="logo">↗</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="side-item active">⌂</div>
+      <div class="side-item">⎚</div>
+      <div class="side-item">⚑</div>
+      <div class="side-item">♡</div>
+      <div class="side-item">⚙</div>
+    </nav>
+
+    <div class="sidebar-bottom"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <!-- MOBILE HEADER PREMIUM (aparece só no celular) -->
+      <div class="mobileAppHeader">
+        <div class="mobileHeaderTop">
+          <button class="mobileMenuBtn" type="button" aria-label="Menu">☰</button>
+
+          <div class="mobileBrand">
+            <strong>Corners</strong>
+            <span>Radar de cantos</span>
+          </div>
+
+          <label class="mobileDateBox" for="date">
+            <span>📅</span>
+            <span class="mobileDateText">30/05/2026</span>
+          </label>
+
+          <div class="mobileLivePill">● AO VIVO</div>
+        </div>
+
+        <nav class="mobileIconTabs" aria-label="Menu mobile">
+          <a class="nav-link" data-tab="pre"><span>▥</span><b>PRÉ JOGO</b></a>
+          <a class="nav-link" data-tab="corners"><span>⚑</span><b>ESCANTEIOS</b></a>
+          <a class="nav-link" data-tab="stats"><span>▥</span><b>ESTATÍSTICAS</b></a>
+          <a class="nav-link active" data-tab="filters"><span>⌯</span><b>FILTROS</b></a>
+          <a class="nav-link" data-tab="favorites"><span>☆</span><b>FAVORITOS</b></a>
+        </nav>
+      </div>
+
+      <div class="topbar-inner">
+
+        <div class="top-left">
+          <div class="logo-text">
+            <div class="logo-title">Corners</div>
+            <div class="logo-sub">Radar de cantos</div>
+          </div>
+
+          <!-- MENU NOVO -->
+          <nav class="nav">
+            <a class="nav-link" data-tab="pre">ANÁLISE PRÉ JOGO</a>
+            <a class="nav-link" data-tab="corners">ESCANTEIOS</a>
+            <a class="nav-link" data-tab="stats">ESTATÍSTICAS</a>
+            <a class="nav-link" data-tab="history">HISTÓRICO</a>
+            <a class="nav-link active" data-tab="filters">FILTROS</a>
+            <a class="nav-link" data-tab="favorites">FAVORITOS</a>
+          </nav>
+        </div>
+
+        <div class="top-right">
+          <input id="date" type="date" />
+          <button id="btn" class="btnOutline">Atualizar</button>
+          <div class="status">● AO VIVO</div>
+          <button id="logoutBtn" class="btnLogout" type="button">Sair</button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- CONTEÚDO -->
+    <main class="content">
+
+
+      <!-- MOBILE APP TABS -->
+      <nav class="mobileTopTabs">
+        <a class="nav-link active" data-tab="pre">Hoje</a>
+        <a class="nav-link" data-tab="corners">Cantos</a>
+        <a class="nav-link" data-tab="stats">Stats</a>
+        <a class="nav-link" data-tab="filters">Filtros</a>
+      </nav>
+
+      <div class="center-title">
+        <h1 id="mainTitle">2 JOGOS DO DIA</h1>
+        <span id="mainSubtitle">
+          SEGUNDA A SEXTA: 1 ENTRADA CEDO + 1 ENTRADA MAIS TARDE
+        </span>
+      </div>
+
+      <!-- PAINEL PRINCIPAL -->
+      <section id="prePanel" class="panel">
+        <div class="panel-title">
+          <h2 id="panelTitleText">● ESCANTEIOS POR TIME</h2>
+          <span id="countTop">0</span>
+        </div>
+
+        <div id="top1" class="top-host top-host-dynamic top-host-dual"></div>
+      </section>
+
+      <!-- NOVO PAINEL DE FILTROS -->
+      <section id="filtersPanel" class="panel filters-panel" style="display:none;">
+
+        <div class="panel-title">
+          <h2>⚙ FILTROS DE MERCADO</h2>
+          <span id="countFilters">0</span>
+        </div>
+
+        <!-- BOTÕES -->
+        <div class="marketFilters">
+
+          <button class="market-chip active" data-market="all">
+            TODOS
+          </button>
+
+          <button class="market-chip" data-market="btts">
+            AMBAS MARCAM
+          </button>
+
+          <button class="market-chip" data-market="over15">
+            +1.5 GOLS
+          </button>
+
+          <button class="market-chip" data-market="over25">
+            +2.5 GOLS
+          </button>
+
+          <button class="market-chip" data-market="over35">
+            +3.5 GOLS
+          </button>
+
+          <button class="market-chip" data-market="corners95">
+            +9.5 CANTOS
+          </button>
+
+          <button class="market-chip" data-market="corners105">
+            +10.5 CANTOS
+          </button>
+
+          <button class="market-chip" data-market="corners115">
+            +11.5 CANTOS
+          </button>
+
+        </div>
+
+        <!-- RESULTADOS -->
+        <div id="filteredGames" class="filtered-games">
+
+          <div class="empty">
+            Escolha um filtro acima para visualizar os jogos.
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- FRASE -->
+      <div class="quoteSteve">
+        <p>
+          “O seu tempo é limitado, então não o desperdice vivendo a vida de outra pessoa”
+        </p>
+        <span>— Steve Jobs</span>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- TEMPLATE TOP CARD -->
+  <template id="tplTopCard">
+    <div class="bigcard">
+
+      <div class="bigcard-top">
+
+        <div class="titleRow">
+
+          <div class="rankBallWrap">⚽</div>
+
+          <div class="teamsBlock">
+
+            <div class="teamsText">
+              <span class="teamName js-home"></span>
+              <span class="vs">VS</span>
+              <span class="teamName js-away"></span>
+            </div>
+
+            <div class="meta js-meta"></div>
+
+          </div>
+        </div>
+
+        <div class="chipsRow js-chips"></div>
+
+        <div class="infoGrid">
+
+          <div class="infoLine">
+            ⏰ <b>Hora:</b>
+            <span class="js-hora"></span>
+          </div>
+
+          <div class="infoLine">
+            🏆 <b>Tabela:</b>
+            <span class="js-pos"></span>
+          </div>
+
+          <div class="infoLine">
+            📌 <b>Proj:</b>
+            <span class="js-proj"></span>
+          </div>
+
+          <div class="infoLine">
+            📈 <b>2ºT:</b>
+            <span class="js-2t"></span>
+          </div>
+
+        </div>
+
+        <div class="decisionRow">
+          <div class="pillOver js-pill"></div>
+        </div>
+
+        <div class="bar">
+          <div class="barFill"></div>
+        </div>
+
+      </div>
+
+      <div class="note js-note"></div>
+
+      <div class="h2hBox">
+
+        <div class="h2hTitle">
+          Últimos H2H de escanteios
+        </div>
+
+        <div class="h2hAvg">
+          Média:
+          <span class="js-h2h-avg">—</span>
+        </div>
+
+        <div class="h2hList js-h2h"></div>
+
+      </div>
+    </div>
+  </template>
+
+  <!-- TEMPLATE SECUNDÁRIO -->
+  <template id="tplOtherCard">
+
+    <div class="item">
+
+      <div class="itemTop">
+
+        <div class="miniBall">⚽</div>
+
+        <div class="itemTexts">
+
+          <div class="smallTeams js-teams"></div>
+
+          <div class="smallMeta js-meta"></div>
+
+          <div class="chipsRow js-chips"></div>
+
+          <div class="miniDecisionRow"></div>
+
+          <div class="miniBar">
+            <div class="miniBarFill"></div>
+          </div>
+
+          <div class="note js-note"></div>
+
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- IA BOX -->
+  <div id="iaBox" style="display:none;">
+    <div id="iaStatus"></div>
+    <button id="iaReload"></button>
+    <div id="iaGame"></div>
+    <div id="iaSug"></div>
+    <div id="iaConf"></div>
+    <div id="iaWhy"></div>
+    <div id="iaRisk"></div>
+  </div>
+
+
+  <!-- MODAL ESTATÍSTICAS -->
+  <div id="matchStatsModal" class="matchStatsModal">
+
+    <div class="matchStatsContent">
+
+      <button id="closeStatsModal" class="closeStatsModal">
+        ✕
+      </button>
+
+      <div id="statsModalBody">
+
+        <div class="loadingStats">
+          Carregando estatísticas...
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobileBottomNav">
+    <a class="nav-link active" data-tab="pre">
+      <span>◎</span>
+      Radar
+    </a>
+
+    <a class="nav-link" data-tab="corners">
+      <span>▷</span>
+      Ao Vivo
+    </a>
+
+    <a class="nav-link" data-tab="stats">
+      <span>☆</span>
+      Favoritos
+    </a>
+
+    <a class="nav-link" data-tab="filters">
+      <span>⚙</span>
+      Config.
+    </a>
+
+    <a class="nav-link" data-tab="favorites">
+      <span>⌯</span>
+      Filtros
+    </a>
+  </nav>
+
+  <!-- MATCH CENTER: painel expansível inserido pelo script.js -->
+</body>
+</html>
