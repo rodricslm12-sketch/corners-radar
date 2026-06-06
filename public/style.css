@@ -12657,3 +12657,834 @@ body:not(.locked) .loginScreen{
     font-size:11px;
   }
 }
+
+/* =========================================================
+   RESPONSIVIDADE DESKTOP / NOTEBOOK — CORNERS RADAR
+   Mantém tela grande bonita e melhora notebooks/monitores menores
+   ========================================================= */
+
+/* Nitidez geral das fontes */
+html,
+body,
+.dashboard,
+.main,
+.content,
+.panel,
+.bigcard,
+.nav-link,
+.chip,
+.infoLine,
+.teamsText,
+.marketTable,
+.loginCard {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* Remove efeitos que deixam texto tremido/embaçado em telas menores */
+@media (max-width: 1600px) {
+  :root {
+    --sidebar-w: 68px;
+    --topbar-h: 66px;
+  }
+
+  html,
+  body {
+    overflow-y: hidden !important;
+  }
+
+  .sidebar {
+    width: var(--sidebar-w) !important;
+    padding-top: 18px !important;
+  }
+
+  .sidebar-top {
+    margin-bottom: 40px !important;
+  }
+
+  .sidebar .logo {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 18px !important;
+  }
+
+  .side-item {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+
+  .sidebar-nav {
+    gap: 16px !important;
+  }
+
+  .main {
+    margin-left: var(--sidebar-w) !important;
+  }
+
+  .topbar {
+    min-height: var(--topbar-h) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  .topbar-inner {
+    min-height: var(--topbar-h) !important;
+    padding: 0 14px !important;
+    gap: 12px !important;
+  }
+
+  .top-left,
+  .top-right {
+    gap: 10px !important;
+  }
+
+  .nav {
+    gap: 4px !important;
+  }
+
+  .nav-link {
+    min-height: 32px !important;
+    padding: 0 9px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0 !important;
+  }
+
+  #date,
+  .btnOutline,
+  #btn,
+  .status {
+    min-height: 34px !important;
+    height: 34px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+  }
+
+  #date {
+    min-width: 124px !important;
+  }
+
+  .content {
+    height: calc(100vh - var(--topbar-h)) !important;
+    padding: 12px 18px 20px !important;
+    overflow: hidden !important;
+  }
+
+  .center-title {
+    margin-bottom: 12px !important;
+  }
+
+  .center-title h1 {
+    font-size: 29px !important;
+    font-weight: 700 !important;
+    letter-spacing: .22em !important;
+    line-height: 1.02 !important;
+  }
+
+  .center-title span {
+    margin-top: 7px !important;
+    font-size: 9.5px !important;
+    letter-spacing: .16em !important;
+    color: #aeb8c5 !important;
+  }
+
+  .center-title span::after {
+    margin-top: 7px !important;
+    height: 2px !important;
+  }
+
+  .panel {
+    max-width: 1320px !important;
+    padding: 9px 10px 11px !important;
+    border-radius: 18px !important;
+  }
+
+  .panel-title {
+    padding: 0 4px 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .panel-title h2 {
+    font-size: 11px !important;
+  }
+
+  #countTop {
+    width: 23px !important;
+    height: 23px !important;
+    font-size: 10px !important;
+  }
+
+  .top-host,
+  .top-host-dynamic {
+    gap: 12px !important;
+  }
+
+  .bigcard {
+    border-radius: 17px !important;
+    box-shadow: 0 16px 44px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.02) !important;
+  }
+
+  .bigcard:hover {
+    transform: none !important;
+    box-shadow: 0 18px 48px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.02) !important;
+  }
+
+  .bigcard-top {
+    padding: 12px 12px 9px !important;
+  }
+
+  .titleRow {
+    grid-template-columns: 42px 1fr !important;
+    gap: 9px !important;
+    margin-bottom: 9px !important;
+    padding-top: 3px !important;
+  }
+
+  .rankBallWrap {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 17px !important;
+    transform: none !important;
+  }
+
+  .teamsText {
+    font-size: clamp(19px, 1.55vw, 25px) !important;
+    font-weight: 900 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.14 !important;
+    text-shadow: none !important;
+    transform: none !important;
+  }
+
+  .teamName {
+    font-weight: 900 !important;
+  }
+
+  .vs {
+    width: 38px !important;
+    height: 38px !important;
+    flex-basis: 38px !important;
+    font-size: 9px !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .meta {
+    margin-top: 4px !important;
+    font-size: 11px !important;
+    color: #a9b6c5 !important;
+  }
+
+  .chipsRow {
+    gap: 6px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .chip,
+  .chipsRow > * {
+    min-height: 27px !important;
+    padding: 0 9px !important;
+    font-size: 9.5px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0 !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.10) !important;
+  }
+
+  .chip:hover {
+    transform: none !important;
+  }
+
+  .infoGrid {
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .infoLine {
+    min-height: 40px !important;
+    padding: 0 10px !important;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+    color: #f1f5f9 !important;
+  }
+
+  .decisionRow {
+    margin-bottom: 9px !important;
+  }
+
+  .pillOver {
+    min-height: 34px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+    box-shadow: 0 7px 14px rgba(23,198,83,.18) !important;
+  }
+
+  .bar {
+    height: 5px !important;
+  }
+
+  .note {
+    padding: 8px 10px 9px !important;
+    font-size: 10.5px !important;
+    line-height: 1.34 !important;
+    color: #b6c1ce !important;
+    opacity: .78 !important;
+  }
+
+  .quoteSteve {
+    margin-top: 6px !important;
+    opacity: .58 !important;
+  }
+
+  .quoteSteve p {
+    font-size: 19px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .quoteSteve span {
+    font-size: 11px !important;
+  }
+
+  .bigcard.bestMatch,
+  .bigcard.bestMatch .pillOver,
+  .bigcard.bestMatch .vs,
+  .bigcard.bestMatch .teamsText {
+    animation: none !important;
+    will-change: auto !important;
+  }
+}
+
+/* Notebook médio / monitores menores */
+@media (max-width: 1440px) {
+  :root {
+    --sidebar-w: 62px;
+    --topbar-h: 60px;
+  }
+
+  .sidebar {
+    width: var(--sidebar-w) !important;
+    padding-top: 14px !important;
+  }
+
+  .sidebar .logo {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 11px !important;
+    font-size: 16px !important;
+  }
+
+  .side-item {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 11px !important;
+    font-size: 15px !important;
+  }
+
+  .sidebar-nav {
+    gap: 13px !important;
+  }
+
+  .logo-title {
+    font-size: 14px !important;
+  }
+
+  .logo-sub {
+    font-size: 10px !important;
+  }
+
+  .nav-link {
+    min-height: 29px !important;
+    padding: 0 7px !important;
+    font-size: 10px !important;
+  }
+
+  .topbar-inner {
+    padding: 0 10px !important;
+  }
+
+  .top-right {
+    gap: 7px !important;
+  }
+
+  #date {
+    min-width: 112px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+  }
+
+  .btnOutline,
+  #btn,
+  .status {
+    min-height: 31px !important;
+    height: 31px !important;
+    padding: 0 9px !important;
+    font-size: 11px !important;
+  }
+
+  .content {
+    padding: 9px 14px 14px !important;
+  }
+
+  .center-title {
+    margin-bottom: 9px !important;
+  }
+
+  .center-title h1 {
+    font-size: 25px !important;
+    letter-spacing: .18em !important;
+  }
+
+  .center-title span {
+    margin-top: 6px !important;
+    font-size: 8.8px !important;
+    letter-spacing: .12em !important;
+  }
+
+  .panel {
+    max-width: 1240px !important;
+    padding: 8px 9px 9px !important;
+    border-radius: 16px !important;
+  }
+
+  .panel-title {
+    padding-bottom: 6px !important;
+    margin-bottom: 7px !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(2)):not(:has(.bigcard:nth-child(3))) {
+    gap: 12px !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(3)) {
+    gap: 10px !important;
+  }
+
+  .bigcard-top {
+    padding: 10px 10px 8px !important;
+  }
+
+  .titleRow {
+    grid-template-columns: 34px 1fr !important;
+    gap: 7px !important;
+    margin-bottom: 7px !important;
+  }
+
+  .rankBallWrap {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 15px !important;
+  }
+
+  .teamsText {
+    font-size: clamp(17px, 1.35vw, 22px) !important;
+    gap: 6px !important;
+    line-height: 1.12 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+
+  .vs {
+    width: auto !important;
+    height: auto !important;
+    min-width: 30px !important;
+    flex: 0 0 auto !important;
+    padding: 3px 7px !important;
+    font-size: 8.5px !important;
+  }
+
+  .meta {
+    font-size: 10px !important;
+  }
+
+  .chipsRow {
+    gap: 5px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .chip,
+  .chipsRow > * {
+    min-height: 24px !important;
+    padding: 0 7px !important;
+    font-size: 8.7px !important;
+    gap: 4px !important;
+  }
+
+  .infoGrid {
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .infoLine {
+    min-height: 35px !important;
+    padding: 0 8px !important;
+    font-size: 10.8px !important;
+    border-radius: 10px !important;
+  }
+
+  .pillOver {
+    min-height: 31px !important;
+    padding: 0 11px !important;
+    font-size: 10.8px !important;
+  }
+
+  .note {
+    padding: 7px 9px 8px !important;
+    font-size: 9.7px !important;
+    line-height: 1.28 !important;
+  }
+
+  .quoteSteve p {
+    font-size: 16px !important;
+  }
+
+  .marketFilterHeader {
+    grid-template-columns: 96px 1fr auto !important;
+    gap: 10px !important;
+  }
+
+  .marketFilterTitle {
+    font-size: 11px !important;
+  }
+
+  .marketChip {
+    height: 29px !important;
+    min-height: 29px !important;
+    padding: 0 8px !important;
+    font-size: 9.5px !important;
+  }
+
+  .marketTable th,
+  .marketTable td {
+    padding: 8px 5px !important;
+    font-size: 10.5px !important;
+  }
+
+  .marketTeams {
+    font-size: 11px !important;
+  }
+
+  .marketMeta {
+    font-size: 9px !important;
+  }
+
+  .marketPercent {
+    font-size: 14px !important;
+  }
+}
+
+/* Notebook pequeno 1366x768 / 13 e 14 polegadas */
+@media (max-width: 1366px), (max-height: 820px) {
+  :root {
+    --sidebar-w: 56px;
+    --topbar-h: 54px;
+  }
+
+  .sidebar {
+    width: var(--sidebar-w) !important;
+    padding-top: 10px !important;
+  }
+
+  .sidebar-top {
+    margin-bottom: 24px !important;
+  }
+
+  .sidebar .logo {
+    width: 31px !important;
+    height: 31px !important;
+    font-size: 14px !important;
+  }
+
+  .side-item {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  .sidebar-nav {
+    gap: 10px !important;
+  }
+
+  .topbar {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .topbar-inner {
+    min-height: var(--topbar-h) !important;
+  }
+
+  .logo-text {
+    gap: 2px !important;
+  }
+
+  .logo-title {
+    font-size: 13px !important;
+  }
+
+  .logo-sub {
+    font-size: 9px !important;
+  }
+
+  .nav-link {
+    min-height: 26px !important;
+    padding: 0 6px !important;
+    font-size: 9.2px !important;
+  }
+
+  #date,
+  .btnOutline,
+  #btn,
+  .status {
+    min-height: 28px !important;
+    height: 28px !important;
+    font-size: 10px !important;
+  }
+
+  #date {
+    min-width: 104px !important;
+  }
+
+  .content {
+    padding: 7px 10px 10px !important;
+  }
+
+  .center-title {
+    margin-bottom: 7px !important;
+  }
+
+  .center-title h1 {
+    font-size: 21px !important;
+    letter-spacing: .13em !important;
+  }
+
+  .center-title span {
+    margin-top: 5px !important;
+    font-size: 8px !important;
+    letter-spacing: .08em !important;
+  }
+
+  .center-title span::after {
+    display: none !important;
+  }
+
+  .panel {
+    padding: 7px 7px 8px !important;
+    border-radius: 14px !important;
+    max-width: calc(100vw - var(--sidebar-w) - 26px) !important;
+  }
+
+  .panel-title {
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .panel-title h2 {
+    font-size: 10px !important;
+  }
+
+  #countTop {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 9px !important;
+  }
+
+  .bigcard {
+    border-radius: 14px !important;
+  }
+
+  .bigcard-top {
+    padding: 8px 8px 7px !important;
+  }
+
+  .titleRow {
+    grid-template-columns: 28px 1fr !important;
+    gap: 6px !important;
+    margin-bottom: 6px !important;
+    padding-top: 0 !important;
+  }
+
+  .rankBallWrap {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 13px !important;
+  }
+
+  .teamsText {
+    font-size: clamp(15px, 1.18vw, 19px) !important;
+    line-height: 1.08 !important;
+    gap: 5px !important;
+  }
+
+  .vs {
+    min-width: 26px !important;
+    padding: 2px 6px !important;
+    font-size: 7.8px !important;
+  }
+
+  .meta {
+    font-size: 9px !important;
+    margin-top: 3px !important;
+  }
+
+  .chipsRow {
+    gap: 4px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .chip,
+  .chipsRow > * {
+    min-height: 21px !important;
+    padding: 0 6px !important;
+    font-size: 7.8px !important;
+    gap: 3px !important;
+  }
+
+  .infoGrid {
+    gap: 5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .infoLine {
+    min-height: 31px !important;
+    padding: 0 7px !important;
+    font-size: 9.8px !important;
+    border-radius: 9px !important;
+  }
+
+  .infoLine b {
+    margin-right: 4px !important;
+  }
+
+  .decisionRow {
+    margin-bottom: 6px !important;
+  }
+
+  .pillOver {
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    font-size: 9.8px !important;
+  }
+
+  .bar {
+    height: 4px !important;
+  }
+
+  .note {
+    padding: 6px 8px 7px !important;
+    font-size: 8.8px !important;
+    line-height: 1.22 !important;
+  }
+
+  .quoteSteve {
+    display: none !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(3)) .teamsText {
+    font-size: clamp(13px, 1vw, 17px) !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(3)) .infoLine {
+    min-height: 28px !important;
+    font-size: 8.8px !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(3)) .chip,
+  .top-host-dynamic:has(.bigcard:nth-child(3)) .chipsRow > * {
+    min-height: 19px !important;
+    font-size: 7.3px !important;
+    padding: 0 5px !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(3)) .note {
+    font-size: 8px !important;
+  }
+}
+
+/* Telas estreitas onde 3 cards lado a lado ficam ruins */
+@media (max-width: 1180px) {
+  .top-host-dynamic:has(.bigcard:nth-child(3)) {
+    grid-template-columns: 1fr !important;
+    max-height: calc(100vh - var(--topbar-h) - 86px) !important;
+    overflow-y: auto !important;
+    padding-right: 4px !important;
+  }
+
+  .top-host-dynamic:has(.bigcard:nth-child(2)):not(:has(.bigcard:nth-child(3))) {
+    grid-template-columns: 1fr !important;
+    max-height: calc(100vh - var(--topbar-h) - 86px) !important;
+    overflow-y: auto !important;
+    padding-right: 4px !important;
+  }
+
+  .bigcard {
+    max-width: 720px !important;
+  }
+}
+
+/* Login responsivo e mais nítido */
+@media (max-width: 1440px) {
+  .loginScreen {
+    padding: 18px !important;
+  }
+
+  .loginCard {
+    max-width: 390px !important;
+    padding: 30px 24px 24px !important;
+    border-radius: 24px !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .loginCard h1 {
+    font-size: 27px !important;
+    font-weight: 900 !important;
+  }
+
+  .loginCard p {
+    font-size: 13px !important;
+    color: #c8d5e4 !important;
+  }
+
+  .loginCard label {
+    font-size: 11px !important;
+    font-weight: 900 !important;
+  }
+
+  .loginCard input {
+    min-height: 42px !important;
+    font-size: 13px !important;
+  }
+
+  .loginCard button {
+    min-height: 42px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+  }
+}
+
+/* Altura muito baixa: prioriza ver os cards */
+@media (max-height: 760px) {
+  .center-title {
+    display: none !important;
+  }
+
+  .content {
+    padding-top: 7px !important;
+  }
+
+  .panel {
+    margin-top: 0 !important;
+  }
+
+  .panel-title {
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .quoteSteve {
+    display: none !important;
+  }
+}
+
