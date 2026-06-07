@@ -2462,6 +2462,43 @@ function extractMatchMetrics(statsMap) {
   };
 }
 
+
+function cornersFromEventDirect(g = {}) {
+  const home = Number(
+    g.match_hometeam_corner ??
+    g.match_hometeam_corners ??
+    g.hometeam_corner ??
+    g.home_corners ??
+    g.home_corner ??
+    g.corners_home ??
+    NaN
+  );
+
+  const away = Number(
+    g.match_awayteam_corner ??
+    g.match_awayteam_corners ??
+    g.awayteam_corner ??
+    g.away_corners ??
+    g.away_corner ??
+    g.corners_away ??
+    NaN
+  );
+
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
+
+  return {
+    cornersHome: home,
+    cornersAway: away,
+    shotsTotalHome: null,
+    shotsTotalAway: null,
+    shotsOnGoalHome: null,
+    shotsOnGoalAway: null,
+    possHome: null,
+    possAway: null,
+  };
+}
+
+
 async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
   const list = Array.isArray(h2hBlock?.[which]) ? h2hBlock[which] : [];
   const slice = list.slice(0, lastN);
@@ -2484,7 +2521,10 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
 
     let statsMap = null;
     try { statsMap = await getStats(matchId); } catch { statsMap = null; }
-    const m = extractMatchMetrics(statsMap);
+
+    // 1) tenta estatísticas completas pelo endpoint de stats
+    // 2) se a API não retornar stats, usa os cantos que já vêm no H2H/últimos jogos
+    const m = extractMatchMetrics(statsMap) || cornersFromEventDirect(g);
     if (!m) continue;
 
     const homeName = cleanText(g.match_hometeam_name || g.home_team_name || g.home || "");
