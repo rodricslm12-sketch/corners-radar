@@ -2463,26 +2463,67 @@ function extractMatchMetrics(statsMap) {
 }
 
 
-function cornersFromEventDirect(g = {}) {
-  const home = Number(
-    g.match_hometeam_corner ??
-    g.match_hometeam_corners ??
-    g.hometeam_corner ??
-    g.home_corners ??
-    g.home_corner ??
-    g.corners_home ??
-    NaN
-  );
+function toNumMaybe(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace("%", "").replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
 
-  const away = Number(
-    g.match_awayteam_corner ??
-    g.match_awayteam_corners ??
-    g.awayteam_corner ??
-    g.away_corners ??
-    g.away_corner ??
-    g.corners_away ??
-    NaN
-  );
+function pickFirstNumber(obj, keys) {
+  for (const k of keys) {
+    const n = toNumMaybe(obj?.[k]);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function cornersFromStatsRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  for (const row of list) {
+    const type = String(row?.type || row?.name || row?.statistic || "").toLowerCase();
+    if (!type) continue;
+    if (type.includes("corner")) {
+      const home = toNumMaybe(row.home ?? row.home_value ?? row.match_hometeam_value);
+      const away = toNumMaybe(row.away ?? row.away_value ?? row.match_awayteam_value);
+      if (Number.isFinite(home) && Number.isFinite(away)) {
+        return { home, away };
+      }
+    }
+  }
+  return null;
+}
+
+function cornersFromEventDirect(g = {}) {
+  const directHomeKeys = [
+    "match_hometeam_corner", "match_hometeam_corners",
+    "hometeam_corner", "home_corners", "home_corner", "corners_home",
+    "match_hometeam_corners_count", "homeCorner", "homeCorners",
+    "home_team_corners", "match_home_corners", "team_home_corners"
+  ];
+
+  const directAwayKeys = [
+    "match_awayteam_corner", "match_awayteam_corners",
+    "awayteam_corner", "away_corners", "away_corner", "corners_away",
+    "match_awayteam_corners_count", "awayCorner", "awayCorners",
+    "away_team_corners", "match_away_corners", "team_away_corners"
+  ];
+
+  let home = pickFirstNumber(g, directHomeKeys);
+  let away = pickFirstNumber(g, directAwayKeys);
+
+  if (!Number.isFinite(home) || !Number.isFinite(away)) {
+    const rows =
+      (Array.isArray(g?.statistics) && g.statistics) ||
+      (Array.isArray(g?.match_statistics) && g.match_statistics) ||
+      (Array.isArray(g?.stats) && g.stats) ||
+      null;
+
+    const pair = cornersFromStatsRows(rows);
+    if (pair) {
+      home = pair.home;
+      away = pair.away;
+    }
+  }
 
   if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
 
@@ -2496,6 +2537,52 @@ function cornersFromEventDirect(g = {}) {
     possHome: null,
     possAway: null,
   };
+}
+
+function mergeMatchMetrics(statsMetrics, directMetrics) {
+  const m = statsMetrics || {};
+  const d = directMetrics || {};
+  const merged = {
+    cornersHome: Number.isFinite(m.cornersHome) ? m.cornersHome : d.cornersHome,
+    cornersAway: Number.isFinite(m.cornersAway) ? m.cornersAway : d.cornersAway,
+    shotsTotalHome: Number.isFinite(m.shotsTotalHome) ? m.shotsTotalHome : d.shotsTotalHome,
+    shotsTotalAway: Number.isFinite(m.shotsTotalAway) ? m.shotsTotalAway : d.shotsTotalAway,
+    shotsOnGoalHome: Number.isFinite(m.shotsOnGoalHome) ? m.shotsOnGoalHome : d.shotsOnGoalHome,
+    shotsOnGoalAway: Number.isFinite(m.shotsOnGoalAway) ? m.shotsOnGoalAway : d.shotsOnGoalAway,
+    possHome: Number.isFinite(m.possHome) ? m.possHome : d.possHome,
+    possAway: Number.isFinite(m.possAway) ? m.possAway : d.possAway,
+  };
+
+  if (!Number.isFinite(merged.cornersHome) || !Number.isFinite(merged.cornersAway)) return null;
+  return merged;
+}
+
+function teamNameFromH2HRow(g = {}, side = "home") {
+  if (side === "home") {
+    return cleanText(
+      g.match_hometeam_name ??
+      g.home_team_name ??
+      g.home_name ??
+      g.homeTeamName ??
+      g.home_team ??
+      g.home ??
+      g.teams?.home?.name ??
+      g.teams?.home ??
+      ""
+    );
+  }
+
+  return cleanText(
+    g.match_awayteam_name ??
+    g.away_team_name ??
+    g.away_name ??
+    g.awayTeamName ??
+    g.away_team ??
+    g.away ??
+    g.teams?.away?.name ??
+    g.teams?.away ??
+    ""
+  );
 }
 
 
@@ -2516,19 +2603,20 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
   const matches = [];
 
   for (const g of slice) {
-    const matchId = g.match_id;
-    if (!matchId) continue;
+    const matchId = g.match_id ?? g.event_key ?? g.id ?? null;
 
     let statsMap = null;
-    try { statsMap = await getStats(matchId); } catch { statsMap = null; }
+    if (matchId) {
+      try { statsMap = await getStats(matchId); } catch { statsMap = null; }
+    }
 
     // 1) tenta estatísticas completas pelo endpoint de stats
-    // 2) se a API não retornar stats, usa os cantos que já vêm no H2H/últimos jogos
-    const m = extractMatchMetrics(statsMap) || cornersFromEventDirect(g);
+    // 2) se a API não retornar corners, usa os cantos que já vêm no H2H/últimos jogos
+    const m = mergeMatchMetrics(extractMatchMetrics(statsMap), cornersFromEventDirect(g));
     if (!m) continue;
 
-    const homeName = cleanText(g.match_hometeam_name || g.home_team_name || g.home || "");
-    const awayName = cleanText(g.match_awayteam_name || g.away_team_name || g.away || "");
+    const homeName = teamNameFromH2HRow(g, "home");
+    const awayName = teamNameFromH2HRow(g, "away");
     const homeKey = normTeamKey(homeName);
     const awayKey = normTeamKey(awayName);
     const teamKey = normTeamKey(teamName);
@@ -2564,7 +2652,7 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
     }
 
     matches.push({
-      match_id: matchId,
+      match_id: matchId ?? null,
       date: g.match_date || g.date || null,
       home: homeName || "Mandante",
       away: awayName || "Visitante",
@@ -4415,6 +4503,25 @@ if (isEuropeanClassic(casaN, foraN)) {
       } : null,
 
       real: null,
+
+      last5: {
+        count: lastN,
+        home: homeRecent?.matches || [],
+        away: awayRecent?.matches || [],
+        summary: {
+          homeAvgFor: homeRecent?.cornersForAvg ?? null,
+          awayAvgFor: awayRecent?.cornersForAvg ?? null,
+          homeAvgAgainst: homeRecent?.cornersAgainstAvg ?? null,
+          awayAvgAgainst: awayRecent?.cornersAgainstAvg ?? null,
+          combinedAvg: (homeRecent && awayRecent)
+            ? ((homeRecent.cornersForAvg || 0) + (awayRecent.cornersForAvg || 0))
+            : null,
+          over95Home: homeRecent?.over9Count ?? null,
+          over95Away: awayRecent?.over9Count ?? null,
+          over105Home: homeRecent?.over105Count ?? null,
+          over105Away: awayRecent?.over105Count ?? null
+        }
+      },
 
       sources: { odds: !!oddsInfo, h2h: !!h2h, stats: false },
 
