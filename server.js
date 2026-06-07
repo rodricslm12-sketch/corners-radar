@@ -193,7 +193,7 @@ const HEAVY_PRIORITY_LEAGUES = new Set([99]); // Brasileirão
 const HEAVY_PRIORITY_PER_LEAGUE = 3;          // analisa 3 jogos do BR no pesado
 
 // ✅ lastN maior só pro BR (mais robusto)
-const LASTN_DEFAULT = 2;
+const LASTN_DEFAULT = 5;
 const LASTN_OVERRIDE = new Map([
   [99, 4], // Brasileirão: usa 4 jogos recentes
 ]);
@@ -2474,7 +2474,9 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
   let possSum = 0;
   let possCount = 0;
   let over9Count = 0;
+  let over105Count = 0;
   let combinedCornersSum = 0;
+  const matches = [];
 
   for (const g of slice) {
     const matchId = g.match_id;
@@ -2485,8 +2487,20 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
     const m = extractMatchMetrics(statsMap);
     if (!m) continue;
 
-    const home = String(g.match_hometeam_name || "").toLowerCase();
-    const isHome = home && teamName && home.includes(String(teamName).toLowerCase());
+    const homeName = cleanText(g.match_hometeam_name || g.home_team_name || g.home || "");
+    const awayName = cleanText(g.match_awayteam_name || g.away_team_name || g.away || "");
+    const homeKey = normTeamKey(homeName);
+    const awayKey = normTeamKey(awayName);
+    const teamKey = normTeamKey(teamName);
+
+    let isHome = false;
+    if (homeKey && teamKey) {
+      isHome = homeKey === teamKey || homeKey.includes(teamKey) || teamKey.includes(homeKey);
+    }
+    if (!isHome && awayKey && teamKey) {
+      const isAway = awayKey === teamKey || awayKey.includes(teamKey) || teamKey.includes(awayKey);
+      if (!isAway) continue;
+    }
 
     const cf = isHome ? m.cornersHome : m.cornersAway;
     const ca = isHome ? m.cornersAway : m.cornersHome;
@@ -2506,7 +2520,29 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
     if (Number.isFinite(cc)) {
       combinedCornersSum += cc;
       if (cc >= 10) over9Count += 1;
+      if (cc >= 11) over105Count += 1;
     }
+
+    matches.push({
+      match_id: matchId,
+      date: g.match_date || g.date || null,
+      home: homeName || "Mandante",
+      away: awayName || "Visitante",
+      opponent: isHome ? (awayName || "Visitante") : (homeName || "Mandante"),
+      side: isHome ? "Casa" : "Fora",
+      score: {
+        home: g.match_hometeam_score ?? g.home_score ?? null,
+        away: g.match_awayteam_score ?? g.away_score ?? null
+      },
+      cornersFor: Number.isFinite(cf) ? cf : null,
+      cornersAgainst: Number.isFinite(ca) ? ca : null,
+      totalCorners: Number.isFinite(cc) ? cc : null,
+      over95: Number.isFinite(cc) ? cc >= 10 : null,
+      over105: Number.isFinite(cc) ? cc >= 11 : null,
+      shotsTotal: Number.isFinite(st) ? st : null,
+      shotsOnGoal: Number.isFinite(sog) ? sog : null,
+      possession: Number.isFinite(poss) ? poss : null
+    });
 
     games += 1;
   }
@@ -2522,6 +2558,8 @@ async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
     possAvg: possCount ? (possSum / possCount) : null,
     combinedCornersAvg: combinedCornersSum / games,
     over9Count,
+    over105Count,
+    matches,
   };
 }
 
@@ -4211,7 +4249,26 @@ if (isEuropeanClassic(casaN, foraN)) {
           pressureHits: pressureCheck.hits,
           form: formCheck,
           baseWhy: baseCheck.why,
-          lastN_used: lastN
+          lastN_used: lastN,
+          homeRecent,
+          awayRecent
+        },
+
+        last5: {
+          count: lastN,
+          home: homeRecent?.matches || [],
+          away: awayRecent?.matches || [],
+          summary: {
+            homeAvgFor: homeRecent?.cornersForAvg ?? null,
+            awayAvgFor: awayRecent?.cornersForAvg ?? null,
+            homeAvgAgainst: homeRecent?.cornersAgainstAvg ?? null,
+            awayAvgAgainst: awayRecent?.cornersAgainstAvg ?? null,
+            combinedAvg: recentCombinedAvg ?? null,
+            over95Home: homeRecent?.over9Count ?? null,
+            over95Away: awayRecent?.over9Count ?? null,
+            over105Home: homeRecent?.over105Count ?? null,
+            over105Away: awayRecent?.over105Count ?? null
+          }
         },
 
         sources: { odds: !!oddsInfo, h2h: true, stats: true },

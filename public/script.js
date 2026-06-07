@@ -3396,7 +3396,8 @@ setInterval(trackOnlineUser, 30000);
     { key:"cards35", label:"+3.5 Cartões", icon:"🟨🟥", short:"+3.5" },
     { key:"cardsTeam", label:"Cartões por time", icon:"👥", short:"Time" },
     { key:"noCard28", label:"Não levam cartão até 28'", icon:"🛡️", short:"28'", novo:true },
-    { key:"btts", label:"Ambas Marcam", icon:"👥", short:"Ambas" }
+    { key:"btts", label:"Ambas Marcam", icon:"👥", short:"Ambas" },
+    { key:"last5", label:"Últimos 5 Jogos", icon:"📊", short:"Últimos" }
   ];
 
   function isLogged(){ return localStorage.getItem(AUTH_KEY) === "1"; }
@@ -3481,6 +3482,7 @@ setInterval(trackOnlineUser, 30000);
       cards35:{prob:$clamp(cardBase-14,25,72), pass:cardBase>=63},
       cardsTeam:{prob:$clamp(cardBase-4,35,78), pass:cardBase>=56},
       noCard28:{prob:$clamp(74-cardBase+35,38,76), pass:(74-cardBase+35)>=55},
+      last5:{prob:Math.round(cornerProb), pass:true},
       overview:{prob:Math.max(p("over15")||0, Math.round(cornerProb), cardBase), pass:true}
     };
   }
@@ -3707,6 +3709,164 @@ setInterval(trackOnlineUser, 30000);
     top1El?.querySelectorAll("[data-premium-game]").forEach(row=>row.addEventListener("click",()=>{ const i=Number(row.dataset.premiumGame); if (isLogged()) openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); else openLogin(); }));
   }
 
+
+  function last5Num(v, d=1){
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    return n.toFixed(d).replace(".0", "");
+  }
+
+  function last5DateLabel(value){
+    const s = String(value || "");
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)){
+      const [y,m,d] = s.slice(0,10).split("-");
+      return `${d}/${m}`;
+    }
+    return "—";
+  }
+
+  function last5MatchName(m){
+    const home = $safe(m?.home, "Mandante");
+    const away = $safe(m?.away, "Visitante");
+    const sh = m?.score?.home ?? null;
+    const sa = m?.score?.away ?? null;
+    const score = (sh !== null && sh !== undefined && sa !== null && sa !== undefined) ? ` ${sh} x ${sa} ` : " x ";
+    return `${home}${score}${away}`;
+  }
+
+  function last5SideData(j){
+    const data = j?.last5 || {};
+    const home = Array.isArray(data.home) ? data.home : [];
+    const away = Array.isArray(data.away) ? data.away : [];
+    const sum = data.summary || {};
+    const homeAvg = Number(sum.homeAvgFor ?? avgFromLast5(home, "cornersFor"));
+    const awayAvg = Number(sum.awayAvgFor ?? avgFromLast5(away, "cornersFor"));
+    const homeOver95 = Number.isFinite(Number(sum.over95Home)) ? Number(sum.over95Home) : home.filter(x => x?.over95).length;
+    const awayOver95 = Number.isFinite(Number(sum.over95Away)) ? Number(sum.over95Away) : away.filter(x => x?.over95).length;
+    const homeOver105 = Number.isFinite(Number(sum.over105Home)) ? Number(sum.over105Home) : home.filter(x => x?.over105).length;
+    const awayOver105 = Number.isFinite(Number(sum.over105Away)) ? Number(sum.over105Away) : away.filter(x => x?.over105).length;
+    const combined = Number(sum.combinedAvg ?? ((homeAvg + awayAvg) / 2));
+    return { home, away, homeAvg, awayAvg, homeOver95, awayOver95, homeOver105, awayOver105, combined };
+  }
+
+  function avgFromLast5(list, key){
+    const nums = (Array.isArray(list) ? list : []).map(x => Number(x?.[key])).filter(Number.isFinite);
+    if (!nums.length) return null;
+    return nums.reduce((a,b)=>a+b,0) / nums.length;
+  }
+
+  function renderLast5Rows(list){
+    if (!Array.isArray(list) || !list.length){
+      return `<tr><td colspan="5" class="last5Empty">Sem dados completos disponíveis.</td></tr>`;
+    }
+    return list.slice(0,5).map(m => `
+      <tr>
+        <td>${last5DateLabel(m?.date)}</td>
+        <td>${escapeHtmlLite(last5MatchName(m))}</td>
+        <td>${last5Num(m?.cornersFor,0)}</td>
+        <td>${last5Num(m?.cornersAgainst,0)}</td>
+        <td><span class="last5Badge ${m?.over95 ? "ok" : "bad"}">${m?.over95 ? "Over" : "Under"}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  function renderLast5PremiumDetail(j){
+    const home = gameHome(j), away = gameAway(j);
+    const data = last5SideData(j);
+    const conf = Math.round(Number(typeof getProb === "function" ? getProb(j) : j?.over95_prob_adj) || 0);
+    const homeCount = data.home.length || 5;
+    const awayCount = data.away.length || 5;
+    const over95Txt = `${data.homeOver95}/${homeCount} + ${data.awayOver95}/${awayCount}`;
+    const over105Txt = `${data.homeOver105}/${homeCount} + ${data.awayOver105}/${awayCount}`;
+
+    return `
+      <div class="last5PremiumBox">
+        <div class="last5Head">
+          <div>
+            <h2>📊 ÚLTIMOS 5 JOGOS — BASE UTILIZADA PELA IA</h2>
+            <p>Análise dos últimos jogos oficiais de cada equipe com foco em escanteios.</p>
+          </div>
+          <div class="last5Confidence"><span>Confiança IA</span><strong>${conf || "—"}%</strong></div>
+        </div>
+
+        <div class="last5Grid">
+          <section class="last5TeamCard">
+            <h3>${teamNameHTML(home)} <small>(MANDANTE)</small></h3>
+            <table class="last5Table">
+              <thead><tr><th>Data</th><th>Jogo</th><th>Gerados</th><th>Sofridos</th><th>+9.5</th></tr></thead>
+              <tbody>${renderLast5Rows(data.home)}</tbody>
+            </table>
+            <div class="last5Average">Média de cantos gerados <b>${last5Num(data.homeAvg,1)}</b></div>
+          </section>
+
+          <aside class="last5CompareCard">
+            <h3>Comparativo IA</h3>
+            <div class="last5CompareLine"><span>Média ${escapeHtmlLite(home)}</span><b>${last5Num(data.homeAvg,1)}</b></div>
+            <div class="last5CompareLine"><span>Média ${escapeHtmlLite(away)}</span><b>${last5Num(data.awayAvg,1)}</b></div>
+            <div class="last5CompareBig"><span>Média combinada</span><strong>${last5Num(data.combined,1)}</strong></div>
+            <div class="last5CompareLine"><span>Over 9.5</span><b>${over95Txt}</b></div>
+            <div class="last5CompareLine"><span>Over 10.5</span><b>${over105Txt}</b></div>
+            <div class="last5Strength">${conf >= 75 ? "MUITO FORTE" : conf >= 65 ? "FORTE" : "ATENÇÃO"}</div>
+          </aside>
+
+          <section class="last5TeamCard">
+            <h3>${teamNameHTML(away)} <small>(VISITANTE)</small></h3>
+            <table class="last5Table">
+              <thead><tr><th>Data</th><th>Jogo</th><th>Gerados</th><th>Sofridos</th><th>+9.5</th></tr></thead>
+              <tbody>${renderLast5Rows(data.away)}</tbody>
+            </table>
+            <div class="last5Average">Média de cantos gerados <b>${last5Num(data.awayAvg,1)}</b></div>
+          </section>
+        </div>
+
+        <div class="last5IaSummary">
+          <b>Resumo da análise IA</b>
+          <p>A leitura considera a produção recente de escanteios dos dois times, cantos cedidos, estabilidade do mercado e força do filtro. Esses dados ajudam a confirmar se a projeção está sustentada por forma recente.</p>
+        </div>
+      </div>`;
+  }
+
+  function ensureLast5PremiumStyles(){
+    if (document.getElementById("last5PremiumStyles")) return;
+    const style = document.createElement("style");
+    style.id = "last5PremiumStyles";
+    style.textContent = `
+      .last5PremiumBox{padding:4px 0 0;color:#eaf3ff;}
+      .last5Head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;}
+      .last5Head h2{margin:0;font-size:20px;font-weight:950;letter-spacing:.2px;}
+      .last5Head p{margin:6px 0 0;color:#9fb1c7;font-size:13px;}
+      .last5Confidence{min-width:150px;border:1px solid rgba(34,197,94,.35);background:rgba(6,78,59,.22);border-radius:16px;padding:12px;text-align:center;}
+      .last5Confidence span{display:block;color:#9fb1c7;font-size:12px;font-weight:800;text-transform:uppercase;}
+      .last5Confidence strong{display:block;color:#22e66d;font-size:28px;font-weight:950;line-height:1.1;}
+      .last5Grid{display:grid;grid-template-columns:1fr 270px 1fr;gap:14px;align-items:stretch;}
+      .last5TeamCard,.last5CompareCard,.last5IaSummary{border:1px solid rgba(148,163,184,.18);background:linear-gradient(180deg,rgba(15,23,42,.86),rgba(2,6,23,.88));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);}
+      .last5TeamCard h3,.last5CompareCard h3{margin:0 0 12px;font-size:16px;font-weight:950;color:#22e66d;}
+      .last5TeamCard small{font-size:12px;color:#dbeafe;font-weight:800;}
+      .last5Table{width:100%;border-collapse:collapse;font-size:12px;}
+      .last5Table th{color:#b8c7dc;font-size:11px;text-transform:uppercase;text-align:left;padding:8px 6px;border-bottom:1px solid rgba(148,163,184,.18);}
+      .last5Table td{padding:9px 6px;border-bottom:1px solid rgba(148,163,184,.10);vertical-align:middle;}
+      .last5Table td:nth-child(3),.last5Table td:nth-child(4){font-weight:950;color:#22e66d;text-align:center;font-size:15px;}
+      .last5Badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;border-radius:8px;padding:4px 6px;font-size:11px;font-weight:950;}
+      .last5Badge.ok{background:rgba(22,163,74,.18);border:1px solid rgba(34,197,94,.35);color:#22e66d;}
+      .last5Badge.bad{background:rgba(148,163,184,.10);border:1px solid rgba(148,163,184,.20);color:#cbd5e1;}
+      .last5Average{margin-top:14px;text-align:center;color:#cbd5e1;text-transform:uppercase;font-size:12px;font-weight:800;}
+      .last5Average b{display:block;margin-top:4px;color:#22e66d;font-size:28px;font-weight:950;}
+      .last5CompareCard{border-color:rgba(34,197,94,.35);background:radial-gradient(circle at top,rgba(34,197,94,.13),rgba(2,6,23,.88));text-align:center;}
+      .last5CompareLine{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(148,163,184,.14);padding:12px 0;color:#dbeafe;font-size:13px;gap:8px;}
+      .last5CompareLine b{color:#22e66d;font-size:22px;font-weight:950;white-space:nowrap;}
+      .last5CompareBig{border-top:1px solid rgba(148,163,184,.20);border-bottom:1px solid rgba(148,163,184,.20);padding:14px 0;margin:2px 0;color:#dbeafe;}
+      .last5CompareBig span{display:block;font-size:12px;text-transform:uppercase;color:#cbd5e1;font-weight:800;}
+      .last5CompareBig strong{display:block;color:#22e66d;font-size:34px;font-weight:950;}
+      .last5Strength{margin-top:10px;color:#22e66d;font-size:24px;font-weight:950;letter-spacing:.5px;}
+      .last5IaSummary{margin-top:14px;border-color:rgba(34,197,94,.30);}
+      .last5IaSummary b{display:block;margin-bottom:8px;font-size:16px;}
+      .last5IaSummary p{margin:0;color:#dbeafe;line-height:1.45;font-size:14px;}
+      .last5Empty{text-align:center;color:#94a3b8;padding:18px!important;}
+      @media(max-width:1100px){.last5Grid{grid-template-columns:1fr;}.last5CompareCard{order:3}.last5Head{flex-direction:column;align-items:stretch}.last5Confidence{min-width:0}}
+    `;
+    document.head.appendChild(style);
+  }
+
   function analysisText(key){
     if (key === "cards25") return "Jogo com tendência para 3 ou mais cartões";
     if (key === "cards35") return "Jogo com tendência para 4 ou mais cartões";
@@ -3714,11 +3874,13 @@ setInterval(trackOnlineUser, 30000);
     if (key?.startsWith("corners")) return "Jogo com tendência de escanteios no mercado escolhido";
     if (key?.startsWith("over")) return "Jogo com tendência de gols no mercado escolhido";
     if (key === "btts") return "Jogo com tendência para ambas as equipes marcarem";
+    if (key === "last5") return "Base estatística dos últimos 5 jogos oficiais de cada equipe";
     return "Resumo geral dos melhores mercados do jogo";
   }
 
   function openPremiumDetail(j, marketKey="overview"){
     ensureLoginUI();
+    ensureLast5PremiumStyles();
     if (!j) return;
     currentView = "filters";
     const key = marketKey === "all" ? "overview" : marketKey;
@@ -3739,6 +3901,7 @@ setInterval(trackOnlineUser, 30000);
       <div class="premiumDetailGrid">
         <main class="premiumDetailPanel">
           <div class="${locked ? "premiumBlurred" : ""}">
+            ${key === "last5" ? renderLast5PremiumDetail(j) : `
             <div class="premiumAnalysisTitle">Análise: ${marketIcon(key)} ${marketLabel(key)}</div>
             <div class="premiumAnalysisSub">${analysisText(key)}</div>
             <div class="premiumMetricGrid">
@@ -3752,7 +3915,7 @@ setInterval(trackOnlineUser, 30000);
               <div class="premiumStatCard"><h4>Estatísticas importantes</h4>${[["Faltas (média)",14.1,70],["Cartões amarelos",cardsAvg,58],["Cartões vermelhos",0.2,30],["Disputas de bola",50.3,74],[`Jogos com ${marketLabel(key)}`,`${Math.round(selected.prob)}%`,selected.prob]].map(x=>`<div class="premiumBarLine"><span>${x[0]}</span><div class="premiumMiniBar"><i style="width:${x[2]}%"></i></div><b>${x[1]}</b></div>`).join("")}</div>
               <div class="premiumStatCard"><h4>Cartões por time (média)</h4><div style="display:flex;align-items:center;justify-content:space-between;gap:16px"><div>${home}<br><b style="font-size:32px;color:#facc15">${$fmt(homeCards,1)}</b></div><div style="font-size:44px">🟨🟥</div><div>${away}<br><b style="font-size:32px;color:#facc15">${$fmt(awayCards,1)}</b></div></div><h4 style="margin-top:18px">Momentos dos cartões</h4><div class="premiumMomentGrid">${[["0' - 15'",18],["16' - 28'",22],["29' - 45'",28],["46' - 60'",20],["61' - 90'",12]].map(x=>`<div class="premiumMoment">${x[0]}<strong>${x[1]}%</strong></div>`).join("")}</div></div>
               <div class="premiumStatCard"><h4>Resumo rápido</h4><p>✅ Jogo com boa leitura estatística.</p><p>✅ Mercado escolhido destacado no topo.</p><p>✅ Tendência baseada em médias recentes e força do filtro.</p><p>✅ Use os outros mercados ao lado para comparar.</p></div>
-            </div>
+            </div>`}
           </div>
           ${locked ? `<div class="premiumPremiumLock"><strong>🔒 Conteúdo premium bloqueado</strong><br>Faça login para ver análises avançadas, estatísticas detalhadas e histórico completo.<br><br><button class="premiumEnterBtn" data-open-login="1">Fazer login</button></div>` : ""}
         </main>
