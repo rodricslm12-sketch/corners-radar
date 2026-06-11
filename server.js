@@ -5186,6 +5186,100 @@ async function getMatchResultById(matchId){
 }
 
 
+
+
+/* =========================================================
+   MATCH CENTER + HISTÓRICO AUTOMÁTICO
+   - Mantém o motor pré-jogo intacto.
+   - Salva jogo encerrado em data/historico.json.
+   - Entrega histórico simples para a aba Histórico.
+   ========================================================= */
+const HISTORY_DIR = path.join(__dirname, "data");
+const HISTORY_FILE = path.join(HISTORY_DIR, "historico.json");
+
+function ensureHistoryStore(){
+  if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive:true });
+  if (!fs.existsSync(HISTORY_FILE)) fs.writeFileSync(HISTORY_FILE, "[]", "utf8");
+}
+
+function readHistoryStore(){
+  try{
+    ensureHistoryStore();
+    const raw = fs.readFileSync(HISTORY_FILE, "utf8");
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(err){
+    console.warn("Erro ao ler historico.json:", err?.message || err);
+    return [];
+  }
+}
+
+function writeHistoryStore(items){
+  ensureHistoryStore();
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(Array.isArray(items) ? items : [], null, 2), "utf8");
+}
+
+function marketHitFromResult(result, market = "+9.5 CANTOS"){
+  const key = String(market || "").toLowerCase();
+  const corners = Number(result?.corners?.total ?? NaN);
+  const goals = Number(result?.goals?.total ?? NaN);
+  const gh = Number(result?.goals?.home ?? NaN);
+  const ga = Number(result?.goals?.away ?? NaN);
+
+  if (key.includes("11.5") && Number.isFinite(corners)) return corners >= 12;
+  if (key.includes("10.5") && Number.isFinite(corners)) return corners >= 11;
+  if (key.includes("9.5") && Number.isFinite(corners)) return corners >= 10;
+  if (key.includes("3.5") && Number.isFinite(goals)) return goals >= 4;
+  if (key.includes("2.5") && Number.isFinite(goals)) return goals >= 3;
+  if (key.includes("1.5") && Number.isFinite(goals)) return goals >= 2;
+  if ((key.includes("ambas") || key.includes("btts")) && Number.isFinite(gh) && Number.isFinite(ga)) return gh > 0 && ga > 0;
+
+  if (Number.isFinite(corners)) return corners >= 10;
+  return null;
+}
+
+function buildHistoryItem(result, source = {}){
+  const mercado = String(source.mercado || source.market || "+9.5 CANTOS").toUpperCase();
+  const hit = marketHitFromResult(result, mercado);
+  return {
+    id: String(result?.match_id || source.match_id || source.id || ""),
+    match_id: String(result?.match_id || source.match_id || source.id || ""),
+    data: result?.date || source.date || toISODate(),
+    hora: result?.time || source.time || "",
+    liga: result?.league || source.league || "",
+    casa: result?.home || source.home || "Mandante",
+    fora: result?.away || source.away || "Visitante",
+    placar: `${result?.goals?.home ?? "—"}x${result?.goals?.away ?? "—"}`,
+    corners: `${result?.corners?.home ?? "—"}x${result?.corners?.away ?? "—"}`,
+    total_corners: result?.corners?.total ?? null,
+    mercado,
+    odd: source.odd ? Number(source.odd) : null,
+    prob_pre: source.prob_pre ? Number(source.prob_pre) : null,
+    resultado: hit === true ? "bateu" : hit === false ? "nao_bateu" : "aguardando",
+    finished: Boolean(result?.finished),
+    saved_at: new Date().toISOString()
+  };
+}
+
+function upsertHistoryItem(item){
+  if (!item?.match_id && !item?.id) return null;
+  const list = readHistoryStore();
+  const key = String(item.match_id || item.id);
+  const idx = list.findIndex(x => String(x?.match_id || x?.id) === key);
+  const finalItem = { ...(idx >= 0 ? list[idx] : {}), ...item };
+  if (idx >= 0) list[idx] = finalItem;
+  else list.unshift(finalItem);
+  list.sort((a,b) => String(`${b.data || ""} ${b.hora || ""}`).localeCompare(String(`${a.data || ""} ${a.hora || ""}`)));
+  writeHistoryStore(list.slice(0, 500));
+  return finalItem;
+}
+
+async function saveFinishedMatchToHistory(result, source = {}){
+  if (!result?.finished) return null;
+  const item = buildHistoryItem(result, source);
+  return upsertHistoryItem(item);
+}
+
 // ---------------- Endpoints ----------------
 
 app.get("/match_result", async (req, res) => {
@@ -5242,10 +5336,19 @@ app.get("/match_center", async (req, res) => {
       });
     }
 
+    const historico_item = await saveFinishedMatchToHistory(result, {
+      match_id: matchId,
+      mercado: req.query.mercado || req.query.market || "+9.5 CANTOS",
+      odd: req.query.odd || null,
+      prob_pre: req.query.prob_pre || req.query.prob || null
+    });
+
     return res.json({
       ...result,
       source: "match_center",
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      historico_salvo: Boolean(historico_item),
+      historico_item
     });
   } catch (err) {
     return res.status(500).json({
@@ -5253,6 +5356,87 @@ app.get("/match_center", async (req, res) => {
       details: String(err?.message || err)
     });
   }
+});
+
+app.get("/matchcenter/:id", async (req, res) => {
+  req.query.match_id = req.params.id;
+  const matchId = String(req.params.id || "").trim();
+
+  if (!matchId){
+    return res.status(400).json({ error: "match_id obrigatório" });
+  }
+
+  try{
+    const result = await getMatchResultById(matchId);
+    if (!result){
+      return res.status(404).json({ error: "Match Center não encontrou dados para este jogo", match_id: matchId });
+    }
+
+    const historico_item = await saveFinishedMatchToHistory(result, {
+      match_id: matchId,
+      mercado: req.query.mercado || req.query.market || "+9.5 CANTOS",
+      odd: req.query.odd || null,
+      prob_pre: req.query.prob_pre || req.query.prob || null
+    });
+
+    return res.json({
+      ...result,
+      source: "matchcenter/:id",
+      updated_at: new Date().toISOString(),
+      historico_salvo: Boolean(historico_item),
+      historico_item
+    });
+  }catch(err){
+    return res.status(500).json({ error:"Erro ao carregar Match Center", details:String(err?.message || err) });
+  }
+});
+
+app.get("/historico", (req, res) => {
+  const limit = Math.max(1, Math.min(500, Number(req.query.limit || 100)));
+  const date = String(req.query.date || "").trim();
+  let list = readHistoryStore();
+  if (date) list = list.filter(x => String(x?.data || "") === date);
+  return res.json({ ok:true, total:list.length, items:list.slice(0, limit) });
+});
+
+app.post("/historico/save", async (req, res) => {
+  try{
+    const body = req.body || {};
+    const matchId = String(body.match_id || body.id || "").trim();
+    if (!matchId) return res.status(400).json({ ok:false, error:"match_id obrigatório" });
+
+    const result = await getMatchResultById(matchId);
+    if (!result) return res.status(404).json({ ok:false, error:"Jogo não encontrado" });
+    if (!result.finished) return res.json({ ok:true, saved:false, reason:"Jogo ainda não finalizado", result });
+
+    const item = await saveFinishedMatchToHistory(result, body);
+    return res.json({ ok:true, saved:Boolean(item), item });
+  }catch(err){
+    return res.status(500).json({ ok:false, error:"Erro ao salvar histórico", details:String(err?.message || err) });
+  }
+});
+
+app.get("/historico/sync", async (req, res) => {
+  const ids = String(req.query.ids || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 50);
+  const mercado = req.query.mercado || req.query.market || "+9.5 CANTOS";
+  const saved = [];
+  const skipped = [];
+
+  for (const id of ids){
+    try{
+      const result = await getMatchResultById(id);
+      if (result?.finished){
+        const item = await saveFinishedMatchToHistory(result, { match_id:id, mercado });
+        if (item) saved.push(item);
+      } else {
+        skipped.push({ id, reason:"not_finished" });
+      }
+    }catch(err){
+      skipped.push({ id, reason:String(err?.message || err) });
+    }
+  }
+
+  return res.json({ ok:true, saved:saved.length, skipped:skipped.length, items:saved, skipped_items:skipped });
 });
 
 app.get("/quentes", async (req, res) => {
@@ -5650,4 +5834,6 @@ app.listen(PORT, () => {
   console.log(`- Debug leagues of day: /debug/leagues?date=YYYY-MM-DD`);
   console.log(`- Debug match base: /debug/match_base?match_id=XXXX`);
   console.log(`- Estatísticas do jogo: /match_result?match_id=XXXX`);
+  console.log(`- Match Center: /match_center?match_id=XXXX ou /matchcenter/XXXX`);
+  console.log(`- Histórico: /historico`);
 });

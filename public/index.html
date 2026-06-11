@@ -91,9 +91,9 @@
 
         <nav class="mobileIconTabs" aria-label="Menu mobile">
           <a class="nav-link" data-tab="pre"><span>▥</span><b>PRÉ JOGO</b></a>
-          <a class="nav-link" data-tab="corners"><span>⚑</span><b>ESCANTEIOS</b></a>
+          <a class="nav-link active" data-tab="corners"><span>⚑</span><b>ESCANTEIOS</b></a>
           <a class="nav-link" data-tab="stats"><span>▥</span><b>ESTATÍSTICAS</b></a>
-          <a class="nav-link active" data-tab="filters"><span>⌯</span><b>FILTROS</b></a>
+          <a class="nav-link" data-tab="filters"><span>⌯</span><b>FILTROS</b></a>
           <a class="nav-link" data-tab="favorites"><span>☆</span><b>FAVORITOS</b></a>
         </nav>
       </div>
@@ -109,10 +109,10 @@
           <!-- MENU NOVO -->
           <nav class="nav">
             <a class="nav-link" data-tab="pre">ANÁLISE PRÉ JOGO</a>
-            <a class="nav-link" data-tab="corners">ESCANTEIOS</a>
+            <a class="nav-link active" data-tab="corners">ESCANTEIOS</a>
             <a class="nav-link" data-tab="stats">ESTATÍSTICAS</a>
             <a class="nav-link" data-tab="history">HISTÓRICO</a>
-            <a class="nav-link active" data-tab="filters">FILTROS</a>
+            <a class="nav-link" data-tab="filters">FILTROS</a>
             <a class="nav-link" data-tab="favorites">FAVORITOS</a>
           </nav>
         </div>
@@ -210,6 +210,28 @@
 
         </div>
 
+      </section>
+
+
+
+      <!-- PAINEL DE HISTÓRICO PÓS-JOGO -->
+      <section id="historyPanel" class="panel history-panel" style="display:none;">
+        <div class="panel-title">
+          <h2>📊 HISTÓRICO DE JOGOS FINALIZADOS</h2>
+          <span id="countHistory">0</span>
+        </div>
+
+        <div class="historyTopBar">
+          <div>
+            <strong>Resultados salvos automaticamente</strong>
+            <span>Quando o jogo termina, o Match Center envia o resultado para cá.</span>
+          </div>
+          <button id="refreshHistoryBtn" class="btnOutline" type="button">Atualizar histórico</button>
+        </div>
+
+        <div id="historyGames" class="history-games">
+          <div class="empty">Nenhum jogo finalizado salvo ainda.</div>
+        </div>
       </section>
 
       <!-- FRASE -->
