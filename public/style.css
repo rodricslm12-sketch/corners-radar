@@ -13488,3 +13488,234 @@ body,
   }
 }
 
+
+
+/* =========================================================
+   PATCH — MATCH CENTER + HISTÓRICO PÓS-JOGO
+   ========================================================= */
+.history-panel{
+  max-width:1450px !important;
+}
+
+.historyTopBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 16px;
+  margin-bottom:14px;
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
+  border:1px solid rgba(255,255,255,.06);
+}
+
+.historyTopBar strong{
+  display:block;
+  color:#fff;
+  font-size:15px;
+  margin-bottom:4px;
+}
+
+.historyTopBar span{
+  display:block;
+  color:#8f9dad;
+  font-size:12px;
+}
+
+.history-games{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  max-height:calc(100vh - 260px);
+  overflow:auto;
+  padding-right:4px;
+}
+
+.historyCard{
+  position:relative;
+  overflow:hidden;
+  border-radius:22px;
+  padding:16px;
+  background:radial-gradient(circle at 20% 0%, rgba(30,215,96,.08), transparent 30%), linear-gradient(180deg, rgba(13,18,25,.98), rgba(8,12,18,.98));
+  border:1px solid rgba(255,255,255,.065);
+  box-shadow:0 18px 48px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.historyCard.is-loss{
+  background:radial-gradient(circle at 20% 0%, rgba(217,122,122,.08), transparent 30%), linear-gradient(180deg, rgba(18,13,15,.98), rgba(8,12,18,.98));
+}
+
+.historyCardTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.historyLeague{
+  color:#8f9dad;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.historyStatus{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+  border-radius:999px;
+  color:#041008;
+  background:linear-gradient(180deg, #1ed760, #17c653);
+  font-size:11px;
+  font-weight:950;
+}
+
+.historyStatus.loss{
+  background:linear-gradient(180deg, #ef9a9a, #d97a7a);
+  color:#160707;
+}
+
+.historyTeams{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
+  color:#fff;
+  font-size:15px;
+  font-weight:900;
+  line-height:1.25;
+  margin-bottom:12px;
+}
+
+.historyVs{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  color:#d8fbe5;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);
+  font-size:9px;
+}
+
+.historyScore{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-bottom:12px;
+}
+
+.historyMini{
+  padding:10px;
+  border-radius:14px;
+  text-align:center;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.055);
+}
+
+.historyMini span{
+  display:block;
+  color:#8f9dad;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+
+.historyMini b{
+  color:#fff;
+  font-size:18px;
+  font-weight:950;
+}
+
+.historyFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#7f8ea3;
+  font-size:11px;
+  border-top:1px solid rgba(255,255,255,.055);
+  padding-top:12px;
+}
+
+.historyFooter b{
+  color:#dcfce7;
+}
+
+.matchCenterOverlay.active{
+  display:flex !important;
+}
+
+.matchCenterOverlay{
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(12px);
+}
+
+.matchCenterOverlayBox{
+  width:min(1180px,96vw);
+  max-height:92vh;
+  overflow:auto;
+  border-radius:28px;
+  background:linear-gradient(180deg, rgba(10,15,22,.98), rgba(4,8,12,.98));
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 40px 120px rgba(0,0,0,.65), 0 0 45px rgba(30,215,96,.08);
+}
+
+.matchCenterOverlayClose{
+  position:sticky;
+  top:12px;
+  float:right;
+  z-index:5;
+  width:38px;
+  height:38px;
+  margin:12px 12px 0 0;
+  border-radius:13px;
+  color:#fff;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.matchCenterOverlayBody{
+  padding:18px;
+}
+
+.matchCenterBtn,
+.matchCenterMiniBtn{
+  min-height:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:0 14px;
+  border-radius:999px;
+  color:#041008;
+  background:linear-gradient(180deg, #1ed760, #17c653);
+  font-size:12px;
+  font-weight:950;
+  box-shadow:0 12px 24px rgba(23,198,83,.18);
+}
+
+@media(max-width:1100px){
+  .history-games{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+@media(max-width:760px){
+  .historyTopBar{align-items:flex-start;flex-direction:column;}
+  .history-games{grid-template-columns:1fr;max-height:none;overflow:visible;}
+  .matchCenterOverlay{padding:10px;align-items:flex-start;}
+  .matchCenterOverlayBox{width:100%;max-height:96vh;border-radius:22px;}
+}
