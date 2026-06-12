@@ -5031,6 +5031,51 @@ function mcBuildCards(eventData){
   return { yellow_home, yellow_away, red_home, red_away };
 }
 
+
+function mcBuildPressureTimeline({ minute, homeDanger, awayDanger } = {}){
+  const h = Number(homeDanger);
+  const a = Number(awayDanger);
+  const hasHome = Number.isFinite(h);
+  const hasAway = Number.isFinite(a);
+  const endHome = hasHome ? Math.max(0, h) : 0;
+  const endAway = hasAway ? Math.max(0, a) : 0;
+
+  const currentMinute = Number.isFinite(Number(minute)) ? Math.max(1, Math.min(90, Number(minute))) : 78;
+  const startMinute = Math.max(1, currentMinute - 14);
+  const labels = [];
+  for (let i = 0; i < 8; i++){
+    labels.push(Math.round(startMinute + ((currentMinute - startMinute) / 7) * i));
+  }
+
+  return labels.map((m, idx) => {
+    const t = idx / 7;
+    const curve = 0.32 + (t * 0.68);
+    const pulseHome = Math.sin(idx * 1.25) * 2.4;
+    const pulseAway = Math.cos(idx * 1.1) * 1.8;
+
+    return {
+      minute: `${m}'`,
+      home: hasHome ? Math.max(0, Math.round(endHome * curve + pulseHome)) : null,
+      away: hasAway ? Math.max(0, Math.round(endAway * curve + pulseAway)) : null
+    };
+  });
+}
+
+function mcPressureLevel(homeDanger, awayDanger, totalDanger){
+  const h = Number(homeDanger);
+  const a = Number(awayDanger);
+  const total = Number.isFinite(Number(totalDanger))
+    ? Number(totalDanger)
+    : ((Number.isFinite(h) ? h : 0) + (Number.isFinite(a) ? a : 0));
+
+  if (!Number.isFinite(total) || total <= 0) return "AGUARDANDO";
+  if (total >= 75) return "MUITO ALTA";
+  if (total >= 48) return "ALTA";
+  if (total >= 25) return "MÉDIA";
+  return "BAIXA";
+}
+
+
 function buildMatchResultPayload(eventData){
   const home = teamFromEvent(eventData, "home") || "Time A";
   const away = teamFromEvent(eventData, "away") || "Time B";
@@ -5075,6 +5120,8 @@ function buildMatchResultPayload(eventData){
   const homeDanger = pickResultStat(eventData, "home", ["dangerous", "ataques perigosos", "dangerous attacks"]);
   const awayDanger = pickResultStat(eventData, "away", ["dangerous", "ataques perigosos", "dangerous attacks"]);
   const totalDanger = Number.isFinite(homeDanger) && Number.isFinite(awayDanger) ? homeDanger + awayDanger : null;
+  const pressureTimeline = mcBuildPressureTimeline({ minute: eventData?.match_live ?? eventData?.match_status, homeDanger, awayDanger });
+  const pressureLevel = mcPressureLevel(homeDanger, awayDanger, totalDanger);
 
   const statusInfo = mcStatusInfo(eventData, totalGoals);
   const statusRaw = statusInfo.raw;
@@ -5127,6 +5174,9 @@ function buildMatchResultPayload(eventData){
       away: awayDanger,
       total: totalDanger
     },
+
+    pressure_timeline: pressureTimeline,
+    pressure_level: pressureLevel,
 
     possession: {
       home: possessionHome,

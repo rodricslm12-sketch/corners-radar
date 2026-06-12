@@ -18,15 +18,21 @@
 
 <body class="dashboard locked">
 
-  <!-- LOGIN SCREEN -->
+  <!-- LOGIN SCREEN PREMIUM -->
   <section id="loginScreen" class="loginScreen">
     <div class="loginCard">
-      <div class="loginLogo">↗</div>
+      <div class="loginLogo">CR</div>
 
-      <div class="loginBadge">ACESSO RESTRITO</div>
+      <div class="loginBadge">ACESSO PREMIUM</div>
 
       <h1>Corners Radar</h1>
-      <p>Entre para acessar seu painel de análise de escanteios.</p>
+      <p>Entre para liberar o painel completo, os mercados inteligentes e o Match Center com leitura de jogo.</p>
+
+      <div class="loginFeatures" aria-label="Recursos do painel">
+        <div class="loginFeature"><b>📊</b><span>Dados reais</span></div>
+        <div class="loginFeature"><b>🧠</b><span>Filtros IA</span></div>
+        <div class="loginFeature"><b>⚽</b><span>Match Center</span></div>
+      </div>
 
       <form id="loginForm" class="loginForm">
         <div class="loginField">
@@ -39,49 +45,41 @@
           <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
         </div>
 
-        <button type="submit" class="loginButton">Entrar no painel</button>
+        <button type="submit" class="loginButton">Entrar no painel →</button>
         <span id="loginError" class="loginError"></span>
       </form>
 
       <div class="loginHint">
-        Login temporário para teste. Depois trocamos por Google/Firebase.
+        🔐 Ambiente protegido. O mercado fica oculto até o usuário entrar.
       </div>
     </div>
   </section>
 
-  <!-- SIDEBAR DESKTOP PREMIUM -->
+  <!-- SIDEBAR DESKTOP PROFISSIONAL -->
   <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="logo">CR</div>
-      <div class="sidebar-title">
-        <strong>Corners</strong>
-        <span>Radar de cantos</span>
+    <div class="sidebar-top">
+      <div class="brandBlock">
+        <div class="logo">CR</div>
+        <div class="brandText">
+          <strong>Corners</strong>
+          <span>Radar de cantos</span>
+        </div>
       </div>
     </div>
 
-    <nav class="sidebar-nav" aria-label="Menu principal">
-      <a class="side-item active nav-link" data-tab="filters"><span class="side-icon">⌯</span><b>Filtros</b></a>
-      <a class="side-item nav-link" data-tab="pre"><span class="side-icon">⚽</span><b>Pré-jogo</b></a>
-      <a class="side-item nav-link" data-tab="corners"><span class="side-icon">⚑</span><b>Escanteios</b></a>
-      <a class="side-item nav-link" data-tab="stats"><span class="side-icon">▥</span><b>Estatísticas</b></a>
-      <a class="side-item nav-link" data-tab="favorites"><span class="side-icon">☆</span><b>Favoritos</b></a>
-      <a class="side-item nav-link" data-tab="history"><span class="side-icon">◷</span><b>Histórico</b></a>
+    <nav class="sidebar-nav" aria-label="Menu lateral">
+      <a class="side-item active" data-tab="filters"><span class="side-icon">⌯</span><b>Filtros</b></a>
+      <a class="side-item" data-tab="pre"><span class="side-icon">⚽</span><b>Pré-jogo</b></a>
+      <a class="side-item" data-tab="corners"><span class="side-icon">⚑</span><b>Escanteios</b></a>
+      <a class="side-item" data-tab="stats"><span class="side-icon">▥</span><b>Estatísticas</b></a>
+      <a class="side-item" data-tab="favorites"><span class="side-icon">☆</span><b>Favoritos</b></a>
+      <a class="side-item" data-tab="history"><span class="side-icon">◷</span><b>Histórico</b></a>
       <a class="side-item"><span class="side-icon">⚙</span><b>Configurações</b></a>
     </nav>
 
     <div class="sidebar-bottom">
-      <div class="premiumSideBox">
-        <span>👑</span>
-        <strong>Premium</strong>
-        <small>Plano ativo</small>
-      </div>
-      <div class="userSideBox">
-        <span class="userAvatar">◉</span>
-        <div>
-          <strong>Usuário</strong>
-          <small>● Online</small>
-        </div>
-      </div>
+      <div class="premiumBox"><span>👑</span><b>Premium</b><small>Plano ativo</small></div>
+      <div class="userBox"><span>◉</span><b>Usuário</b><small>● Online</small></div>
     </div>
   </aside>
 
@@ -98,7 +96,6 @@
             <div class="logo-sub">Radar de cantos</div>
           </div>
 
-          <!-- MENU NOVO -->
           <nav class="nav">
             <a class="nav-link" data-tab="pre">ANÁLISE PRÉ JOGO</a>
             <a class="nav-link" data-tab="corners">ESCANTEIOS</a>
@@ -121,126 +118,60 @@
 
     <!-- CONTEÚDO -->
     <main class="content">
+      <div class="dashboardGrid">
 
-      <div class="center-title">
-        <h1 id="mainTitle">2 JOGOS DO DIA</h1>
-        <span id="mainSubtitle">
-          SEGUNDA A SEXTA: 1 ENTRADA CEDO + 1 ENTRADA MAIS TARDE
-        </span>
-      </div>
-
-      <!-- PAINEL PRINCIPAL -->
-      <section id="prePanel" class="panel">
-        <div class="panel-title">
-          <h2 id="panelTitleText">● ESCANTEIOS POR TIME</h2>
-          <span id="countTop">0</span>
-        </div>
-
-        <div id="top1" class="top-host top-host-dynamic top-host-dual"></div>
-      </section>
-
-      <!-- NOVO PAINEL DE FILTROS -->
-      <section id="filtersPanel" class="panel filters-panel" style="display:none;">
-
-        <div class="panel-title">
-          <h2>⚙ FILTROS DE MERCADO</h2>
-          <span id="countFilters">0</span>
-        </div>
-
-        <!-- BOTÕES -->
-        <div class="marketFilters">
-
-          <button class="market-chip active" data-market="all">
-            TODOS
-          </button>
-
-          <button class="market-chip" data-market="btts">
-            AMBAS MARCAM
-          </button>
-
-          <button class="market-chip" data-market="over15">
-            +1.5 GOLS
-          </button>
-
-          <button class="market-chip" data-market="over25">
-            +2.5 GOLS
-          </button>
-
-          <button class="market-chip" data-market="over35">
-            +3.5 GOLS
-          </button>
-
-          <button class="market-chip" data-market="corners95">
-            +9.5 CANTOS
-          </button>
-
-          <button class="market-chip" data-market="corners105">
-            +10.5 CANTOS
-          </button>
-
-          <button class="market-chip" data-market="corners115">
-            +11.5 CANTOS
-          </button>
-
-        </div>
-
-        <!-- RESULTADOS -->
-        <div id="filteredGames" class="filtered-games">
-
-          <div class="empty">
-            Escolha um filtro acima para visualizar os jogos.
+        <section class="dashboardMainColumn">
+          <div class="center-title">
+            <h1 id="mainTitle">FILTROS</h1>
+            <span id="mainSubtitle">ESCOLHA UM MERCADO E ENCONTRE OS JOGOS COM MAIOR FORÇA</span>
           </div>
 
-        </div>
+          <section id="prePanel" class="panel">
+            <div class="panel-title">
+              <h2 id="panelTitleText">◆ FILTROS</h2>
+              <span id="countTop">0</span>
+            </div>
 
-      </section>
+            <div id="top1" class="top-host top-host-dynamic top-host-dual"></div>
+          </section>
 
+          <section id="filtersPanel" class="panel filters-panel" style="display:none;">
+            <div class="panel-title">
+              <h2>⚙ FILTROS DE MERCADO</h2>
+              <span id="countFilters">0</span>
+            </div>
+            <div id="filteredGames" class="filtered-games"></div>
+          </section>
+
+          <div class="cleanFooterNote footerDesktopNote">🛡️ Análises baseadas em dados reais e inteligência artificial</div>
         </section>
 
-        <aside class="dashboardMatchPanel" aria-label="Match Center">
-          <div class="matchPanelCard">
-            <div class="matchPanelHeader">
-              <strong>▣ MATCH CENTER</strong>
-              <span>PRÉ-JOGO</span>
+        <aside class="dashboardRightRail" id="desktopMatchRail">
+          <section class="railCard matchRailCard">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+            <div class="railScoreBlock">
+              <div class="railTeam"><div class="railBadge">MA</div><strong>Mandante</strong></div>
+              <div class="railScore"><strong>0 - 0</strong><span>Escolha um jogo</span></div>
+              <div class="railTeam"><div class="railBadge away">⚽</div><strong>Visitante</strong></div>
             </div>
-            <div class="matchPanelScore">
-              <div class="matchTeam">
-                <div class="matchCrest">CR</div>
-                <strong>Time A</strong>
-              </div>
-              <div class="scoreBox">
-                <b>0 - 0</b>
-                <span>Pré-jogo</span>
-              </div>
-              <div class="matchTeam">
-                <div class="matchCrest away">⚽</div>
-                <strong>Time B</strong>
-              </div>
-            </div>
-            <div class="matchProgress"><span style="width:62%"></span></div>
-          </div>
+            <div class="railProgress"><i style="width:0%"></i></div>
+          </section>
 
-          <div class="matchPanelCard">
-            <h4>ESTATÍSTICAS DO FILTRO</h4>
-            <div class="statLine"><span>Força do filtro</span><b>69%</b></div>
-            <div class="statBar"><span style="width:69%"></span></div>
-            <div class="statLine"><span>Proj. cantos</span><b>10.8</b></div>
-            <div class="statBar"><span style="width:76%"></span></div>
-            <div class="statLine"><span>Confiança IA</span><b>92%</b></div>
-            <div class="statBar"><span style="width:92%"></span></div>
-          </div>
+          <section class="railCard">
+            <h3>ESTATÍSTICAS DO FILTRO</h3>
+            <div class="railStat"><span>Força do filtro</span><b>—</b></div>
+            <div class="railProgress"><i style="width:0%"></i></div>
+            <div class="railStat"><span>Proj. escanteios</span><b>—</b></div>
+          </section>
 
-          <div class="matchPanelCard">
-            <h4>EVENTOS / LEITURA</h4>
-            <ul class="eventList">
-              <li><span>IA</span> Dados reais carregados</li>
-              <li><span>Filtro</span> Mercado selecionado</li>
-              <li><span>Radar</span> Jogos ordenados por força</li>
-            </ul>
-          </div>
+          <section class="railCard">
+            <h3>EVENTOS / LEITURA</h3>
+            <div class="railEvents"><p>Escolha um jogo para abrir a leitura do Match Center.</p></div>
+          </section>
 
-          <button class="fullMatchBtn" type="button">VER PARTIDA COMPLETA →</button>
+          <button class="railFullBtn" type="button">VER PARTIDA COMPLETA →</button>
         </aside>
+
       </div>
     </main>
   </div>
@@ -248,106 +179,57 @@
   <!-- TEMPLATE TOP CARD -->
   <template id="tplTopCard">
     <div class="bigcard">
-
       <div class="bigcard-top">
-
         <div class="titleRow">
-
           <div class="rankBallWrap">⚽</div>
-
           <div class="teamsBlock">
-
             <div class="teamsText">
               <span class="teamName js-home"></span>
               <span class="vs">VS</span>
               <span class="teamName js-away"></span>
             </div>
-
             <div class="meta js-meta"></div>
-
           </div>
         </div>
 
         <div class="chipsRow js-chips"></div>
 
         <div class="infoGrid">
-
-          <div class="infoLine">
-            ⏰ <b>Hora:</b>
-            <span class="js-hora"></span>
-          </div>
-
-          <div class="infoLine">
-            🏆 <b>Tabela:</b>
-            <span class="js-pos"></span>
-          </div>
-
-          <div class="infoLine">
-            📌 <b>Proj:</b>
-            <span class="js-proj"></span>
-          </div>
-
-          <div class="infoLine">
-            📈 <b>2ºT:</b>
-            <span class="js-2t"></span>
-          </div>
-
+          <div class="infoLine">⏰ <b>Hora:</b><span class="js-hora"></span></div>
+          <div class="infoLine">🏆 <b>Tabela:</b><span class="js-pos"></span></div>
+          <div class="infoLine">📌 <b>Proj:</b><span class="js-proj"></span></div>
+          <div class="infoLine">📈 <b>2ºT:</b><span class="js-2t"></span></div>
         </div>
 
         <div class="decisionRow">
           <div class="pillOver js-pill"></div>
         </div>
 
-        <div class="bar">
-          <div class="barFill"></div>
-        </div>
-
+        <div class="bar"><div class="barFill"></div></div>
       </div>
 
       <div class="note js-note"></div>
 
       <div class="h2hBox">
-
-        <div class="h2hTitle">
-          Últimos H2H de escanteios
-        </div>
-
-        <div class="h2hAvg">
-          Média:
-          <span class="js-h2h-avg">—</span>
-        </div>
-
+        <div class="h2hTitle">Últimos H2H de escanteios</div>
+        <div class="h2hAvg">Média:<span class="js-h2h-avg">—</span></div>
         <div class="h2hList js-h2h"></div>
-
       </div>
     </div>
   </template>
 
   <!-- TEMPLATE SECUNDÁRIO -->
   <template id="tplOtherCard">
-
     <div class="item">
-
       <div class="itemTop">
-
         <div class="miniBall">⚽</div>
-
         <div class="itemTexts">
-
           <div class="smallTeams js-teams"></div>
-
           <div class="smallMeta js-meta"></div>
-
           <div class="chipsRow js-chips"></div>
-
           <div class="miniDecisionRow"></div>
-
-          <div class="miniBar">
-            <div class="miniBarFill"></div>
-          </div>
-
+          <div class="miniBar"><div class="miniBarFill"></div></div>
           <div class="note js-note"></div>
-
         </div>
       </div>
     </div>
@@ -364,44 +246,98 @@
     <div id="iaRisk"></div>
   </div>
 
-
   <!-- MODAL ESTATÍSTICAS -->
   <div id="matchStatsModal" class="matchStatsModal">
-
     <div class="matchStatsContent">
-
-      <button id="closeStatsModal" class="closeStatsModal">
-        ✕
-      </button>
-
-      <div id="statsModalBody">
-
-        <div class="loadingStats">
-          Carregando estatísticas...
-        </div>
-
-      </div>
-
+      <button id="closeStatsModal" class="closeStatsModal">✕</button>
+      <div id="statsModalBody"><div class="loadingStats">Carregando estatísticas...</div></div>
     </div>
-
   </div>
 
   <!-- MODAL / PAINEL ÚLTIMOS 5 JOGOS -->
   <div id="last5Modal" class="last5Modal" style="display:none;">
     <div class="last5Content">
-
-      <button id="closeLast5Modal" class="closeLast5Modal" type="button">
-        ✕
-      </button>
-
-      <div id="last5ModalBody">
-        <div class="loadingStats">
-          Carregando últimos 5 jogos...
-        </div>
-      </div>
-
+      <button id="closeLast5Modal" class="closeLast5Modal" type="button">✕</button>
+      <div id="last5ModalBody"><div class="loadingStats">Carregando últimos 5 jogos...</div></div>
     </div>
   </div>
+
+  <!-- LOGIN / LOGOUT FIX -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const LOGIN_KEY = "cornersRadarLogged";
+      const VALID_USER = "RodrigoMartins";
+      const VALID_PASS = "Rodrics789bl";
+
+      const body = document.body;
+      const loginScreen = document.getElementById("loginScreen");
+      const loginForm = document.getElementById("loginForm");
+      const loginUser = document.getElementById("loginUser");
+      const loginPass = document.getElementById("loginPass");
+      const loginError = document.getElementById("loginError");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      function showLogin() {
+        localStorage.removeItem(LOGIN_KEY);
+        body.classList.add("locked");
+
+        if (loginScreen) {
+          loginScreen.style.display = "flex";
+          loginScreen.style.opacity = "1";
+          loginScreen.style.visibility = "visible";
+          loginScreen.style.pointerEvents = "auto";
+        }
+
+        setTimeout(function () {
+          if (loginUser) loginUser.focus();
+        }, 100);
+      }
+
+      function showDashboard() {
+        localStorage.setItem(LOGIN_KEY, "true");
+        body.classList.remove("locked");
+
+        if (loginScreen) {
+          loginScreen.style.display = "none";
+          loginScreen.style.opacity = "0";
+          loginScreen.style.visibility = "hidden";
+          loginScreen.style.pointerEvents = "none";
+        }
+      }
+
+      if (localStorage.getItem(LOGIN_KEY) === "true") {
+        showDashboard();
+      } else {
+        showLogin();
+      }
+
+      if (loginForm) {
+        loginForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const user = (loginUser && loginUser.value ? loginUser.value : "").trim();
+          const pass = (loginPass && loginPass.value ? loginPass.value : "").trim();
+
+          if (user === VALID_USER && pass === VALID_PASS) {
+            if (loginError) loginError.textContent = "";
+            showDashboard();
+            return;
+          }
+
+          if (loginError) {
+            loginError.textContent = "Usuário ou senha inválidos.";
+          }
+        });
+      }
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", function () {
+          showLogin();
+          window.scrollTo(0, 0);
+        });
+      }
+    });
+  </script>
 
   <!-- MATCH CENTER: painel expansível inserido pelo script.js -->
 </body>
