@@ -3438,7 +3438,7 @@ setInterval(trackOnlineUser, 30000);
     const bar = document.getElementById("premiumAuthBar");
     if (!bar) return;
     if (isLogged()){
-      bar.innerHTML = `<div class="premiumUserPill">🔓 Premium ativo</div><button class="premiumLogoutBtn" type="button" id="premiumLogoutBtn">Sair</button>`;
+      bar.innerHTML = `<div class="premiumUserPill">👑 Premium ativo</div>`;
       document.getElementById("premiumLogoutBtn")?.addEventListener("click", () => {
         localStorage.removeItem(AUTH_KEY);
         renderAuthBar();

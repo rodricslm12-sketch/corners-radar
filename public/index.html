@@ -49,21 +49,40 @@
     </div>
   </section>
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR DESKTOP PREMIUM -->
   <aside class="sidebar">
-    <div class="sidebar-top">
-      <div class="logo">↗</div>
+    <div class="sidebar-brand">
+      <div class="logo">CR</div>
+      <div class="sidebar-title">
+        <strong>Corners</strong>
+        <span>Radar de cantos</span>
+      </div>
     </div>
 
-    <nav class="sidebar-nav">
-      <div class="side-item active">⌂</div>
-      <div class="side-item">⎚</div>
-      <div class="side-item">⚑</div>
-      <div class="side-item">♡</div>
-      <div class="side-item">⚙</div>
+    <nav class="sidebar-nav" aria-label="Menu principal">
+      <a class="side-item active nav-link" data-tab="filters"><span class="side-icon">⌯</span><b>Filtros</b></a>
+      <a class="side-item nav-link" data-tab="pre"><span class="side-icon">⚽</span><b>Pré-jogo</b></a>
+      <a class="side-item nav-link" data-tab="corners"><span class="side-icon">⚑</span><b>Escanteios</b></a>
+      <a class="side-item nav-link" data-tab="stats"><span class="side-icon">▥</span><b>Estatísticas</b></a>
+      <a class="side-item nav-link" data-tab="favorites"><span class="side-icon">☆</span><b>Favoritos</b></a>
+      <a class="side-item nav-link" data-tab="history"><span class="side-icon">◷</span><b>Histórico</b></a>
+      <a class="side-item"><span class="side-icon">⚙</span><b>Configurações</b></a>
     </nav>
 
-    <div class="sidebar-bottom"></div>
+    <div class="sidebar-bottom">
+      <div class="premiumSideBox">
+        <span>👑</span>
+        <strong>Premium</strong>
+        <small>Plano ativo</small>
+      </div>
+      <div class="userSideBox">
+        <span class="userAvatar">◉</span>
+        <div>
+          <strong>Usuário</strong>
+          <small>● Online</small>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- MAIN -->
@@ -71,33 +90,6 @@
 
     <!-- TOPBAR -->
     <header class="topbar">
-      <!-- MOBILE HEADER PREMIUM (aparece só no celular) -->
-      <div class="mobileAppHeader">
-        <div class="mobileHeaderTop">
-          <button class="mobileMenuBtn" type="button" aria-label="Menu">☰</button>
-
-          <div class="mobileBrand">
-            <strong>Corners</strong>
-            <span>Radar de cantos</span>
-          </div>
-
-          <label class="mobileDateBox" for="date">
-            <span>📅</span>
-            <span class="mobileDateText">30/05/2026</span>
-          </label>
-
-          <div class="mobileLivePill">● AO VIVO</div>
-        </div>
-
-        <nav class="mobileIconTabs" aria-label="Menu mobile">
-          <a class="nav-link" data-tab="pre"><span>▥</span><b>PRÉ JOGO</b></a>
-          <a class="nav-link" data-tab="corners"><span>⚑</span><b>ESCANTEIOS</b></a>
-          <a class="nav-link" data-tab="stats"><span>▥</span><b>ESTATÍSTICAS</b></a>
-          <a class="nav-link active" data-tab="filters"><span>⌯</span><b>FILTROS</b></a>
-          <a class="nav-link" data-tab="favorites"><span>☆</span><b>FAVORITOS</b></a>
-        </nav>
-      </div>
-
       <div class="topbar-inner">
 
         <div class="top-left">
@@ -120,7 +112,7 @@
         <div class="top-right">
           <input id="date" type="date" />
           <button id="btn" class="btnOutline">Atualizar</button>
-          <div class="status">● AO VIVO</div>
+          <div class="status">📊 DADOS REAIS</div>
           <button id="logoutBtn" class="btnLogout" type="button">Sair</button>
         </div>
 
@@ -129,15 +121,6 @@
 
     <!-- CONTEÚDO -->
     <main class="content">
-
-
-      <!-- MOBILE APP TABS -->
-      <nav class="mobileTopTabs">
-        <a class="nav-link active" data-tab="pre">Hoje</a>
-        <a class="nav-link" data-tab="corners">Cantos</a>
-        <a class="nav-link" data-tab="stats">Stats</a>
-        <a class="nav-link" data-tab="filters">Filtros</a>
-      </nav>
 
       <div class="center-title">
         <h1 id="mainTitle">2 JOGOS DO DIA</h1>
@@ -212,14 +195,53 @@
 
       </section>
 
-      <!-- FRASE -->
-      <div class="quoteSteve">
-        <p>
-          “O seu tempo é limitado, então não o desperdice vivendo a vida de outra pessoa”
-        </p>
-        <span>— Steve Jobs</span>
-      </div>
+        </section>
 
+        <aside class="dashboardMatchPanel" aria-label="Match Center">
+          <div class="matchPanelCard">
+            <div class="matchPanelHeader">
+              <strong>▣ MATCH CENTER</strong>
+              <span>PRÉ-JOGO</span>
+            </div>
+            <div class="matchPanelScore">
+              <div class="matchTeam">
+                <div class="matchCrest">CR</div>
+                <strong>Time A</strong>
+              </div>
+              <div class="scoreBox">
+                <b>0 - 0</b>
+                <span>Pré-jogo</span>
+              </div>
+              <div class="matchTeam">
+                <div class="matchCrest away">⚽</div>
+                <strong>Time B</strong>
+              </div>
+            </div>
+            <div class="matchProgress"><span style="width:62%"></span></div>
+          </div>
+
+          <div class="matchPanelCard">
+            <h4>ESTATÍSTICAS DO FILTRO</h4>
+            <div class="statLine"><span>Força do filtro</span><b>69%</b></div>
+            <div class="statBar"><span style="width:69%"></span></div>
+            <div class="statLine"><span>Proj. cantos</span><b>10.8</b></div>
+            <div class="statBar"><span style="width:76%"></span></div>
+            <div class="statLine"><span>Confiança IA</span><b>92%</b></div>
+            <div class="statBar"><span style="width:92%"></span></div>
+          </div>
+
+          <div class="matchPanelCard">
+            <h4>EVENTOS / LEITURA</h4>
+            <ul class="eventList">
+              <li><span>IA</span> Dados reais carregados</li>
+              <li><span>Filtro</span> Mercado selecionado</li>
+              <li><span>Radar</span> Jogos ordenados por força</li>
+            </ul>
+          </div>
+
+          <button class="fullMatchBtn" type="button">VER PARTIDA COMPLETA →</button>
+        </aside>
+      </div>
     </main>
   </div>
 
@@ -363,36 +385,6 @@
     </div>
 
   </div>
-
-
-
-  <!-- MOBILE BOTTOM NAV -->
-  <nav class="mobileBottomNav">
-    <a class="nav-link active" data-tab="pre">
-      <span>◎</span>
-      Radar
-    </a>
-
-    <a class="nav-link" data-tab="corners">
-      <span>▷</span>
-      Ao Vivo
-    </a>
-
-    <a class="nav-link" data-tab="stats">
-      <span>☆</span>
-      Favoritos
-    </a>
-
-    <a class="nav-link" data-tab="filters">
-      <span>⚙</span>
-      Config.
-    </a>
-
-    <a class="nav-link" data-tab="favorites">
-      <span>⌯</span>
-      Filtros
-    </a>
-  </nav>
 
   <!-- MODAL / PAINEL ÚLTIMOS 5 JOGOS -->
   <div id="last5Modal" class="last5Modal" style="display:none;">
