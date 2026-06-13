@@ -12857,3 +12857,126 @@ body:not(.locked) .loginScreen{
   }
 }
 
+/* FIX NOTEBOOK / TELAS MENORES */
+@media (max-width: 1400px){
+  :root{
+    --sidebar-w: 200px;
+  }
+
+  .topbar-inner{
+    padding:0 12px !important;
+    gap:10px !important;
+  }
+
+  .nav{
+    gap:4px !important;
+  }
+
+  .nav-link{
+    font-size:11px !important;
+    padding:0 8px !important;
+  }
+
+  .top-right{
+    gap:8px !important;
+  }
+
+  #date{
+    min-width:120px !important;
+    width:120px !important;
+    font-size:12px !important;
+  }
+
+  .status{
+    font-size:11px !important;
+    padding:0 10px !important;
+  }
+
+  .content{
+    padding:14px 14px 30px !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0, 1fr) 330px !important;
+    gap:14px !important;
+  }
+
+  .panel{
+    max-width:100% !important;
+  }
+
+  .marketChips{
+    max-width:100% !important;
+  }
+
+  .premiumGameRows,
+  .cleanGamesPanel,
+  .marketTablePanel{
+    max-height:360px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding-bottom:90px !important;
+  }
+
+  .premiumGameRow,
+  .cleanDashRow{
+    min-height:74px !important;
+  }
+}
+
+@media (max-width: 1200px){
+  :root{
+    --sidebar-w: 180px;
+  }
+
+  .sidebar{
+    width:180px !important;
+  }
+
+  .main{
+    margin-left:180px !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:1fr !important;
+  }
+
+  .dashboardRightRail{
+    display:none !important;
+  }
+
+  .topbar-inner{
+    flex-wrap:wrap !important;
+    min-height:auto !important;
+    padding:10px 12px !important;
+  }
+
+  .top-left,
+  .top-right{
+    width:100% !important;
+    justify-content:center !important;
+    flex-wrap:wrap !important;
+  }
+
+  .nav{
+    justify-content:center !important;
+  }
+
+  .premiumGameRows,
+  .cleanGamesPanel,
+  .marketTablePanel{
+    max-height:430px !important;
+  }
+}
+
+/* Corrige data sobrepondo botão */
+#date{
+  flex:0 0 auto !important;
+}
+
+/* Evita corte dos jogos */
+.premiumGameRows,
+.cleanGamesPanel,
+.marketTablePanel{
+  scrollbar-width:thin !important;
+}
