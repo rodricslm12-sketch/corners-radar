@@ -12980,3 +12980,120 @@ body:not(.locked) .loginScreen{
 .marketTablePanel{
   scrollbar-width:thin !important;
 }
+
+/* =========================
+   RESPONSIVIDADE GLOBAL
+   ========================= */
+
+@media (max-width: 1600px){
+  .marketCard,
+  .filterCard{
+    min-height:auto !important;
+    padding:14px !important;
+  }
+
+  .marketCard h3,
+  .filterCard h3{
+    font-size:16px !important;
+  }
+}
+
+@media (max-width: 1400px){
+
+  .topbar .nav-link{
+    font-size:11px !important;
+    padding:0 10px !important;
+  }
+
+  .marketFilterPanel{
+    padding:8px !important;
+  }
+
+  .content{
+    padding:14px !important;
+  }
+}
+
+@media (max-width: 1280px){
+
+  .dashboard{
+    grid-template-columns:220px 1fr 300px !important;
+  }
+
+  .marketCard,
+  .filterCard{
+    padding:12px !important;
+  }
+
+  .marketCard h3,
+  .filterCard h3{
+    font-size:14px !important;
+  }
+
+  .marketTable{
+    font-size:11px !important;
+  }
+}
+
+@media (max-width: 1180px){
+
+  .topbar{
+    flex-wrap:wrap !important;
+  }
+
+  .marketFiltersWrap{
+    gap:10px !important;
+  }
+
+  .marketChips{
+    gap:6px !important;
+  }
+
+  .marketChip{
+    height:30px !important;
+    font-size:10px !important;
+  }
+}
+
+@media (max-width: 1024px){
+
+  .dashboard{
+    display:block !important;
+  }
+
+  .sidebar{
+    width:90px !important;
+  }
+
+  .main{
+    margin-left:90px !important;
+  }
+
+  .marketFilterHeader{
+    grid-template-columns:1fr !important;
+  }
+
+  .marketTablePanel{
+    overflow:auto !important;
+  }
+}
+
+/* Área dos jogos */
+.gamesContainer,
+.matchesContainer,
+#gamesList{
+  min-height:450px !important;
+  max-height:65vh !important;
+  overflow-y:auto !important;
+}
+
+/* Cards de cartões menores */
+.marketCard,
+.filterCard{
+  border-radius:14px !important;
+}
+
+.marketCard h3,
+.filterCard h3{
+  line-height:1.2 !important;
+}
