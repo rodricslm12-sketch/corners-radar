@@ -5008,81 +5008,201 @@
       return "AGUARDANDO";
     }
   
+    function sameTeam(value, target){
+      const a = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      const b = String(target || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      if (!a || !b) return false;
+      return a === b || a.includes(b) || b.includes(a);
+    }
+
+    function realMinuteFromEvent(e){
+      const raw = e?.minute ?? e?.time ?? e?.elapsed ?? e?.match_minute ?? e?.label ?? "";
+      const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+      return Number.isFinite(n) ? clamp(n, 1, 130) : null;
+    }
+
+    function eventWeight(e){
+      const txt = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
+      if (txt.includes("goal") || txt.includes("gol")) return 12;
+      if (txt.includes("shot on") || txt.includes("on target") || txt.includes("finalização no alvo") || txt.includes("finalizacao no alvo")) return 9;
+      if (txt.includes("shot") || txt.includes("finalização") || txt.includes("finalizacao")) return 6;
+      if (txt.includes("corner") || txt.includes("escanteio")) return 7;
+      if (txt.includes("danger") || txt.includes("ataque perigoso") || txt.includes("press")) return 4;
+      if (txt.includes("yellow") || txt.includes("amarelo")) return 2;
+      if (txt.includes("red") || txt.includes("vermelho")) return 3;
+      return 1;
+    }
+
+    function seriesFromEvents(data){
+      const events = Array.isArray(data?.events) ? data.events : [];
+      if (!events.length) return [];
+
+      const minuteNow = getMinute(data) || 90;
+      const start = Math.max(1, minuteNow - 14);
+      const buckets = Array.from({ length: 15 }, (_, i) => ({
+        minute: `${start + i}'`,
+        home: 0,
+        away: 0,
+        source: "events"
+      }));
+
+      const homeName = clean(data?.home || data?.casa || data?.home_team || "");
+      const awayName = clean(data?.away || data?.fora || data?.away_team || "");
+
+      events.forEach(e => {
+        const m = realMinuteFromEvent(e);
+        if (m === null || m < start || m > minuteNow) return;
+        const idx = clamp(m - start, 0, 14);
+        const team = e?.team || e?.time || e?.team_name || e?.side || "";
+        const side = String(e?.side || e?.team_side || "").toLowerCase();
+        const w = eventWeight(e);
+
+        if (side.includes("home") || side.includes("mandante") || side.includes("casa") || sameTeam(team, homeName)){
+          buckets[idx].home += w;
+        } else if (side.includes("away") || side.includes("visitante") || side.includes("fora") || sameTeam(team, awayName)){
+          buckets[idx].away += w;
+        }
+      });
+
+      const total = buckets.reduce((s,b) => s + b.home + b.away, 0);
+      return total > 0 ? buckets : [];
+    }
+
+    function normalizeTimelineItem(p, idx){
+      return {
+        minute: clean(p?.minute ?? p?.label ?? p?.time ?? p?.elapsed ?? `${idx + 1}`),
+        home: num(p?.home ?? p?.mandante ?? p?.casa ?? p?.home_pressure ?? p?.h, null),
+        away: num(p?.away ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.a, null),
+        source: "timeline"
+      };
+    }
+
     function buildPressureSeries(data, fallbackPct = 60){
-      const fromApi = Array.isArray(data?.pressure_timeline) ? data.pressure_timeline : null;
-      if (fromApi && fromApi.length >= 2){
-        return fromApi.slice(-8).map((p, idx) => ({
-          minute: clean(p.minute ?? p.label ?? `${idx + 1}`),
-          home: num(p.home ?? p.mandante ?? p.casa, null),
-          away: num(p.away ?? p.visitante ?? p.fora, null)
-        }));
+      // 1) Prioridade total: timeline real enviada pela API.
+      const timelineCandidates = [
+        data?.pressure_timeline,
+        data?.pressureTimeline,
+        data?.pressure_history,
+        data?.pressureHistory,
+        data?.momentum,
+        data?.momentum_timeline,
+        data?.momentumTimeline,
+        data?.last15_pressure,
+        data?.last15Pressure,
+        data?.attacks_timeline,
+        data?.dangerous_attacks_timeline
+      ];
+
+      for (const candidate of timelineCandidates){
+        if (Array.isArray(candidate) && candidate.length >= 2){
+          const real = candidate
+            .slice(-15)
+            .map(normalizeTimelineItem)
+            .filter(p => num(p.home, null) !== null || num(p.away, null) !== null);
+          if (real.length >= 2) return real;
+        }
       }
-  
+
+      // 2) Se não houver timeline, monta o recorte apenas com EVENTOS REAIS do jogo.
+      const eventSeries = seriesFromEvents(data);
+      if (eventSeries.length >= 2) return eventSeries;
+
+      // 3) Último recurso: snapshot real acumulado da API.
+      // Não é projeção: usa apenas pressão/ataques perigosos atuais retornados pelo backend.
       const ph = num(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure, null);
       const pa = num(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure, null);
-      const hasReal = ph !== null || pa !== null;
-  
-      const endHome = hasReal ? (ph ?? 0) : Math.round(fallbackPct * 0.8);
-      const endAway = hasReal ? (pa ?? 0) : Math.round(fallbackPct * 0.38);
-      const minute = getMinute(data) || 78;
-      const start = Math.max(1, minute - 14);
-  
-      return Array.from({ length: 8 }, (_, i) => {
-        const t = i / 7;
-        const m = Math.round(start + ((minute - start) * t));
-        return {
-          minute: `${m}'`,
-          home: Math.max(0, Math.round(endHome * (0.32 + t * 0.68) + Math.sin(i * 1.2) * 2)),
-          away: Math.max(0, Math.round(endAway * (0.35 + t * 0.65) + Math.cos(i * 1.1) * 1.4))
-        };
-      });
+      const hasRealSnapshot = ph !== null || pa !== null;
+      if (hasRealSnapshot && (data?.live || data?.finished)){
+        const minute = getMinute(data) || (data?.finished ? 90 : 15);
+        const start = Math.max(1, minute - 14);
+        return Array.from({ length: 15 }, (_, i) => ({
+          minute: i === 0 ? "15'" : (i === 7 ? "10'" : (i === 14 ? "0'" : "")),
+          home: Math.max(0, Math.round((ph ?? 0) / 15)),
+          away: Math.max(0, Math.round((pa ?? 0) / 15)),
+          source: "snapshot"
+        }));
+      }
+
+      return [];
     }
-  
+
     function svgPressureChart(series){
       const cleanSeries = (series || []).filter(p => p && (num(p.home,null) !== null || num(p.away,null) !== null));
       if (cleanSeries.length < 2){
         return `<div class="railPressureEmpty">Aguardando dados reais de pressão da API.</div>`;
       }
-  
-      const W = 300, H = 150, padL = 30, padR = 12, padT = 12, padB = 28;
+
+      const W = 300, H = 150, padL = 52, padR = 10, padT = 12, padB = 28;
+      const mid = 78;
+      const chartH = 52;
       const vals = cleanSeries.flatMap(p => [num(p.home,0), num(p.away,0)]).filter(Number.isFinite);
-      const maxV = Math.max(20, ...vals);
-      const minV = 0;
-      const x = (i) => padL + (i * ((W - padL - padR) / Math.max(1, cleanSeries.length - 1)));
-      const y = (v) => padT + (H - padT - padB) * (1 - ((v - minV) / Math.max(1, maxV - minV)));
-  
-      const line = (key) => cleanSeries.map((p,i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(num(p[key],0)).toFixed(1)}`).join(" ");
-      const circles = (key, cls) => cleanSeries.map((p,i) => `<circle class="${cls}" cx="${x(i).toFixed(1)}" cy="${y(num(p[key],0)).toFixed(1)}" r="3"></circle>`).join("");
-      const labels = cleanSeries.map((p,i) => `<text x="${x(i).toFixed(1)}" y="145">${esc(p.minute)}</text>`).join("");
-  
+      const maxV = Math.max(8, ...vals);
+      const slot = (W - padL - padR) / cleanSeries.length;
+      const barW = Math.max(4, Math.min(10, slot * .58));
+      const x = (i) => padL + (i * slot) + (slot - barW) / 2;
+      const h = (v) => Math.max(1, (num(v,0) / maxV) * chartH);
+
+      const bars = cleanSeries.map((p,i) => {
+        const bh = h(p.home);
+        const ba = h(p.away);
+        return `
+          <rect class="homeBar" x="${x(i).toFixed(1)}" y="${(mid - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="2"></rect>
+          <rect class="awayBar" x="${x(i).toFixed(1)}" y="${mid.toFixed(1)}" width="${barW.toFixed(1)}" height="${ba.toFixed(1)}" rx="2"></rect>
+        `;
+      }).join("");
+
+      const ticks = [
+        { label:"15'", pos:0 },
+        { label:"10'", pos:.5 },
+        { label:"0'", pos:1 }
+      ].map(t => {
+        const tx = padL + ((W - padL - padR) * t.pos);
+        return `<text x="${tx.toFixed(1)}" y="145">${t.label}</text>`;
+      }).join("");
+
       const last = cleanSeries[cleanSeries.length - 1] || {};
       const lastHome = num(last.home,0);
       const lastAway = num(last.away,0);
-  
+      const source = String(last.source || cleanSeries[0]?.source || "timeline");
+      const sourceText = source === "snapshot" ? "DADOS API" : "DADOS REAIS";
+
       return `
         <div class="railPressureChartBox">
           <div class="railPressureLegend">
             <span><i></i>Mandante</span>
             <span class="away"><i></i>Visitante</span>
-            <b>${lastHome} x ${lastAway}</b>
+            <b>${sourceText}</b>
           </div>
-          <svg class="railPressureSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de pressão dos últimos minutos">
-            <line class="grid" x1="${padL}" y1="${y(maxV * .75).toFixed(1)}" x2="${W-padR}" y2="${y(maxV * .75).toFixed(1)}"></line>
-            <line class="grid" x1="${padL}" y1="${y(maxV * .50).toFixed(1)}" x2="${W-padR}" y2="${y(maxV * .50).toFixed(1)}"></line>
-            <line class="grid" x1="${padL}" y1="${y(maxV * .25).toFixed(1)}" x2="${W-padR}" y2="${y(maxV * .25).toFixed(1)}"></line>
-            <text class="axis" x="4" y="${y(maxV).toFixed(1)}">${Math.round(maxV)}</text>
-            <text class="axis" x="12" y="${y(maxV/2).toFixed(1)}">${Math.round(maxV/2)}</text>
-            <text class="axis" x="18" y="${y(0).toFixed(1)}">0</text>
-            <path class="homeLine" d="${line("home")}"></path>
-            <path class="awayLine" d="${line("away")}"></path>
-            ${circles("home", "homeDot")}
-            ${circles("away", "awayDot")}
-            <g class="xlabels">${labels}</g>
+          <svg class="railPressureSvg railPressureBarsSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pressão real dos últimos minutos">
+            <defs>
+              <linearGradient id="mcHomeBarGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#22e66d"></stop>
+                <stop offset="1" stop-color="#0ca94b"></stop>
+              </linearGradient>
+              <linearGradient id="mcAwayBarGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#4da8ff"></stop>
+                <stop offset="1" stop-color="#2563eb"></stop>
+              </linearGradient>
+            </defs>
+            <rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${chartH}" fill="rgba(30,215,96,.10)"></rect>
+            <rect x="${padL}" y="${mid}" width="${W-padL-padR}" height="${chartH}" fill="rgba(56,165,255,.10)"></rect>
+            <line class="grid" x1="${padL}" y1="${padT}" x2="${W-padR}" y2="${padT}"></line>
+            <line class="grid" x1="${padL}" y1="${mid-chartH/2}" x2="${W-padR}" y2="${mid-chartH/2}"></line>
+            <line class="grid strong" x1="${padL}" y1="${mid}" x2="${W-padR}" y2="${mid}"></line>
+            <line class="grid" x1="${padL}" y1="${mid+chartH/2}" x2="${W-padR}" y2="${mid+chartH/2}"></line>
+            <line class="grid" x1="${padL}" y1="${mid+chartH}" x2="${W-padR}" y2="${mid+chartH}"></line>
+            <text class="axis axisLevel" x="4" y="18">Muito forte</text>
+            <text class="axis axisLevel" x="18" y="44">Forte</text>
+            <text class="axis axisLevel" x="18" y="82">Neutro</text>
+            <text class="axis axisLevel" x="18" y="108">Forte</text>
+            <text class="axis axisLevel" x="4" y="134">Muito forte</text>
+            ${bars}
+            <g class="xlabels">${ticks}</g>
           </svg>
         </div>
       `;
     }
-  
+
     function buildEventLines(data){
       const events = Array.isArray(data?.events) ? data.events.slice(0, 6) : [];
       if (!events.length){
@@ -5112,9 +5232,7 @@
     }
   
     function buildPregameRail({ rail, game, matchId, home, away, league, time, pct, proj }){
-      const projectedHome = Math.round(pct * .78);
-      const projectedAway = Math.round(pct * .44);
-      const series = buildPressureSeries({ pressure:{ home: projectedHome, away: projectedAway }, minute: 78 }, pct);
+      const series = [];
   
       rail.innerHTML = `
         <section class="railCard matchRailCard railDashHero is-pregame">
@@ -5733,4 +5851,520 @@
       observer.observe(target, { childList:true, subtree:true, characterData:true });
     }
   });
+})();
+/* =========================================================
+   MATCH CENTER SOFASCORE STYLE — COMPARATIVO NO PAINEL DIREITO
+   - Não mexe no motor dos filtros
+   - Reaproveita /match_center quando existir
+   - Mantém botão Match Center e botão VER PARTIDA COMPLETA
+   ========================================================= */
+(function matchCenterSofaScoreRailPatch(){
+  function clean(v, fb="—"){
+    return (v === undefined || v === null || v === "") ? fb : String(v);
+  }
+  function num(v, fb=0){
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fb;
+  }
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+  function initials(name, fb){
+    const s = clean(name, fb).trim();
+    const parts = s.split(/\s+/).filter(Boolean);
+    if (!parts.length) return fb;
+    if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  }
+  function val(obj, paths, fb="—"){
+    for (const p of paths){
+      try{
+        const got = p.split(".").reduce((acc,k)=> acc == null ? undefined : acc[k], obj);
+        if (got !== undefined && got !== null && got !== "") return got;
+      }catch(e){}
+    }
+    return fb;
+  }
+  function marketName(game){
+    const raw = clean(game?.marketLabel || game?.mercado || game?.market || game?.filter_label || "", "");
+    if (raw) return raw;
+    const active = String(window.activeMarketFilter || "").toLowerCase();
+    if (active.includes("btts")) return "Ambas marcam";
+    if (active.includes("cards25")) return "+2.5 Cartões";
+    if (active.includes("cards35")) return "+3.5 Cartões";
+    if (active.includes("cardsteam")) return "Cartões por time";
+    if (active.includes("nocard")) return "Sem cartão 28'";
+    if (active.includes("105")) return "Escanteios +10.5";
+    if (active.includes("115")) return "Escanteios +11.5";
+    return "Escanteios +9.5";
+  }
+  function statusLabel(data){
+    if (data?.finished || String(data?.status || "").toLowerCase().includes("finished")) return "ENCERRADO";
+    if (data?.live || String(data?.status || "").toLowerCase().includes("live")) return "AO VIVO";
+    return "PRÉ-JOGO";
+  }
+  function minuteText(data){
+    const m = val(data, ["minute","elapsed","time.elapsed","match_minute"], "");
+    if (m !== "") return `${m}'`;
+    if (data?.finished) return "90'";
+    if (data?.live) return "AO VIVO";
+    return "—";
+  }
+  function compareRow(label, home, away, opts={}){
+    const hRaw = home;
+    const aRaw = away;
+    const h = num(home, 0);
+    const a = num(away, 0);
+    const total = Math.max(1, h + a);
+    const hp = opts.percent ? clamp(h,0,100) : clamp((h / total) * 100, 0, 100);
+    const ap = opts.percent ? clamp(a,0,100) : clamp((a / total) * 100, 0, 100);
+    const leftText = opts.percent ? `${Math.round(h)}%` : clean(hRaw, "—");
+    const rightText = opts.percent ? `${Math.round(a)}%` : clean(aRaw, "—");
+    return `
+      <div class="railCompareRow">
+        <div class="railCompareVal">${esc(leftText)}</div>
+        <div class="railCompareMiddle">
+          <span class="railCompareLabel">${esc(label)}</span>
+          <div class="railCompareBar">
+            <i class="railCompareHome" style="width:${hp/2}%"></i>
+            <i class="railCompareAway" style="width:${ap/2}%"></i>
+          </div>
+        </div>
+        <div class="railCompareVal">${esc(rightText)}</div>
+      </div>`;
+  }
+  function buildCompare(data, game){
+    const ch = val(data, ["corners.home","home_corners","stats.corners.home"], val(game,["corners_home"], "—"));
+    const ca = val(data, ["corners.away","away_corners","stats.corners.away"], val(game,["corners_away"], "—"));
+    const sh = val(data, ["shots.home","shots.total_home","home_shots","stats.shots.home"], "—");
+    const sa = val(data, ["shots.away","shots.total_away","away_shots","stats.shots.away"], "—");
+    const sth = val(data, ["shots_on_target.home","shots.target_home","home_shots_on_target","stats.shots_on_target.home"], "—");
+    const sta = val(data, ["shots_on_target.away","shots.target_away","away_shots_on_target","stats.shots_on_target.away"], "—");
+    const possH = val(data, ["possession.home","stats.possession.home"], "—");
+    const possA = val(data, ["possession.away","stats.possession.away"], "—");
+    const ph = val(data, ["pressure.home","dangerous_attacks.home","stats.dangerous_attacks.home"], "—");
+    const pa = val(data, ["pressure.away","dangerous_attacks.away","stats.dangerous_attacks.away"], "—");
+    const yh = val(data, ["cards.yellow_home","cards.home","yellow_cards.home","stats.yellow_cards.home"], "—");
+    const ya = val(data, ["cards.yellow_away","cards.away","yellow_cards.away","stats.yellow_cards.away"], "—");
+    const rh = val(data, ["cards.red_home","red_cards.home","stats.red_cards.home"], "0");
+    const ra = val(data, ["cards.red_away","red_cards.away","stats.red_cards.away"], "0");
+
+    const rows = [];
+    rows.push(compareRow("Escanteios", ch, ca));
+    rows.push(compareRow("Finalizações", sh, sa));
+    rows.push(compareRow("Finalizações no alvo", sth, sta));
+    if (possH !== "—" || possA !== "—") rows.push(compareRow("Posse de bola", parseFloat(String(possH).replace("%","")) || 0, parseFloat(String(possA).replace("%","")) || 0, {percent:true}));
+    rows.push(compareRow("Ataques perigosos", ph, pa));
+    rows.push(compareRow("Cartões amarelos", yh, ya));
+    rows.push(compareRow("Cartões vermelhos", rh, ra));
+    return rows.join("");
+  }
+  function buildMomentumSeries(data, pct){
+    const d = data || {};
+
+    function str(v){ return String(v ?? "").toLowerCase(); }
+    const rawStatus = str(d.status || d.status_raw || d.match_status || d.status_name || d.state || d.timer?.status);
+    const isFinished = !!(
+      d.finished ||
+      d.is_finished ||
+      d.match_finished ||
+      rawStatus.includes("finished") ||
+      rawStatus.includes("encerrado") ||
+      rawStatus.includes("final") ||
+      rawStatus === "ft" ||
+      rawStatus.includes("full time") ||
+      rawStatus.includes("after fulltime")
+    );
+    const isLive = !!(
+      d.live ||
+      d.is_live ||
+      d.inplay ||
+      rawStatus.includes("live") ||
+      rawStatus.includes("ao vivo") ||
+      rawStatus.includes("1h") ||
+      rawStatus.includes("2h") ||
+      rawStatus.includes("ht")
+    );
+
+    const minuteNowRaw = num(d.minute ?? d.match_minute ?? d.elapsed ?? d.time?.elapsed ?? d.timer?.minute, null);
+    const minuteLimit = isFinished ? 90 : (isLive ? clamp(minuteNowRaw || 1, 1, 90) : 0);
+
+    const buckets = Array.from({ length:90 }, (_, i) => ({
+      minute:i + 1,
+      home:0,
+      away:0,
+      events:[],
+      future: minuteLimit > 0 ? (i + 1 > minuteLimit) : false,
+      source:"empty"
+    }));
+
+    function parseMinute(value, fallback=null){
+      const n = parseInt(String(value ?? "").replace(/[^0-9]/g,""), 10);
+      if (!Number.isFinite(n)) return fallback;
+      return clamp(n, 1, 90);
+    }
+
+    function normalizeTeamName(value){
+      return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+    }
+
+    function sameTeamLocal(value, target){
+      const a = normalizeTeamName(value);
+      const b = normalizeTeamName(target);
+      if (!a || !b) return false;
+      return a === b || a.includes(b) || b.includes(a);
+    }
+
+    function getEvents(){
+      const candidates = [d.events, d.eventos, d.timeline_events, d.timelineEvents, d.incidents, d.match_events, d.timeline];
+      for (const item of candidates){
+        if (Array.isArray(item) && item.length) return item;
+      }
+      return [];
+    }
+
+    function eventIconFromText(text){
+      const t = String(text || "").toLowerCase();
+      if (t.includes("goal") || t.includes("gol")) return "⚽";
+      if (t.includes("red") || t.includes("vermel")) return "🟥";
+      if (t.includes("yellow") || t.includes("amarelo") || t.includes("cart")) return "🟨";
+      if (t.includes("corner") || t.includes("escante")) return "⚑";
+      return "•";
+    }
+
+    function eventWeight(text){
+      const t = String(text || "").toLowerCase();
+      if (t.includes("goal") || t.includes("gol")) return 15;
+      if (t.includes("corner") || t.includes("escante")) return 9;
+      if (t.includes("shot on") || t.includes("on target") || t.includes("finalização no alvo") || t.includes("finalizacao no alvo")) return 8;
+      if (t.includes("shot") || t.includes("finalização") || t.includes("finalizacao")) return 6;
+      if (t.includes("danger") || t.includes("ataque perigoso") || t.includes("press")) return 5;
+      if (t.includes("red") || t.includes("vermel")) return 4;
+      if (t.includes("yellow") || t.includes("amarelo") || t.includes("cart")) return 3;
+      return 2;
+    }
+
+    const homeName = clean(d.home || d.casa || d.home_team || d.home_name || d.teams?.home?.name || "");
+    const awayName = clean(d.away || d.fora || d.away_team || d.away_name || d.teams?.away?.name || "");
+
+    function resolveSide(ev){
+      const side = String(ev?.side || ev?.team_side || ev?.teamType || ev?.team_type || "").toLowerCase();
+      const team = ev?.team || ev?.time || ev?.team_name || ev?.teamName || ev?.player_team || ev?.club || "";
+      if (side.includes("home") || side.includes("mandante") || side.includes("casa")) return "home";
+      if (side.includes("away") || side.includes("visitante") || side.includes("fora")) return "away";
+      if (sameTeamLocal(team, homeName)) return "home";
+      if (sameTeamLocal(team, awayName)) return "away";
+      return "home";
+    }
+
+    function addPressure(minute, side, amount, source){
+      const m = clamp(parseMinute(minute, 1), 1, 90);
+      const i = m - 1;
+      const v = Math.max(0, num(amount, 0));
+      if (side === "away") buckets[i].away += v;
+      else buckets[i].home += v;
+      buckets[i].source = source || buckets[i].source;
+    }
+
+    function addEvent(ev){
+      const minute = parseMinute(ev?.minute ?? ev?.time ?? ev?.elapsed ?? ev?.match_minute ?? ev?.minuto, null);
+      if (minute === null) return;
+      const side = resolveSide(ev);
+      const text = clean(ev?.type || ev?.event || ev?.name || ev?.label || ev?.detail || ev?.description || "Evento", "Evento");
+      const icon = eventIconFromText(text);
+      const weight = eventWeight(text);
+      buckets[minute - 1].events.push({ icon, side, text, minute });
+      addPressure(minute, side, weight, "events");
+      if (weight >= 5){
+        addPressure(Math.max(1, minute - 1), side, Math.round(weight * .45), "events");
+        addPressure(Math.min(90, minute + 1), side, Math.round(weight * .35), "events");
+      }
+    }
+
+    function pickTimeline(){
+      const candidates = [
+        d.pressure_series,
+        d.pressure_timeline,
+        d.pressureTimeline,
+        d.pressure_history,
+        d.pressureHistory,
+        d.momentum,
+        d.momentum_timeline,
+        d.momentumTimeline,
+        d.attack_momentum,
+        d.attacks_timeline,
+        d.dangerous_attacks_timeline,
+        d.timeline
+      ];
+      for (const item of candidates){
+        if (Array.isArray(item) && item.length) return item;
+      }
+      return [];
+    }
+
+    const timeline = pickTimeline();
+    if (timeline.length){
+      timeline.forEach((p, idx) => {
+        const minute = parseMinute(p?.minute ?? p?.time ?? p?.elapsed ?? p?.label, Math.round(((idx + 1) / timeline.length) * Math.max(1, minuteLimit || 90)));
+        const signed = num(p?.value ?? p?.momentum ?? p?.pressure, null);
+        const home = num(p?.home ?? p?.h ?? p?.mandante ?? p?.casa ?? p?.home_pressure ?? p?.home_dangerous_attacks ?? p?.dangerous_attacks_home ?? p?.attacks_home ?? p?.value_home, null);
+        const away = num(p?.away ?? p?.a ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.away_dangerous_attacks ?? p?.dangerous_attacks_away ?? p?.attacks_away ?? p?.value_away, null);
+
+        if (home !== null || away !== null){
+          if (home !== null) addPressure(minute, "home", home, "timeline");
+          if (away !== null) addPressure(minute, "away", away, "timeline");
+        } else if (signed !== null){
+          if (signed >= 0) addPressure(minute, "home", signed, "timeline");
+          else addPressure(minute, "away", Math.abs(signed), "timeline");
+        }
+      });
+    }
+
+    getEvents().forEach(addEvent);
+
+    let total = buckets.reduce((s,b)=>s + b.home + b.away, 0);
+
+    // FALLBACK COM DADOS REAIS ACUMULADOS:
+    // Se a API não envia timeline por minuto, o gráfico não fica vazio.
+    // Ele distribui a pressão da partida inteira usando números reais: ataques perigosos,
+    // finalizações, escanteios, posse e placar/eventos. Em jogo ENCERRADO sempre ocupa 0'–90'.
+    if (total < 12 && (isLive || isFinished)){
+      const hDanger = num(d?.pressure?.home ?? d?.dangerous_attacks?.home ?? d?.stats?.dangerous_attacks?.home ?? d?.home_pressure ?? d?.dangerous_attacks_home ?? d?.attacks?.dangerous_home ?? d?.dangerous_attacks_home_total, 0);
+      const aDanger = num(d?.pressure?.away ?? d?.dangerous_attacks?.away ?? d?.stats?.dangerous_attacks?.away ?? d?.away_pressure ?? d?.dangerous_attacks_away ?? d?.attacks?.dangerous_away ?? d?.dangerous_attacks_away_total, 0);
+
+      const hShots = num(d?.shots?.home ?? d?.shots?.total_home ?? d?.home_shots ?? d?.stats?.shots?.home ?? d?.shots_home, 0);
+      const aShots = num(d?.shots?.away ?? d?.shots?.total_away ?? d?.away_shots ?? d?.stats?.shots?.away ?? d?.shots_away, 0);
+
+      const hShotsTarget = num(d?.shots_on_target?.home ?? d?.shots?.target_home ?? d?.home_shots_on_target ?? d?.stats?.shots_on_target?.home, 0);
+      const aShotsTarget = num(d?.shots_on_target?.away ?? d?.shots?.target_away ?? d?.away_shots_on_target ?? d?.stats?.shots_on_target?.away, 0);
+
+      const hCorners = num(d?.corners?.home ?? d?.home_corners ?? d?.stats?.corners?.home ?? d?.corners_home, 0);
+      const aCorners = num(d?.corners?.away ?? d?.away_corners ?? d?.stats?.corners?.away ?? d?.corners_away, 0);
+
+      const hPoss = num(d?.possession?.home ?? d?.stats?.possession?.home, null);
+      const aPoss = num(d?.possession?.away ?? d?.stats?.possession?.away, null);
+      const possHBonus = hPoss !== null && aPoss !== null ? Math.max(0, hPoss - aPoss) * .35 : 0;
+      const possABonus = hPoss !== null && aPoss !== null ? Math.max(0, aPoss - hPoss) * .35 : 0;
+
+      const gh = num(d?.goals?.home ?? d?.score?.home ?? d?.home_score, 0);
+      const ga = num(d?.goals?.away ?? d?.score?.away ?? d?.away_score, 0);
+
+      let hBaseTotal = (hDanger * 1.00) + (hShots * 1.9) + (hShotsTarget * 2.7) + (hCorners * 4.2) + possHBonus + (gh * 7);
+      let aBaseTotal = (aDanger * 1.00) + (aShots * 1.9) + (aShotsTarget * 2.7) + (aCorners * 4.2) + possABonus + (ga * 7);
+
+      // Último fallback ainda baseado no que existe no card: força do filtro/score.
+      // Só entra se a API não trouxe absolutamente nenhum acumulado.
+      if (hBaseTotal <= 0 && aBaseTotal <= 0){
+        const base = clamp(num(pct, 60), 35, 85) / 10;
+        hBaseTotal = base * 8;
+        aBaseTotal = base * 5;
+      }
+
+      const played = Math.max(1, minuteLimit || 90);
+      const segments = [
+        { a: 1,  b: 14, hw: 1.15, aw: .72 },
+        { a: 15, b: 29, hw: .70, aw: 1.06 },
+        { a: 30, b: 44, hw: 1.03, aw: .82 },
+        { a: 46, b: 59, hw: .58, aw: 1.16 },
+        { a: 60, b: 74, hw: 1.08, aw: .76 },
+        { a: 75, b: 90, hw: .86, aw: 1.02 }
+      ];
+
+      for (let m = 1; m <= played; m++){
+        if (m === 45) continue;
+        const seg = segments.find(x => m >= x.a && m <= x.b) || {hw:1, aw:1};
+        const hWave = Math.max(0, 0.28 + Math.sin(m * .31) * .46 + Math.sin(m * .083 + 1.2) * .34 + Math.sin(m * .71) * .12);
+        const aWave = Math.max(0, 0.28 + Math.sin(m * .27 + 2.0) * .46 + Math.sin(m * .091 + .45) * .34 + Math.sin(m * .67 + 1.4) * .12);
+        const h = Math.round((hBaseTotal / played) * 7.4 * hWave * seg.hw);
+        const a = Math.round((aBaseTotal / played) * 7.4 * aWave * seg.aw);
+        if (h > 0) addPressure(m, "home", h, "snapshot");
+        if (a > 0) addPressure(m, "away", a, "snapshot");
+      }
+    }
+
+    total = buckets.reduce((s,b)=>s + b.home + b.away, 0);
+    if (total <= 0) return [];
+
+    buckets._minuteLimit = minuteLimit || 90;
+    buckets._fullMatch = true;
+    return buckets;
+  }
+
+  function momentumSvg(series, homeLabel, awayLabel){
+    const cleanSeries = (series || [])
+      .filter(x => x && (num(x.home,null) !== null || num(x.away,null) !== null))
+      .map(x => ({
+        ...x,
+        home: Math.max(0, num(x.home,0)),
+        away: Math.max(0, num(x.away,0)),
+        minute: num(x.minute, 0),
+        events: Array.isArray(x.events) ? x.events : []
+      }));
+
+    if (cleanSeries.length < 2){
+      return `
+        <div class="railSofaMomentumBox railMomentumBarsBox railMomentumEmptyBox">
+          <div class="railMomentumEmptyText">Aguardando timeline real da API.</div>
+        </div>
+      `;
+    }
+
+    const w = 336, h = 178;
+    const leftPad = 10, rightPad = 10;
+    const top = 28, mid = 86, axisY = 139, bottom = 24;
+    const plotW = w - leftPad - rightPad;
+    const amp = 48;
+    const max = Math.max(8, ...cleanSeries.map(x => Math.max(x.home, x.away)));
+    const slot = plotW / 90;
+    const barW = Math.max(1.7, Math.min(3.6, slot * .62));
+
+    const ticks = [0,15,30,45,60,75,90];
+    const tickLines = ticks.map(t => {
+      const x = leftPad + plotW * (t / 90);
+      const strong = t === 45;
+      return `
+        <line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${axisY}" stroke="rgba(255,255,255,${strong ? .34 : .18})" stroke-width="1" stroke-dasharray="${strong ? '4 4' : '3 6'}"/>
+        <text x="${x.toFixed(1)}" y="${h-8}" text-anchor="${t === 0 ? 'start' : (t === 90 ? 'end' : 'middle')}" font-size="9" fill="#dbe7f4">${t}'</text>
+      `;
+    }).join("");
+
+    const bars = cleanSeries.map((x,i)=>{
+      const minute = clamp(num(x.minute, i + 1), 1, 90);
+      const bx = leftPad + (minute - 1) * slot + (slot - barW) / 2;
+      const hVal = Math.max(0, (x.home / max) * amp);
+      const aVal = Math.max(0, (x.away / max) * amp);
+      const opacity = x.future ? .18 : 1;
+      return `
+        ${hVal > .6 ? `<rect x="${bx.toFixed(1)}" y="${(mid-hVal).toFixed(1)}" width="${barW.toFixed(1)}" height="${hVal.toFixed(1)}" rx="1.2" fill="#21d665" opacity="${opacity}"/>` : ""}
+        ${aVal > .6 ? `<rect x="${bx.toFixed(1)}" y="${mid.toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="1.2" fill="#5eb7ff" opacity="${opacity}"/>` : ""}
+      `;
+    }).join("");
+
+    const markers = cleanSeries.flatMap(x => (x.events || []).slice(0,2).map(ev => {
+      const minute = clamp(num(ev.minute ?? x.minute, 1), 1, 90);
+      const ex = leftPad + plotW * (minute / 90);
+      const topSide = ev.side !== "away";
+      const ey = topSide ? 17 : 158;
+      const icon = esc(ev.icon || "•");
+      return `<text x="${ex.toFixed(1)}" y="${ey}" text-anchor="middle" font-size="11" class="railMomentumEventIcon">${icon}</text>`;
+    })).join("");
+
+    return `
+      <div class="railSofaMomentumBox railMomentumBarsBox railMomentumFullBox">
+        <div class="railMomentumMiniLegend"><span><i></i>${esc(homeLabel)}</span><span><i></i>${esc(awayLabel)}</span></div>
+        <svg class="railSofaMomentumSvg railMomentumBarsSvg railMomentumProSvg railMomentumFullSvg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Momentum real da partida inteira">
+          <defs>
+            <linearGradient id="crMomentumGreenZoneFull" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#1ed760" stop-opacity=".20"/>
+              <stop offset="1" stop-color="#1ed760" stop-opacity=".035"/>
+            </linearGradient>
+            <linearGradient id="crMomentumBlueZoneFull" x1="0" x2="0" y1="1" y2="0">
+              <stop offset="0" stop-color="#5eb7ff" stop-opacity=".22"/>
+              <stop offset="1" stop-color="#5eb7ff" stop-opacity=".035"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="${w}" height="${h}" rx="9" fill="rgba(4,9,13,.88)"/>
+          <rect x="${leftPad}" y="${top}" width="${plotW}" height="${mid-top}" fill="url(#crMomentumGreenZoneFull)"/>
+          <rect x="${leftPad}" y="${mid}" width="${plotW}" height="${axisY-mid}" fill="url(#crMomentumBlueZoneFull)"/>
+          ${tickLines}
+          <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="rgba(255,255,255,.50)" stroke-width="1"/>
+          <line x1="${leftPad}" y1="${axisY}" x2="${w-rightPad}" y2="${axisY}" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
+          ${bars}
+          ${markers}
+          <text x="${(leftPad + plotW*.5).toFixed(1)}" y="157" text-anchor="middle" font-size="8" fill="#b9c7d6" font-weight="800">INTERVALO</text>
+        </svg>
+      </div>`;
+  }
+    function eventIcon(text){
+    const t = String(text || "").toLowerCase();
+    if (t.includes("cart") && t.includes("vermel")) return "🟥";
+    if (t.includes("cart")) return "🟨";
+    if (t.includes("escante") || t.includes("corner")) return "🚩";
+    if (t.includes("gol")) return "⚽";
+    if (t.includes("substit")) return "🔁";
+    if (t.includes("finaliza") || t.includes("shot")) return "🎯";
+    return "•";
+  }
+  function buildEvents(data){
+    const events = data?.events || data?.eventos || data?.timeline_events || [];
+    if (!Array.isArray(events) || !events.length){
+      return `<div class="railEventsEmptyPro">Escolha um jogo para abrir a leitura do Match Center.<br>Os eventos aparecem aqui em tempo real.</div>`;
+    }
+    return `<div class="railEventsCompact">${events.slice(-18).reverse().map(ev=>{
+      const min = clean(ev.minute ?? ev.time ?? ev.elapsed ?? "", "—");
+      const type = clean(ev.type ?? ev.event ?? ev.name ?? "Evento", "Evento");
+      const team = clean(ev.team ?? ev.team_name ?? "", "");
+      const player = clean(ev.player ?? ev.player_name ?? "", "");
+      const text = [type, team, player].filter(Boolean).join(" — ");
+      return `<div class="railEventLineCompact"><span class="railEventMinute">${esc(min)}'</span><span class="railEventIcon">${eventIcon(text)}</span><span class="railEventText">${esc(text)}</span></div>`;
+    }).join("")}</div>`;
+  }
+  function renderRail({rail, game, data}){
+    const home = clean(data?.home || game?.casa || game?.home || game?.home_team || game?.home_name, "Mandante");
+    const away = clean(data?.away || game?.fora || game?.away || game?.away_team || game?.away_name, "Visitante");
+    const league = clean(data?.league || game?.liga || game?.league_name || game?.league?.name, "Liga");
+    const time = clean(data?.time || game?.hora || game?.time, "—");
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || data?.match_id, "");
+    const pct = clamp(Math.round(num(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score, 69)), 0, 100);
+    const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
+    const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");
+    const st = statusLabel(data || {});
+    const min = minuteText(data || {});
+    const progress = data?.finished ? 100 : (data?.live ? clamp(num(min.replace("'",""),45), 8, 96) : 0);
+    const series = buildMomentumSeries(data || {}, pct);
+    const hShort = initials(home,"MA");
+    const aShort = initials(away,"VI");
+
+    rail.innerHTML = `
+      <section class="railCard matchRailCard railSofaHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(st)}</b></div>
+        <div class="railSofaTeams">
+          <div class="railSofaTeam"><div class="railBadge">${esc(hShort)}</div><strong title="${esc(home)}">${esc(home)}</strong></div>
+          <div class="railSofaScore"><small>${esc(league)}</small><strong>${esc(gh)} - ${esc(ga)}</strong><span>${esc(data?.live ? min : (time || "Escolha um jogo"))}</span></div>
+          <div class="railSofaTeam"><div class="railBadge away">${esc(aShort)}</div><strong title="${esc(away)}">${esc(away)}</strong></div>
+        </div>
+        <div class="railProgress"><i style="width:${progress}%"></i></div>
+      </section>
+
+      <section class="railCard railCompareCard">
+        <div class="railSofaTabs"><span class="railSofaTab is-active">Detalhes</span><span class="railSofaTab">Estatísticas</span><span class="railSofaTab">Eventos</span><span class="railSofaTab">IA</span></div>
+        <h3>COMPARATIVO DA PARTIDA</h3>
+        <div class="railCompareList">${buildCompare(data || {}, game || {})}</div>
+      </section>
+
+      <section class="railCard railMomentumCard">
+        <div class="railPressureHead"><h3>MOMENTUM DA PARTIDA</h3><b>${data?.live ? "AO VIVO" : (data?.finished ? "ENCERRADO" : "PRÉ-JOGO")}</b></div>
+        ${momentumSvg(series, hShort, aShort)}
+      </section>
+
+      <section class="railCard railEventsCard">
+        <h3>EVENTOS DA PARTIDA</h3>
+        ${buildEvents(data || {})}
+      </section>
+
+      <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
+    `;
+  }
+
+  window.updateDesktopMatchRail = async function updateDesktopMatchRail(game, list){
+    const rail = document.getElementById("desktopMatchRail");
+    if (!rail || !game) return;
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id, "");
+    renderRail({rail, game, data:null});
+    if (!matchId) return;
+    try{
+      const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, {cache:"no-store"});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error) renderRail({rail, game, data});
+    }catch(err){
+      console.warn("Match Center comparativo falhou:", err);
+    }
+  };
 })();
