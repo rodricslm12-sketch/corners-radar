@@ -109,7 +109,6 @@
         <div class="top-right">
           <input id="date" type="date" />
           <button id="btn" class="btnOutline">Atualizar</button>
-          <div class="status">📊 DADOS REAIS</div>
           <button id="logoutBtn" class="btnLogout" type="button">Sair</button>
         </div>
 
@@ -261,84 +260,7 @@
       <div id="last5ModalBody"><div class="loadingStats">Carregando últimos 5 jogos...</div></div>
     </div>
   </div>
-
-  <!-- LOGIN / LOGOUT FIX -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const LOGIN_KEY = "cornersRadarLogged";
-      const VALID_USER = "RodrigoMartins";
-      const VALID_PASS = "Rodrics789bl";
-
-      const body = document.body;
-      const loginScreen = document.getElementById("loginScreen");
-      const loginForm = document.getElementById("loginForm");
-      const loginUser = document.getElementById("loginUser");
-      const loginPass = document.getElementById("loginPass");
-      const loginError = document.getElementById("loginError");
-      const logoutBtn = document.getElementById("logoutBtn");
-
-      function showLogin() {
-        localStorage.removeItem(LOGIN_KEY);
-        body.classList.add("locked");
-
-        if (loginScreen) {
-          loginScreen.style.display = "flex";
-          loginScreen.style.opacity = "1";
-          loginScreen.style.visibility = "visible";
-          loginScreen.style.pointerEvents = "auto";
-        }
-
-        setTimeout(function () {
-          if (loginUser) loginUser.focus();
-        }, 100);
-      }
-
-      function showDashboard() {
-        localStorage.setItem(LOGIN_KEY, "true");
-        body.classList.remove("locked");
-
-        if (loginScreen) {
-          loginScreen.style.display = "none";
-          loginScreen.style.opacity = "0";
-          loginScreen.style.visibility = "hidden";
-          loginScreen.style.pointerEvents = "none";
-        }
-      }
-
-      if (localStorage.getItem(LOGIN_KEY) === "true") {
-        showDashboard();
-      } else {
-        showLogin();
-      }
-
-      if (loginForm) {
-        loginForm.addEventListener("submit", function (e) {
-          e.preventDefault();
-
-          const user = (loginUser && loginUser.value ? loginUser.value : "").trim();
-          const pass = (loginPass && loginPass.value ? loginPass.value : "").trim();
-
-          if (user === VALID_USER && pass === VALID_PASS) {
-            if (loginError) loginError.textContent = "";
-            showDashboard();
-            return;
-          }
-
-          if (loginError) {
-            loginError.textContent = "Usuário ou senha inválidos.";
-          }
-        });
-      }
-
-      if (logoutBtn) {
-        logoutBtn.addEventListener("click", function () {
-          showLogin();
-          window.scrollTo(0, 0);
-        });
-      }
-    });
-  </script>
-
+  <!-- Login controlado somente pelo script.js -->
   <!-- MATCH CENTER: painel expansível inserido pelo script.js -->
 </body>
 </html>

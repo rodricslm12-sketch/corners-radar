@@ -3788,13 +3788,7 @@
     function gameDateLabel(){ const d = lastMarketDateYMD || lastDateYMD || dateInput?.value || ""; if(!d) return ""; const [y,m,day]=d.split("-"); return `${day}/${m}`; }
   
     function renderMarketHero(){
-      return `
-        <section class="premiumMarketHero">
-          <div class="premiumHeroCard"><div class="premiumHeroIcon">🟨</div><div class="premiumHeroTitle">Total de cartões</div><div class="premiumHeroSub">Mostra jogos com tendência de cartões na partida.</div><div class="premiumHeroOptions"><span>+2.5</span><span>+3.5</span><span>+4.5</span></div></div>
-          <div class="premiumHeroCard"><div class="premiumHeroIcon">👥</div><div class="premiumHeroTitle">Cartões por time</div><div class="premiumHeroSub">Mercado por mandante ou visitante.</div><div class="premiumHeroOptions"><span>Mandante</span><span>Visitante</span></div></div>
-          <div class="premiumHeroCard"><div class="premiumHeroIcon">⏱️</div><div class="premiumHeroTitle">Momentos do jogo</div><div class="premiumHeroSub">Filtros por período da partida.</div><div class="premiumHeroOptions"><span>Até 15'</span><span>Até 28'</span><span>29'-45'</span></div></div>
-          <div class="premiumHeroCard highlight"><div class="premiumHeroIcon">🛡️</div><div class="premiumHeroTitle">Ambos NÃO levam cartão</div><div class="premiumHeroSub">Leitura especial para início de jogo mais limpo.</div><div class="premiumHeroOptions"><span>Até 28 minutos</span></div></div>
-        </section>`;
+      return ``;
     }
   
   
@@ -3943,7 +3937,7 @@
           <div class="premiumUnlockedBox cleanActionBox">
             <div><strong>${icon} ${mercado}</strong><span class="premiumPercent">${pctRounded}%</span></div>
             <div class="premiumActionBtns">
-              <button class="premiumEnterBtn" type="button" data-open-detail="${idx}">Ver análise</button>
+              <button class="premiumEnterBtn" type="button" data-open-detail="${idx}">Análise</button>
               <button class="matchCenterBtn ${isMcSelected ? "is-open" : ""}" type="button" data-open-match-center="${idx}" data-match-id="${matchId}" data-home="${escapeAttrLite(gameHome(j))}" data-away="${escapeAttrLite(gameAway(j))}" data-league="${escapeAttrLite(gameLeague(j))}" data-time="${escapeAttrLite(gameTime(j))}">${isMcSelected ? `<span class="matchCenterBtnIcon">✓</span> Aberto` : `<span class="matchCenterBtnIcon">▥</span> Match Center`}</button>
             </div>
           </div>
@@ -3999,8 +3993,8 @@
   
       top1El?.querySelectorAll("[data-premium-market]").forEach(btn=>btn.addEventListener("click",()=>{ setActiveMarket(btn.dataset.premiumMarket || "all"); renderMarketFilters(); }));
       top1El?.querySelectorAll("[data-open-login]").forEach(btn=>btn.addEventListener("click",ev=>{ ev.stopPropagation(); openLogin(); }));
-      top1El?.querySelectorAll("[data-open-detail]").forEach(btn=>btn.addEventListener("click",ev=>{ ev.stopPropagation(); const i=Number(btn.dataset.openDetail); openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); }));
-      top1El?.querySelectorAll("[data-premium-game]").forEach(row=>row.addEventListener("click",()=>{ const i=Number(row.dataset.premiumGame); if (isLogged()) openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); else openLogin(); }));
+      top1El?.querySelectorAll("[data-open-detail]").forEach(btn=>btn.addEventListener("click",ev=>{ ev.preventDefault(); ev.stopPropagation(); if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation(); const i=Number(btn.dataset.openDetail); openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); }));
+      top1El?.querySelectorAll("[data-premium-game]").forEach(row=>row.addEventListener("click",(ev)=>{ if (ev.target.closest("button,a,select,[data-open-detail],[data-open-match-center],[data-open-match-center-table]")) return; const i=Number(row.dataset.premiumGame); if (isLogged()) openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); else openLogin(); }));
     }
   
   
@@ -5254,3 +5248,489 @@
       }
     };
   })();
+
+/* =========================================================
+   FIX FINAL DE CARREGAMENTO / LOGIN — CORNERS RADAR
+   Colocado no fim para vencer scripts antigos duplicados.
+   - Corrige tela preta no localhost
+   - Padroniza a sessão em localStorage
+   - Mantém Sair funcionando
+   ========================================================= */
+(function finalLoginLoadFix(){
+  const LOGIN_KEY = "cornersRadarLogged";
+  const LEGACY_KEYS = ["isLogged", "loggedIn", "auth", "user"];
+  const VALID_LOGINS = [
+    { user: "RodrigoMartins", pass: "Rodrics789bl" },
+    { user: "admin", pass: "123456" }
+  ];
+
+  function $(id){ return document.getElementById(id); }
+
+  function show(el, display){
+    if (!el) return;
+    el.style.display = display;
+    el.style.visibility = "visible";
+    el.style.opacity = "1";
+    el.style.pointerEvents = "auto";
+  }
+
+  function hide(el){
+    if (!el) return;
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+    el.style.opacity = "0";
+    el.style.pointerEvents = "none";
+  }
+
+  function normalizeSession(){
+    const value = localStorage.getItem(LOGIN_KEY);
+    if (value === "1" || value === "true") {
+      localStorage.setItem(LOGIN_KEY, "true");
+      return true;
+    }
+    return false;
+  }
+
+  function unlockDashboard(){
+    localStorage.setItem(LOGIN_KEY, "true");
+    document.body.classList.remove("locked");
+    document.body.classList.add("dashboard");
+
+    hide($("loginScreen"));
+
+    const sidebar = document.querySelector(".sidebar");
+    const main = document.querySelector(".main");
+    const topbar = document.querySelector(".topbar");
+    const content = document.querySelector(".content");
+
+    if (sidebar) show(sidebar, "flex");
+    if (main) show(main, "flex");
+    if (topbar) show(topbar, "block");
+    if (content) show(content, "block");
+  }
+
+  function lockDashboard(){
+    document.body.classList.add("locked");
+    document.body.classList.add("dashboard");
+
+    show($("loginScreen"), "flex");
+
+    const sidebar = document.querySelector(".sidebar");
+    const main = document.querySelector(".main");
+    const topbar = document.querySelector(".topbar");
+    const content = document.querySelector(".content");
+
+    if (sidebar) hide(sidebar);
+    if (main) hide(main);
+    if (topbar) hide(topbar);
+    if (content) hide(content);
+  }
+
+  function doLogout(){
+    localStorage.removeItem(LOGIN_KEY);
+    LEGACY_KEYS.forEach(k => localStorage.removeItem(k));
+    const user = $("loginUser");
+    const pass = $("loginPass");
+    const error = $("loginError");
+    if (user) user.value = "";
+    if (pass) pass.value = "";
+    if (error) error.textContent = "";
+    lockDashboard();
+    setTimeout(() => user?.focus?.(), 100);
+  }
+
+  function bindLogin(){
+    const form = $("loginForm");
+    const user = $("loginUser");
+    const pass = $("loginPass");
+    const error = $("loginError");
+    const logout = $("logoutBtn");
+
+    if (form && !form.dataset.finalLoginBound) {
+      form.dataset.finalLoginBound = "1";
+      form.addEventListener("submit", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+
+        const u = String(user?.value || "").trim();
+        const p = String(pass?.value || "").trim();
+        const ok = VALID_LOGINS.some(item => item.user === u && item.pass === p);
+
+        if (!ok) {
+          if (error) error.textContent = "Usuário ou senha inválidos.";
+          pass?.select?.();
+          return;
+        }
+
+        if (error) error.textContent = "";
+        unlockDashboard();
+        try { if (typeof renderPregame === "function") renderPregame(); } catch(e) {}
+      }, true);
+    }
+
+    if (logout) {
+      logout.type = "button";
+      logout.onclick = doLogout;
+    }
+  }
+
+  window.forceLogout = doLogout;
+  window.forceLoginCheck = function(){
+    if (normalizeSession()) unlockDashboard();
+    else lockDashboard();
+  };
+
+  document.addEventListener("click", function(e){
+    const btn = e.target?.closest?.("#logoutBtn, .btnLogout");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    doLogout();
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function(){
+    bindLogin();
+    window.forceLoginCheck();
+    setTimeout(window.forceLoginCheck, 80);
+    setTimeout(window.forceLoginCheck, 250);
+  });
+})();
+
+/* =========================================================
+   MERCADOS PREMIUM — RENDERIZAÇÃO NOVA DA ABA FILTROS
+   ========================================================= */
+(function(){
+  function _marketFilterByKey(key){
+    return (MARKET_FILTERS || []).find(f => f.key === key) || null;
+  }
+
+  function _marketLabel(key){
+    if (!key || key === "all") return "Todos";
+    return _marketFilterByKey(key)?.label || String(key).toUpperCase();
+  }
+
+  function _avg(list, getter){
+    const vals = (list || []).map(getter).map(Number).filter(Number.isFinite);
+    if (!vals.length) return 0;
+    return vals.reduce((a,b)=>a+b,0) / vals.length;
+  }
+
+  function _groupButton(key, label){
+    const exists = key === "all" || !!_marketFilterByKey(key);
+    const active = activeMarketFilter === key;
+    return `<button type="button" class="marketChipPremium ${active ? "is-active" : ""} ${exists ? "" : "is-disabled"}" ${exists ? `data-market-filter="${key}"` : "disabled"}>${label}</button>`;
+  }
+
+  function _strengthBars(p){
+    const n = Math.max(1, Math.min(10, Math.round(Number(p || 0) / 10)));
+    return Array.from({length:10}, (_,i)=>`<i class="${i < n ? "on" : ""}" style="height:${8 + i * 2}px"></i>`).join("");
+  }
+
+  function _trendBars(filtered){
+    const source = (filtered || []).slice(0, 10);
+    const vals = source.length ? source.map(j => Math.max(10, Math.min(95, Math.round(marketPercent(j, activeMarketFilter))))) : [52,58,63,66,71,68,73,76,70,74];
+    return vals.map(v => `<i style="height:${Math.max(12, Math.min(54, Math.round(v * .58)))}px"></i>`).join("");
+  }
+
+  function _dateShort(dateYMD){
+    if (!dateYMD || !/^\d{4}-\d{2}-\d{2}$/.test(dateYMD)) return "—";
+    const [,m,d] = dateYMD.split("-");
+    return `${d}/${m}`;
+  }
+
+  function _dist(filtered){
+    const total = Math.max(1, filtered.length || 0);
+    const acima = filtered.filter(j => marketPercent(j, activeMarketFilter) >= 70).length;
+    const meio = filtered.filter(j => marketPercent(j, activeMarketFilter) >= 55 && marketPercent(j, activeMarketFilter) < 70).length;
+    const baixo = Math.max(0, (filtered.length || 0) - acima - meio);
+    return {acima, meio, baixo, total};
+  }
+
+  function _renderPremiumRows(filtered, dateYMD){
+    return filtered.slice(0, 40).map((j, idx) => {
+      const casa = safe(j?.casa, "Time A");
+      const fora = safe(j?.fora, "Time B");
+      const liga = safe(j?.liga, "—");
+      const hora = timeOnlyAM(dateYMD, safe(j?.hora, "—"));
+      const mp = Math.round(marketPercent(j, activeMarketFilter));
+      const proj = fmt(getProj(j), 1);
+      const p = Math.max(1, Math.min(100, mp));
+      const over25 = Math.round(Number(j?.markets?.prob?.over25 ?? 0));
+      const over35 = Math.round(Number(j?.markets?.prob?.over35 ?? 0));
+      return `
+        <article class="marketGameRow" data-match-center-row="1" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}" data-league="${escapeAttrLite(liga)}" data-time="${escapeAttrLite(hora)}">
+          <div class="marketGameTime"><strong>${hora}</strong><span>${_dateShort(dateYMD)}</span></div>
+          <div class="marketGameTeams">
+            ${teamNameHTML(casa, "marketTeamName")}<br>${teamNameHTML(fora, "marketTeamName")}
+            <div class="marketGameLeague">${escapeHtmlLite(liga)}</div>
+          </div>
+          <div>
+            <div class="marketGameCompetition">${escapeHtmlLite(liga)}</div>
+            <div class="marketGameSub">Mercado: ${escapeHtmlLite(_marketLabel(activeMarketFilter))}</div>
+          </div>
+          <div><div class="marketCircle" style="--p:${p}%"><span>${mp}%</span></div></div>
+          <div>
+            <div class="marketGameStatsTitle">Força do filtro</div>
+            <div class="marketGameStatsSub">${escapeHtmlLite(_marketLabel(activeMarketFilter))}</div>
+          </div>
+          <div class="marketRealStats">
+            <span>Proj.<strong>${proj}</strong></span>
+            <span>+2.5<strong>${Number.isFinite(over25) && over25 ? over25 : Math.max(50, mp-9)}%</strong></span>
+            <span>+3.5<strong>${Number.isFinite(over35) && over35 ? over35 : Math.max(35, mp-18)}%</strong></span>
+          </div>
+          <div>
+            <div class="marketTrendMini"><i style="height:12px"></i><i style="height:18px"></i><i style="height:24px"></i><i style="height:29px"></i><i style="height:22px"></i></div>
+          </div>
+          <div>
+            <div class="marketGamePercent">${mp}%</div>
+            <div class="marketGameActions">
+              <button type="button" class="btnStats" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}">Análise</button>
+              <button type="button" class="matchCenterMiniBtn" data-open-match-center="${idx}" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}" data-league="${escapeAttrLite(liga)}" data-time="${escapeAttrLite(hora)}">Match Center</button>
+            </div>
+          </div>
+        </article>`;
+    }).join("");
+  }
+
+  renderMarketFilters = function(){
+    if (!top1El) return;
+    top1El.closest(".panel")?.classList.add("is-market-scroll-panel");
+
+    const dateYMD = lastMarketDateYMD || lastDateYMD || dateInput?.value || todayAM_YMD();
+    const baseMarketList = Array.isArray(lastMarketGames) && lastMarketGames.length ? lastMarketGames : lastRawGames;
+    const games = enrichMarketsList(dedupeList(baseMarketList || []));
+
+    let filtered = games.filter(j => marketPass(j, activeMarketFilter));
+    filtered = filtered.sort((a,b) => {
+      if (filterSortMode === "time"){
+        const ma = getMatchMinutesAM(a, dateYMD);
+        const mb = getMatchMinutesAM(b, dateYMD);
+        if (ma !== null && mb !== null && ma !== mb) return ma - mb;
+        if (ma !== null && mb === null) return -1;
+        if (ma === null && mb !== null) return 1;
+      }
+      if (filterSortMode === "corners") return getProj(b) - getProj(a);
+      return marketPercent(b, activeMarketFilter) - marketPercent(a, activeMarketFilter);
+    });
+
+    const avgPercent = Math.round(_avg(filtered, j => marketPercent(j, activeMarketFilter)) || 0);
+    const avgProj = fmt(_avg(filtered, getProj), 1);
+    const recentAvg = fmt((_avg(filtered.slice(0,5), getProj) || _avg(filtered, getProj) || 0), 1);
+    const best = filtered[0];
+    const bestName = best ? `${safe(best.casa,"—")} x ${safe(best.fora,"—")}` : "—";
+    const bestPct = best ? `${Math.round(marketPercent(best, activeMarketFilter))}%` : "—";
+    const dist = _dist(filtered);
+    const acimaPct = Math.round((dist.acima / dist.total) * 100);
+    const meioPct = Math.round((dist.meio / dist.total) * 100);
+    const baixoPct = Math.max(0, 100 - acimaPct - meioPct);
+
+    window.__premiumFilteredGames = filtered;
+    const rows = _renderPremiumRows(filtered, dateYMD);
+
+    top1El.innerHTML = `
+      <div class="marketPremiumWrap">
+        <section class="marketHeroPanel">
+          <div class="marketHeroTitle">🔥 MERCADO ATIVO <small>análise inteligente do filtro selecionado</small></div>
+
+          <div class="marketHeroGrid">
+            <div class="marketActiveCard">
+              <span class="marketActiveBadge">ATIVO</span>
+              <div class="marketActiveName">${escapeHtmlLite(_marketLabel(activeMarketFilter))}</div>
+              <div class="marketActiveSub">${filtered.length} jogos encontrados</div>
+              <div class="marketActiveStrength"><strong>${avgPercent}%</strong><span>assertividade</span><div class="marketMiniBar"><i style="width:${Math.max(0,Math.min(100,avgPercent))}%"></i></div></div>
+            </div>
+            <div class="marketMetricCard"><div class="marketMetricLabel">Média projetada</div><div class="marketMetricValue">${avgProj}</div><div class="marketMetricSub">Escanteios por jogo</div></div>
+            <div class="marketMetricCard"><div class="marketMetricLabel">Média recente</div><div class="marketMetricValue">${recentAvg}</div><div class="marketMetricSub">Base dos melhores jogos</div></div>
+            <div class="marketMetricCard"><div class="marketMetricLabel">Força do mercado</div><div class="marketStrengthBars">${_strengthBars(avgPercent)}</div><div class="marketMetricSub"><b style="color:#22e66d">${avgPercent}%</b> muito forte</div></div>
+            <div class="marketMetricCard"><div class="marketMetricLabel">Melhor jogo</div><div class="marketMetricValue green" style="font-size:15px;line-height:1.15">${escapeHtmlLite(bestName)}</div><div class="marketMetricSub">${bestPct} força do filtro</div></div>
+          </div>
+
+          <div class="marketFilterGroups">
+            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Gols</div><div class="marketGroupChips">${_groupButton("over15","+1.5 Gols")}${_groupButton("over25","+2.5 Gols")}${_groupButton("over35","+3.5 Gols")}</div></div>
+            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Escanteios</div><div class="marketGroupChips">${_groupButton("corners95","+9.5")}${_groupButton("corners105","+10.5")}${_groupButton("corners115","+11.5")}</div></div>
+            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Resultado</div><div class="marketGroupChips">${_groupButton("all","Todos")}${_groupButton("btts","Ambas Marcam")}</div></div>
+            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Especiais</div><div class="marketGroupChips">${_groupButton("cards25","+2.5 Cartões")}${_groupButton("cards35","+3.5 Cartões")}${_groupButton("last5","Últimos 5")}</div></div>
+          </div>
+
+          <div class="marketInsightGrid">
+            <div class="marketInsightCard"><div class="marketInsightTitle">Por que o mercado está forte hoje?</div><div class="marketReasons"><div class="marketReason"><b>✓</b><span>${avgPercent}% de força média nos jogos filtrados.</span></div><div class="marketReason"><b>✓</b><span>Média projetada de ${avgProj} cantos na seleção atual.</span></div><div class="marketReason"><b>✓</b><span>Lista ordenada para priorizar maior probabilidade.</span></div><div class="marketReason"><b>✓</b><span>IA destaca jogos com pressão ofensiva e tendência real.</span></div></div></div>
+            <div class="marketInsightCard"><div class="marketInsightTitle">Distribuição dos resultados</div><div class="marketDistribution"><div class="marketDistBar"><i style="width:${acimaPct}%"></i><i style="width:${meioPct}%"></i><i style="width:${baixoPct}%"></i></div><div class="marketDistLegend"><span><strong>${acimaPct}%</strong>Acima</span><span><strong>${meioPct}%</strong>Na linha</span><span><strong>${baixoPct}%</strong>Abaixo</span></div></div></div>
+            <div class="marketInsightCard"><div class="marketInsightTitle">Tendência do mercado</div><div class="marketTrendBars">${_trendBars(filtered)}</div><span class="marketTrendStatus">EM ALTA ↗</span></div>
+          </div>
+        </section>
+
+        <section class="marketListPanel">
+          <div class="marketListTop">
+            <div class="marketListTitle">⚽ Próximos Jogos (${filtered.length})</div>
+            <label class="marketListSort">Ordenar por:
+              <select id="marketSortSelect">
+                <option value="market" ${filterSortMode === "market" ? "selected" : ""}>Maior força do filtro</option>
+                <option value="time" ${filterSortMode === "time" ? "selected" : ""}>Horário</option>
+                <option value="corners" ${filterSortMode === "corners" ? "selected" : ""}>Projeção de cantos</option>
+              </select>
+            </label>
+          </div>
+          ${filtered.length ? `<div class="marketGameList">${rows}</div>` : `<div class="marketEmpty">Nenhum jogo encontrado para esse filtro nesta data.</div>`}
+        </section>
+      </div>`;
+
+    top1El.querySelectorAll("[data-market-filter]:not(.is-disabled)").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeMarketFilter = btn.getAttribute("data-market-filter") || "all";
+        renderMarketFilters();
+      });
+    });
+
+    const sort = top1El.querySelector("#marketSortSelect");
+    if (sort){
+      sort.addEventListener("change", () => {
+        filterSortMode = sort.value || "market";
+        renderMarketFilters();
+      });
+    }
+
+    top1El.querySelectorAll(".btnStats").forEach(btn => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+        openMatchStats({ matchId: btn.dataset.matchId, home: btn.dataset.home, away: btn.dataset.away });
+      });
+    });
+
+    if (countTop) countTop.textContent = String(filtered.length);
+    updateIaBoxFromTop([]);
+  };
+
+  window.renderMarketFilters = renderMarketFilters;
+})();
+/* =========================================================
+   PACOTE FINAL — Correções de interação sem quebrar o motor
+   ========================================================= */
+(function(){
+  function addMarketFilter(key, label, short){
+    try{
+      if (!Array.isArray(MARKET_FILTERS)) return;
+      if (!MARKET_FILTERS.some(item => item && item.key === key)){
+        MARKET_FILTERS.push({ key, label, short: short || label });
+      }
+    }catch(e){}
+  }
+
+  // Volta as análises/filtros de cartões para a área de mercados.
+  addMarketFilter("cards25", "+2.5 CARTÕES", "+2.5 Cartões");
+  addMarketFilter("cards35", "+3.5 CARTÕES", "+3.5 Cartões");
+  addMarketFilter("cardsTeam", "CARTÕES POR TIME", "Cartões por time");
+  addMarketFilter("noCard28", "SEM CARTÃO ATÉ 28'", "Sem cartão 28'");
+
+  function fixMatchCenterLabels(root){
+    const base = root || document;
+
+    base.querySelectorAll(".matchCenterMiniBtn,.matchCenterBtn,[data-open-match-center]").forEach(btn => {
+      if (!btn) return;
+      const txt = String(btn.textContent || "").trim();
+      if (!txt || /Aberto/i.test(txt) || txt === "✓" || txt === "▥"){
+        btn.textContent = "Match Center";
+      } else if (/Match\s*Center/i.test(txt)){
+        btn.textContent = "Match Center";
+      }
+    });
+
+    base.querySelectorAll(".marketGameRow.match-center-selected,.premiumGameRow.match-center-selected").forEach(row => {
+      const mc = row.querySelector(".matchCenterMiniBtn,.matchCenterBtn,[data-open-match-center]");
+      if (mc){
+        mc.textContent = "Match Center";
+        mc.classList.add("is-open");
+      }
+    });
+  }
+
+  function makeCardButtonsLive(root){
+    const base = root || document;
+    base.querySelectorAll(".marketChipPremium.is-disabled").forEach(btn => {
+      const label = String(btn.textContent || "").toLowerCase();
+      if (label.includes("+2.5") && label.includes("cart")){
+        btn.disabled = false;
+        btn.classList.remove("is-disabled");
+        btn.setAttribute("data-market-filter", "cards25");
+      }
+      if (label.includes("+3.5") && label.includes("cart")){
+        btn.disabled = false;
+        btn.classList.remove("is-disabled");
+        btn.setAttribute("data-market-filter", "cards35");
+      }
+      if (label.includes("cartões por time") || label.includes("cartoes por time")){
+        btn.disabled = false;
+        btn.classList.remove("is-disabled");
+        btn.setAttribute("data-market-filter", "cardsTeam");
+      }
+      if (label.includes("sem cartão") || label.includes("sem cartao")){
+        btn.disabled = false;
+        btn.classList.remove("is-disabled");
+        btn.setAttribute("data-market-filter", "noCard28");
+      }
+    });
+  }
+
+  function compactRightRailLabels(root){
+    const base = root || document;
+    base.querySelectorAll("#desktopMatchRail .railTeam strong").forEach(el => {
+      el.title = el.textContent || "";
+    });
+  }
+
+  function postRenderFixes(){
+    fixMatchCenterLabels(document);
+    makeCardButtonsLive(document);
+    compactRightRailLabels(document);
+  }
+
+  try{
+    const originalRenderMarketFilters = renderMarketFilters;
+    renderMarketFilters = function(){
+      const result = originalRenderMarketFilters.apply(this, arguments);
+      setTimeout(postRenderFixes, 0);
+      setTimeout(postRenderFixes, 80);
+      return result;
+    };
+    window.renderMarketFilters = renderMarketFilters;
+  }catch(e){}
+
+  document.addEventListener("click", function(ev){
+    const marketBtn = ev.target.closest(".marketChipPremium[data-market-filter]");
+    if (marketBtn){
+      // deixa o render original cuidar do filtro; só corrige visual depois.
+      setTimeout(postRenderFixes, 80);
+      setTimeout(postRenderFixes, 180);
+    }
+
+    const mcBtn = ev.target.closest("[data-open-match-center],.matchCenterMiniBtn,.matchCenterBtn");
+    if (mcBtn){
+      setTimeout(postRenderFixes, 50);
+      setTimeout(postRenderFixes, 160);
+      setTimeout(postRenderFixes, 420);
+    }
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(function(){
+      try{
+        if (typeof renderMarketFilters === "function" && currentView === "filters") renderMarketFilters();
+      }catch(e){}
+      postRenderFixes();
+    }, 220);
+  });
+
+  const observer = new MutationObserver(function(){
+    clearTimeout(window.__crPostRenderFixTimer);
+    window.__crPostRenderFixTimer = setTimeout(postRenderFixes, 60);
+  });
+
+  document.addEventListener("DOMContentLoaded", function(){
+    const target = document.getElementById("top1") || document.body;
+    if (target){
+      observer.observe(target, { childList:true, subtree:true, characterData:true });
+    }
+  });
+})();
