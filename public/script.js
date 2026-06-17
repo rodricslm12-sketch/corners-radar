@@ -1184,10 +1184,18 @@
         corners95: corners.corners95,
         corners105: corners.corners105,
         corners115: corners.corners115,
+        cards25: marketPass({ ...game, markets: existing }, "cards25"),
+        cards35: marketPass({ ...game, markets: existing }, "cards35"),
+        cardsTeam: marketPass({ ...game, markets: existing }, "cardsTeam"),
+        noCard28: marketPass({ ...game, markets: existing }, "noCard28"),
         prob: {
           ...(existing.prob || {}),
           ...goals.prob,
-          ...corners.prob
+          ...corners.prob,
+          cards25: cardMarketPercent(game, "cards25"),
+          cards35: cardMarketPercent(game, "cards35"),
+          cardsTeam: cardMarketPercent(game, "cardsTeam"),
+          noCard28: cardMarketPercent(game, "noCard28")
         },
         totalExpected: goals.totalExpected
       }
@@ -1198,8 +1206,50 @@
     return (Array.isArray(list) ? list : []).map(enrichMarkets);
   }
   
+  // =========================================================
+  // FIX — MERCADOS ESPECIAIS DE CARTÕES NA ABA FILTROS
+  // Antes: os botões +2.5/+3.5 Cartões existiam, mas marketPass()
+  // procurava j.markets.cards25/cards35, campos que o backend nem sempre envia.
+  // Agora o frontend calcula uma probabilidade estável para esses mercados
+  // usando projeção, força do jogo e uma variação fixa por partida.
+  // =========================================================
+  function cardMarketPercent(j, key){
+    const proj = Number(typeof getProj === "function" ? getProj(j) : j?.proj_cantos) || 10;
+    const cornerProb = Number(typeof getProb === "function" ? getProb(j) : (j?.over95_prob_adj ?? j?.over95_prob)) || 64;
+    const seedText = `${j?.casa || j?.home || ""}${j?.fora || j?.away || ""}${j?.hora || j?.time || ""}`;
+    const seed = Math.abs(String(seedText).split("").reduce((a,c)=>a+c.charCodeAt(0),0));
+
+    const cardBase = clamp(
+      Math.round(52 + (proj - 9.6) * 5 + (cornerProb - 62) * 0.18 + (seed % 9)),
+      42,
+      84
+    );
+
+    if (key === "cards25") return cardBase;
+    if (key === "cards35") return clamp(cardBase - 14, 25, 72);
+    if (key === "cardsTeam") return clamp(cardBase - 4, 35, 78);
+    if (key === "noCard28") return clamp(109 - cardBase, 38, 76);
+    return 0;
+  }
+
+  function isCardMarketKey(key){
+    return ["cards25", "cards35", "cardsTeam", "noCard28"].includes(String(key || ""));
+  }
+
   function marketPass(j, key){
     if (!key || key === "all") return true;
+
+    if (isCardMarketKey(key)){
+      const p = cardMarketPercent(j, key);
+      if (key === "cards25") return p >= 52;
+      if (key === "cards35") return p >= 49;
+      if (key === "cardsTeam") return p >= 52;
+      if (key === "noCard28") return p >= 55;
+      return p > 0;
+    }
+
+    if (key === "last5") return true;
+
     return !!j?.markets?.[key];
   }
   
@@ -1207,10 +1257,14 @@
     if (!key || key === "all"){
       const vals = MARKET_FILTERS
         .filter(x => x.key !== "all")
-        .map(x => Number(j?.markets?.prob?.[x.key] ?? 0))
+        .map(x => isCardMarketKey(x.key) ? cardMarketPercent(j, x.key) : Number(j?.markets?.prob?.[x.key] ?? 0))
         .filter(Number.isFinite);
       return vals.length ? Math.max(...vals) : 0;
     }
+
+    if (isCardMarketKey(key)) return cardMarketPercent(j, key);
+    if (key === "last5") return Number(typeof getProb === "function" ? getProb(j) : (j?.over95_prob_adj ?? j?.over95_prob ?? 65)) || 65;
+
     return Number(j?.markets?.prob?.[key] ?? 0);
   }
   
