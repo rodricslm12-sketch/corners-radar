@@ -5143,7 +5143,7 @@ display:none !important;
 
 /* =========================================================
  MATCH CENTER — BOTÃO + DASHBOARD EXPANSÍVEL
- Apenas acrescenta o novo painel; não altera o fluxo do Ver análise.
+ Apenas acrescenta o novo painel; mantém o Match Center.
  ========================================================= */
 .premiumUnlockedBox{
 gap:10px !important;
@@ -5156,6 +5156,18 @@ justify-content:flex-end;
 gap:10px;
 flex-wrap:wrap;
 }
+
+.premiumActionBtns .premiumEnterBtn,
+.premiumActionBtns .btnStats,
+.premiumUnlockedBox .premiumEnterBtn,
+.premiumUnlockedBox .btnStats,
+.premiumLockedBox .premiumEnterBtn,
+.premiumLockedBox .btnStats,
+.cleanActionBox .premiumEnterBtn,
+.cleanActionBox .btnStats{
+display:none !important;
+}
+
 
 .matchCenterBtn,
 .matchCenterMiniBtn{
@@ -8225,7 +8237,7 @@ color:#f4f7fb !important;
 
 /* =========================================================
  PATCH FINAL — TELA INICIAL DOS FILTROS IGUAL AO DASHBOARD
- Mantém Ver análise e Match Center funcionando
+ Mantém Match Center funcionando
  ========================================================= */
 html,body{overflow-y:hidden!important;}
 .content{padding:8px 18px 26px!important;}
@@ -8292,7 +8304,7 @@ html,body{overflow-y:hidden!important;}
 
 /* =========================================================
  PATCH FINAL — EXPANDIR DASHBOARD DE FILTROS NA TELA
- Mantém Ver análise e Match Center sem alterar função
+ Mantém Match Center sem alterar função
  ========================================================= */
 @media (min-width: 1024px){
 .content{
@@ -8357,7 +8369,7 @@ html,body{overflow-y:hidden!important;}
 
 /* =========================================================
  PATCH DEFINITIVO — EXPANDIR LARGURA REAL E PARAR CORTE À DIREITA
- Cola no final do CSS. Não altera Ver análise nem Match Center.
+ Cola no final do CSS. Não altera Match Center.
  ========================================================= */
 @media (min-width:1024px){
 html, body, .dashboard{
@@ -14075,7 +14087,7 @@ body:not(.locked) .content{
   line-height:1.05 !important;
 }
 
-/* última coluna — Ver análise + Match Center sempre dentro do card */
+/* última coluna — Match Center sempre dentro do card */
 .premiumActionBtns,
 .premiumUnlockedBox,
 .premiumLockedBox,
@@ -14196,7 +14208,7 @@ body:not(.locked) .content{
 }
 /* =========================================================
    CORREÇÃO DEFINITIVA — BOTÕES DO CARD DE JOGOS
-   Mantém Ver análise + Match Center visíveis e remove apenas
+   Mantém Match Center visível e remove apenas
    o texto/porcentagem solta da última coluna.
    Cole no FINAL do CSS.
    ========================================================= */
@@ -14407,7 +14419,7 @@ button.matchCenterMiniBtn{
   }
 }
 
-/* ===== BOTÕES VER ANÁLISE + MATCH CENTER ===== */
+/* ===== BOTÃO MATCH CENTER NOS CARDS ===== */
 
 .game-actions,
 .row-actions,
@@ -14427,14 +14439,10 @@ button.matchCenterMiniBtn{
     flex:0 0 auto !important;
 }
 
-/* Ver análise */
+/* Botão Análise removido dos cards */
 .btn-analysis,
 .btn-analise{
-    min-width:95px !important;
-    height:34px !important;
-    padding:0 12px !important;
-    font-size:12px !important;
-    white-space:nowrap !important;
+    display:none !important;
 }
 
 /* Match Center */
@@ -14453,10 +14461,10 @@ button.matchCenterMiniBtn{
 }
 
 /* =========================================================
-   PATCH FINAL — ÁREA DOS JOGOS COM ANÁLISE + MATCH CENTER
+   AJUSTE FINAL — ÁREA DOS JOGOS COM MATCH CENTER
    - Mantém a largura do layout
    - Diminui a altura dos cards
-   - Deixa os dois botões lado a lado
+   - Deixa apenas o Match Center visível
    - Não remove dados, filtros nem Match Center
    ========================================================= */
 
@@ -14781,7 +14789,7 @@ button.matchCenterMiniBtn{
 
 
 /* =========================================================
-   AJUSTE DIRETO FINAL — BOTÕES ANÁLISE + MATCH CENTER
+   AJUSTE DIRETO FINAL — BOTÃO MATCH CENTER
    Arquivo já entregue completo com os botões menores.
    ========================================================= */
 .premiumGameRow,
@@ -15975,10 +15983,7 @@ body.dashboard{
 }
 
 .marketGameActions .btnStats{
-  width:auto !important;
-  background:linear-gradient(180deg, rgba(30,215,96,.36), rgba(30,215,96,.18)) !important;
-  color:#ffffff !important;
-  border:1px solid rgba(30,215,96,.55) !important;
+  display:none !important;
 }
 
 .marketGameActions .matchCenterMiniBtn{
@@ -16079,7 +16084,6 @@ body.dashboard{
   justify-content:flex-end !important;
 }
 
-.marketGameActions .btnStats,
 .marketGameActions .matchCenterMiniBtn{
   height:24px !important;
   min-height:24px !important;
@@ -16091,9 +16095,7 @@ body.dashboard{
 }
 
 .marketGameActions .btnStats{
-  background:rgba(30,215,96,.14) !important;
-  border:1px solid rgba(30,215,96,.32) !important;
-  color:#dfffea !important;
+  display:none !important;
 }
 
 .marketGameActions .matchCenterMiniBtn{
@@ -16515,7 +16517,18 @@ body.dashboard{
   display:none !important;
 }
 
-/* Lista de jogos: mantém fonte atual e melhora botões */
+/* Lista de jogos: mantém fonte atual e melhora o Match Center */
+.marketGameActions .btnStats,
+.marketGameActions .premiumEnterBtn,
+.premiumGameRow .premiumEnterBtn,
+.cleanDashRow .premiumEnterBtn,
+.gameRow .premiumEnterBtn,
+.matchRow .premiumEnterBtn,
+.premiumActionBtns .premiumEnterBtn{
+  display:none !important;
+}
+
+
 .marketGameActions{
   display:flex !important;
   gap:6px !important;
@@ -16523,7 +16536,6 @@ body.dashboard{
   justify-content:flex-end !important;
 }
 
-.marketGameActions .btnStats,
 .marketGameActions .matchCenterMiniBtn{
   height:24px !important;
   min-height:24px !important;
@@ -16539,9 +16551,7 @@ body.dashboard{
 }
 
 .marketGameActions .btnStats{
-  background:rgba(30,215,96,.14) !important;
-  border:1px solid rgba(30,215,96,.32) !important;
-  color:#eafff2 !important;
+  display:none !important;
 }
 
 .marketGameActions .matchCenterMiniBtn,
@@ -18873,7 +18883,6 @@ body{
     justify-content:center !important;
   }
 
-  .marketGameActions .btnStats,
   .marketGameActions .matchCenterMiniBtn{
     width:100% !important;
     min-width:0 !important;
@@ -18968,7 +18977,6 @@ body{
     font-size:13px !important;
   }
 
-  .marketGameActions .btnStats,
   .marketGameActions .matchCenterMiniBtn{
     font-size:8px !important;
     height:21px !important;
@@ -18989,37 +18997,4 @@ body{
     min-width:0 !important;
     max-width:100% !important;
   }
-}
-
-/* ETAPA 1 — REMOVER BOTÃO ANÁLISE DOS JOGOS */
-
-/* Esconde somente o botão Análise */
-.marketGameActions .btnStats,
-.premiumActionBtns .btnStats,
-.gameRow .btnStats,
-.matchRow .btnStats,
-.filteredGameRow .btnStats,
-.premiumGameRow .btnStats,
-.gameMarketRow .btnStats {
-  display: none !important;
-}
-
-/* Deixa só o Match Center bonito e centralizado */
-.marketGameActions,
-.premiumActionBtns,
-.gameRow .premiumActionBtns,
-.matchRow .premiumActionBtns {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* Botão Match Center ocupa o espaço sozinho */
-.matchCenterMiniBtn,
-.matchCenterBtn {
-  width: 92px !important;
-  height: 25px !important;
-  min-height: 25px !important;
-  font-size: 8.5px !important;
-  border-radius: 8px !important;
 }
