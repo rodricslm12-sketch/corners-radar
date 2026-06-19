@@ -259,15 +259,45 @@ body.dashboard{
 }
 
 #date{
-  height:38px;
-  min-width:134px;
-  padding:0 10px;
-  border-radius:12px;
+  height:40px;
+  min-width:140px;
+  padding:0 14px;
+  border-radius:14px;
   background:#0d1219;
   color:#eef4fb;
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  border:1px solid rgba(30,215,96,.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.03),
+    0 0 0 rgba(30,215,96,0);
   font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  transition:.25s ease;
+}
+
+#date:hover{
+  border-color:#1ed760;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 0 18px rgba(30,215,96,.15);
+}
+
+#date:focus{
+  border-color:#22e66d;
+  box-shadow:
+    0 0 0 2px rgba(30,215,96,.16),
+    0 0 20px rgba(30,215,96,.16);
+}
+
+#date::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  opacity:.95;
+  filter:
+    invert(72%)
+    sepia(90%)
+    saturate(500%)
+    hue-rotate(90deg)
+    brightness(1.15);
 }
 
 .btnOutline, #btn{
@@ -996,33 +1026,25 @@ body.dashboard{
 }
 
 .bigcard.bestMatch{
-  animation:glowPulseSoft 3.6s ease-in-out infinite;
-  will-change:box-shadow, transform;
+  animation:none !important;
+  will-change:auto;
   border:1px solid rgba(0,255,140,.18);
   box-shadow:0 0 0 1px rgba(0,255,140,.08) inset, 0 0 12px rgba(0,255,140,.08), 0 0 28px rgba(0,255,140,.05);
 }
 
 .bigcard.bestMatch::before{
-  animation:glowEdgePulse 3.6s ease-in-out infinite;
+  animation:none !important;
   display:none !important;
 }
 
-.bigcard.bestMatch .pillOver{
-  animation:pillBreath 3.6s ease-in-out infinite;
-}
-
-.bigcard.bestMatch .vs{
-  animation:vsPulse 3.6s ease-in-out infinite;
-  font-size:10.5px !important;
-  padding:4px 8px !important;
-}
-
+.bigcard.bestMatch .pillOver,
+.bigcard.bestMatch .vs,
 .bigcard.bestMatch .teamsText{
-  animation:textGlow 3.6s ease-in-out infinite;
+  animation:none !important;
+  transform:none !important;
 }
 
 .bigcard.bestMatch:hover{
-  animation-duration:2.4s;
   border-color:rgba(0,255,140,.28);
   box-shadow:0 0 0 1px rgba(0,255,140,.12) inset, 0 0 18px rgba(0,255,140,.12), 0 0 36px rgba(0,255,140,.08);
 }
@@ -12536,7 +12558,9 @@ body.dashboard{
 }
 
 #desktopMatchRail.rail-selected-pulse{
-  animation:railSelectedPulse .85s ease-out;
+  animation:none !important;
+  transform:none !important;
+  filter:none !important;
 }
 
 @keyframes railSelectedPulse{
@@ -18997,4 +19021,623 @@ body{
     min-width:0 !important;
     max-width:100% !important;
   }
+}
+
+/* =========================================================
+   CALENDÁRIO PREMIUM — CORNERS RADAR
+   - Substitui o calendário nativo por um calendário próprio
+   - Mantém a identidade visual escura, verde e premium do site
+   ========================================================= */
+
+.datePickerWrap{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  height:40px;
+  min-width:168px;
+  isolation:isolate;
+}
+
+.datePickerWrap #date{
+  width:168px !important;
+  min-width:168px !important;
+  height:40px !important;
+  padding:0 42px 0 14px !important;
+  border-radius:14px !important;
+  background:linear-gradient(180deg, #0f1722 0%, #0a1018 100%) !important;
+  color:#eef4fb !important;
+  border:1px solid rgba(30,215,96,.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 0 0 1px rgba(30,215,96,.025),
+    0 8px 18px rgba(0,0,0,.18) !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+  cursor:pointer !important;
+  letter-spacing:.01em;
+  transition:border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .2s ease !important;
+}
+
+.datePickerWrap:hover #date,
+.datePickerWrap.is-open #date{
+  border-color:rgba(34,230,109,.72) !important;
+  background:linear-gradient(180deg, #111c28 0%, #0b131d 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 0 0 2px rgba(30,215,96,.11),
+    0 0 22px rgba(30,215,96,.16),
+    0 8px 22px rgba(0,0,0,.26) !important;
+}
+
+.datePickerWrap #date::-webkit-calendar-picker-indicator{
+  display:none !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+.datePickerIcon{
+  position:absolute;
+  right:7px;
+  top:50%;
+  transform:translateY(-50%);
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  color:#041008;
+  background:linear-gradient(180deg, #6ff09a 0%, #1ed760 100%);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:
+    0 0 16px rgba(30,215,96,.22),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+  z-index:2;
+  transition:transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+
+.datePickerIcon:hover{
+  transform:translateY(-50%) scale(1.04);
+  filter:brightness(1.04);
+  box-shadow:
+    0 0 22px rgba(30,215,96,.32),
+    inset 0 1px 0 rgba(255,255,255,.26);
+}
+
+.customDatePicker{
+  position:absolute;
+  top:calc(100% + 10px);
+  right:0;
+  width:286px;
+  padding:12px;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30,215,96,.10), transparent 42%),
+    linear-gradient(180deg, rgba(14,22,32,.98), rgba(6,12,18,.98));
+  border:1px solid rgba(30,215,96,.22);
+  box-shadow:
+    0 26px 70px rgba(0,0,0,.58),
+    0 0 0 1px rgba(255,255,255,.035),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  z-index:5000;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateY(-6px) scale(.985);
+  transform-origin:top right;
+  transition:opacity .18s ease, transform .18s ease, visibility .18s ease;
+}
+
+.datePickerWrap.is-open .customDatePicker{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:translateY(0) scale(1);
+}
+
+.customDateHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.customDateTitle{
+  flex:1;
+  text-align:center;
+  color:#ecfff3;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+}
+
+.customDateNav{
+  width:32px;
+  height:32px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  color:#bfffd8;
+  background:rgba(30,215,96,.08);
+  border:1px solid rgba(30,215,96,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.18s ease;
+}
+
+.customDateNav:hover{
+  color:#041008;
+  background:linear-gradient(180deg, #72f09b, #1ed760);
+  border-color:rgba(30,215,96,.45);
+  box-shadow:0 0 18px rgba(30,215,96,.20), inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.customDateWeek,
+.customDateGrid{
+  display:grid;
+  grid-template-columns:repeat(7, 1fr);
+  gap:6px;
+}
+
+.customDateWeek span{
+  height:24px;
+  display:grid;
+  place-items:center;
+  color:#7e8d9e;
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+}
+
+.customDateDay{
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  color:#dce7f1;
+  background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.045);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.customDateDay:hover{
+  transform:translateY(-1px);
+  color:#ecfff3;
+  background:rgba(30,215,96,.11);
+  border-color:rgba(30,215,96,.28);
+  box-shadow:0 0 16px rgba(30,215,96,.12);
+}
+
+.customDateDay.is-selected{
+  color:#041008;
+  background:linear-gradient(180deg, #8ef4aa, #1ed760);
+  border-color:rgba(30,215,96,.78);
+  box-shadow:0 0 20px rgba(30,215,96,.25), inset 0 1px 0 rgba(255,255,255,.28);
+}
+
+.customDateDay.is-today:not(.is-selected){
+  color:#8ef4aa;
+  border-color:rgba(30,215,96,.33);
+  background:rgba(30,215,96,.07);
+}
+
+.customDateDay.is-muted{
+  opacity:.36;
+  color:#6f7b89;
+}
+
+.customDateFooter{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+}
+
+.customDateFooter button{
+  flex:1;
+  height:32px;
+  border-radius:11px;
+  color:#dfffee;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.07);
+  font-size:11px;
+  font-weight:900;
+  transition:.18s ease;
+}
+
+.customDateFooter button:hover{
+  color:#041008;
+  background:linear-gradient(180deg, #8ef4aa, #1ed760);
+  border-color:rgba(30,215,96,.55);
+}
+
+@media (max-width: 900px){
+  .datePickerWrap{
+    min-width:150px;
+  }
+
+  .datePickerWrap #date{
+    width:150px !important;
+    min-width:150px !important;
+  }
+
+  .customDatePicker{
+    right:auto;
+    left:0;
+    width:270px;
+  }
+}
+
+/* =========================================================
+   MATCH CENTER — ESTADO VAZIO PREMIUM
+   Mexe somente na coluna direita quando nenhum jogo foi selecionado
+   ========================================================= */
+.dashboardRightRail .railEmptyHero{
+  position:relative;
+  overflow:hidden;
+  min-height:258px;
+  padding:18px 16px 20px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(30,215,96,.16), transparent 24%),
+    radial-gradient(circle at 50% 62%, rgba(23,198,83,.08), transparent 44%),
+    linear-gradient(180deg, rgba(8,14,20,.98), rgba(4,8,12,.98));
+  border-color:rgba(30,215,96,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 22px 46px rgba(0,0,0,.28);
+}
+
+.dashboardRightRail .railEmptyHero::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(30,215,96,.12), transparent 28%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 28px);
+  opacity:.45;
+}
+
+.dashboardRightRail .railEmptyHero .railTitle,
+.dashboardRightRail .railEmptyHero .railEmptyRadar,
+.dashboardRightRail .railEmptyHero .railEmptyText{
+  position:relative;
+  z-index:2;
+}
+
+.railEmptyRadar{
+  width:136px;
+  height:136px;
+  margin:18px auto 12px;
+  border-radius:50%;
+  position:relative;
+  display:grid;
+  place-items:center;
+  background:radial-gradient(circle, rgba(30,215,96,.13), rgba(30,215,96,.04) 48%, rgba(30,215,96,.01) 70%);
+  border:1px solid rgba(30,215,96,.22);
+  box-shadow:0 0 0 8px rgba(30,215,96,.025), 0 0 26px rgba(30,215,96,.14), inset 0 0 28px rgba(30,215,96,.08);
+  overflow:hidden;
+}
+
+.railEmptyRadar::before,
+.railEmptyRadar::after{
+  content:"";
+  position:absolute;
+  background:rgba(30,215,96,.22);
+  z-index:1;
+}
+
+.railEmptyRadar::before{ width:1px; height:100%; left:50%; top:0; }
+.railEmptyRadar::after{ height:1px; width:100%; left:0; top:50%; }
+
+.radarRing{
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(30,215,96,.42);
+  inset:16px;
+  z-index:1;
+}
+
+.radarRing.ring2{ inset:34px; opacity:.78; }
+.radarRing.ring3{ inset:52px; opacity:.58; }
+
+.radarSweep{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(30,215,96,.58), rgba(30,215,96,.18) 36deg, transparent 78deg, transparent 360deg);
+  animation:none !important;
+  transform:none !important;
+  opacity:.42;
+}
+
+.radarBall{
+  position:relative;
+  z-index:3;
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  font-size:25px;
+  background:linear-gradient(180deg, rgba(30,215,96,.28), rgba(30,215,96,.08));
+  box-shadow:0 0 22px rgba(30,215,96,.26), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.railEmptyText{
+  text-align:center;
+  display:grid;
+  gap:8px;
+}
+
+.railEmptyText strong{
+  color:#23f06e;
+  font-size:20px;
+  line-height:1.1;
+  letter-spacing:-.02em;
+}
+
+.railEmptyText span{
+  max-width:280px;
+  margin:0 auto;
+  color:#c7d0db;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.railEmptyStatsCard h3,
+.railEmptyEventsCard h3{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.railEmptyStatsCard h3::before{
+  content:"▥";
+  color:#1ed760;
+  font-size:18px;
+}
+
+.railEmptyEventsCard h3::before{
+  content:"ϟ";
+  color:#1ed760;
+  font-size:20px;
+}
+
+.railEmptyStatsGrid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+  margin-top:12px;
+}
+
+.railEmptyStatBox{
+  min-height:92px;
+  padding:12px;
+  border-radius:14px;
+  display:grid;
+  grid-template-columns:34px 1fr;
+  grid-template-areas:
+    "icon label"
+    "icon value"
+    "icon small";
+  align-items:center;
+  column-gap:10px;
+  background:linear-gradient(180deg, rgba(15,22,31,.96), rgba(9,15,22,.98));
+  border:1px solid rgba(255,255,255,.065);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.railEmptyStatBox i{
+  grid-area:icon;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  font-style:normal;
+  color:#1ed760;
+  background:rgba(30,215,96,.08);
+  border:1px solid rgba(30,215,96,.13);
+}
+
+.railEmptyStatBox span{
+  grid-area:label;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  color:#aeb8c5;
+}
+
+.railEmptyStatBox b{
+  grid-area:value;
+  font-size:18px;
+  color:#f5f8fb;
+  letter-spacing:.06em;
+}
+
+.railEmptyStatBox small{
+  grid-area:small;
+  color:#7f8ea3;
+  font-size:10px;
+  font-weight:700;
+}
+
+.railEmptyHint{
+  margin-top:12px;
+  padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,.05);
+  color:#98a5b4;
+  font-size:11px;
+  line-height:1.35;
+}
+
+.railEmptyEventIcons{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  gap:8px;
+  margin:12px 0 12px;
+}
+
+.railEmptyEventIcons span{
+  min-width:0;
+  display:grid;
+  justify-items:center;
+  gap:4px;
+  color:#8c98a6;
+  font-size:9px;
+  text-align:center;
+}
+
+.railEmptyEventIcons i{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  font-style:normal;
+  color:#8090a1;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.06);
+}
+
+.railEmptyEventIcons b{
+  font-size:9px;
+  font-weight:800;
+  color:#9aa7b6;
+  white-space:nowrap;
+}
+
+.railEmptyEventIcons small{
+  color:#6f7b89;
+  font-size:10px;
+}
+
+.railEmptyTimeline{
+  height:22px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:relative;
+  margin:4px 2px 14px;
+}
+
+.railEmptyTimeline::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:50%;
+  height:3px;
+  border-radius:999px;
+  background:rgba(95,110,126,.24);
+}
+
+.railEmptyTimeline i{
+  position:relative;
+  z-index:2;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#273342;
+  border:1px solid rgba(255,255,255,.09);
+}
+
+.railEmptyReadBox{
+  display:grid;
+  grid-template-columns:48px 1fr;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:14px;
+  border:1px dashed rgba(30,215,96,.18);
+  background:rgba(8,14,20,.65);
+}
+
+.railEmptyReadBox b{
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border-radius:15px;
+  font-size:25px;
+  background:rgba(30,215,96,.08);
+  border:1px solid rgba(30,215,96,.12);
+}
+
+.railEmptyReadBox p{
+  margin:0;
+  color:#c1cad6;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.railFullBtnDisabled,
+.railFullBtn:disabled{
+  min-height:58px;
+  display:grid !important;
+  place-items:center;
+  gap:3px;
+  cursor:not-allowed !important;
+  opacity:.72;
+  color:#7f8ea3 !important;
+  background:linear-gradient(180deg, rgba(17,25,35,.98), rgba(11,17,25,.98)) !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.railFullBtnDisabled span,
+.railFullBtn:disabled span{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+
+.railFullBtnDisabled small,
+.railFullBtn:disabled small{
+  font-size:10px;
+  color:#657180;
+  font-weight:700;
+}
+
+@keyframes railRadarSpin{
+  to{ transform:rotate(360deg); }
+}
+
+@media (max-width:1500px){
+  .railEmptyRadar{ width:116px; height:116px; margin-top:14px; }
+  .railEmptyText strong{ font-size:18px; }
+  .railEmptyStatsGrid{ gap:8px; }
+  .railEmptyStatBox{ min-height:82px; padding:10px; grid-template-columns:30px 1fr; }
+  .railEmptyStatBox i{ width:30px; height:30px; }
+  .railEmptyEventIcons{ gap:5px; }
+}
+
+
+/* =========================================================
+   FIX FINAL — MATCH CENTER ESTÁTICO
+   Remove giro/pulso do estado vazio do painel direito.
+   ========================================================= */
+.radarSweep,
+.railEmptyRadar,
+.railEmptyRadar::before,
+.railEmptyRadar::after,
+.railEmptyHero,
+.railEmptyHero::before,
+#desktopMatchRail.rail-selected-pulse{
+  animation:none !important;
+  transform:none !important;
+}
+
+.radarSweep{
+  opacity:.42 !important;
 }

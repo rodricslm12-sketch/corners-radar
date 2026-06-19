@@ -145,6 +145,211 @@
   
   // ---------------- DOM ----------------
   const dateInput = document.getElementById("date");
+
+// Calendário premium personalizado — Corners Radar
+(function setupCustomDatePicker(){
+  if (!dateInput) return;
+
+  const wrap = document.getElementById("datePickerWrap");
+  const picker = document.getElementById("customDatePicker");
+  const icon = document.getElementById("datePickerIcon");
+
+  if (!wrap || !picker) return;
+
+  const MONTHS = [
+    "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+    "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+  ];
+
+  const WEEK = ["D", "S", "T", "Q", "Q", "S", "S"];
+  let closeTimer = null;
+
+  function pad(n){
+    return String(n).padStart(2, "0");
+  }
+
+  function toYMD(date){
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  function parseYMD(value){
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+
+  function sameDay(a, b){
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  function clearCloseTimer(){
+    if (closeTimer){
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+  }
+
+  let viewDate = parseYMD(dateInput.value || toYMD(new Date()));
+
+  function renderCalendar(){
+    const selected = parseYMD(dateInput.value || toYMD(new Date()));
+    const today = new Date();
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    const first = new Date(year, month, 1, 12, 0, 0);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+
+    let html = `
+      <div class="customDateHeader">
+        <button class="customDateNav" type="button" data-cal-prev aria-label="Mês anterior">‹</button>
+        <div class="customDateTitle">${MONTHS[month]} ${year}</div>
+        <button class="customDateNav" type="button" data-cal-next aria-label="Próximo mês">›</button>
+      </div>
+
+      <div class="customDateWeek">
+        ${WEEK.map(d => `<span>${d}</span>`).join("")}
+      </div>
+
+      <div class="customDateGrid">
+    `;
+
+    for (let i = 0; i < 42; i++){
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+
+      const classes = ["customDateDay"];
+      if (day.getMonth() !== month) classes.push("is-muted");
+      if (sameDay(day, today)) classes.push("is-today");
+      if (sameDay(day, selected)) classes.push("is-selected");
+
+      html += `<button class="${classes.join(" ")}" type="button" data-cal-day="${toYMD(day)}">${day.getDate()}</button>`;
+    }
+
+    html += `
+      </div>
+      <div class="customDateFooter">
+        <button type="button" data-cal-today>HOJE</button>
+        <button type="button" data-cal-close>FECHAR</button>
+      </div>
+    `;
+
+    picker.innerHTML = html;
+    picker.setAttribute("aria-hidden", "false");
+  }
+
+  function openCalendar(syncWithSelectedDate = false){
+    clearCloseTimer();
+
+    const alreadyOpen = wrap.classList.contains("is-open");
+
+    if (syncWithSelectedDate || !alreadyOpen){
+      viewDate = parseYMD(dateInput.value || toYMD(new Date()));
+    }
+
+    renderCalendar();
+    wrap.classList.add("is-open");
+    picker.setAttribute("aria-hidden", "false");
+  }
+
+  function closeCalendar(){
+    clearCloseTimer();
+    wrap.classList.remove("is-open");
+    picker.setAttribute("aria-hidden", "true");
+  }
+
+  function scheduleCloseCalendar(){
+    clearCloseTimer();
+    closeTimer = setTimeout(() => {
+      closeCalendar();
+    }, 180);
+  }
+
+  function toggleCalendar(){
+    if (wrap.classList.contains("is-open")) closeCalendar();
+    else openCalendar(true);
+  }
+
+  function chooseDate(ymd){
+    dateInput.value = ymd;
+    dateInput.dispatchEvent(new Event("input", { bubbles:true }));
+    dateInput.dispatchEvent(new Event("change", { bubbles:true }));
+    closeCalendar();
+  }
+
+  wrap.addEventListener("mouseenter", () => {
+    openCalendar(false);
+  });
+
+  wrap.addEventListener("mouseleave", () => {
+    scheduleCloseCalendar();
+  });
+
+  picker.addEventListener("mouseenter", clearCloseTimer);
+
+  dateInput.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openCalendar(true);
+  });
+
+  if (icon){
+    icon.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleCalendar();
+    });
+  }
+
+  picker.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const prev = event.target.closest("[data-cal-prev]");
+    const next = event.target.closest("[data-cal-next]");
+    const day = event.target.closest("[data-cal-day]");
+    const todayBtn = event.target.closest("[data-cal-today]");
+    const closeBtn = event.target.closest("[data-cal-close]");
+
+    if (prev){
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
+      renderCalendar();
+      return;
+    }
+
+    if (next){
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
+      renderCalendar();
+      return;
+    }
+
+    if (day){
+      chooseDate(day.dataset.calDay);
+      return;
+    }
+
+    if (todayBtn){
+      chooseDate(toYMD(new Date()));
+      return;
+    }
+
+    if (closeBtn){
+      closeCalendar();
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!wrap.contains(event.target)) closeCalendar();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeCalendar();
+  });
+})();
   const btn = document.getElementById("btn");
   const top1El = document.getElementById("top1");
   const countTop = document.getElementById("countTop");
@@ -4624,30 +4829,53 @@
       const rail = document.getElementById("desktopMatchRail");
       if (!rail) return;
       rail.innerHTML = `
-        <section class="railCard matchRailCard">
-          <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-          <div class="railScoreBlock">
-            <div class="railTeam"><div class="railBadge">MA</div><strong>Mandante</strong></div>
-            <div class="railScore"><strong>0 - 0</strong><span>Escolha um jogo</span></div>
-            <div class="railTeam"><div class="railBadge away">⚽</div><strong>Visitante</strong></div>
-          </div>
-          <div class="railProgress"><i style="width:0%"></i></div>
-        </section>
-  
-        <section class="railCard">
-          <h3>ESTATÍSTICAS DO FILTRO</h3>
-          <div class="railStat"><span>Força do filtro</span><b>—</b></div>
-          <div class="railProgress"><i style="width:0%"></i></div>
-          <div class="railStat"><span>Proj. escanteios</span><b>—</b></div>
-        </section>
-  
-        <section class="railCard">
-          <h3>EVENTOS / LEITURA</h3>
-          <div class="railEvents"><p>Escolha um jogo para abrir a leitura do Match Center.</p></div>
-        </section>
-  
-        <button class="railFullBtn" type="button">VER PARTIDA COMPLETA →</button>
-      `;
+          <section class="railCard matchRailCard railEmptyHero">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+            <div class="railEmptyRadar" aria-hidden="true">
+              <span class="radarRing ring1"></span>
+              <span class="radarRing ring2"></span>
+              <span class="radarRing ring3"></span>
+              <span class="radarSweep"></span>
+              <span class="radarBall">⚽</span>
+            </div>
+            <div class="railEmptyText">
+              <strong>Aguardando partida</strong>
+              <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
+            </div>
+          </section>
+
+          <section class="railCard railEmptyStatsCard">
+            <h3>ESTATÍSTICAS DO FILTRO</h3>
+            <div class="railEmptyStatsGrid">
+              <div class="railEmptyStatBox"><i>🛡</i><span>Força do filtro</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Aguardando</small></div>
+            </div>
+            <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
+          </section>
+
+          <section class="railCard railEmptyEventsCard">
+            <h3>EVENTOS / LEITURA</h3>
+            <div class="railEmptyEventIcons">
+              <span><i>◎</i><b>Pressão</b><small>--</small></span>
+              <span><i>◔</i><b>Posse</b><small>--</small></span>
+              <span><i>▣</i><b>Cartões</b><small>--</small></span>
+              <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+              <span><i>⚽</i><b>Gols</b><small>--</small></span>
+            </div>
+            <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="railEmptyReadBox">
+              <b>📋</b>
+              <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+            </div>
+          </section>
+
+          <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
+            <span>▶ INICIAR MATCH CENTER</span>
+            <small>Selecione um jogo para continuar</small>
+          </button>
+        `;
     }
   
     function clearRowMatchCenterSelection({ resetRail = true } = {}){
