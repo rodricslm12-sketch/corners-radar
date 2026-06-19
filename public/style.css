@@ -18990,3 +18990,36 @@ body{
     max-width:100% !important;
   }
 }
+
+/* ETAPA 1 — REMOVER BOTÃO ANÁLISE DOS JOGOS */
+
+/* Esconde somente o botão Análise */
+.marketGameActions .btnStats,
+.premiumActionBtns .btnStats,
+.gameRow .btnStats,
+.matchRow .btnStats,
+.filteredGameRow .btnStats,
+.premiumGameRow .btnStats,
+.gameMarketRow .btnStats {
+  display: none !important;
+}
+
+/* Deixa só o Match Center bonito e centralizado */
+.marketGameActions,
+.premiumActionBtns,
+.gameRow .premiumActionBtns,
+.matchRow .premiumActionBtns {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Botão Match Center ocupa o espaço sozinho */
+.matchCenterMiniBtn,
+.matchCenterBtn {
+  width: 92px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  font-size: 8.5px !important;
+  border-radius: 8px !important;
+}
