@@ -18686,3 +18686,99 @@ body{
     padding: 0 !important;
   }
 }
+
+/* ETAPA 1 - CORREÇÃO NOTEBOOK: JOGOS SEM ROLAGEM HORIZONTAL */
+
+@media (max-width: 1500px) {
+  .mainLayout,
+  .dashboardContent,
+  .contentGrid {
+    grid-template-columns: 170px minmax(0, 1fr) 285px !important;
+  }
+
+  .mainContent,
+  .centerContent,
+  .gamesPanel,
+  .gamesList {
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .gameRow,
+  .matchRow,
+  .gameCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+
+    display: grid !important;
+    grid-template-columns: 82px minmax(105px, 1fr) 120px 105px 120px 92px !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  .gameRow > *,
+  .matchRow > *,
+  .gameCard > * {
+    min-width: 0 !important;
+  }
+
+  .gameTeams,
+  .teamsBox,
+  .leagueBox,
+  .gameLeague,
+  .forceBox,
+  .statsBox {
+    overflow: hidden !important;
+  }
+
+  .teamName,
+  .leagueName,
+  .marketName {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .gameTime,
+  .matchTime {
+    font-size: 24px !important;
+  }
+
+  .gameDate,
+  .matchDate {
+    font-size: 12px !important;
+  }
+
+  .percentCircle,
+  .circleScore {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    font-size: 13px !important;
+  }
+
+  .barsBox,
+  .chartMini {
+    transform: scale(0.85);
+    transform-origin: center;
+  }
+
+  .matchCenterBtn,
+  .btnMatchCenter {
+    width: 86px !important;
+    max-width: 86px !important;
+    height: 28px !important;
+    font-size: 10px !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .gameAction,
+  .matchAction {
+    width: 92px !important;
+    min-width: 92px !important;
+    overflow: hidden !important;
+  }
+}
