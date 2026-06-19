@@ -6422,3 +6422,23 @@
     }
   };
 })();
+
+/* =========================================================
+   TOPBAR CLEANUP — evita duplicação visual do Premium/Sair
+   O menu premium oficial agora fica no HTML (.accountMenu).
+   ========================================================= */
+(function(){
+  function cleanupTopbarDuplicates(){
+    const authBar = document.getElementById("premiumAuthBar");
+    if (authBar) authBar.remove();
+
+    document.querySelectorAll(".premiumAuthBar, .premiumLoginBtn, .premiumUserPill, .premiumLogoutBtn").forEach(el => {
+      const insideAccount = el.closest(".accountMenu");
+      if (!insideAccount) el.remove();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", cleanupTopbarDuplicates);
+  setTimeout(cleanupTopbarDuplicates, 250);
+  setTimeout(cleanupTopbarDuplicates, 1000);
+})();

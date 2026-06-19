@@ -106,10 +106,31 @@
           </nav>
         </div>
 
-        <div class="top-right">
+        <div class="top-right top-actions">
           <input id="date" type="date" />
           <button id="btn" class="btnOutline">Atualizar</button>
-          <button id="logoutBtn" class="btnLogout" type="button">Sair</button>
+
+          <div class="accountMenu" tabindex="0">
+            <button class="accountButton" type="button" aria-label="Menu da conta">
+              <span class="accountCrown">👑</span>
+              <strong>Premium</strong>
+              <i>▾</i>
+            </button>
+
+            <div class="accountDropdown">
+              <div class="accountDropHeader">
+                <span>👤</span>
+                <div>
+                  <strong>Usuário</strong>
+                  <small>Premium ativo</small>
+                </div>
+              </div>
+
+              <button id="logoutBtn" class="accountDropBtn btnLogout" type="button">
+                🚪 Sair
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>

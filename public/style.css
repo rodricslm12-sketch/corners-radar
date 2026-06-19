@@ -17370,3 +17370,1319 @@ body.dashboard{
   }
   .railMomentumMiniLegend{font-size:8px !important;gap:8px !important;}
 }
+/* =========================================================
+   ETAPA 1 — RESPONSIVO ESTILO BET365
+   Arquivo atualizado pelo ChatGPT
+   Objetivo: funcionar bem em monitor 27", MacBook e notebook menor
+   Sem alterar a identidade de cores principal
+   ========================================================= */
+
+:root{
+  --sidebar-w: clamp(150px, 9.2vw, 180px);
+  --topbar-h: 64px;
+  --right-rail-w: clamp(280px, 21vw, 340px);
+}
+
+html, body{
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+}
+
+body.dashboard{
+  font-size: 13px;
+}
+
+.main{
+  margin-left: var(--sidebar-w) !important;
+  width: calc(100% - var(--sidebar-w)) !important;
+  min-width: 0 !important;
+}
+
+.sidebar{
+  width: var(--sidebar-w) !important;
+  align-items: stretch !important;
+  padding: 18px 10px 14px !important;
+}
+
+.brandBlock{
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  padding: 0 2px !important;
+}
+
+.brandText strong{
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+.brandText span{
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.sidebar-top{
+  align-items: stretch !important;
+  margin-bottom: 24px !important;
+}
+
+.sidebar-nav{
+  width: 100% !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 0 !important;
+}
+
+.side-item{
+  width: 100% !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  justify-content: flex-start !important;
+  padding: 0 11px !important;
+  gap: 10px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+}
+
+.side-icon{
+  width: 20px !important;
+  min-width: 20px !important;
+  text-align: center !important;
+}
+
+.sidebar-bottom{
+  display: block !important;
+  margin-top: auto !important;
+  width: 100% !important;
+}
+
+.premiumBox,
+.userBox{
+  min-width: 0 !important;
+}
+
+.topbar{
+  min-height: var(--topbar-h) !important;
+}
+
+.topbar-inner{
+  min-height: var(--topbar-h) !important;
+  height: var(--topbar-h) !important;
+  padding: 0 clamp(12px, 1.2vw, 20px) !important;
+  gap: 12px !important;
+}
+
+.top-left,
+.top-right{
+  min-width: 0 !important;
+  gap: 10px !important;
+}
+
+.logo-text{
+  display: none !important;
+}
+
+.nav{
+  min-width: 0 !important;
+  flex-wrap: nowrap !important;
+  gap: clamp(3px, .55vw, 8px) !important;
+}
+
+.nav-link{
+  min-height: 34px !important;
+  padding: 0 clamp(7px, .72vw, 12px) !important;
+  font-size: clamp(10px, .72vw, 12px) !important;
+  font-weight: 800 !important;
+  border-radius: 0 !important;
+  white-space: nowrap !important;
+}
+
+.nav-link.active{
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #35ff80 !important;
+  position: relative;
+}
+
+.nav-link.active::after{
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #1ed760;
+}
+
+#date,
+.btnOutline,
+#btn,
+.btnLogout,
+.status,
+.premiumTopStatus{
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 13px !important;
+  border-radius: 11px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+#date{
+  min-width: 130px !important;
+  max-width: 145px !important;
+}
+
+.content{
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 12px clamp(12px, 1.4vw, 24px) 26px !important;
+  overflow: hidden !important;
+}
+
+.center-title{
+  display: none !important;
+}
+
+.dashboardGrid{
+  width: 100% !important;
+  max-width: 1540px !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--right-rail-w) !important;
+  gap: clamp(12px, 1.1vw, 18px) !important;
+  align-items: start !important;
+}
+
+.dashboardMainColumn,
+.dashboardRightRail{
+  min-width: 0 !important;
+}
+
+.panel{
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+}
+
+.panel-title{
+  margin-bottom: 8px !important;
+  padding: 2px 4px 9px !important;
+}
+
+.panel-title h2,
+.railCard h3,
+.railTitle span{
+  font-size: 14px !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+}
+
+#countTop,
+#countFilters{
+  height: 24px !important;
+  min-width: 24px !important;
+  font-size: 10px !important;
+}
+
+/* Área dinâmica dos filtros gerada pelo JS */
+.filters-panel,
+.filtered-games,
+.top-host,
+.top-host-dynamic,
+.top-host-dual{
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* Cards superiores do mercado ativo */
+.marketSummary,
+.marketStats,
+.filterStats,
+.marketCards,
+.filterCards,
+.filterMetrics,
+.marketMetrics,
+.filtersGrid,
+.statsGrid{
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.marketCard,
+.filterCard,
+.metricCard,
+.statCard,
+.marketBox,
+.filterBox{
+  min-width: 0 !important;
+  padding: 12px !important;
+  border-radius: 14px !important;
+}
+
+/* Linha dos jogos — estilo tabela, sem quebrar no Mac */
+.gameRow,
+.filterGameCard,
+.matchCard,
+.gameCard,
+.filteredGameCard,
+.marketGameCard{
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.filterGameCard,
+.gameRow,
+.filteredGameCard,
+.marketGameCard{
+  display: grid !important;
+  grid-template-columns:
+    minmax(70px, 86px)
+    minmax(115px, 1.15fr)
+    minmax(104px, .85fr)
+    minmax(80px, .68fr)
+    minmax(118px, .84fr)
+    minmax(82px, 98px) !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+.filterGameCard *,
+.gameRow *,
+.filteredGameCard *,
+.marketGameCard *,
+.matchCard *,
+.gameCard *{
+  min-width: 0 !important;
+}
+
+.teamName,
+.leagueName,
+.marketName,
+.smallTeams,
+.smallMeta,
+.js-teams,
+.js-meta,
+.gameTeams,
+.gameLeague,
+.gameMarket{
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.gameTime,
+.matchTime,
+.timeBox strong,
+.kickoffTime{
+  font-size: clamp(22px, 1.7vw, 30px) !important;
+  line-height: 1 !important;
+}
+
+.percent,
+.forceNumber,
+.scorePercent,
+.marketPercent{
+  font-size: clamp(16px, 1.3vw, 22px) !important;
+  line-height: 1 !important;
+}
+
+.chip,
+.chipsRow > *,
+.marketChip,
+.filterChip{
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 10px !important;
+}
+
+/* Painel direito */
+.dashboardRightRail{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.railCard{
+  padding: 13px !important;
+  border-radius: 15px !important;
+}
+
+.railScoreBlock{
+  gap: 8px !important;
+}
+
+.railBadge{
+  width: clamp(50px, 4vw, 62px) !important;
+  height: clamp(50px, 4vw, 62px) !important;
+  font-size: clamp(17px, 1.5vw, 24px) !important;
+}
+
+.railScore strong{
+  font-size: clamp(30px, 2.7vw, 42px) !important;
+}
+
+.railScore span,
+.railTeam strong,
+.railStat,
+.railEvents{
+  font-size: 12px !important;
+}
+
+.railFullBtn{
+  min-height: 46px !important;
+  border-radius: 13px !important;
+  font-size: 13px !important;
+}
+
+.footerDesktopNote,
+.cleanFooterNote{
+  max-width: 100% !important;
+}
+
+/* Monitor grande: ocupa bem sem ficar espalhado demais */
+@media (min-width: 1600px){
+  :root{
+    --sidebar-w: 180px;
+    --right-rail-w: 340px;
+  }
+
+  .dashboardGrid{
+    max-width: 1500px !important;
+  }
+}
+
+/* MacBook / notebook até 1366px */
+@media (max-width: 1366px){
+  :root{
+    --sidebar-w: 150px;
+    --right-rail-w: 280px;
+    --topbar-h: 60px;
+  }
+
+  .content{
+    padding: 10px 12px 22px !important;
+  }
+
+  .dashboardGrid{
+    gap: 11px !important;
+  }
+
+  .topbar-inner{
+    height: 60px !important;
+    min-height: 60px !important;
+    padding: 0 12px !important;
+  }
+
+  .nav-link{
+    font-size: 10px !important;
+    padding: 0 7px !important;
+  }
+
+  .top-right{
+    gap: 7px !important;
+  }
+
+  #date,
+  .btnOutline,
+  #btn,
+  .btnLogout,
+  .status,
+  .premiumTopStatus{
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 11px !important;
+    font-size: 11px !important;
+  }
+
+  #date{
+    min-width: 120px !important;
+  }
+
+  .side-item{
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 10px !important;
+    font-size: 11px !important;
+  }
+
+  .filterGameCard,
+  .gameRow,
+  .filteredGameCard,
+  .marketGameCard{
+    grid-template-columns:
+      70px
+      minmax(100px, 1fr)
+      minmax(88px, .75fr)
+      74px
+      105px
+      78px !important;
+    gap: 7px !important;
+  }
+
+  .railCard{
+    padding: 12px !important;
+  }
+}
+
+/* Quando não couber, painel direito desce */
+@media (max-width: 1180px){
+  .dashboardGrid{
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboardRightRail{
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .railFullBtn{
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Notebook bem pequeno */
+@media (max-width: 980px){
+  :root{
+    --sidebar-w: 72px;
+    --topbar-h: auto;
+  }
+
+  .sidebar{
+    padding: 14px 8px !important;
+  }
+
+  .brandText,
+  .side-item b,
+  .sidebar-bottom{
+    display: none !important;
+  }
+
+  .brandBlock{
+    justify-content: center !important;
+  }
+
+  .side-item{
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  .topbar-inner{
+    height: auto !important;
+    min-height: 62px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    padding: 8px 10px !important;
+  }
+
+  .top-left,
+  .top-right{
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+
+  .nav{
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+
+  .filterGameCard,
+  .gameRow,
+  .filteredGameCard,
+  .marketGameCard{
+    grid-template-columns: 72px minmax(0, 1fr) 86px !important;
+    row-gap: 8px !important;
+  }
+
+  .dashboardRightRail{
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ===== CORREÇÃO SEGURA - VOLTAR SITE ===== */
+
+.dashboard{
+  display: flex !important;
+}
+
+.sidebar{
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 180px !important;
+  height: 100vh !important;
+  display: flex !important;
+}
+
+.main{
+  display: flex !important;
+  flex-direction: column !important;
+  margin-left: 180px !important;
+  width: calc(100% - 180px) !important;
+  min-height: 100vh !important;
+}
+
+.topbar{
+  display: block !important;
+  width: 100% !important;
+}
+
+.content{
+  display: block !important;
+  width: 100% !important;
+  padding: 14px 18px 28px !important;
+}
+
+.dashboardGrid{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 1580px !important;
+  margin: 0 auto !important;
+}
+
+.dashboardMainColumn,
+.dashboardRightRail{
+  display: block !important;
+}
+
+/* =========================================================
+   ETAPA 2 — TIPOGRAFIA BET365 / LEITURA PREMIUM
+   - Somente fontes, pesos, espaçamentos e leitura
+   - Não altera estrutura principal nem cores do layout
+   ========================================================= */
+
+/* Base geral mais compacta */
+body{
+  font-size:13px !important;
+  font-weight:500 !important;
+  letter-spacing:0 !important;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+
+/* Topbar: mais Bet365, menos pesado */
+.nav-link{
+  font-size:12px !important;
+  font-weight:800 !important;
+  letter-spacing:.015em !important;
+  text-transform:uppercase !important;
+  line-height:1 !important;
+}
+
+.topbar,
+.topbar-inner,
+.top-left,
+.top-right{
+  font-size:12px !important;
+}
+
+#date,
+.btnOutline,
+#btn,
+.btnLogout,
+.status{
+  font-size:12px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+/* Marca / sidebar */
+.logo-title,
+.brandText strong{
+  font-size:16px !important;
+  font-weight:900 !important;
+  letter-spacing:-.035em !important;
+}
+
+.logo-sub,
+.brandText span{
+  font-size:10.5px !important;
+  font-weight:600 !important;
+  color:#9aa6b6 !important;
+}
+
+.side-item{
+  font-size:12px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.side-item b{
+  font-size:12px !important;
+  font-weight:800 !important;
+}
+
+.side-icon{
+  font-size:16px !important;
+}
+
+/* Títulos dos blocos */
+.panel-title h2,
+.marketTitle,
+.marketFilterTitle,
+.marketTableTitle,
+.railCard h3,
+.railTitle span,
+.sectionTitle{
+  font-size:14px !important;
+  font-weight:900 !important;
+  letter-spacing:-.015em !important;
+  line-height:1.15 !important;
+  text-transform:none !important;
+}
+
+.marketFilterTitle,
+.marketTableTitle{
+  text-transform:uppercase !important;
+  letter-spacing:.02em !important;
+}
+
+/* Mercado ativo / cards superiores */
+.marketHeader h2,
+.marketTitle,
+.statTitle,
+.metricTitle,
+.filterTitle{
+  font-size:11px !important;
+  font-weight:900 !important;
+  letter-spacing:.02em !important;
+  text-transform:uppercase !important;
+}
+
+.marketMainTitle,
+.marketName,
+.filterName{
+  font-size:18px !important;
+  font-weight:900 !important;
+  letter-spacing:-.04em !important;
+}
+
+.marketValue,
+.metricValue,
+.statValue{
+  font-size:24px !important;
+  font-weight:900 !important;
+  letter-spacing:-.06em !important;
+  line-height:1 !important;
+}
+
+.marketDesc,
+.metricDesc,
+.statDesc{
+  font-size:10.5px !important;
+  font-weight:600 !important;
+  color:#9aa6b6 !important;
+}
+
+/* Próximos jogos */
+.filtered-games h2,
+.gamesTitle,
+.matchListTitle{
+  font-size:15px !important;
+  font-weight:900 !important;
+  letter-spacing:-.025em !important;
+}
+
+.gameTime,
+.matchTime,
+.timeBox strong,
+.game-hour{
+  font-size:25px !important;
+  font-weight:900 !important;
+  letter-spacing:-.06em !important;
+  line-height:1 !important;
+}
+
+.gameDate,
+.matchDate,
+.timeBox span{
+  font-size:12px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.teamName,
+.smallTeams,
+.marketTeams,
+.gameTeams,
+.matchTeams,
+.teamLine{
+  font-size:12.5px !important;
+  font-weight:800 !important;
+  letter-spacing:-.01em !important;
+  line-height:1.25 !important;
+}
+
+.smallMeta,
+.marketMeta,
+.leagueName,
+.gameLeague,
+.matchLeague,
+.marketLabel{
+  font-size:10.5px !important;
+  font-weight:700 !important;
+  line-height:1.25 !important;
+  color:#8f9bad !important;
+}
+
+.forceLabel,
+.projLabel,
+.gameStatLabel,
+.matchStatLabel{
+  font-size:10px !important;
+  font-weight:900 !important;
+  text-transform:uppercase !important;
+  letter-spacing:.025em !important;
+  color:#a4afbd !important;
+}
+
+.forceValue,
+.percent,
+.scorePercent,
+.marketPercent{
+  font-size:19px !important;
+  font-weight:900 !important;
+  letter-spacing:-.045em !important;
+  line-height:1 !important;
+}
+
+.projValue,
+.gameStatValue,
+.matchStatValue{
+  font-size:15px !important;
+  font-weight:900 !important;
+  letter-spacing:-.035em !important;
+}
+
+/* Chips e botões pequenos */
+.chip,
+.marketChip,
+.filterChip,
+.statusChip,
+.badge,
+.mkBadge{
+  font-size:10px !important;
+  font-weight:900 !important;
+  letter-spacing:0 !important;
+  line-height:1 !important;
+}
+
+.matchCenterBtn,
+.btnMatchCenter,
+.btnStats,
+.railFullBtn,
+.marketClear,
+.marketSort select{
+  font-size:11px !important;
+  font-weight:900 !important;
+  letter-spacing:0 !important;
+}
+
+/* Match Center lateral */
+.railTitle span{
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+
+.railTitle b{
+  font-size:9.5px !important;
+  font-weight:900 !important;
+  letter-spacing:.02em !important;
+}
+
+.railBadge{
+  font-size:21px !important;
+  font-weight:900 !important;
+  letter-spacing:-.04em !important;
+}
+
+.railTeam strong{
+  font-size:12px !important;
+  font-weight:900 !important;
+}
+
+.railScore strong{
+  font-size:42px !important;
+  font-weight:900 !important;
+  letter-spacing:-.08em !important;
+  line-height:1 !important;
+}
+
+.railScore span{
+  font-size:11px !important;
+  font-weight:600 !important;
+  color:#9aa6b6 !important;
+}
+
+.railStat span{
+  font-size:12px !important;
+  font-weight:600 !important;
+}
+
+.railStat b{
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+
+.railEvents p{
+  font-size:11.5px !important;
+  line-height:1.45 !important;
+  font-weight:500 !important;
+}
+
+/* Premium box */
+.premiumBox b,
+.userBox b{
+  font-size:13px !important;
+  font-weight:900 !important;
+}
+
+.premiumBox small,
+.userBox small{
+  font-size:10.5px !important;
+  font-weight:600 !important;
+}
+
+/* Tabelas de mercado */
+.marketTable th{
+  font-size:10px !important;
+  font-weight:900 !important;
+  letter-spacing:.02em !important;
+}
+
+.marketTable td{
+  font-size:11.5px !important;
+  font-weight:700 !important;
+}
+
+.marketPercent{
+  font-size:16px !important;
+}
+
+/* Modal estatísticas: mais compacto */
+.premiumCardTitle{
+  font-size:9px !important;
+  font-weight:950 !important;
+}
+
+.premiumTeamBlock strong{
+  font-size:13px !important;
+  font-weight:950 !important;
+}
+
+.premiumScore{
+  font-size:34px !important;
+  font-weight:950 !important;
+}
+
+/* Ajuste para MacBook */
+@media (max-width:1366px){
+  .nav-link{
+    font-size:10.8px !important;
+  }
+
+  .side-item,
+  .side-item b{
+    font-size:11.5px !important;
+  }
+
+  .panel-title h2,
+  .railCard h3,
+  .railTitle span{
+    font-size:13px !important;
+  }
+
+  .gameTime,
+  .matchTime,
+  .timeBox strong,
+  .game-hour{
+    font-size:23px !important;
+  }
+
+  .teamName,
+  .smallTeams,
+  .marketTeams,
+  .gameTeams,
+  .matchTeams{
+    font-size:11.5px !important;
+  }
+
+  .smallMeta,
+  .marketMeta,
+  .leagueName,
+  .gameLeague,
+  .matchLeague{
+    font-size:10px !important;
+  }
+
+  .railScore strong{
+    font-size:38px !important;
+  }
+
+  .forceValue,
+  .percent,
+  .scorePercent{
+    font-size:18px !important;
+  }
+}
+
+/* Tela menor: mantém leitura limpa */
+@media (max-width:1180px){
+  body{
+    font-size:12px !important;
+  }
+
+  .nav-link{
+    font-size:10.5px !important;
+  }
+
+  .railScore strong{
+    font-size:34px !important;
+  }
+}
+
+/* Fim da Etapa 2 */
+
+/* =========================================================
+   ETAPA 2.1 — TOPBAR LIMPA / ESTILO BET365
+   - Remove duplicações visuais no topo
+   - Organiza menu, data, atualizar e conta premium
+   - Mantém logout funcionando via #logoutBtn
+   ========================================================= */
+
+:root{
+  --topbar-h: 58px !important;
+}
+
+/* Topbar compacta */
+.topbar{
+  min-height: var(--topbar-h) !important;
+  height: var(--topbar-h) !important;
+  overflow: visible !important;
+  background:
+    linear-gradient(180deg, rgba(5,9,14,.98), rgba(3,7,11,.96)) !important;
+  border-bottom: 1px solid rgba(255,255,255,.055) !important;
+}
+
+.topbar-inner{
+  min-height: var(--topbar-h) !important;
+  height: var(--topbar-h) !important;
+  padding: 0 18px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+  overflow: visible !important;
+}
+
+/* Como a logo já está na lateral, o topo fica mais limpo */
+.topbar .logo-text{
+  display: none !important;
+}
+
+.top-left{
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+/* Menu principal */
+.nav{
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: nowrap !important;
+  gap: clamp(14px, 1.55vw, 30px) !important;
+  overflow: hidden !important;
+}
+
+.nav-link{
+  position: relative !important;
+  min-height: var(--topbar-h) !important;
+  height: var(--topbar-h) !important;
+  padding: 0 !important;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: #aeb8c5 !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .018em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
+}
+
+.nav-link:hover{
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.nav-link.active{
+  color: #33f181 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.nav-link.active::after{
+  content: "" !important;
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 18px !important;
+  width: 58px !important;
+  height: 3px !important;
+  border-radius: 999px !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(90deg, #22e66d, #45f08b) !important;
+  box-shadow: 0 0 14px rgba(34,230,109,.22) !important;
+}
+
+/* Ações da direita */
+.top-right,
+.top-actions{
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  min-width: max-content !important;
+  overflow: visible !important;
+}
+
+#date{
+  width: 132px !important;
+  min-width: 132px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  background: #0b121b !important;
+  color: #eef4fb !important;
+  border: 1px solid rgba(148,163,184,.20) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+#btn,
+.btnOutline{
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  color: #041008 !important;
+  background: linear-gradient(180deg, #24e26f, #18c95d) !important;
+  border: 1px solid rgba(36,226,111,.35) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  box-shadow: 0 10px 22px rgba(24,201,93,.14), inset 0 1px 0 rgba(255,255,255,.20) !important;
+}
+
+#btn:hover,
+.btnOutline:hover{
+  transform: translateY(-1px) !important;
+  filter: brightness(1.04) !important;
+}
+
+/* Esconde barra premium antiga criada pelo JS para não duplicar */
+#premiumAuthBar,
+.premiumAuthBar,
+.premiumLoginBtn,
+.premiumUserPill,
+.premiumLogoutBtn,
+.premiumTopStatus{
+  display: none !important;
+}
+
+/* Novo menu de conta */
+.accountMenu{
+  position: relative !important;
+  z-index: 3000 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.accountButton{
+  height: 36px !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 0 14px !important;
+  border-radius: 12px !important;
+  color: #eafff2 !important;
+  background: rgba(30,215,96,.075) !important;
+  border: 1px solid rgba(30,215,96,.28) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.accountButton strong{
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.accountButton i{
+  font-style: normal !important;
+  color: #8df7b1 !important;
+  font-size: 11px !important;
+  transform: translateY(-1px) !important;
+}
+
+.accountCrown{
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+.accountDropdown{
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  width: 205px !important;
+  padding: 8px !important;
+  display: none !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30,215,96,.08), transparent 42%),
+    linear-gradient(180deg, #101823, #070d14) !important;
+  border: 1px solid rgba(148,163,184,.16) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.accountMenu:hover .accountDropdown,
+.accountMenu:focus-within .accountDropdown{
+  display: block !important;
+}
+
+.accountDropHeader{
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px !important;
+  border-radius: 11px !important;
+  background: rgba(255,255,255,.035) !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+}
+
+.accountDropHeader > span{
+  width: 30px !important;
+  height: 30px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 999px !important;
+  background: rgba(30,215,96,.12) !important;
+  border: 1px solid rgba(30,215,96,.20) !important;
+}
+
+.accountDropHeader strong{
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.accountDropHeader small{
+  display: block !important;
+  margin-top: 2px !important;
+  color: #8df7b1 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+.accountDropBtn{
+  width: 100% !important;
+  height: 36px !important;
+  margin-top: 8px !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  border-radius: 11px !important;
+  color: #f3f6fb !important;
+  background: rgba(255,255,255,.035) !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  text-align: left !important;
+}
+
+.accountDropBtn:hover{
+  color: #ffffff !important;
+  background: rgba(220,70,70,.12) !important;
+  border-color: rgba(220,70,70,.30) !important;
+}
+
+/* Ajustes para notebook/Mac */
+@media (max-width: 1366px){
+  .topbar-inner{
+    padding: 0 12px !important;
+    gap: 10px !important;
+  }
+
+  .nav{
+    gap: clamp(10px, 1.2vw, 18px) !important;
+  }
+
+  .nav-link{
+    font-size: 10.8px !important;
+  }
+
+  #date{
+    width: 124px !important;
+    min-width: 124px !important;
+  }
+
+  #btn,
+  .btnOutline,
+  .accountButton{
+    padding: 0 12px !important;
+  }
+}
+
+/* Tela menor: reduz menu sem quebrar */
+@media (max-width: 1180px){
+  .nav{
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .nav::-webkit-scrollbar{
+    display: none !important;
+  }
+
+  .accountButton strong{
+    display: none !important;
+  }
+
+  .accountButton{
+    width: 42px !important;
+    padding: 0 !important;
+  }
+}
