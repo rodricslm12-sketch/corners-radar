@@ -18687,98 +18687,306 @@ body{
   }
 }
 
-/* ETAPA 1 - CORREÇÃO NOTEBOOK: JOGOS SEM ROLAGEM HORIZONTAL */
 
-@media (max-width: 1500px) {
-  .mainLayout,
-  .dashboardContent,
-  .contentGrid {
-    grid-template-columns: 170px minmax(0, 1fr) 285px !important;
+
+/* =========================================================
+   ETAPA 1 DEFINITIVA — NOTEBOOK / MAC SEM ROLAGEM HORIZONTAL
+   Foco: área "Próximos Jogos" da aba Filtros
+   - Mantém o painel direito visível
+   - Remove o excesso de colunas no notebook
+   - Match Center fica dentro do card
+   - PC grande continua com layout completo
+   ========================================================= */
+
+html,
+body{
+  overflow-x:hidden !important;
+}
+
+.main,
+.content,
+.dashboardGrid,
+.dashboardMainColumn,
+.marketPremiumWrap,
+.marketListPanel,
+.marketGameList{
+  min-width:0 !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+}
+
+.marketListPanel{
+  overflow-x:hidden !important;
+}
+
+/* A lista nunca deve criar barra horizontal */
+.marketGameList{
+  width:100% !important;
+  overflow-x:hidden !important;
+}
+
+/* Base segura dos cards de jogos */
+.marketGameRow{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+
+.marketGameRow > *{
+  min-width:0 !important;
+}
+
+/* Notebook / MacBook: versão compacta estilo Bet365 */
+@media (max-width:1500px){
+
+  :root{
+    --sidebar-w:168px !important;
+    --right-rail-w:300px !important;
   }
 
-  .mainContent,
-  .centerContent,
-  .gamesPanel,
-  .gamesList {
-    min-width: 0 !important;
-    overflow-x: hidden !important;
+  .sidebar{
+    width:168px !important;
   }
 
-  .gameRow,
-  .matchRow,
-  .gameCard {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-
-    display: grid !important;
-    grid-template-columns: 82px minmax(105px, 1fr) 120px 105px 120px 92px !important;
-    gap: 10px !important;
-    align-items: center !important;
+  .main{
+    margin-left:168px !important;
+    width:calc(100% - 168px) !important;
   }
 
-  .gameRow > *,
-  .matchRow > *,
-  .gameCard > * {
-    min-width: 0 !important;
+  .content{
+    padding:12px 14px 24px !important;
   }
 
-  .gameTeams,
-  .teamsBox,
-  .leagueBox,
-  .gameLeague,
-  .forceBox,
-  .statsBox {
-    overflow: hidden !important;
+  .dashboardGrid{
+    grid-template-columns:minmax(0, 1fr) 300px !important;
+    gap:14px !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding-right:0 !important;
   }
 
-  .teamName,
-  .leagueName,
-  .marketName {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:300px !important;
+    min-width:300px !important;
+    max-width:300px !important;
   }
 
-  .gameTime,
-  .matchTime {
-    font-size: 24px !important;
+  /* O segredo está aqui:
+     no notebook, tiramos as colunas repetidas do meio
+     e deixamos a linha caber dentro do centro. */
+  .marketGameRow{
+    display:grid !important;
+    grid-template-columns:
+      78px
+      minmax(118px, 1.35fr)
+      58px
+      minmax(112px, .9fr)
+      72px
+      92px !important;
+    gap:8px !important;
+    align-items:center !important;
+    min-height:74px !important;
+    height:74px !important;
+    max-height:74px !important;
+    padding:9px 10px !important;
   }
 
-  .gameDate,
-  .matchDate {
-    font-size: 12px !important;
+  /* Esconde informação duplicada que aperta a linha:
+     a liga já aparece embaixo dos times e o título "força do filtro"
+     não precisa ocupar uma coluna inteira no notebook. */
+  .marketGameRow > :nth-child(3),
+  .marketGameRow > :nth-child(5){
+    display:none !important;
   }
 
-  .percentCircle,
-  .circleScore {
-    width: 48px !important;
-    height: 48px !important;
-    min-width: 48px !important;
-    font-size: 13px !important;
+  .marketGameTime strong{
+    font-size:21px !important;
   }
 
-  .barsBox,
-  .chartMini {
-    transform: scale(0.85);
-    transform-origin: center;
+  .marketGameTime span{
+    font-size:11px !important;
+    margin-top:6px !important;
   }
 
-  .matchCenterBtn,
-  .btnMatchCenter {
-    width: 86px !important;
-    max-width: 86px !important;
-    height: 28px !important;
-    font-size: 10px !important;
-    padding: 0 8px !important;
-    white-space: nowrap !important;
+  .marketGameTeams{
+    font-size:12px !important;
+    line-height:1.18 !important;
+    overflow:hidden !important;
   }
 
-  .gameAction,
-  .matchAction {
-    width: 92px !important;
-    min-width: 92px !important;
-    overflow: hidden !important;
+  .marketGameLeague{
+    font-size:9.5px !important;
+    margin-top:4px !important;
+  }
+
+  .marketCircle{
+    width:46px !important;
+    height:46px !important;
+  }
+
+  .marketCircle::before{
+    inset:6px !important;
+  }
+
+  .marketCircle span{
+    font-size:12px !important;
+  }
+
+  .marketRealStats{
+    display:flex !important;
+    justify-content:flex-start !important;
+    gap:9px !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+
+  .marketRealStats span{
+    font-size:9px !important;
+    min-width:0 !important;
+  }
+
+  .marketRealStats strong{
+    font-size:14px !important;
+    line-height:1 !important;
+  }
+
+  .marketTrendMini{
+    transform:scale(.82) !important;
+    transform-origin:center !important;
+  }
+
+  .marketGamePercent{
+    font-size:17px !important;
+    line-height:1 !important;
+    text-align:center !important;
+  }
+
+  .marketGameActions{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:5px !important;
+    align-items:stretch !important;
+    justify-content:center !important;
+  }
+
+  .marketGameActions .btnStats,
+  .marketGameActions .matchCenterMiniBtn{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    height:22px !important;
+    min-height:22px !important;
+    max-height:22px !important;
+    padding:0 6px !important;
+    font-size:8.5px !important;
+    border-radius:7px !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  /* Mercado ativo também não pode forçar largura */
+  .marketHeroGrid{
+    grid-template-columns:minmax(230px,1.1fr) repeat(2,minmax(130px,.8fr)) !important;
+  }
+
+  .marketMetricCard:nth-child(n+4){
+    display:none !important;
+  }
+
+  .marketFilterGroups{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+
+  .marketGroupChips{
+    gap:5px !important;
+  }
+
+  .marketChipPremium,
+  .marketGroupChips button{
+    font-size:9px !important;
+    padding:0 7px !important;
+    min-height:24px !important;
+  }
+}
+
+/* Notebook menor: mantém painel direito, mas ainda mais enxuto */
+@media (max-width:1366px){
+
+  :root{
+    --sidebar-w:150px !important;
+    --right-rail-w:285px !important;
+  }
+
+  .sidebar{
+    width:150px !important;
+  }
+
+  .main{
+    margin-left:150px !important;
+    width:calc(100% - 150px) !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0, 1fr) 285px !important;
+    gap:12px !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:285px !important;
+    min-width:285px !important;
+    max-width:285px !important;
+  }
+
+  .marketGameRow{
+    grid-template-columns:
+      72px
+      minmax(105px, 1.4fr)
+      52px
+      minmax(98px, .85fr)
+      60px
+      82px !important;
+    gap:7px !important;
+    padding:8px 9px !important;
+  }
+
+  .marketRealStats{
+    gap:7px !important;
+  }
+
+  .marketRealStats span{
+    font-size:8.5px !important;
+  }
+
+  .marketRealStats strong{
+    font-size:13px !important;
+  }
+
+  .marketGameActions .btnStats,
+  .marketGameActions .matchCenterMiniBtn{
+    font-size:8px !important;
+    height:21px !important;
+    min-height:21px !important;
+  }
+}
+
+/* Se a tela ficar estreita demais, igual apps profissionais:
+   o painel direito desce para não esmagar a área dos jogos. */
+@media (max-width:1180px){
+  .dashboardGrid{
+    grid-template-columns:1fr !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
   }
 }
