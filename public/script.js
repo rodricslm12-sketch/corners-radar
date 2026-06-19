@@ -1564,14 +1564,6 @@
           <td>
             <button
               type="button"
-              class="btnStats"
-              data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}"
-              data-home="${escapeAttrLite(casa)}"
-              data-away="${escapeAttrLite(fora)}"
-              title="Ver estatísticas do jogo"
-            >▥</button>
-            <button
-              type="button"
               class="matchCenterMiniBtn"
               data-open-match-center-table="1"
               data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}"
@@ -3991,7 +3983,6 @@
           <div class="premiumUnlockedBox cleanActionBox">
             <div><strong>${icon} ${mercado}</strong><span class="premiumPercent">${pctRounded}%</span></div>
             <div class="premiumActionBtns">
-              <button class="premiumEnterBtn" type="button" data-open-detail="${idx}">Análise</button>
               <button class="matchCenterBtn ${isMcSelected ? "is-open" : ""}" type="button" data-open-match-center="${idx}" data-match-id="${matchId}" data-home="${escapeAttrLite(gameHome(j))}" data-away="${escapeAttrLite(gameAway(j))}" data-league="${escapeAttrLite(gameLeague(j))}" data-time="${escapeAttrLite(gameTime(j))}">${isMcSelected ? `<span class="matchCenterBtnIcon">✓</span> Aberto` : `<span class="matchCenterBtnIcon">▥</span> Match Center`}</button>
             </div>
           </div>
@@ -5657,7 +5648,6 @@
           <div>
             <div class="marketGamePercent">${mp}%</div>
             <div class="marketGameActions">
-              <button type="button" class="btnStats" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}">Análise</button>
               <button type="button" class="matchCenterMiniBtn" data-open-match-center="${idx}" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}" data-league="${escapeAttrLite(liga)}" data-time="${escapeAttrLite(hora)}">Match Center</button>
             </div>
           </div>
