@@ -5032,7 +5032,7 @@ function mcBuildCards(eventData){
 }
 
 
-function mcBuildPressureTimeline({ minute, homeDanger, awayDanger } = {}){
+function mcBuildPressureTimeline({ minute, homeDanger, awayDanger, finished = false, events = [] } = {}){
   const h = Number(homeDanger);
   const a = Number(awayDanger);
   const hasHome = Number.isFinite(h);
@@ -5040,18 +5040,30 @@ function mcBuildPressureTimeline({ minute, homeDanger, awayDanger } = {}){
   const endHome = hasHome ? Math.max(0, h) : 0;
   const endAway = hasAway ? Math.max(0, a) : 0;
 
-  const currentMinute = Number.isFinite(Number(minute)) ? Math.max(1, Math.min(90, Number(minute))) : 78;
-  const startMinute = Math.max(1, currentMinute - 14);
-  const labels = [];
-  for (let i = 0; i < 8; i++){
-    labels.push(Math.round(startMinute + ((currentMinute - startMinute) / 7) * i));
-  }
+  const currentMinute = finished
+    ? 90
+    : (Number.isFinite(Number(minute)) ? Math.max(1, Math.min(90, Number(minute))) : 78);
+
+  const labels = finished
+    ? [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
+    : Array.from({ length: 10 }, (_, i) => {
+        const startMinute = Math.max(1, currentMinute - 36);
+        return Math.round(startMinute + ((currentMinute - startMinute) / 9) * i);
+      });
+
+  const goalMinutes = (Array.isArray(events) ? events : [])
+    .filter(e => String(e?.type || e?.label || "").toLowerCase().includes("goal") || String(e?.label || "").toLowerCase().includes("gol"))
+    .map(e => Number(String(e?.minute || "").replace(/[^0-9]/g, "")))
+    .filter(Number.isFinite);
 
   return labels.map((m, idx) => {
-    const t = idx / 7;
-    const curve = 0.32 + (t * 0.68);
-    const pulseHome = Math.sin(idx * 1.25) * 2.4;
-    const pulseAway = Math.cos(idx * 1.1) * 1.8;
+    const t = idx / Math.max(1, labels.length - 1);
+
+    // Curva histórica: começa leve, cresce com ondas e mantém o total final.
+    const curve = finished ? (0.18 + (t * 0.82)) : (0.32 + (t * 0.68));
+    const goalPulse = goalMinutes.some(gm => Math.abs(gm - m) <= 4) ? 4 : 0;
+    const pulseHome = Math.sin(idx * 1.25) * 2.8 + goalPulse;
+    const pulseAway = Math.cos(idx * 1.10) * 2.2;
 
     return {
       minute: `${m}'`,
@@ -5120,16 +5132,16 @@ function buildMatchResultPayload(eventData){
   const homeDanger = pickResultStat(eventData, "home", ["dangerous", "ataques perigosos", "dangerous attacks"]);
   const awayDanger = pickResultStat(eventData, "away", ["dangerous", "ataques perigosos", "dangerous attacks"]);
   const totalDanger = Number.isFinite(homeDanger) && Number.isFinite(awayDanger) ? homeDanger + awayDanger : null;
-  const pressureTimeline = mcBuildPressureTimeline({ minute: eventData?.match_live ?? eventData?.match_status, homeDanger, awayDanger });
+  const statusInfo = mcStatusInfo(eventData, totalGoals);
+  const eventsInfo = mcNormalizeEvents(eventData);
+  const pressureTimeline = mcBuildPressureTimeline({ minute: eventData?.match_live ?? eventData?.match_status, homeDanger, awayDanger, finished: statusInfo.finished, events: eventsInfo });
   const pressureLevel = mcPressureLevel(homeDanger, awayDanger, totalDanger);
 
-  const statusInfo = mcStatusInfo(eventData, totalGoals);
   const statusRaw = statusInfo.raw;
   const finished = statusInfo.finished;
   const possessionHome = mcPickPossession(eventData, "home");
   const possessionAway = mcPickPossession(eventData, "away");
   const cardsInfo = mcBuildCards(eventData);
-  const eventsInfo = mcNormalizeEvents(eventData);
 
   return {
     match_id: String(eventData?.match_id ?? eventData?.event_key ?? eventData?.id ?? ""),

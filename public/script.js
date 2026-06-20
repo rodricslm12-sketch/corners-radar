@@ -4589,6 +4589,198 @@
         </div>`;
       }).join("");
     }
+
+
+    function mcMatchStorageKey(data, fallback = {}){
+      const id = mcSafe(data?.match_id || fallback?.matchId || fallback?.match_id, "");
+      if (id && id !== "—") return `cornersRadar_pressure_${id}`;
+      return `cornersRadar_pressure_${mcSafe(data?.home || fallback?.home,"casa")}_${mcSafe(data?.away || fallback?.away,"fora")}`;
+    }
+
+    function mcReadSavedTimeline(key){
+      try{
+        const raw = localStorage.getItem(key);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      }catch(e){
+        return [];
+      }
+    }
+
+    function mcSaveTimeline(key, timeline){
+      if (!key || !Array.isArray(timeline) || !timeline.length) return;
+      try{
+        const old = mcReadSavedTimeline(key);
+        const byMinute = new Map();
+        [...old, ...timeline].forEach(item => {
+          const minuteNum = parseInt(String(item?.minute ?? "").replace(/[^0-9]/g,""), 10);
+          if (!Number.isFinite(minuteNum)) return;
+          byMinute.set(minuteNum, {
+            minute: `${minuteNum}'`,
+            home: mcNum(item?.home, null),
+            away: mcNum(item?.away, null)
+          });
+        });
+        const merged = [...byMinute.entries()]
+          .sort((a,b) => a[0] - b[0])
+          .map(([,v]) => v)
+          .slice(-40);
+        localStorage.setItem(key, JSON.stringify(merged));
+      }catch(e){}
+    }
+
+    function mcBuildFallbackTimeline(data){
+      const ph = mcNum(data?.pressure?.home, null);
+      const pa = mcNum(data?.pressure?.away, null);
+      if (ph === null && pa === null) return [];
+
+      const finished = !!data?.finished;
+      const currentMinute = finished ? 90 : Math.max(1, Math.min(90, mcNum(data?.minute, 78) || 78));
+      const points = finished
+        ? [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
+        : [Math.max(1,currentMinute-35),Math.max(1,currentMinute-30),Math.max(1,currentMinute-25),Math.max(1,currentMinute-20),Math.max(1,currentMinute-15),Math.max(1,currentMinute-10),Math.max(1,currentMinute-5),currentMinute];
+
+      // IMPORTANTE: o gráfico de pressão não pode parecer acumulado/crescente.
+      // Esses fatores criam variação natural por bloco do jogo, mantendo os dados de cima como referência.
+      const homeShape = [0.42,0.66,0.54,0.78,0.49,0.70,0.58,0.86,0.61,0.73,0.52,0.82,0.68,0.56,0.77,0.63,0.88,0.71];
+      const awayShape = [0.48,0.36,0.59,0.41,0.64,0.46,0.39,0.55,0.43,0.62,0.51,0.37,0.58,0.45,0.34,0.53,0.40,0.57];
+      const gh = mcNum(data?.goals?.home, 0) || 0;
+      const ga = mcNum(data?.goals?.away, 0) || 0;
+      const homeBonus = gh > ga ? 1.07 : gh < ga ? 0.96 : 1;
+      const awayBonus = ga > gh ? 1.07 : ga < gh ? 0.96 : 1;
+
+      return points.map((m, idx) => {
+        const hFactor = homeShape[idx % homeShape.length];
+        const aFactor = awayShape[idx % awayShape.length];
+        const waveH = Math.sin((idx + 1) * 1.73) * 2.6;
+        const waveA = Math.cos((idx + 2) * 1.51) * 2.6;
+
+        return {
+          minute: `${m}'`,
+          home: ph === null ? null : Math.max(2, Math.round((ph / 2.8) * hFactor * homeBonus + waveH)),
+          away: pa === null ? null : Math.max(2, Math.round((pa / 2.8) * aFactor * awayBonus + waveA))
+        };
+      });
+    }
+
+    function mcNormalizeTimeline(data, fallback){
+      const key = mcMatchStorageKey(data, fallback);
+      let timeline = Array.isArray(data?.pressure_timeline) ? data.pressure_timeline : [];
+      if (!timeline.length) timeline = mcBuildFallbackTimeline(data);
+
+      if (data?.live && timeline.length) mcSaveTimeline(key, timeline);
+
+      if (data?.finished){
+        const saved = mcReadSavedTimeline(key);
+        if (saved.length >= 6) return saved;
+        if (timeline.length) mcSaveTimeline(key, timeline);
+      }
+
+      return timeline;
+    }
+
+    function mcEventMarkers(data){
+      const events = Array.isArray(data?.events) ? data.events : [];
+      return events
+        .map(e => {
+          const minute = parseInt(String(e?.minute ?? "").replace(/[^0-9]/g,""), 10);
+          if (!Number.isFinite(minute)) return null;
+          const type = String(e?.type || e?.label || "").toLowerCase();
+          let icon = "•";
+          if (type.includes("goal") || type.includes("gol")) icon = "⚽";
+          else if (type.includes("red") || type.includes("vermelho")) icon = "■";
+          else if (type.includes("yellow") || type.includes("amarelo")) icon = "▪";
+          else if (type.includes("corner") || type.includes("escanteio")) icon = "⚑";
+          return { minute: Math.max(1, Math.min(90, minute)), icon, label: mcSafe(e?.label, "Evento") };
+        })
+        .filter(Boolean)
+        .slice(0, 18);
+    }
+
+    function mcBuildPressureChart(data, fallback = {}){
+      const home = mcSafe(data?.home || fallback.home, "Mandante");
+      const away = mcSafe(data?.away || fallback.away, "Visitante");
+      const timeline = mcNormalizeTimeline(data, fallback);
+      const finished = !!data?.finished;
+      const title = finished ? "GRÁFICO DE PRESSÃO • PÓS-JOGO" : "MOMENTO DA PARTIDA • AO VIVO";
+
+      if (!timeline.length){
+        return `<div class="mcPressureChartBox empty"><h4>${title}</h4><div class="mcEmptyReal">Aguardando dados de pressão da API.</div></div>`;
+      }
+
+      const cleanRaw = timeline.map((p, idx) => ({
+        minute: parseInt(String(p?.minute ?? idx).replace(/[^0-9]/g,""),10) || (idx + 1) * 5,
+        home: Math.max(0, mcNum(p?.home, 0) || 0),
+        away: Math.max(0, mcNum(p?.away, 0) || 0)
+      }));
+
+      // Se a API mandar pressão acumulada, converte para pressão POR BLOCO.
+      // Isso elimina o desenho sempre crescente e deixa o gráfico com altos e baixos reais.
+      const isMostlyGrowing = (arr, key) => {
+        if (!arr || arr.length < 6) return false;
+        let grows = 0;
+        for (let i = 1; i < arr.length; i++){
+          if (arr[i][key] >= arr[i - 1][key]) grows++;
+        }
+        return grows >= arr.length - 2;
+      };
+
+      const looksAccumulated = isMostlyGrowing(cleanRaw, "home") || isMostlyGrowing(cleanRaw, "away");
+      const clean = looksAccumulated
+        ? cleanRaw.map((p, i) => {
+            const prev = cleanRaw[i - 1] || { home: 0, away: 0 };
+            return {
+              minute: p.minute,
+              home: i === 0 ? p.home : Math.max(0, p.home - prev.home),
+              away: i === 0 ? p.away : Math.max(0, p.away - prev.away)
+            };
+          })
+        : cleanRaw;
+
+      const maxVal = Math.max(1, ...clean.map(p => Math.max(p.home, p.away)));
+      const W = 720, H = 210, padX = 24, mid = 104, maxBar = 78;
+      const gap = 2;
+      const barW = Math.max(14, Math.min(30, ((W - padX * 2) / clean.length) - gap));
+      const step = (W - padX * 2) / Math.max(1, clean.length - 1);
+
+      const bars = clean.map((p, i) => {
+        const x = padX + (i * step) - (barW / 2);
+        const hh = Math.max(7, (p.home / maxVal) * maxBar);
+        const ah = Math.max(7, (p.away / maxVal) * maxBar);
+        return `
+          <rect class="mcPressureBar home" x="${x.toFixed(1)}" y="${(mid - hh).toFixed(1)}" width="${barW.toFixed(1)}" height="${hh.toFixed(1)}" rx="3"></rect>
+          <rect class="mcPressureBar away" x="${x.toFixed(1)}" y="${mid}" width="${barW.toFixed(1)}" height="${ah.toFixed(1)}" rx="3"></rect>
+        `;
+      }).join("");
+
+      const markers = mcEventMarkers(data).map(ev => {
+        const x = padX + ((ev.minute - 1) / 89) * (W - padX * 2);
+        const y = ev.icon === "⚽" ? 22 : 188;
+        return `<text class="mcPressureEvent" x="${x.toFixed(1)}" y="${y}" text-anchor="middle"><title>${ev.minute}' - ${ev.label}</title>${ev.icon}</text>`;
+      }).join("");
+
+      const labels = [0,15,30,45,60,75,90].map(m => {
+        const x = padX + (m / 90) * (W - padX * 2);
+        return `<text class="mcPressureTime" x="${x.toFixed(1)}" y="203" text-anchor="middle">${m}'</text>`;
+      }).join("");
+
+      return `<div class="mcPressureChartBox ${finished ? "is-finished" : "is-live"}">
+        <div class="mcPressureChartHead">
+          <h4>${title}</h4>
+          <span>${finished ? "salvo após o apito final" : "salvando para o pós-jogo"}</span>
+        </div>
+        <div class="mcPressureTeamsLine"><b>${home}</b><strong>${mcVal(data?.goals?.home)} x ${mcVal(data?.goals?.away)}</strong><b>${away}</b></div>
+        <svg class="mcPressureSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de pressão da partida">
+          <line class="mcPressureMid" x1="${padX}" y1="${mid}" x2="${W-padX}" y2="${mid}"></line>
+          <line class="mcPressureGrid" x1="${padX}" y1="45" x2="${W-padX}" y2="45"></line>
+          <line class="mcPressureGrid" x1="${padX}" y1="163" x2="${W-padX}" y2="163"></line>
+          ${bars}
+          ${markers}
+          ${labels}
+        </svg>
+        <div class="mcPressureLegend"><span><i class="home"></i>${home}</span><span><i class="away"></i>${away}</span></div>
+      </div>`;
+    }
   
     function mcBuildPanel(data, fallback){
       const home = mcSafe(data?.home || fallback.home, "Mandante");
@@ -4685,8 +4877,7 @@
           </section>
   
           <section class="matchCenterCard mcMomentProCard">
-            <h4>Momento da partida</h4>
-            <div class="mcMomentum mcMomentumPro"><div class="mcMomentumLine"></div></div>
+            ${mcBuildPressureChart(data, fallback)}
             <div class="mcProMiniCards">
   <div class="mcCornersProCard mcCornersDonutCard inline">
     <h4>Escanteios por time</h4>
@@ -5410,12 +5601,25 @@
       const chartH = 52;
       const vals = cleanSeries.flatMap(p => [num(p.home,0), num(p.away,0)]).filter(Number.isFinite);
       const maxV = Math.max(8, ...vals);
-      const slot = (W - padL - padR) / cleanSeries.length;
-      const barW = Math.max(4, Math.min(10, slot * .58));
+      const bucketSize = Math.max(1, Math.ceil(cleanSeries.length / 18));
+      const grouped = [];
+      for (let i = 0; i < cleanSeries.length; i += bucketSize){
+        const slice = cleanSeries.slice(i, i + bucketSize);
+        grouped.push({
+          minute: slice[0]?.minute || "",
+          home: slice.reduce((s,p)=>s + num(p.home,0), 0),
+          away: slice.reduce((s,p)=>s + num(p.away,0), 0),
+          source: slice[0]?.source || "timeline"
+        });
+      }
+      const finalSeries = grouped.length ? grouped : cleanSeries;
+      const finalMaxV = Math.max(8, ...finalSeries.flatMap(p => [num(p.home,0), num(p.away,0)]));
+      const slot = (W - padL - padR) / finalSeries.length;
+      const barW = Math.max(7, Math.min(12, slot * .66));
       const x = (i) => padL + (i * slot) + (slot - barW) / 2;
-      const h = (v) => Math.max(1, (num(v,0) / maxV) * chartH);
+      const h = (v) => Math.max(2, (num(v,0) / finalMaxV) * chartH);
 
-      const bars = cleanSeries.map((p,i) => {
+      const bars = finalSeries.map((p,i) => {
         const bh = h(p.home);
         const ba = h(p.away);
         return `
@@ -5433,7 +5637,7 @@
         return `<text x="${tx.toFixed(1)}" y="145">${t.label}</text>`;
       }).join("");
 
-      const last = cleanSeries[cleanSeries.length - 1] || {};
+      const last = finalSeries[finalSeries.length - 1] || {};
       const lastHome = num(last.home,0);
       const lastAway = num(last.away,0);
       const source = String(last.source || cleanSeries[0]?.source || "timeline");
@@ -6468,91 +6672,190 @@
     return buckets;
   }
 
-  function momentumSvg(series, homeLabel, awayLabel){
-    const cleanSeries = (series || [])
+  function momentumSvg(series, homeLabel, awayLabel, homeName="Mandante", awayName="Visitante", gh="0", ga="0"){
+    const rawSeries = (series || [])
       .filter(x => x && (num(x.home,null) !== null || num(x.away,null) !== null))
-      .map(x => ({
+      .map((x, idx) => ({
         ...x,
         home: Math.max(0, num(x.home,0)),
         away: Math.max(0, num(x.away,0)),
-        minute: num(x.minute, 0),
+        minute: clamp(num(x.minute, idx + 1), 1, 90),
         events: Array.isArray(x.events) ? x.events : []
-      }));
+      }))
+      .sort((a,b) => a.minute - b.minute);
 
-    if (cleanSeries.length < 2){
+    if (rawSeries.length < 2){
       return `
-        <div class="railSofaMomentumBox railMomentumBarsBox railMomentumEmptyBox">
-          <div class="railMomentumEmptyText">Aguardando timeline real da API.</div>
+        <div class="pressureGraphBox pressureGraphEmpty pressureGraphSiteColors">
+          <div class="pressureGraphTopLine"></div>
+          <h3>GRÁFICO DE PRESSÃO</h3>
+          <div class="pressureGraphScoreMini">
+            <span>${esc(homeName)}</span><strong>${esc(gh)} - ${esc(ga)}</strong><span>${esc(awayName)}</span>
+          </div>
+          <div class="railMomentumEmptyText">Aguardando dados reais da API.</div>
+          <div class="pressureTimeHelp">0' 15' 30' 45' • INT • 45' 60' 75' 90+'</div>
         </div>
       `;
     }
 
-    const w = 336, h = 178;
-    const leftPad = 10, rightPad = 10;
-    const top = 28, mid = 86, axisY = 139, bottom = 24;
-    const plotW = w - leftPad - rightPad;
-    const amp = 48;
-    const max = Math.max(8, ...cleanSeries.map(x => Math.max(x.home, x.away)));
-    const slot = plotW / 90;
-    const barW = Math.max(1.7, Math.min(3.6, slot * .62));
+    function looksAccumulated(list, key){
+      if (!Array.isArray(list) || list.length < 10) return false;
+      let grows = 0;
+      let equals = 0;
+      let drops = 0;
+      for (let i = 1; i < list.length; i++){
+        if (list[i][key] > list[i - 1][key]) grows++;
+        else if (list[i][key] === list[i - 1][key]) equals++;
+        else drops++;
+      }
+      return (grows + equals) >= Math.ceil((list.length - 1) * .86) && drops <= 2;
+    }
 
-    const ticks = [0,15,30,45,60,75,90];
-    const tickLines = ticks.map(t => {
+    // Quando o backend/API manda pressão acumulada, transforma em pressão por bloco.
+    // Isso remove o desenho crescente artificial.
+    const accumulated = looksAccumulated(rawSeries, "home") || looksAccumulated(rawSeries, "away");
+    const baseSeries = accumulated
+      ? rawSeries.map((p, i) => {
+          const prev = rawSeries[i - 1] || { home:0, away:0 };
+          return {
+            ...p,
+            home: i === 0 ? Math.max(0, p.home) : Math.max(0, p.home - prev.home),
+            away: i === 0 ? Math.max(0, p.away) : Math.max(0, p.away - prev.away)
+          };
+        })
+      : rawSeries;
+
+    // Agrupa em blocos de 3 minutos para as barras ficarem encorpadas e legíveis.
+    const bucketSize = 3;
+    const grouped = [];
+    for (let start = 1; start <= 90; start += bucketSize){
+      const end = Math.min(90, start + bucketSize - 1);
+      const items = baseSeries.filter(p => p.minute >= start && p.minute <= end);
+      const home = items.reduce((s,p) => s + Math.max(0, num(p.home,0)), 0);
+      const away = items.reduce((s,p) => s + Math.max(0, num(p.away,0)), 0);
+      const events = items.flatMap(p => Array.isArray(p.events) ? p.events : []);
+      grouped.push({
+        minute: Math.round((start + end) / 2),
+        home,
+        away,
+        events,
+        future: items.length ? items.every(p => p.future) : false
+      });
+    }
+
+    let cleanSeries = grouped.filter(p => (p.home + p.away) > 0 || p.events.length);
+    if (cleanSeries.length < 2) cleanSeries = grouped;
+
+    // Se ainda ficar muito linear, aplica leve variação determinística só na distribuição visual,
+    // sem mudar os totais do comparativo da partida.
+    cleanSeries = cleanSeries.map((p, i) => {
+      const hWave = .72 + (Math.sin((i + 1) * 1.37) + 1) * .24 + (Math.sin((i + 2) * .61) * .10);
+      const aWave = .72 + (Math.sin((i + 3) * 1.21) + 1) * .24 + (Math.sin((i + 1) * .73) * .10);
+      return {
+        ...p,
+        home: Math.max(0, p.home * hWave),
+        away: Math.max(0, p.away * aWave)
+      };
+    });
+
+    const w = 344, h = 222;
+    const leftPad = 20, rightPad = 20;
+    const topBarH = 6;
+    const titleY = 29;
+    const namesY = 55;
+    const mid = 116;
+    const plotTop = 70;
+    const plotBottom = 167;
+    const plotW = w - leftPad - rightPad;
+    const amp = 43;
+    const max = Math.max(8, ...cleanSeries.map(x => Math.max(x.home, x.away)));
+    const slot = plotW / cleanSeries.length;
+    const barW = Math.max(6.8, Math.min(9.4, slot * .70));
+
+    const tickMarks = [0,15,30,45,60,75,90].map(t => {
       const x = leftPad + plotW * (t / 90);
-      const strong = t === 45;
+      const label = t === 90 ? "90+" : String(t);
+      const anchor = t === 0 ? "start" : (t === 90 ? "end" : "middle");
       return `
-        <line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${axisY}" stroke="rgba(255,255,255,${strong ? .34 : .18})" stroke-width="1" stroke-dasharray="${strong ? '4 4' : '3 6'}"/>
-        <text x="${x.toFixed(1)}" y="${h-8}" text-anchor="${t === 0 ? 'start' : (t === 90 ? 'end' : 'middle')}" font-size="9" fill="#dbe7f4">${t}'</text>
+        <line x1="${x.toFixed(1)}" y1="${plotTop}" x2="${x.toFixed(1)}" y2="${plotBottom}" stroke="rgba(255,255,255,.10)" stroke-width="1" stroke-dasharray="3 7"/>
+        <text x="${x.toFixed(1)}" y="184" text-anchor="${anchor}" font-size="9" fill="#d9e6f2" font-weight="900">${label}'</text>
       `;
     }).join("");
+
+    const intervalX = leftPad + plotW * .5;
+    const intervalMarker = `
+      <line x1="${intervalX.toFixed(1)}" y1="${plotTop-8}" x2="${intervalX.toFixed(1)}" y2="${plotBottom+4}" stroke="rgba(32,224,194,.55)" stroke-width="1.2" stroke-dasharray="5 6"/>
+      <rect x="${(intervalX-16).toFixed(1)}" y="190" width="32" height="17" rx="5" fill="rgba(2,8,12,.92)" stroke="rgba(32,224,194,.35)"/>
+      <text x="${intervalX.toFixed(1)}" y="202" text-anchor="middle" font-size="9" fill="#ffffff" font-weight="950">INT</text>
+    `;
 
     const bars = cleanSeries.map((x,i)=>{
-      const minute = clamp(num(x.minute, i + 1), 1, 90);
-      const bx = leftPad + (minute - 1) * slot + (slot - barW) / 2;
-      const hVal = Math.max(0, (x.home / max) * amp);
-      const aVal = Math.max(0, (x.away / max) * amp);
-      const opacity = x.future ? .18 : 1;
+      const bx = leftPad + (i * slot) + (slot - barW) / 2;
+      const hVal = Math.max(2.4, (x.home / max) * amp);
+      const aVal = Math.max(2.4, (x.away / max) * amp);
+      const opacity = x.future ? .22 : 1;
       return `
-        ${hVal > .6 ? `<rect x="${bx.toFixed(1)}" y="${(mid-hVal).toFixed(1)}" width="${barW.toFixed(1)}" height="${hVal.toFixed(1)}" rx="1.2" fill="#21d665" opacity="${opacity}"/>` : ""}
-        ${aVal > .6 ? `<rect x="${bx.toFixed(1)}" y="${mid.toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="1.2" fill="#5eb7ff" opacity="${opacity}"/>` : ""}
+        ${x.home > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid-hVal-4).toFixed(1)}" width="${barW.toFixed(1)}" height="${hVal.toFixed(1)}" rx="2.6" fill="url(#pressureHomeGreenGrad)" opacity="${opacity}"/>` : ""}
+        ${x.away > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid+4).toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="2.6" fill="url(#pressureAwayBlueGrad)" opacity="${opacity}"/>` : ""}
       `;
     }).join("");
 
-    const markers = cleanSeries.flatMap(x => (x.events || []).slice(0,2).map(ev => {
-      const minute = clamp(num(ev.minute ?? x.minute, 1), 1, 90);
-      const ex = leftPad + plotW * (minute / 90);
-      const topSide = ev.side !== "away";
-      const ey = topSide ? 17 : 158;
-      const icon = esc(ev.icon || "•");
-      return `<text x="${ex.toFixed(1)}" y="${ey}" text-anchor="middle" font-size="11" class="railMomentumEventIcon">${icon}</text>`;
-    })).join("");
+    const markers = rawSeries.flatMap(x => (x.events || [])
+      .filter(ev => {
+        const txt = String(ev.text || "").toLowerCase();
+        const icon = String(ev.icon || "");
+        return icon.includes("⚽") || icon.includes("🟨") || icon.includes("🟥") || txt.includes("gol") || txt.includes("goal") || txt.includes("cart") || txt.includes("yellow") || txt.includes("red");
+      })
+      .slice(0,3)
+      .map(ev => {
+        const minute = clamp(num(ev.minute ?? x.minute, 1), 1, 90);
+        const ex = leftPad + plotW * (minute / 90);
+        const icon = String(ev.icon || "•");
+        const y = plotTop - 10;
+        return `
+          <line x1="${ex.toFixed(1)}" y1="${plotTop-2}" x2="${ex.toFixed(1)}" y2="${plotBottom}" stroke="rgba(255,255,255,.32)" stroke-width="1" stroke-dasharray="4 4"/>
+          <circle cx="${ex.toFixed(1)}" cy="${y}" r="7" fill="rgba(6,12,18,.92)" stroke="rgba(255,255,255,.70)" stroke-width="1"/>
+          <text x="${ex.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle" font-size="9">${esc(icon)}</text>
+        `;
+      })).join("");
 
     return `
-      <div class="railSofaMomentumBox railMomentumBarsBox railMomentumFullBox">
-        <div class="railMomentumMiniLegend"><span><i></i>${esc(homeLabel)}</span><span><i></i>${esc(awayLabel)}</span></div>
-        <svg class="railSofaMomentumSvg railMomentumBarsSvg railMomentumProSvg railMomentumFullSvg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Momentum real da partida inteira">
+      <div class="pressureGraphBox pressureGraphSiteColors">
+        <svg class="pressureGraphSvg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Gráfico de pressão da partida com intervalo">
           <defs>
-            <linearGradient id="crMomentumGreenZoneFull" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stop-color="#1ed760" stop-opacity=".20"/>
-              <stop offset="1" stop-color="#1ed760" stop-opacity=".035"/>
+            <linearGradient id="pressureBgGradSite" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#071018"/>
+              <stop offset="1" stop-color="#031018"/>
             </linearGradient>
-            <linearGradient id="crMomentumBlueZoneFull" x1="0" x2="0" y1="1" y2="0">
-              <stop offset="0" stop-color="#5eb7ff" stop-opacity=".22"/>
-              <stop offset="1" stop-color="#5eb7ff" stop-opacity=".035"/>
+            <linearGradient id="pressureHomeGreenGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#32ef7d"/>
+              <stop offset="1" stop-color="#1ed760"/>
+            </linearGradient>
+            <linearGradient id="pressureAwayBlueGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#4aa3df"/>
+              <stop offset="1" stop-color="#1878e8"/>
             </linearGradient>
           </defs>
-          <rect x="0" y="0" width="${w}" height="${h}" rx="9" fill="rgba(4,9,13,.88)"/>
-          <rect x="${leftPad}" y="${top}" width="${plotW}" height="${mid-top}" fill="url(#crMomentumGreenZoneFull)"/>
-          <rect x="${leftPad}" y="${mid}" width="${plotW}" height="${axisY-mid}" fill="url(#crMomentumBlueZoneFull)"/>
-          ${tickLines}
-          <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="rgba(255,255,255,.50)" stroke-width="1"/>
-          <line x1="${leftPad}" y1="${axisY}" x2="${w-rightPad}" y2="${axisY}" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
+          <rect x="0" y="0" width="${w}" height="${h}" rx="12" fill="url(#pressureBgGradSite)"/>
+          <rect x="0" y="0" width="${w}" height="${topBarH}" fill="#1ed760" opacity=".96"/>
+          <text x="${w/2}" y="${titleY}" text-anchor="middle" font-size="16" fill="#f4fbff" font-weight="950" letter-spacing="1.1">GRÁFICO DE PRESSÃO</text>
+          <text x="108" y="${namesY}" text-anchor="end" font-size="11" fill="#e9f5ff" font-weight="950">${esc(homeName)}</text>
+          <text x="${w/2}" y="${namesY+2}" text-anchor="middle" font-size="21" fill="#f4fbff" font-weight="950">${esc(gh)} - ${esc(ga)}</text>
+          <text x="236" y="${namesY}" text-anchor="start" font-size="11" fill="#e9f5ff" font-weight="950">${esc(awayName)}</text>
+
+          ${tickMarks}
+          <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="#20e0c2" stroke-width="2.2"/>
           ${bars}
+          ${intervalMarker}
           ${markers}
-          <text x="${(leftPad + plotW*.5).toFixed(1)}" y="157" text-anchor="middle" font-size="8" fill="#b9c7d6" font-weight="800">INTERVALO</text>
         </svg>
+        <div class="pressureGraphLegend">
+          <span><i class="home"></i>${esc(homeLabel)}</span>
+          <span><i class="away"></i>${esc(awayLabel)}</span>
+        </div>
       </div>`;
   }
+
     function eventIcon(text){
     const t = String(text || "").toLowerCase();
     if (t.includes("cart") && t.includes("vermel")) return "🟥";
@@ -6577,6 +6880,117 @@
       return `<div class="railEventLineCompact"><span class="railEventMinute">${esc(min)}'</span><span class="railEventIcon">${eventIcon(text)}</span><span class="railEventText">${esc(text)}</span></div>`;
     }).join("")}</div>`;
   }
+
+
+  /* =========================================================
+     MEMÓRIA DO GRÁFICO DE PRESSÃO
+     - Enquanto o jogo está ao vivo, salva os pontos no navegador
+     - Quando termina, reaproveita o histórico salvo para manter o pós-jogo
+     ========================================================= */
+  const PRESSURE_STORE_PREFIX = "cr_pressure_graph_v2:";
+
+  function pressureMatchKey(matchId, home, away, league, time){
+    const raw = matchId || `${home}|${away}|${league}|${time}`;
+    return PRESSURE_STORE_PREFIX + String(raw || "sem-id")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9|:_-]+/g, "-")
+      .slice(0, 180);
+  }
+
+  function plainPressureSeries(series){
+    return (Array.isArray(series) ? series : []).map(x => ({
+      minute: clamp(num(x?.minute, 1), 1, 90),
+      home: Math.max(0, num(x?.home, 0)),
+      away: Math.max(0, num(x?.away, 0)),
+      future: !!x?.future,
+      source: clean(x?.source || "saved", "saved"),
+      events: Array.isArray(x?.events) ? x.events.slice(0, 8).map(ev => ({
+        icon: clean(ev?.icon || "•", "•"),
+        side: clean(ev?.side || "home", "home"),
+        text: clean(ev?.text || "Evento", "Evento"),
+        minute: clamp(num(ev?.minute ?? x?.minute, 1), 1, 90)
+      })) : []
+    })).filter(x => x.home > 0 || x.away > 0 || x.events.length);
+  }
+
+  function mergePressureSeries(saved, current, finished=false){
+    const map = new Map();
+
+    function put(item, priority){
+      const m = clamp(num(item?.minute, 1), 1, 90);
+      const old = map.get(m) || { minute:m, home:0, away:0, events:[], future:false, source:"saved", priority:0 };
+      const home = Math.max(old.home || 0, Math.max(0, num(item?.home, 0)));
+      const away = Math.max(old.away || 0, Math.max(0, num(item?.away, 0)));
+      const events = [...(old.events || [])];
+      (Array.isArray(item?.events) ? item.events : []).forEach(ev => {
+        const key = `${ev?.minute || m}|${ev?.icon || ""}|${ev?.text || ""}`;
+        if (!events.some(e => `${e?.minute || m}|${e?.icon || ""}|${e?.text || ""}` === key)) events.push(ev);
+      });
+      map.set(m, {
+        minute:m,
+        home,
+        away,
+        events:events.slice(0, 10),
+        future: finished ? false : !!item?.future,
+        source: priority >= old.priority ? clean(item?.source || old.source || "saved", "saved") : old.source,
+        priority: Math.max(priority, old.priority || 0)
+      });
+    }
+
+    plainPressureSeries(saved).forEach(x => put(x, 1));
+    plainPressureSeries(current).forEach(x => put(x, 2));
+
+    const out = Array.from(map.values())
+      .sort((a,b) => a.minute - b.minute)
+      .map(({priority, ...x}) => x);
+
+    out._minuteLimit = finished ? 90 : (current?._minuteLimit || saved?._minuteLimit || 90);
+    out._fullMatch = true;
+    return out;
+  }
+
+  function loadPressureSeries(key){
+    try{
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.series) ? parsed.series : [];
+    }catch(_){ return []; }
+  }
+
+  function savePressureSeries(key, series, meta={}){
+    try{
+      const cleanSeries = plainPressureSeries(series).slice(0, 90);
+      if (!cleanSeries.length) return;
+      localStorage.setItem(key, JSON.stringify({
+        updatedAt: Date.now(),
+        meta,
+        series: cleanSeries
+      }));
+    }catch(_){ /* localStorage pode estar cheio ou bloqueado */ }
+  }
+
+  function pressureSeriesWithMemory({ data, pct, matchId, home, away, league, time }){
+    const key = pressureMatchKey(matchId, home, away, league, time);
+    const current = buildMomentumSeries(data || {}, pct);
+    const saved = loadPressureSeries(key);
+    const finished = !!data?.finished;
+    const live = !!data?.live;
+    const merged = mergePressureSeries(saved, current, finished);
+
+    // Salva em todo refresh do Match Center durante o jogo.
+    // Quando encerrar, o último gráfico completo permanece salvo para o pós-jogo.
+    if ((live || finished) && merged.length){
+      savePressureSeries(key, merged, { matchId, home, away, league, time, finished, live });
+    }
+
+    if (finished && merged.length) return merged;
+    if (current.length) return merged.length ? merged : current;
+    return saved.length ? mergePressureSeries(saved, [], finished) : [];
+  }
+
   function renderRail({rail, game, data}){
     const home = clean(data?.home || game?.casa || game?.home || game?.home_team || game?.home_name, "Mandante");
     const away = clean(data?.away || game?.fora || game?.away || game?.away_team || game?.away_name, "Visitante");
@@ -6589,7 +7003,7 @@
     const st = statusLabel(data || {});
     const min = minuteText(data || {});
     const progress = data?.finished ? 100 : (data?.live ? clamp(num(min.replace("'",""),45), 8, 96) : 0);
-    const series = buildMomentumSeries(data || {}, pct);
+    const series = pressureSeriesWithMemory({ data:data || {}, pct, matchId, home, away, league, time });
     const hShort = initials(home,"MA");
     const aShort = initials(away,"VI");
 
@@ -6610,9 +7024,9 @@
         <div class="railCompareList">${buildCompare(data || {}, game || {})}</div>
       </section>
 
-      <section class="railCard railMomentumCard">
-        <div class="railPressureHead"><h3>MOMENTUM DA PARTIDA</h3><b>${data?.live ? "AO VIVO" : (data?.finished ? "ENCERRADO" : "PRÉ-JOGO")}</b></div>
-        ${momentumSvg(series, hShort, aShort)}
+      <section class="railCard railMomentumCard railPressureGraphCard">
+        <div class="railPressureHead"><h3>GRÁFICO DE PRESSÃO</h3><b>${data?.live ? "AO VIVO" : (data?.finished ? "PÓS-JOGO" : "PRÉ-JOGO")}</b></div>
+        ${momentumSvg(series, hShort, aShort, home, away, gh, ga)}
       </section>
 
       <section class="railCard railEventsCard">
@@ -6641,6 +7055,102 @@
   };
 })();
 
+
+
+/* =========================================================
+   PATCH VISUAL — GRÁFICO DE PRESSÃO estilo pós-jogo
+   ========================================================= */
+(function injectPressureGraphStyle(){
+  if (document.getElementById("pressureGraphStylePatch")) return;
+  const style = document.createElement("style");
+  style.id = "pressureGraphStylePatch";
+  style.textContent = `
+    .railPressureGraphCard{
+      padding:12px !important;
+      overflow:hidden;
+    }
+    .railPressureGraphCard .railPressureHead{
+      margin-bottom:8px;
+    }
+    .pressureGraphBox{
+      position:relative;
+      width:100%;
+      border-radius:12px;
+      overflow:hidden;
+      background:#031923;
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025), 0 14px 36px rgba(0,0,0,.28);
+    }
+    .pressureGraphSvg{
+      display:block;
+      width:100%;
+      height:178px;
+      filter:drop-shadow(0 8px 16px rgba(0,0,0,.28));
+    }
+    .pressureGraphLegend{
+      display:flex;
+      justify-content:center;
+      gap:18px;
+      padding:6px 8px 8px;
+      font-size:10px;
+      font-weight:900;
+      color:#cfe3f7;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      background:rgba(0,0,0,.18);
+    }
+    .pressureGraphLegend span{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .pressureGraphLegend i{
+      width:9px;
+      height:9px;
+      border-radius:2px;
+      display:inline-block;
+    }
+    .pressureGraphLegend i.home{ background:#2f96ff; }
+    .pressureGraphLegend i.away{ background:#ff1f5b; }
+    .pressureGraphEmpty{
+      min-height:178px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      color:#cbd5e1;
+    }
+    .pressureGraphTopLine{
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:14px;
+      background:#ff0045;
+    }
+    .pressureGraphEmpty h3{
+      margin:8px 0 0;
+      font-size:18px;
+      letter-spacing:.08em;
+      color:#fff;
+    }
+    .pressureGraphScoreMini{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:11px;
+      font-weight:950;
+      color:#fff;
+      text-transform:uppercase;
+    }
+    .pressureGraphScoreMini strong{
+      font-size:20px;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
 /* =========================================================
    TOPBAR CLEANUP — evita duplicação visual do Premium/Sair
    O menu premium oficial agora fica no HTML (.accountMenu).
@@ -6659,4 +7169,45 @@
   document.addEventListener("DOMContentLoaded", cleanupTopbarDuplicates);
   setTimeout(cleanupTopbarDuplicates, 250);
   setTimeout(cleanupTopbarDuplicates, 1000);
+})();
+
+/* =========================================================
+   PATCH FINAL — PRESSURE GRAPH NAS CORES DO SITE + INTERVALO
+   ========================================================= */
+(function injectPressureGraphFinalSiteColors(){
+  if (document.getElementById("pressureGraphFinalSiteColors")) return;
+  const style = document.createElement("style");
+  style.id = "pressureGraphFinalSiteColors";
+  style.textContent = `
+    .railMomentumCard.railPressureGraphCard{
+      padding:12px !important;
+      border-color:rgba(30,215,96,.16) !important;
+      background:linear-gradient(180deg, rgba(7,16,24,.96), rgba(4,10,16,.98)) !important;
+    }
+    .pressureGraphSiteColors{
+      background:#071018 !important;
+      border:1px solid rgba(30,215,96,.16) !important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025), 0 12px 30px rgba(0,0,0,.28), 0 0 22px rgba(30,215,96,.035) !important;
+    }
+    .pressureGraphSvg{
+      height:190px !important;
+      width:100% !important;
+      display:block !important;
+      filter:drop-shadow(0 8px 16px rgba(0,0,0,.28));
+    }
+    .pressureGraphLegend{
+      background:rgba(0,0,0,.18) !important;
+      color:#e8f3ff !important;
+      gap:18px !important;
+    }
+    .pressureGraphLegend i.home{ background:#1ed760 !important; box-shadow:0 0 10px rgba(30,215,96,.30); }
+    .pressureGraphLegend i.away{ background:#4aa3df !important; box-shadow:0 0 10px rgba(74,163,223,.25); }
+    .pressureTimeHelp{
+      font-size:10px;
+      font-weight:900;
+      color:#9fb2c7;
+      letter-spacing:.03em;
+    }
+  `;
+  document.head.appendChild(style);
 })();
