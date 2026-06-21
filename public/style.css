@@ -19891,3 +19891,493 @@ body{
   opacity:.96 !important;
   shape-rendering:geometricPrecision !important;
 }
+
+/* =========================================================
+   RESPONSIVO NOTEBOOK — SEM ALTERAR MONITOR 27"
+   Ativo somente até 1700px de largura.
+   Objetivo: organizar mercados e manter jogos visíveis.
+   ========================================================= */
+@media (max-width:1700px){
+  :root{
+    --sidebar-w:168px !important;
+    --topbar-h:66px !important;
+  }
+
+  html,
+  body{
+    height:auto !important;
+    min-height:100vh !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+
+  body.dashboard,
+  .dashboard,
+  .main,
+  .content{
+    min-height:100vh !important;
+  }
+
+  .sidebar{
+    width:var(--sidebar-w) !important;
+    padding:16px 10px 14px !important;
+  }
+
+  .brandBlock{
+    gap:8px !important;
+  }
+
+  .brandText strong{
+    font-size:14px !important;
+  }
+
+  .brandText span{
+    font-size:10px !important;
+  }
+
+  .side-item{
+    min-height:44px !important;
+    padding:0 12px !important;
+    gap:10px !important;
+  }
+
+  .side-item b{
+    font-size:12px !important;
+  }
+
+  .main{
+    margin-left:var(--sidebar-w) !important;
+    width:calc(100vw - var(--sidebar-w)) !important;
+    max-width:calc(100vw - var(--sidebar-w)) !important;
+    overflow-x:hidden !important;
+  }
+
+  .topbar,
+  .topbar-inner{
+    min-height:var(--topbar-h) !important;
+  }
+
+  .topbar-inner{
+    padding:0 14px !important;
+    gap:12px !important;
+    max-width:none !important;
+  }
+
+  .top-left,
+  .top-right{
+    gap:10px !important;
+    min-width:0 !important;
+  }
+
+  .nav{
+    gap:5px !important;
+    flex-wrap:nowrap !important;
+    overflow:hidden !important;
+  }
+
+  .nav-link{
+    min-height:32px !important;
+    padding:0 9px !important;
+    font-size:10.5px !important;
+    white-space:nowrap !important;
+  }
+
+  .datePickerWrap{
+    min-width:144px !important;
+    height:36px !important;
+  }
+
+  #date,
+  #btn,
+  .btnOutline,
+  .accountButton{
+    height:36px !important;
+    min-height:36px !important;
+    font-size:12px !important;
+  }
+
+  .content{
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:14px 14px 34px !important;
+    align-items:stretch !important;
+  }
+
+  .dashboardGrid{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) minmax(280px,300px) !important;
+    gap:12px !important;
+    align-items:start !important;
+    min-width:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .dashboardMainColumn,
+  .dashboardRightRail,
+  #desktopMatchRail{
+    min-width:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .dashboardMainColumn{
+    gap:10px !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:300px !important;
+    gap:10px !important;
+  }
+
+  .panel,
+  .panel:has(.marketFiltersWrap){
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding:10px !important;
+    border-radius:17px !important;
+    overflow:visible !important;
+  }
+
+  .center-title{
+    display:none !important;
+  }
+
+  .panel-title{
+    padding:2px 4px 8px !important;
+    margin-bottom:8px !important;
+  }
+
+  .marketFiltersWrap{
+    display:grid !important;
+    gap:10px !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+
+  .marketHeroPanel{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    padding:12px !important;
+    border-radius:16px !important;
+  }
+
+  .marketHeroGrid{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    display:grid !important;
+    grid-template-columns:minmax(210px,1.25fr) repeat(2,minmax(120px,.8fr)) !important;
+    gap:10px !important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard{
+    height:82px !important;
+    min-height:82px !important;
+    max-height:82px !important;
+    padding:12px !important;
+  }
+
+  .marketActiveName{
+    font-size:18px !important;
+    line-height:1.05 !important;
+  }
+
+  .marketFilterPanel{
+    padding:12px !important;
+    margin:0 !important;
+    border-radius:16px !important;
+  }
+
+  .marketFilterHeader{
+    display:block !important;
+  }
+
+  .marketFilterTitle{
+    display:block !important;
+    margin:0 0 10px !important;
+    padding:0 !important;
+    font-size:13px !important;
+    color:#f4f7fb !important;
+    letter-spacing:.02em !important;
+  }
+
+  /* Área dos mercados: organizada, sem bagunçar e sem empurrar os jogos */
+  .marketFilterGroups{
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:10px !important;
+    margin:0 !important;
+  }
+
+  .marketFilterGroup{
+    min-height:112px !important;
+    padding:12px !important;
+    border-radius:15px !important;
+    background:linear-gradient(180deg,rgba(13,20,30,.88),rgba(8,14,22,.92)) !important;
+    border:1px solid rgba(148,163,184,.13) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025) !important;
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:flex-start !important;
+  }
+
+  .marketFilterGroupTitle{
+    margin:0 0 10px !important;
+    font-size:11px !important;
+    line-height:1 !important;
+    font-weight:950 !important;
+    color:#dce7f2 !important;
+    letter-spacing:.05em !important;
+  }
+
+  .marketGroupChips{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+    align-content:start !important;
+  }
+
+  .marketFilterGroup:nth-child(2) .marketGroupChips,
+  .marketFilterGroup:nth-child(4) .marketGroupChips{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+
+  .marketChipPremium,
+  .marketGroupChips button{
+    width:100% !important;
+    height:32px !important;
+    min-height:32px !important;
+    padding:0 8px !important;
+    border-radius:10px !important;
+    font-size:10px !important;
+    line-height:1 !important;
+    text-align:center !important;
+    justify-content:center !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  .marketTablePanel{
+    margin-top:0 !important;
+    padding:12px !important;
+    border-radius:16px !important;
+    max-height:none !important;
+    height:auto !important;
+    overflow:visible !important;
+  }
+
+  .marketTableTop{
+    margin-bottom:8px !important;
+  }
+
+  .marketTableTitle{
+    font-size:16px !important;
+  }
+
+  .marketGameRow{
+    min-height:64px !important;
+    padding:9px 10px !important;
+    border-radius:12px !important;
+    grid-template-columns:76px minmax(118px,1.35fr) 58px minmax(104px,.9fr) 64px 86px !important;
+    gap:8px !important;
+  }
+
+  .marketGameTeams{
+    min-width:0 !important;
+  }
+
+  .marketTeams{
+    font-size:12px !important;
+    line-height:1.22 !important;
+  }
+
+  .marketMeta{
+    font-size:9.5px !important;
+  }
+
+  .marketRealStats{
+    min-width:0 !important;
+    gap:8px !important;
+  }
+
+  .marketRealStats span{
+    min-width:0 !important;
+    font-size:9px !important;
+  }
+
+  .marketRealStats strong{
+    font-size:13px !important;
+  }
+
+  .marketGamePercent{
+    font-size:17px !important;
+    text-align:center !important;
+  }
+
+  .marketGameActions{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:5px !important;
+  }
+
+  .marketGameActions .matchCenterMiniBtn{
+    width:100% !important;
+    min-width:0 !important;
+    height:22px !important;
+    min-height:22px !important;
+    padding:0 6px !important;
+    border-radius:7px !important;
+    font-size:8px !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  .railCard{
+    padding:13px !important;
+    border-radius:15px !important;
+  }
+
+  .dashboardRightRail .railEmptyHero{
+    min-height:240px !important;
+  }
+
+  .railEmptyRadar{
+    transform:scale(.86) !important;
+    margin:0 auto 6px !important;
+  }
+
+  .railEmptyText strong{
+    font-size:17px !important;
+  }
+
+  .railEmptyText span{
+    font-size:12px !important;
+  }
+
+  .railEmptyStatsGrid{
+    gap:8px !important;
+  }
+
+  .railEmptyStatBox{
+    min-height:80px !important;
+    padding:10px !important;
+  }
+
+  .railEmptyEventsCard{
+    display:none !important;
+  }
+}
+
+/* Notebook 14/15 menor: não esconde jogos; só deixa a coluna direita mais leve */
+@media (max-width:1450px){
+  :root{
+    --sidebar-w:148px !important;
+  }
+
+  .sidebar{
+    width:148px !important;
+  }
+
+  .main{
+    margin-left:148px !important;
+    width:calc(100vw - 148px) !important;
+    max-width:calc(100vw - 148px) !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) 270px !important;
+    gap:10px !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    max-width:270px !important;
+  }
+
+  .marketHeroGrid{
+    grid-template-columns:minmax(190px,1.2fr) repeat(2,minmax(105px,.75fr)) !important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard{
+    height:74px !important;
+    min-height:74px !important;
+    max-height:74px !important;
+    padding:10px !important;
+  }
+
+  .marketFilterGroups{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:9px !important;
+  }
+
+  .marketFilterGroup{
+    min-height:88px !important;
+    padding:10px !important;
+  }
+
+  .marketGroupChips,
+  .marketFilterGroup:nth-child(2) .marketGroupChips,
+  .marketFilterGroup:nth-child(4) .marketGroupChips{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+
+  .marketChipPremium,
+  .marketGroupChips button{
+    height:29px !important;
+    min-height:29px !important;
+    font-size:9.5px !important;
+  }
+
+  .marketGameRow{
+    grid-template-columns:70px minmax(110px,1.3fr) 52px minmax(92px,.85fr) 58px 78px !important;
+    gap:6px !important;
+    padding:8px !important;
+  }
+
+  .marketRealStats{
+    gap:6px !important;
+  }
+
+  .railCard{
+    padding:11px !important;
+  }
+
+  .railEmptyStatsGrid{
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* Tela estreita demais: painel direito desce para preservar a lista de jogos */
+@media (max-width:1180px){
+  .dashboardGrid{
+    grid-template-columns:1fr !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+
+  .railEmptyStatsGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+}
