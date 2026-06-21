@@ -20381,3 +20381,513 @@ body{
     grid-template-columns:repeat(4,minmax(0,1fr)) !important;
   }
 }
+
+/* =========================================================
+   PATCH FINAL — NOTEBOOK / PC PEQUENO
+   Não altera tela grande/27". Ativa somente até 1600px.
+   Objetivo:
+   1) mercado mais baixo e mais alto na tela;
+   2) lista de jogos mais visível;
+   3) uma única rolagem lateral;
+   4) gráfico de pressão não sumir no painel direito.
+   ========================================================= */
+
+@media (max-width:1600px) and (min-width:1024px){
+
+  :root{
+    --topbar-h:68px !important;
+    --rail-w:300px !important;
+  }
+
+  /* Uma única barra de rolagem: a rolagem fica na área principal */
+  html,
+  body{
+    height:100% !important;
+    overflow:hidden !important;
+  }
+
+  body.dashboard,
+  .dashboard,
+  .main{
+    height:100vh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .content{
+    height:calc(100vh - var(--topbar-h)) !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:12px 14px 18px !important;
+    scrollbar-gutter:stable !important;
+  }
+
+  .content::-webkit-scrollbar{
+    width:8px !important;
+  }
+
+  .content::-webkit-scrollbar-track{
+    background:#05080d !important;
+    border-radius:999px !important;
+  }
+
+  .content::-webkit-scrollbar-thumb{
+    background:rgba(30,215,96,.55) !important;
+    border-radius:999px !important;
+    border:2px solid #05080d !important;
+  }
+
+  .content::-webkit-scrollbar-thumb:hover{
+    background:rgba(30,215,96,.78) !important;
+  }
+
+  .topbar{
+    height:var(--topbar-h) !important;
+    min-height:var(--topbar-h) !important;
+    flex-basis:var(--topbar-h) !important;
+  }
+
+  .topbar-inner{
+    min-height:var(--topbar-h) !important;
+    padding:0 20px !important;
+  }
+
+  .nav{
+    gap:14px !important;
+  }
+
+  .nav-link{
+    min-height:32px !important;
+    padding:0 8px !important;
+    font-size:11px !important;
+  }
+
+  #date{
+    height:36px !important;
+    min-width:128px !important;
+    font-size:12px !important;
+  }
+
+  #btn,
+  .btnOutline,
+  .status{
+    min-height:36px !important;
+    padding:0 12px !important;
+    font-size:12px !important;
+  }
+
+  /* O grid passa a crescer naturalmente; nada de cortar o lado direito */
+  .dashboardGrid{
+    height:auto !important;
+    min-height:0 !important;
+    align-items:start !important;
+    grid-template-columns:minmax(0,1fr) var(--rail-w) !important;
+    gap:12px !important;
+    overflow:visible !important;
+  }
+
+  .dashboardMainColumn,
+  .dashboardRightRail,
+  #desktopMatchRail{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:var(--rail-w) !important;
+    min-width:var(--rail-w) !important;
+    max-width:var(--rail-w) !important;
+    gap:10px !important;
+  }
+
+  #prePanel.panel,
+  #top1,
+  .marketFiltersWrap,
+  .premiumMarketShell,
+  .cleanDashShell{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  #prePanel.panel{
+    border-radius:18px !important;
+  }
+
+  .marketFiltersWrap,
+  .premiumMarketShell,
+  .cleanDashShell{
+    padding:10px 10px 12px !important;
+    gap:10px !important;
+    grid-template-rows:auto auto auto !important;
+  }
+
+  /* Mercado ativo mais compacto e subindo a lista de jogos */
+  .marketHeroPanel{
+    padding:10px !important;
+    border-radius:16px !important;
+  }
+
+  .marketHeroTitle{
+    margin-bottom:8px !important;
+    font-size:14px !important;
+  }
+
+  .marketHeroGrid,
+  .premiumHeroGrid,
+  .cleanHeroGrid{
+    grid-template-columns:minmax(230px,1.35fr) repeat(2,minmax(130px,.75fr)) !important;
+    gap:8px !important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard,
+  .premiumHeroCard,
+  .cleanHeroCard{
+    height:72px !important;
+    min-height:72px !important;
+    max-height:72px !important;
+    padding:9px 12px !important;
+    border-radius:14px !important;
+  }
+
+  .marketActiveName{
+    font-size:18px !important;
+    line-height:1 !important;
+    margin-bottom:5px !important;
+  }
+
+  .marketActiveCount{
+    font-size:10px !important;
+    margin-bottom:5px !important;
+  }
+
+  .marketActivePercent{
+    font-size:24px !important;
+    line-height:1 !important;
+  }
+
+  .marketMetricCard strong,
+  .premiumHeroCard strong,
+  .cleanHeroCard strong{
+    font-size:22px !important;
+    line-height:1 !important;
+  }
+
+  .marketMetricCard span,
+  .premiumHeroCard span,
+  .cleanHeroCard span{
+    font-size:10px !important;
+  }
+
+  /* Área dos mercados: menor, alinhada e sem bagunça */
+  .marketFilterPanel,
+  .premiumFilterBand,
+  .cleanFilterBand{
+    padding:9px 10px !important;
+    margin:0 !important;
+    border-radius:15px !important;
+  }
+
+  .marketFilterTitle{
+    display:none !important;
+  }
+
+  .marketFilterGroups{
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:8px !important;
+    margin:0 !important;
+  }
+
+  .marketFilterGroup{
+    min-height:74px !important;
+    padding:9px !important;
+    border-radius:13px !important;
+  }
+
+  .marketFilterGroupTitle{
+    margin:0 0 7px !important;
+    font-size:10px !important;
+    line-height:1 !important;
+    letter-spacing:.06em !important;
+  }
+
+  .marketGroupChips,
+  .marketFilterGroup:nth-child(2) .marketGroupChips,
+  .marketFilterGroup:nth-child(4) .marketGroupChips{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:7px !important;
+  }
+
+  .marketChip,
+  .marketChipPremium,
+  .marketGroupChips button,
+  .premiumMarketChip,
+  .cleanMarketChip{
+    width:100% !important;
+    height:27px !important;
+    min-height:27px !important;
+    padding:0 7px !important;
+    border-radius:9px !important;
+    font-size:9px !important;
+    line-height:1 !important;
+    justify-content:center !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  /* Jogos aparecem mais: painel não fica preso e linhas ficam mais baixas */
+  .marketTablePanel,
+  .premiumGamesPanel,
+  .cleanGamesPanel{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding:10px !important;
+    border-radius:16px !important;
+  }
+
+  .premiumGameRows,
+  .cleanDashRows,
+  .marketRows{
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding-right:0 !important;
+  }
+
+  .premiumGamesTop,
+  .marketTableTop,
+  .cleanGamesTop{
+    margin-bottom:8px !important;
+  }
+
+  .premiumGamesTop h3,
+  .marketTableTitle,
+  .cleanGamesTop h3{
+    font-size:16px !important;
+  }
+
+  .premiumGameRow,
+  .cleanDashRow,
+  .marketGameRow{
+    min-height:66px !important;
+    height:66px !important;
+    padding:8px 10px !important;
+    border-radius:12px !important;
+    gap:8px !important;
+    align-items:center !important;
+  }
+
+  .premiumGameTime{
+    font-size:20px !important;
+    line-height:1 !important;
+  }
+
+  .premiumGameTime span{
+    font-size:10px !important;
+  }
+
+  .premiumTeams,
+  .premiumGameTeams,
+  .cleanTeams,
+  .marketTeams{
+    font-size:12px !important;
+    line-height:1.16 !important;
+  }
+
+  .premiumTeams small,
+  .premiumGameTeams small,
+  .cleanTeams small,
+  .marketMeta{
+    font-size:9px !important;
+    line-height:1.1 !important;
+  }
+
+  .premiumPercent{
+    font-size:20px !important;
+  }
+
+  .premiumEnterBtn,
+  .matchCenterBtn,
+  .analysisBtn,
+  .marketGameActions .matchCenterMiniBtn{
+    height:24px !important;
+    min-height:24px !important;
+    padding:0 8px !important;
+    border-radius:8px !important;
+    font-size:8.5px !important;
+  }
+
+  /* Lado direito acompanha a rolagem única e não corta o gráfico */
+  .railCard{
+    padding:12px !important;
+    border-radius:15px !important;
+  }
+
+  .railTitle{
+    margin-bottom:10px !important;
+  }
+
+  .railTitle span,
+  .railCard h3{
+    font-size:13px !important;
+  }
+
+  .matchRailCard,
+  .railScoreCard{
+    min-height:auto !important;
+  }
+
+  .railBadge{
+    width:44px !important;
+    height:44px !important;
+  }
+
+  .railScore strong{
+    font-size:30px !important;
+  }
+
+  .railCompareRows{
+    gap:7px !important;
+  }
+
+  .railCompareRow{
+    min-height:20px !important;
+  }
+
+  .railCompareLabel{
+    font-size:9.5px !important;
+  }
+
+  .matchCenterPressureCard,
+  .railCard.matchCenterPressureCard,
+  .railPressureCard{
+    height:auto !important;
+    min-height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .pressureChartBox,
+  .matchCenterPressureChart,
+  .pressureChart{
+    height:150px !important;
+    min-height:150px !important;
+    max-height:150px !important;
+    overflow:hidden !important;
+  }
+
+  .railEvents,
+  .matchCenterEvents,
+  .matchEventsList{
+    max-height:none !important;
+    overflow:visible !important;
+  }
+}
+
+/* Ajuste extra para notebook 14/15 sem alterar 27" */
+@media (max-width:1450px) and (min-width:1024px){
+
+  :root{
+    --sidebar-w:148px !important;
+    --rail-w:270px !important;
+  }
+
+  .sidebar{
+    width:var(--sidebar-w) !important;
+    flex-basis:var(--sidebar-w) !important;
+    padding-left:10px !important;
+    padding-right:10px !important;
+  }
+
+  .main{
+    width:calc(100vw - var(--sidebar-w)) !important;
+    max-width:calc(100vw - var(--sidebar-w)) !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) var(--rail-w) !important;
+    gap:10px !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    width:var(--rail-w) !important;
+    min-width:var(--rail-w) !important;
+    max-width:var(--rail-w) !important;
+  }
+
+  .marketHeroGrid,
+  .premiumHeroGrid,
+  .cleanHeroGrid{
+    grid-template-columns:minmax(200px,1.25fr) repeat(2,minmax(105px,.75fr)) !important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard,
+  .premiumHeroCard,
+  .cleanHeroCard{
+    height:66px !important;
+    min-height:66px !important;
+    max-height:66px !important;
+    padding:8px 10px !important;
+  }
+
+  .marketActiveName{
+    font-size:16px !important;
+  }
+
+  .marketActivePercent{
+    font-size:22px !important;
+  }
+
+  .marketFilterGroups{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:7px !important;
+  }
+
+  .marketFilterGroup{
+    min-height:68px !important;
+    padding:8px !important;
+  }
+
+  .marketChip,
+  .marketChipPremium,
+  .marketGroupChips button,
+  .premiumMarketChip,
+  .cleanMarketChip{
+    height:25px !important;
+    min-height:25px !important;
+    font-size:8.5px !important;
+    padding:0 5px !important;
+  }
+
+  .premiumGameRow,
+  .cleanDashRow,
+  .marketGameRow{
+    min-height:62px !important;
+    height:62px !important;
+  }
+
+  .railScore strong{
+    font-size:27px !important;
+  }
+
+  .pressureChartBox,
+  .matchCenterPressureChart,
+  .pressureChart{
+    height:140px !important;
+    min-height:140px !important;
+    max-height:140px !important;
+  }
+}
