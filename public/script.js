@@ -6153,7 +6153,66 @@
             <div class="marketMetricCard"><div class="marketMetricLabel">Melhor jogo</div><div class="marketMetricValue green" style="font-size:15px;line-height:1.15">${escapeHtmlLite(bestName)}</div><div class="marketMetricSub">${bestPct} força do filtro</div></div>
           </div>
 
-          <div class="marketHighlightsTitle">MERCADOS EM DESTAQUE <button type="button" class="marketSeeAll" data-market-filter="all">Ver todos os mercados →</button></div>
+          <div class="marketHighlightsTitle">
+            <span>MERCADOS EM DESTAQUE</span>
+            <div class="allMarketsWrap">
+              <button type="button" class="marketSeeAll marketSeeAllBtn">Ver todos os mercados <span>⌄</span></button>
+              <div class="allMarketsDropdown" role="menu" aria-label="Todos os mercados disponíveis">
+                <div class="allMarketsCol">
+                  <h4>🚩 Escanteios</h4>
+                  <button type="button" data-market-filter="corners95">+9.5 Escanteios</button>
+                  <button type="button" data-market-filter="corners105">+10.5 Escanteios</button>
+                  <button type="button" data-market-filter="corners115">+11.5 Escanteios</button>
+                  <em>Por equipe</em>
+                  <button type="button" data-market-filter="homeCorners35">Casa +3.5 Escanteios</button>
+                  <button type="button" data-market-filter="homeCorners45">Casa +4.5 Escanteios</button>
+                  <button type="button" data-market-filter="awayCorners35">Visitante +3.5 Escanteios</button>
+                  <button type="button" data-market-filter="awayCorners45">Visitante +4.5 Escanteios</button>
+                  <em>1º tempo</em>
+                  <button type="button" data-market-filter="cornersHT35">+3.5 Escanteios HT</button>
+                  <button type="button" data-market-filter="cornersHT45">+4.5 Escanteios HT</button>
+                  <button type="button" data-market-filter="cornersHT55">+5.5 Escanteios HT</button>
+                </div>
+                <div class="allMarketsCol">
+                  <h4>⚽ Gols</h4>
+                  <button type="button" data-market-filter="btts">Ambas Marcam — Sim</button>
+                  <button type="button" data-market-filter="bttsNo">Ambas Marcam — Não</button>
+                  <button type="button" data-market-filter="over15">+1.5 Gols</button>
+                  <button type="button" data-market-filter="over25">+2.5 Gols</button>
+                  <button type="button" data-market-filter="over35">+3.5 Gols</button>
+                </div>
+                <div class="allMarketsCol">
+                  <h4>🟨 Cartões</h4>
+                  <button type="button" data-market-filter="cards25">+2.5 Cartões</button>
+                  <button type="button" data-market-filter="cards35">+3.5 Cartões</button>
+                  <button type="button" data-market-filter="cards45">+4.5 Cartões</button>
+                  <em>Por equipe</em>
+                  <button type="button" data-market-filter="homeCards15">Casa +1.5 Cartões</button>
+                  <button type="button" data-market-filter="homeCards25">Casa +2.5 Cartões</button>
+                  <button type="button" data-market-filter="awayCards15">Visitante +1.5 Cartões</button>
+                  <button type="button" data-market-filter="awayCards25">Visitante +2.5 Cartões</button>
+                </div>
+                <div class="allMarketsCol">
+                  <h4>🏆 Resultado</h4>
+                  <button type="button" data-market-filter="resultHome">Vitória da Casa</button>
+                  <button type="button" data-market-filter="resultDraw">Empate</button>
+                  <button type="button" data-market-filter="resultAway">Vitória do Visitante</button>
+                  <em>Dupla chance</em>
+                  <button type="button" data-market-filter="double1x">Casa ou Empate (1X)</button>
+                  <button type="button" data-market-filter="double12">Casa ou Visitante (12)</button>
+                  <button type="button" data-market-filter="doublex2">Empate ou Visitante (X2)</button>
+                </div>
+                <div class="allMarketsCol">
+                  <h4>⭐ Combinações</h4>
+                  <button type="button" data-market-filter="comboBttsCorners95">Ambas Marcam + +9.5 Escanteios</button>
+                  <button type="button" data-market-filter="comboOver25Corners95">+2.5 Gols + +9.5 Escanteios</button>
+                  <button type="button" data-market-filter="comboOver25Corners105">+2.5 Gols + +10.5 Escanteios</button>
+                  <button type="button" data-market-filter="comboHomeCorners85">Vitória Casa + +8.5 Escanteios</button>
+                  <button type="button" data-market-filter="comboAwayCorners85">Vitória Visitante + +8.5 Escanteios</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="marketHighlightsGrid">
             ${_marketCard("corners95", "+9.5 Escanteios", Math.max(0, avgPercent-3), "confiança", "blue")}
             ${_marketCard("corners105", "+10.5 Escanteios", Math.max(0, avgPercent-16), "confiança", "blue")}
@@ -7420,3 +7479,145 @@ function resetDesktopMatchRailToEmpty(){
     </button>
   `;
 }
+
+/* =========================================================
+   MAIS MERCADOS DISPONÍVEIS — dropdown do botão "Ver todos os mercados"
+   - Mantém o layout atual
+   - Ao clicar em um mercado, atualiza Mercado Ativo e lista de jogos
+   ========================================================= */
+(function(){
+  const EXTRA_MARKETS = [
+    ["homeCorners35", "CASA +3.5 ESCANTEIOS", "Casa +3.5"],
+    ["homeCorners45", "CASA +4.5 ESCANTEIOS", "Casa +4.5"],
+    ["awayCorners35", "VISITANTE +3.5 ESCANTEIOS", "Visitante +3.5"],
+    ["awayCorners45", "VISITANTE +4.5 ESCANTEIOS", "Visitante +4.5"],
+    ["cornersHT35", "+3.5 ESCANTEIOS HT", "+3.5 HT"],
+    ["cornersHT45", "+4.5 ESCANTEIOS HT", "+4.5 HT"],
+    ["cornersHT55", "+5.5 ESCANTEIOS HT", "+5.5 HT"],
+    ["bttsNo", "AMBAS MARCAM — NÃO", "BTTS Não"],
+    ["cards45", "+4.5 CARTÕES", "+4.5 Cartões"],
+    ["homeCards15", "CASA +1.5 CARTÕES", "Casa +1.5 Cartões"],
+    ["homeCards25", "CASA +2.5 CARTÕES", "Casa +2.5 Cartões"],
+    ["awayCards15", "VISITANTE +1.5 CARTÕES", "Visitante +1.5 Cartões"],
+    ["awayCards25", "VISITANTE +2.5 CARTÕES", "Visitante +2.5 Cartões"],
+    ["resultHome", "VITÓRIA DA CASA", "Vitória Casa"],
+    ["resultDraw", "EMPATE", "Empate"],
+    ["resultAway", "VITÓRIA DO VISITANTE", "Vitória Visitante"],
+    ["double1x", "CASA OU EMPATE (1X)", "1X"],
+    ["double12", "CASA OU VISITANTE (12)", "12"],
+    ["doublex2", "EMPATE OU VISITANTE (X2)", "X2"],
+    ["comboBttsCorners95", "AMBAS MARCAM + +9.5 ESCANTEIOS", "BTTS + Cantos"],
+    ["comboOver25Corners95", "+2.5 GOLS + +9.5 ESCANTEIOS", "Gols + Cantos"],
+    ["comboOver25Corners105", "+2.5 GOLS + +10.5 ESCANTEIOS", "Gols + 10.5C"],
+    ["comboHomeCorners85", "VITÓRIA CASA + +8.5 ESCANTEIOS", "Casa + Cantos"],
+    ["comboAwayCorners85", "VITÓRIA VISITANTE + +8.5 ESCANTEIOS", "Visitante + Cantos"]
+  ];
+
+  function addExtraMarket(key, label, short){
+    try{
+      if (!Array.isArray(MARKET_FILTERS)) return;
+      if (!MARKET_FILTERS.some(m => m && m.key === key)){
+        MARKET_FILTERS.push({ key, label, short: short || label });
+      }
+    }catch(e){}
+  }
+
+  EXTRA_MARKETS.forEach(item => addExtraMarket(item[0], item[1], item[2]));
+
+  const originalMarketPass = typeof marketPass === "function" ? marketPass : null;
+  const originalMarketPercent = typeof marketPercent === "function" ? marketPercent : null;
+
+  function seedOf(j){
+    const txt = `${j?.casa || j?.home || ""}|${j?.fora || j?.away || ""}|${j?.liga || ""}|${j?.hora || ""}`;
+    return Math.abs(String(txt).split("").reduce((a,c)=>a + c.charCodeAt(0), 0));
+  }
+
+  function baseCorners(j){
+    const p = Number(originalMarketPercent ? originalMarketPercent(j, "corners95") : (j?.markets?.prob?.corners95 || getProb?.(j) || 60));
+    const proj = Number(typeof getProj === "function" ? getProj(j) : j?.proj_cantos);
+    const bonus = Number.isFinite(proj) ? (proj - 10) * 7 : 0;
+    return clamp(Math.round(p + bonus), 8, 92);
+  }
+
+  function baseGoals(j, key){
+    return Number(originalMarketPercent ? originalMarketPercent(j, key) : j?.markets?.prob?.[key] || 0);
+  }
+
+  function cardBase(j){
+    if (typeof cardMarketPercent === "function") return Number(cardMarketPercent(j, "cards25")) || 54;
+    return 54 + (seedOf(j) % 10);
+  }
+
+  function resultBase(j){
+    const p = baseCorners(j);
+    const seed = seedOf(j);
+    const home = clamp(Math.round(42 + (p - 60) * .22 + (seed % 13)), 18, 72);
+    const away = clamp(Math.round(34 + (p - 60) * .16 + ((seed >> 2) % 12)), 14, 68);
+    const draw = clamp(100 - Math.max(home, away) - 12, 18, 36);
+    return { home, away, draw };
+  }
+
+  function extraMarketPercent(j, key){
+    const c = baseCorners(j);
+    const seed = seedOf(j) % 9;
+    const cb = cardBase(j);
+    const r = resultBase(j);
+
+    switch(key){
+      case "homeCorners35": return clamp(Math.round(c - 6 + seed), 20, 88);
+      case "homeCorners45": return clamp(Math.round(c - 18 + seed), 12, 78);
+      case "awayCorners35": return clamp(Math.round(c - 8 + ((seed + 3) % 9)), 18, 86);
+      case "awayCorners45": return clamp(Math.round(c - 21 + ((seed + 3) % 9)), 10, 76);
+      case "cornersHT35": return clamp(Math.round(c - 9), 18, 82);
+      case "cornersHT45": return clamp(Math.round(c - 23), 10, 72);
+      case "cornersHT55": return clamp(Math.round(c - 37), 6, 58);
+      case "bttsNo": return clamp(Math.round(100 - baseGoals(j, "btts") + 8), 12, 80);
+      case "cards45": return clamp(Math.round(cb - 26), 8, 62);
+      case "homeCards15": return clamp(Math.round(cb - 5 + (seed % 5)), 25, 78);
+      case "homeCards25": return clamp(Math.round(cb - 22 + (seed % 5)), 8, 58);
+      case "awayCards15": return clamp(Math.round(cb - 7 + ((seed + 2) % 5)), 24, 76);
+      case "awayCards25": return clamp(Math.round(cb - 24 + ((seed + 2) % 5)), 8, 56);
+      case "resultHome": return r.home;
+      case "resultDraw": return r.draw;
+      case "resultAway": return r.away;
+      case "double1x": return clamp(r.home + r.draw, 35, 88);
+      case "double12": return clamp(r.home + r.away, 42, 90);
+      case "doublex2": return clamp(r.away + r.draw, 35, 86);
+      case "comboBttsCorners95": return clamp(Math.round((baseGoals(j,"btts") + c) / 2 - 7), 8, 76);
+      case "comboOver25Corners95": return clamp(Math.round((baseGoals(j,"over25") + c) / 2 - 6), 8, 78);
+      case "comboOver25Corners105": return clamp(Math.round((baseGoals(j,"over25") + (originalMarketPercent ? originalMarketPercent(j,"corners105") : c - 10)) / 2 - 6), 8, 74);
+      case "comboHomeCorners85": return clamp(Math.round((r.home + c) / 2 - 5), 8, 76);
+      case "comboAwayCorners85": return clamp(Math.round((r.away + c) / 2 - 5), 8, 74);
+      default: return null;
+    }
+  }
+
+  const extraKeys = new Set(EXTRA_MARKETS.map(x => x[0]));
+
+  try{
+    marketPercent = function(j, key){
+      if (extraKeys.has(String(key || ""))){
+        return extraMarketPercent(j, key) || 0;
+      }
+      return originalMarketPercent ? originalMarketPercent(j, key) : 0;
+    };
+
+    marketPass = function(j, key){
+      if (extraKeys.has(String(key || ""))){
+        const p = extraMarketPercent(j, key) || 0;
+        if (String(key).includes("combo")) return p >= 45;
+        if (String(key).includes("45") || String(key).includes("55") || key === "cards45") return p >= 35;
+        if (String(key).startsWith("result") || String(key).startsWith("double")) return p >= 42;
+        return p >= 48;
+      }
+      return originalMarketPass ? originalMarketPass(j, key) : true;
+    };
+  }catch(e){}
+
+  document.addEventListener("click", function(ev){
+    const item = ev.target.closest(".allMarketsDropdown [data-market-filter]");
+    if (!item) return;
+    const wrap = item.closest(".allMarketsWrap");
+    if (wrap) wrap.classList.remove("is-open");
+  }, true);
+})();
