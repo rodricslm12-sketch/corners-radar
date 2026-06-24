@@ -5653,16 +5653,16 @@
           <svg class="railPressureSvg railPressureBarsSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pressão real dos últimos minutos">
             <defs>
               <linearGradient id="mcHomeBarGrad" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stop-color="#22e66d"></stop>
-                <stop offset="1" stop-color="#0ca94b"></stop>
+                <stop offset="0" stop-color="#24a8ff"></stop>
+                <stop offset="1" stop-color="#0877ff"></stop>
               </linearGradient>
               <linearGradient id="mcAwayBarGrad" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stop-color="#4da8ff"></stop>
-                <stop offset="1" stop-color="#2563eb"></stop>
+                <stop offset="0" stop-color="#a66cff"></stop>
+                <stop offset="1" stop-color="#6d35ff"></stop>
               </linearGradient>
             </defs>
-            <rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${chartH}" fill="rgba(30,215,96,.10)"></rect>
-            <rect x="${padL}" y="${mid}" width="${W-padL-padR}" height="${chartH}" fill="rgba(56,165,255,.10)"></rect>
+            <rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${chartH}" fill="rgba(36,168,255,.12)"></rect>
+            <rect x="${padL}" y="${mid}" width="${W-padL-padR}" height="${chartH}" fill="rgba(139,92,246,.13)"></rect>
             <line class="grid" x1="${padL}" y1="${padT}" x2="${W-padR}" y2="${padT}"></line>
             <line class="grid" x1="${padL}" y1="${mid-chartH/2}" x2="${W-padR}" y2="${mid-chartH/2}"></line>
             <line class="grid strong" x1="${padL}" y1="${mid}" x2="${W-padR}" y2="${mid}"></line>
@@ -6017,6 +6017,19 @@
     return `<button type="button" class="marketChipPremium ${active ? "is-active" : ""} ${exists ? "" : "is-disabled"}" ${exists ? `data-market-filter="${key}"` : "disabled"}>${label}</button>`;
   }
 
+
+  function _marketCard(key, label, pct, sub, tone){
+    const exists = key === "all" || !!_marketFilterByKey(key);
+    const active = activeMarketFilter === key;
+    const val = Math.max(0, Math.min(99, Math.round(Number(pct || 0))));
+    return `<button type="button" class="marketHighlightCard tone-${tone || "blue"} ${active ? "is-active" : ""} ${exists ? "" : "is-disabled"}" ${exists ? `data-market-filter="${key}"` : "disabled"}>
+      <span class="marketHighlightLabel">${label}</span>
+      <strong>${val}%</strong>
+      <small>${sub || "confiança"}</small>
+      <i class="marketSpark"><b style="width:${val}%"></b></i>
+    </button>`;
+  }
+
   function _strengthBars(p){
     const n = Math.max(1, Math.min(10, Math.round(Number(p || 0) / 10)));
     return Array.from({length:10}, (_,i)=>`<i class="${i < n ? "on" : ""}" style="height:${8 + i * 2}px"></i>`).join("");
@@ -6136,21 +6149,19 @@
             </div>
             <div class="marketMetricCard"><div class="marketMetricLabel">Média projetada</div><div class="marketMetricValue">${avgProj}</div><div class="marketMetricSub">Escanteios por jogo</div></div>
             <div class="marketMetricCard"><div class="marketMetricLabel">Média recente</div><div class="marketMetricValue">${recentAvg}</div><div class="marketMetricSub">Base dos melhores jogos</div></div>
-            <div class="marketMetricCard"><div class="marketMetricLabel">Força do mercado</div><div class="marketStrengthBars">${_strengthBars(avgPercent)}</div><div class="marketMetricSub"><b style="color:#22e66d">${avgPercent}%</b> muito forte</div></div>
+            <div class="marketMetricCard"><div class="marketMetricLabel">Força do mercado</div><div class="marketStrengthBars">${_strengthBars(avgPercent)}</div><div class="marketMetricSub"><b>${avgPercent}%</b> muito forte</div></div>
             <div class="marketMetricCard"><div class="marketMetricLabel">Melhor jogo</div><div class="marketMetricValue green" style="font-size:15px;line-height:1.15">${escapeHtmlLite(bestName)}</div><div class="marketMetricSub">${bestPct} força do filtro</div></div>
           </div>
 
-          <div class="marketFilterGroups">
-            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Gols</div><div class="marketGroupChips">${_groupButton("over15","+1.5 Gols")}${_groupButton("over25","+2.5 Gols")}${_groupButton("over35","+3.5 Gols")}</div></div>
-            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Escanteios</div><div class="marketGroupChips">${_groupButton("corners95","+9.5")}${_groupButton("corners105","+10.5")}${_groupButton("corners115","+11.5")}</div></div>
-            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Resultado</div><div class="marketGroupChips">${_groupButton("all","Todos")}${_groupButton("btts","Ambas Marcam")}</div></div>
-            <div class="marketFilterGroup"><div class="marketFilterGroupTitle">Especiais</div><div class="marketGroupChips">${_groupButton("cards25","+2.5 Cartões")}${_groupButton("cards35","+3.5 Cartões")}${_groupButton("last5","Últimos 5")}</div></div>
-          </div>
-
-          <div class="marketInsightGrid">
-            <div class="marketInsightCard"><div class="marketInsightTitle">Por que o mercado está forte hoje?</div><div class="marketReasons"><div class="marketReason"><b>✓</b><span>${avgPercent}% de força média nos jogos filtrados.</span></div><div class="marketReason"><b>✓</b><span>Média projetada de ${avgProj} cantos na seleção atual.</span></div><div class="marketReason"><b>✓</b><span>Lista ordenada para priorizar maior probabilidade.</span></div><div class="marketReason"><b>✓</b><span>IA destaca jogos com pressão ofensiva e tendência real.</span></div></div></div>
-            <div class="marketInsightCard"><div class="marketInsightTitle">Distribuição dos resultados</div><div class="marketDistribution"><div class="marketDistBar"><i style="width:${acimaPct}%"></i><i style="width:${meioPct}%"></i><i style="width:${baixoPct}%"></i></div><div class="marketDistLegend"><span><strong>${acimaPct}%</strong>Acima</span><span><strong>${meioPct}%</strong>Na linha</span><span><strong>${baixoPct}%</strong>Abaixo</span></div></div></div>
-            <div class="marketInsightCard"><div class="marketInsightTitle">Tendência do mercado</div><div class="marketTrendBars">${_trendBars(filtered)}</div><span class="marketTrendStatus">EM ALTA ↗</span></div>
+          <div class="marketHighlightsTitle">MERCADOS EM DESTAQUE <button type="button" class="marketSeeAll" data-market-filter="all">Ver todos os mercados →</button></div>
+          <div class="marketHighlightsGrid">
+            ${_marketCard("corners95", "+9.5 Escanteios", Math.max(0, avgPercent-3), "confiança", "blue")}
+            ${_marketCard("corners105", "+10.5 Escanteios", Math.max(0, avgPercent-16), "confiança", "blue")}
+            ${_marketCard("btts", "Ambas Marcam", Math.max(0, avgPercent-7), "sim", "blue")}
+            ${_marketCard("cards25", "+2.5 Cartões", Math.max(0, avgPercent-10), "confiança", "blue")}
+            ${_marketCard("cards35", "+3.5 Cartões", Math.max(0, avgPercent-22), "confiança", "blue")}
+            ${_marketCard("over25", "+2.5 Gols", Math.max(0, avgPercent+2), "confiança", "blue")}
+            ${_marketCard("over15", "+1.5 Gols", Math.max(0, avgPercent+15), "confiança", "blue")}
           </div>
         </section>
 
@@ -6784,8 +6795,8 @@
 
     const intervalX = leftPad + plotW * .5;
     const intervalMarker = `
-      <line x1="${intervalX.toFixed(1)}" y1="${plotTop-8}" x2="${intervalX.toFixed(1)}" y2="${plotBottom+4}" stroke="rgba(32,224,194,.55)" stroke-width="1.2" stroke-dasharray="5 6"/>
-      <rect x="${(intervalX-16).toFixed(1)}" y="190" width="32" height="17" rx="5" fill="rgba(2,8,12,.92)" stroke="rgba(32,224,194,.35)"/>
+      <line x1="${intervalX.toFixed(1)}" y1="${plotTop-8}" x2="${intervalX.toFixed(1)}" y2="${plotBottom+4}" stroke="rgba(112,99,255,.55)" stroke-width="1.2" stroke-dasharray="5 6"/>
+      <rect x="${(intervalX-16).toFixed(1)}" y="190" width="32" height="17" rx="5" fill="rgba(2,8,12,.92)" stroke="rgba(112,99,255,.35)"/>
       <text x="${intervalX.toFixed(1)}" y="202" text-anchor="middle" font-size="9" fill="#ffffff" font-weight="950">INT</text>
     `;
 
@@ -6795,8 +6806,8 @@
       const aVal = Math.max(2.4, (x.away / max) * amp);
       const opacity = x.future ? .22 : 1;
       return `
-        ${x.home > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid-hVal-4).toFixed(1)}" width="${barW.toFixed(1)}" height="${hVal.toFixed(1)}" rx="2.6" fill="url(#pressureHomeGreenGrad)" opacity="${opacity}"/>` : ""}
-        ${x.away > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid+4).toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="2.6" fill="url(#pressureAwayBlueGrad)" opacity="${opacity}"/>` : ""}
+        ${x.home > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid-hVal-4).toFixed(1)}" width="${barW.toFixed(1)}" height="${hVal.toFixed(1)}" rx="2.6" fill="url(#pressureHomeBlueGrad)" opacity="${opacity}"/>` : ""}
+        ${x.away > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid+4).toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="2.6" fill="url(#pressureAwayPurpleGrad)" opacity="${opacity}"/>` : ""}
       `;
     }).join("");
 
@@ -6827,24 +6838,28 @@
               <stop offset="0" stop-color="#071018"/>
               <stop offset="1" stop-color="#031018"/>
             </linearGradient>
-            <linearGradient id="pressureHomeGreenGrad" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stop-color="#32ef7d"/>
-              <stop offset="1" stop-color="#1ed760"/>
+            <linearGradient id="pressureTopBluePurpleGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stop-color="#139bff"/>
+              <stop offset="1" stop-color="#7c3cff"/>
             </linearGradient>
-            <linearGradient id="pressureAwayBlueGrad" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stop-color="#4aa3df"/>
-              <stop offset="1" stop-color="#1878e8"/>
+            <linearGradient id="pressureHomeBlueGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#24a8ff"/>
+              <stop offset="1" stop-color="#0877ff"/>
+            </linearGradient>
+            <linearGradient id="pressureAwayPurpleGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#a66cff"/>
+              <stop offset="1" stop-color="#6d35ff"/>
             </linearGradient>
           </defs>
           <rect x="0" y="0" width="${w}" height="${h}" rx="12" fill="url(#pressureBgGradSite)"/>
-          <rect x="0" y="0" width="${w}" height="${topBarH}" fill="#1ed760" opacity=".96"/>
+          <rect x="0" y="0" width="${w}" height="${topBarH}" fill="url(#pressureTopBluePurpleGrad)" opacity=".96"/>
           <text x="${w/2}" y="${titleY}" text-anchor="middle" font-size="16" fill="#f4fbff" font-weight="950" letter-spacing="1.1">GRÁFICO DE PRESSÃO</text>
           <text x="108" y="${namesY}" text-anchor="end" font-size="11" fill="#e9f5ff" font-weight="950">${esc(homeName)}</text>
           <text x="${w/2}" y="${namesY+2}" text-anchor="middle" font-size="21" fill="#f4fbff" font-weight="950">${esc(gh)} - ${esc(ga)}</text>
           <text x="236" y="${namesY}" text-anchor="start" font-size="11" fill="#e9f5ff" font-weight="950">${esc(awayName)}</text>
 
           ${tickMarks}
-          <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="#20e0c2" stroke-width="2.2"/>
+          <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="#45b6ff" stroke-width="2.2"/>
           ${bars}
           ${intervalMarker}
           ${markers}
@@ -7211,3 +7226,197 @@
   `;
   document.head.appendChild(style);
 })();
+/* =========================================================
+   LOADER PREMIUM — CORNERS RADAR
+   Substitui o carregamento simples por um painel animado.
+   ========================================================= */
+var __crPremiumLoaderTimer = null;
+var __crPremiumLoaderPct = 14;
+var __crPremiumLoaderStep = 0;
+
+function crPremiumLoaderEscape(value){
+  if (typeof escapeHtmlLite === "function") return escapeHtmlLite(value);
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function crLoaderMessageByStep(step){
+  const messages = [
+    "Conectando à API e validando a data selecionada...",
+    "Buscando partidas disponíveis para o dia...",
+    "Cruzando estatísticas, mercados e força do filtro...",
+    "Calculando projeções e melhores oportunidades...",
+    "Preparando Match Center e leitura final..."
+  ];
+  return messages[Math.max(0, Math.min(messages.length - 1, step))];
+}
+
+function crLoaderStepClass(index, activeStep){
+  if (index < activeStep) return "done";
+  if (index === activeStep) return "active";
+  return "";
+}
+
+function crBuildPremiumLoader(label){
+  const title = crPremiumLoaderEscape(label || "Corners Radar está analisando os jogos");
+  const steps = [
+    { icon:"↔", text:"Conectando API" },
+    { icon:"⌕", text:"Buscando partidas" },
+    { icon:"▥", text:"Analisando estatísticas" },
+    { icon:"▦", text:"Calculando mercados" },
+    { icon:"⚑", text:"Finalizando" }
+  ];
+
+  return `
+    <div class="crPremiumLoader" aria-live="polite" data-cr-premium-loader="1">
+      <div class="crLoaderInner">
+        <div class="crRadarOrb" aria-hidden="true">
+          <span class="crRadarSweep"></span>
+          <span class="crRadarLogo">CR</span>
+        </div>
+
+        <div>
+          <h2 class="crLoaderTitle"><b>Corners Radar</b> está analisando os jogos</h2>
+          <p class="crLoaderSub" data-cr-loader-message>${title}</p>
+        </div>
+
+        <div class="crLoaderSteps" data-cr-loader-steps>
+          ${steps.map((s, i) => `
+            <div class="crLoaderStep ${crLoaderStepClass(i, __crPremiumLoaderStep)}" data-cr-step="${i}">
+              <i>${s.icon}</i>
+              <span>${s.text}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="crProgressWrap">
+          <div class="crProgressTrack"><span class="crProgressBar" data-cr-loader-bar style="width:${__crPremiumLoaderPct}%"></span></div>
+          <strong class="crProgressPct" data-cr-loader-pct>${__crPremiumLoaderPct}%</strong>
+        </div>
+
+        <div class="crLoaderHint">Isso pode levar alguns segundos...</div>
+      </div>
+
+      <div class="crSkeletonRows" aria-hidden="true">
+        ${Array.from({length:5}).map((_, idx) => `
+          <div class="crSkeletonRow">
+            <span class="crSkeletonDot"></span>
+            <span class="crSkeletonLine long"></span>
+            <span class="crSkeletonLine mid"></span>
+            <span class="crSkeletonLine short"></span>
+            <span class="crSkeletonLine mid"></span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function crStartPremiumLoaderLoop(){
+  if (__crPremiumLoaderTimer) clearInterval(__crPremiumLoaderTimer);
+
+  __crPremiumLoaderPct = Math.max(14, Math.min(__crPremiumLoaderPct || 14, 86));
+  __crPremiumLoaderStep = Math.max(0, Math.min(__crPremiumLoaderStep || 0, 4));
+
+  __crPremiumLoaderTimer = setInterval(function(){
+    const loader = document.querySelector("[data-cr-premium-loader]");
+    if (!loader){
+      clearInterval(__crPremiumLoaderTimer);
+      __crPremiumLoaderTimer = null;
+      return;
+    }
+
+    const nextPct = Math.min(94, __crPremiumLoaderPct + Math.floor(4 + Math.random() * 9));
+    __crPremiumLoaderPct = nextPct;
+
+    if (nextPct >= 25) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 1);
+    if (nextPct >= 48) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 2);
+    if (nextPct >= 68) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 3);
+    if (nextPct >= 86) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 4);
+
+    const bar = loader.querySelector("[data-cr-loader-bar]");
+    const pct = loader.querySelector("[data-cr-loader-pct]");
+    const msg = loader.querySelector("[data-cr-loader-message]");
+
+    if (bar) bar.style.width = nextPct + "%";
+    if (pct) pct.textContent = nextPct + "%";
+    if (msg) msg.textContent = crLoaderMessageByStep(__crPremiumLoaderStep);
+
+    loader.querySelectorAll("[data-cr-step]").forEach(function(el){
+      const i = Number(el.dataset.crStep || 0);
+      el.classList.toggle("done", i < __crPremiumLoaderStep);
+      el.classList.toggle("active", i === __crPremiumLoaderStep);
+    });
+  }, 820);
+}
+
+function ensureDashboardLoadingStyles(){
+  // O estilo premium está no CSS completo. Mantido para compatibilidade.
+}
+
+function showDashboardLoading(label = "Buscando estatísticas, mercados e força do filtro em tempo real..."){
+  const host = document.getElementById("top1");
+  if (!host) return;
+
+  __crPremiumLoaderPct = 14;
+  __crPremiumLoaderStep = 0;
+  host.innerHTML = crBuildPremiumLoader(label);
+  crStartPremiumLoaderLoop();
+}
+
+function resetDesktopMatchRailToEmpty(){
+  const rail = document.getElementById("desktopMatchRail");
+  if (!rail) return;
+  rail.innerHTML = `
+    <section class="railCard matchRailCard railEmptyHero">
+      <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+      <div class="railEmptyRadar" aria-hidden="true">
+        <span class="radarRing ring1"></span>
+        <span class="radarRing ring2"></span>
+        <span class="radarRing ring3"></span>
+        <span class="radarSweep"></span>
+        <span class="radarBall">⚽</span>
+      </div>
+      <div class="railEmptyText">
+        <strong>Preparando análise</strong>
+        <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
+      </div>
+    </section>
+
+    <section class="railCard railEmptyStatsCard">
+      <h3>ESTATÍSTICAS DO FILTRO</h3>
+      <div class="railEmptyStatsGrid">
+        <div class="railEmptyStatBox"><i>🛡</i><span>Força do filtro</span><b>--</b><small>Inicializando</small></div>
+        <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Inicializando</small></div>
+        <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Inicializando</small></div>
+        <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Inicializando</small></div>
+      </div>
+      <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
+    </section>
+
+    <section class="railCard railEmptyEventsCard">
+      <h3>EVENTOS / LEITURA</h3>
+      <div class="railEmptyEventIcons">
+        <span><i>◎</i><b>Pressão</b><small>--</small></span>
+        <span><i>◔</i><b>Posse</b><small>--</small></span>
+        <span><i>▣</i><b>Cartões</b><small>--</small></span>
+        <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+        <span><i>⚽</i><b>Gols</b><small>--</small></span>
+      </div>
+      <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="railEmptyReadBox">
+        <b>📋</b>
+        <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+      </div>
+    </section>
+
+    <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
+      <span>▶ INICIAR MATCH CENTER</span>
+      <small>Selecione um jogo para continuar</small>
+    </button>
+  `;
+}
