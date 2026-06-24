@@ -308,9 +308,9 @@
 .marketListPanel{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;padding-right:9px!important}
 .marketGameList{
   display:block!important;
-  height:calc(100vh - var(--topbar-h) - 392px)!important;
-  max-height:calc(100vh - var(--topbar-h) - 392px)!important;
-  min-height:250px!important;
+  height:auto!important;
+  max-height:auto!important;
+  min-height:0!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
   padding-right:8px!important;
@@ -389,7 +389,7 @@
 
 @media(max-width:1360px){
   .marketHeroPanel{height:282px!important;min-height:282px!important}
-  .marketGameList{height:calc(100vh - var(--topbar-h) - 392px)!important;max-height:calc(100vh - var(--topbar-h) - 392px)!important}
+  .marketGameList{height:auto!important;max-height:none!important}
 }
 /* =========================================================
    LOADER PREMIUM — CORNERS RADAR
@@ -704,3 +704,656 @@
 @keyframes crSkeletonPass{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
 @keyframes crLineShine{0%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
 @keyframes crDots{0%{opacity:.25}33%{opacity:1}66%{opacity:.55}100%{opacity:.25}}
+/* =========================================================
+   REFINO PROFISSIONAL — INSPIRAÇÃO BET365 SEM ALTERAR CORES
+   Mantém a paleta original e melhora espaçamento, tipografia,
+   cards, scroll, Match Center e lista de jogos.
+   ========================================================= */
+
+:root{
+  --radius:10px;
+  --radius2:12px;
+}
+
+body{
+  letter-spacing:-.01em;
+  text-rendering:geometricPrecision;
+  -webkit-font-smoothing:antialiased;
+}
+
+.sidebar{
+  padding-top:18px!important;
+  background:linear-gradient(180deg,#04111f 0%,#020b14 100%)!important;
+}
+
+.brandBlock{padding:0 7px 0 7px!important;}
+.logo{
+  width:36px!important;
+  height:36px!important;
+  border-radius:10px!important;
+}
+.brandText strong{font-size:13px!important;letter-spacing:-.035em!important;}
+.brandText span{font-size:9.5px!important;}
+.sidebar-top{margin-bottom:18px!important;}
+.sidebar-nav{gap:5px!important;}
+.side-item{
+  height:40px!important;
+  border-radius:8px!important;
+  font-size:11.5px!important;
+  font-weight:800!important;
+  padding:0 13px!important;
+}
+.side-icon{font-size:14px!important;width:17px!important;}
+.sidebar-bottom{
+  border-radius:11px!important;
+  padding:12px 10px!important;
+}
+
+.topbar{height:64px!important;min-height:64px!important;}
+.topbar-inner{padding:0 22px!important;}
+.nav{gap:22px!important;}
+.nav-link{
+  height:64px!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.01em!important;
+}
+.nav-link.active:after{
+  bottom:7px!important;
+  width:43px!important;
+  height:2px!important;
+}
+.datePickerWrap,#btn,.btnOutline,.accountButton{
+  height:34px!important;
+  border-radius:7px!important;
+}
+#btn,.btnOutline,.accountButton{font-size:10.5px!important;padding-inline:14px!important;}
+
+.content{
+  height:calc(100vh - 64px)!important;
+  padding:10px 12px 8px!important;
+}
+.dashboardGrid{
+  gap:10px!important;
+  grid-template-columns:minmax(0,1fr) var(--right-w)!important;
+}
+.marketPremiumWrap{gap:10px!important;}
+
+.marketHeroPanel{
+  height:244px!important;
+  min-height:244px!important;
+  border-radius:10px!important;
+  padding:12px 13px 11px!important;
+  border-color:rgba(10,43,73,.82)!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.14)!important;
+}
+.marketHeroTitle{
+  height:26px!important;
+  font-size:14px!important;
+  letter-spacing:-.035em!important;
+}
+.marketHeroTitle small{
+  font-size:9px!important;
+  opacity:.82!important;
+}
+.marketHeroGrid{
+  gap:8px!important;
+  height:74px!important;
+  margin-top:5px!important;
+}
+.marketActiveCard,.marketMetricCard{
+  border-radius:9px!important;
+  padding:10px 12px!important;
+  border-color:rgba(10,45,78,.85)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.marketActiveName{font-size:15px!important;letter-spacing:-.04em!important;line-height:1.05!important;}
+.marketActiveSub{font-size:8.8px!important;margin-top:7px!important;}
+.marketActiveStrength strong{font-size:29px!important;letter-spacing:-.06em!important;}
+.marketActiveStrength span{font-size:11px!important;}
+.marketMetricLabel{font-size:9.5px!important;margin-bottom:8px!important;}
+.marketMetricValue{font-size:23px!important;letter-spacing:-.055em!important;}
+.marketMetricSub{font-size:9px!important;margin-top:9px!important;}
+.marketStrengthBars i{width:7px!important;border-radius:99px!important;}
+
+.marketHighlightsTitle{
+  height:26px!important;
+  margin-top:8px!important;
+  font-size:9.7px!important;
+}
+.marketHighlightsGrid{
+  height:93px!important;
+  gap:7px!important;
+}
+.marketHighlightCard{
+  border-radius:9px!important;
+  padding:8px 10px!important;
+  border-color:rgba(10,45,78,.88)!important;
+  background:linear-gradient(180deg,#06172a,#03111f)!important;
+}
+.marketHighlightCard .marketHighlightLabel{
+  font-size:10.5px!important;
+  line-height:1.13!important;
+  letter-spacing:-.025em!important;
+}
+.marketHighlightCard strong{
+  font-size:22px!important;
+  margin-top:8px!important;
+  letter-spacing:-.06em!important;
+}
+.marketHighlightCard small{font-size:8px!important;}
+.marketSpark{height:4px!important;left:12px!important;right:12px!important;bottom:9px!important;}
+
+.marketListPanel{
+  border-radius:10px!important;
+  padding:0 10px 9px!important;
+  border-color:rgba(10,43,73,.82)!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.13)!important;
+}
+.marketListTop{height:48px!important;padding-left:4px!important;}
+.marketListTitle{font-size:14px!important;letter-spacing:-.035em!important;}
+.marketListSort{font-size:9.5px!important;}
+.marketListSort select{
+  height:32px!important;
+  border-radius:8px!important;
+  font-size:11.5px!important;
+}
+.marketGameList{
+  height:calc(100% - 48px)!important;
+  max-height:calc(100% - 48px)!important;
+  padding-right:8px!important;
+}
+.marketGameRow{
+  height:66px!important;
+  margin-bottom:7px!important;
+  border-radius:9px!important;
+  grid-template-columns:76px 1.85fr .94fr 52px .86fr .86fr 60px 100px!important;
+  border-color:rgba(9,45,78,.85)!important;
+  background:linear-gradient(180deg,#04111f,#03101d)!important;
+}
+.marketGameRow:hover,.marketGameRow.match-center-selected{
+  background:linear-gradient(180deg,#06172a,#04111f)!important;
+  box-shadow:inset 2px 0 0 #1294e8!important;
+}
+.marketGameRow>div{
+  height:42px!important;
+  padding:0 9px!important;
+  border-left-color:rgba(24,69,108,.34)!important;
+}
+.marketGameTime strong{font-size:20px!important;letter-spacing:-.06em!important;}
+.marketGameTime span{font-size:11px!important;}
+.marketGameTeams{font-size:10.8px!important;line-height:1.28!important;}
+.marketGameLeague{font-size:9.5px!important;margin-top:4px!important;}
+.marketGameCompetition{font-size:9.4px!important;}
+.marketGameSub,.marketGameStatsSub{font-size:8.7px!important;line-height:1.25!important;}
+.marketCircle{width:34px!important;height:34px!important;}
+.marketCircle span{font-size:10px!important;}
+.marketRealStats{gap:9px!important;}
+.marketRealStats strong{font-size:12px!important;}
+.marketRealStats span{font-size:8.5px!important;}
+.marketTrendMini{height:31px!important;gap:3px!important;}
+.marketTrendMini i{width:5.5px!important;border-radius:8px 8px 0 0!important;}
+.marketGamePercent{font-size:21px!important;letter-spacing:-.06em!important;}
+.matchCenterMiniBtn,.matchCenterBtn{
+  height:25px!important;
+  min-width:84px!important;
+  border-radius:6px!important;
+  font-size:8px!important;
+}
+
+.dashboardRightRail{
+  gap:10px!important;
+  min-height:0!important;
+}
+.railCard{
+  border-radius:10px!important;
+  border-color:rgba(10,43,73,.82)!important;
+  background:linear-gradient(180deg,#03101d,#020b14)!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.13)!important;
+}
+.matchScoreCard{padding:10px 11px!important;}
+.railTitle{font-size:14px!important;letter-spacing:-.035em!important;}
+.railStatus{font-size:8px!important;padding:4px 9px!important;border-radius:999px!important;}
+.scoreBoard{padding:8px 4px!important;}
+.scoreTeamCircle{
+  width:45px!important;
+  height:45px!important;
+  font-size:14px!important;
+}
+.scoreValue{font-size:36px!important;line-height:.95!important;letter-spacing:-.075em!important;}
+.scoreMinute{height:22px!important;padding:0 11px!important;font-size:11px!important;}
+.scoreTeamName{font-size:10.5px!important;}
+.railTabs{height:34px!important;gap:18px!important;}
+.railTab{font-size:9px!important;}
+.railTab.active:after{height:2px!important;bottom:-1px!important;}
+.railCompareTitle{font-size:12px!important;letter-spacing:-.035em!important;}
+.railStatRow{grid-template-columns:30px 1fr 30px!important;gap:8px!important;min-height:24px!important;}
+.railStatLabel{font-size:8px!important;}
+.railStatValue{font-size:14px!important;}
+.railProgress{height:5px!important;border-radius:999px!important;}
+
+.pressureCard{padding:10px 11px!important;}
+.pressureHeader{margin-bottom:8px!important;}
+.pressureChartWrap{border-radius:9px!important;padding:10px!important;}
+.pressureChartTitle{font-size:13px!important;letter-spacing:.02em!important;}
+.pressureMiniScore{font-size:20px!important;letter-spacing:-.06em!important;}
+.pressureBars{height:124px!important;padding:7px 0 0!important;}
+.pressureBar{width:7px!important;border-radius:5px 5px 0 0!important;}
+.pressureBar.neg{border-radius:0 0 5px 5px!important;}
+.pressureXAxis{font-size:9px!important;}
+.eventsCard{padding:10px 11px!important;}
+.railEventsList{max-height:114px!important;}
+.railEventItem{min-height:29px!important;font-size:11px!important;}
+.fullMatchButton{
+  height:43px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+}
+
+.marketGameList,.dashboardRightRail,.railEventsList{
+  scrollbar-width:thin!important;
+  scrollbar-color:rgba(21,156,255,.72) rgba(3,17,31,.86)!important;
+}
+.marketGameList::-webkit-scrollbar,.dashboardRightRail::-webkit-scrollbar,.railEventsList::-webkit-scrollbar{width:7px!important;height:7px!important;}
+.marketGameList::-webkit-scrollbar-track,.dashboardRightRail::-webkit-scrollbar-track,.railEventsList::-webkit-scrollbar-track{background:rgba(3,17,31,.86)!important;border-radius:999px!important;border:0!important;}
+.marketGameList::-webkit-scrollbar-thumb,.dashboardRightRail::-webkit-scrollbar-thumb,.railEventsList::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#159cff,#0b83df)!important;border-radius:999px!important;border:0!important;}
+.marketGameList::-webkit-scrollbar-thumb:hover,.dashboardRightRail::-webkit-scrollbar-thumb:hover,.railEventsList::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#32aaff,#0d67b8)!important;}
+
+.crPremiumLoader{border-radius:14px!important;border-color:rgba(13,54,91,.7)!important;}
+.crLoaderTitle{letter-spacing:-.035em!important;}
+.crLoaderSub{color:#9db3ca!important;}
+.crSkeletonRow{height:62px!important;border-radius:10px!important;background:linear-gradient(90deg,rgba(4,17,31,.95),rgba(6,23,42,.88))!important;}
+
+@media(max-width:1360px){
+  .topbar{height:62px!important;min-height:62px!important;}
+  .nav-link{height:62px!important;font-size:10.5px!important;}
+  .content{height:calc(100vh - 62px)!important;}
+  .marketHeroPanel{height:260px!important;min-height:260px!important;}
+  .marketHighlightsGrid{height:94px!important;}
+  .marketGameRow{height:64px!important;grid-template-columns:76px 1.72fr .88fr 50px .82fr .82fr 58px 96px!important;}
+  .marketGameTeams{font-size:10.3px!important;}
+}
+
+@media(max-width:1180px){
+  :root{--right-w:300px!important;--sidebar-w:170px!important;}
+  .nav{gap:15px!important;}
+  .marketHeroGrid{grid-template-columns:1.2fr .9fr .9fr 1fr!important;}
+  .marketHeroGrid .marketMetricCard:nth-child(5){display:none!important;}
+  .marketHighlightsGrid{grid-template-columns:repeat(4,1fr)!important;height:auto!important;}
+  .marketHighlightCard{min-height:88px!important;}
+}
+
+/* =========================================================
+   FIX FINAL — LISTA DE JOGOS + SCROLL DIREITO
+   Corrige jogo sumindo no final e cria rolagem limpa na lateral direita
+   ========================================================= */
+
+html,
+body{
+  height:100%!important;
+  overflow:hidden!important;
+}
+
+.main{
+  height:100vh!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+.content{
+  height:calc(100vh - var(--topbar-h))!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  padding-bottom:10px!important;
+}
+
+.dashboardGrid{
+  height:100%!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  align-items:stretch!important;
+}
+
+.dashboardMainColumn,
+.top-host,
+.panel,
+.marketPremiumWrap{
+  height:100%!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+.marketPremiumWrap{
+  display:flex!important;
+  flex-direction:column!important;
+}
+
+.marketHeroPanel{
+  flex:0 0 auto!important;
+}
+
+.marketListPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding-bottom:10px!important;
+}
+
+.marketListTop{
+  flex:0 0 48px!important;
+}
+
+.marketGameList{
+  flex:1 1 auto!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:9px!important;
+  padding-bottom:34px!important;
+  scrollbar-gutter:stable!important;
+}
+
+.marketGameList::after{
+  content:"";
+  display:block;
+  height:20px;
+  flex:0 0 20px;
+}
+
+.marketGameRow{
+  flex:0 0 auto!important;
+}
+
+.cleanFooterNote{
+  position:fixed!important;
+  left:calc(var(--sidebar-w) + 18px)!important;
+  bottom:7px!important;
+  z-index:3!important;
+  pointer-events:none!important;
+  padding:2px 6px!important;
+  border-radius:999px!important;
+  background:rgba(1,5,11,.72)!important;
+  backdrop-filter:blur(6px)!important;
+}
+
+.dashboardRightRail{
+  height:100%!important;
+  max-height:100%!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:8px!important;
+  scrollbar-gutter:stable!important;
+}
+
+.marketGameList,
+.dashboardRightRail{
+  scrollbar-width:thin!important;
+  scrollbar-color:#159cff #03111f!important;
+}
+
+.marketGameList::-webkit-scrollbar,
+.dashboardRightRail::-webkit-scrollbar{
+  width:8px!important;
+}
+
+.marketGameList::-webkit-scrollbar-track,
+.dashboardRightRail::-webkit-scrollbar-track{
+  background:#03111f!important;
+  border-radius:999px!important;
+}
+
+.marketGameList::-webkit-scrollbar-thumb,
+.dashboardRightRail::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#21b7ff,#0b83df)!important;
+  border-radius:999px!important;
+}
+
+.marketGameList::-webkit-scrollbar-thumb:hover,
+.dashboardRightRail::-webkit-scrollbar-thumb:hover{
+  background:#32aaff!important;
+}
+
+@media(max-width:1360px){
+  .content{
+    height:calc(100vh - 62px)!important;
+  }
+
+  .marketGameList{
+    padding-bottom:38px!important;
+  }
+}
+
+/* =========================================================
+   CORREÇÃO FINAL — LISTA DE JOGOS SEM ESPAÇO GIGANTE
+   - remove o respiro artificial que criava vazio no final
+   - mantém a barra lateral funcionando
+   - deixa o último jogo aparecer inteiro
+   ========================================================= */
+
+.marketListPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  padding:0 10px 8px!important;
+}
+
+.marketGameList{
+  height:calc(100% - 45px)!important;
+  max-height:calc(100% - 45px)!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 8px 8px 0!important;
+  scroll-padding-bottom:8px!important;
+  scrollbar-gutter:stable!important;
+}
+
+.marketGameList::after{
+  content:none!important;
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+}
+
+.marketGameRow{
+  height:59px!important;
+  min-height:59px!important;
+  margin-bottom:6px!important;
+}
+
+.marketGameRow:last-child{
+  margin-bottom:0!important;
+}
+
+.cleanFooterNote{
+  display:none!important;
+}
+
+@media(max-width:1360px){
+  .marketListPanel{
+    padding:0 10px 8px!important;
+  }
+
+  .marketGameList{
+    height:calc(100% - 45px)!important;
+    max-height:calc(100% - 45px)!important;
+    min-height:0!important;
+    padding:0 8px 8px 0!important;
+    scroll-padding-bottom:8px!important;
+  }
+
+  .marketGameRow:last-child{
+    margin-bottom:0!important;
+  }
+}
+
+/* =========================================================
+   CORREÇÃO DEFINITIVA — MERCADOS + LISTA DE JOGOS
+   - Afasta os cards de mercado da linha inferior
+   - Remove altura fixa da lista
+   - Mantém barra de rolagem sem espaço gigante no fim
+   - Não altera as cores do projeto
+   ========================================================= */
+
+.marketPremiumWrap{
+  height:100%!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+
+.marketHeroPanel{
+  flex:0 0 auto!important;
+  height:292px!important;
+  min-height:292px!important;
+  padding:14px 13px 18px!important;
+  overflow:hidden!important;
+}
+
+.marketHeroTitle{
+  height:30px!important;
+  min-height:30px!important;
+  line-height:30px!important;
+  margin:0!important;
+}
+
+.marketHeroGrid{
+  height:84px!important;
+  min-height:84px!important;
+  margin-top:4px!important;
+}
+
+.marketHighlightsTitle{
+  height:30px!important;
+  min-height:30px!important;
+  margin-top:10px!important;
+  margin-bottom:8px!important;
+  line-height:30px!important;
+}
+
+.marketHighlightsGrid{
+  height:92px!important;
+  min-height:92px!important;
+  max-height:92px!important;
+  padding-bottom:0!important;
+  margin-bottom:0!important;
+  align-items:stretch!important;
+  overflow:visible!important;
+}
+
+.marketHighlightCard{
+  height:92px!important;
+  min-height:92px!important;
+  max-height:92px!important;
+  padding:10px 10px 18px!important;
+  overflow:hidden!important;
+}
+
+.marketHighlightCard .marketHighlightLabel,
+.marketHighlightLabel{
+  line-height:1.12!important;
+}
+
+.marketHighlightCard strong,
+.marketHighlightValue{
+  margin-top:6px!important;
+  line-height:1!important;
+}
+
+.marketSpark{
+  bottom:10px!important;
+}
+
+.marketListPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding:0 10px 8px!important;
+}
+
+.marketListTop{
+  flex:0 0 45px!important;
+  height:45px!important;
+  min-height:45px!important;
+}
+
+.marketGameList{
+  flex:1 1 auto!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 8px 8px 0!important;
+  margin:0!important;
+  scroll-padding-bottom:8px!important;
+  scrollbar-gutter:stable!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:#1aa7ff #03111f!important;
+}
+
+.marketGameList::after{
+  content:none!important;
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+}
+
+.marketGameRow{
+  height:59px!important;
+  min-height:59px!important;
+  margin-bottom:6px!important;
+  flex:0 0 auto!important;
+}
+
+.marketGameRow:last-child{
+  margin-bottom:0!important;
+}
+
+.cleanFooterNote{
+  display:none!important;
+}
+
+.dashboardRightRail{
+  height:100%!important;
+  max-height:100%!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:8px!important;
+  scrollbar-gutter:stable!important;
+}
+
+@media(max-width:1360px){
+  .marketHeroPanel{
+    height:292px!important;
+    min-height:292px!important;
+    padding-bottom:18px!important;
+  }
+  .marketHighlightsGrid{
+    height:92px!important;
+    min-height:92px!important;
+    max-height:92px!important;
+  }
+  .marketHighlightCard{
+    height:92px!important;
+    min-height:92px!important;
+    max-height:92px!important;
+  }
+  .marketGameList{
+    flex:1 1 auto!important;
+    height:auto!important;
+    max-height:none!important;
+    min-height:0!important;
+    padding:0 8px 8px 0!important;
+  }
+}
