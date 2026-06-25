@@ -6073,12 +6073,12 @@
             ${teamNameHTML(casa, "marketTeamName")}<br>${teamNameHTML(fora, "marketTeamName")}
             <div class="marketGameLeague">${escapeHtmlLite(liga)}</div>
           </div>
-          <div>
+          <div class="marketGameMeta">
             <div class="marketGameCompetition">${escapeHtmlLite(liga)}</div>
             <div class="marketGameSub">Mercado: ${escapeHtmlLite(_marketLabel(activeMarketFilter))}</div>
           </div>
-          <div><div class="marketCircle" style="--p:${p}%"><span>${mp}%</span></div></div>
-          <div>
+          <div class="marketGameCircleCell"><div class="marketCircle" style="--p:${p}%"><span>${mp}%</span></div></div>
+          <div class="marketGameFilterInfo">
             <div class="marketGameStatsTitle">Força do filtro</div>
             <div class="marketGameStatsSub">${escapeHtmlLite(_marketLabel(activeMarketFilter))}</div>
           </div>
@@ -6087,10 +6087,10 @@
             <span>+2.5<strong>${Number.isFinite(over25) && over25 ? over25 : Math.max(50, mp-9)}%</strong></span>
             <span>+3.5<strong>${Number.isFinite(over35) && over35 ? over35 : Math.max(35, mp-18)}%</strong></span>
           </div>
-          <div>
+          <div class="marketGameTrendCell">
             <div class="marketTrendMini"><i style="height:12px"></i><i style="height:18px"></i><i style="height:24px"></i><i style="height:29px"></i><i style="height:22px"></i></div>
           </div>
-          <div>
+          <div class="marketGameFinalCell">
             <div class="marketGamePercent">${mp}%</div>
             <div class="marketGameActions">
               <button type="button" class="matchCenterMiniBtn" data-open-match-center="${idx}" data-match-id="${safe(j?.match_id || j?.id || j?.event_key, "")}" data-home="${escapeAttrLite(casa)}" data-away="${escapeAttrLite(fora)}" data-league="${escapeAttrLite(liga)}" data-time="${escapeAttrLite(hora)}">Match Center</button>
