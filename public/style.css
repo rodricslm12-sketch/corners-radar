@@ -248,149 +248,181 @@
    
    @media(max-width:1360px){:root{--sidebar-w:158px;--right-w:320px}.topbar-inner{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:18px}.nav{display:flex;align-items:center;gap:24px}.marketHeroPanel{height:250px;border-radius:9px;background:linear-gradient(180deg,#03101d,#020b14);border:1px solid #092d4e;padding:10px 11px 10px;box-shadow:none}.marketHighlightsGrid{height:96px;display:grid;grid-template-columns:repeat(7,1fr);gap:7px}.marketGameRow{height:59px;margin-bottom:6px;border-radius:7px;background:#04111f;border:1px solid #092d4e;display:grid;grid-template-columns:74px 1.85fr .95fr 52px .86fr .86fr 58px 98px;align-items:center;overflow:hidden;color:#d8e8f8}.railSofaTeams{grid-template-columns:62px minmax(0,1fr) 62px}.railSofaScore strong{font-size:29px}.railBadge{width:39px;height:39px}.railSofaTabs{gap:8px}.railSofaTab{font-size:7.5px}}
 
-/* =========================================================
-   AJUSTE FINAL — MERCADOS NATURAIS + SCROLL + PRESSÃO AZUL/ROXO
-   ========================================================= */
 
-/* Área superior respirando: corrige letras cortadas */
+
+/* =========================================================
+   AJUSTE INTEGRADO — MERCADOS MAIS ESCUROS + CARDS ALINHADOS
+   ========================================================= */
 .marketHeroPanel{
   height:282px!important;
   min-height:282px!important;
   padding:12px 13px 12px!important;
   overflow:hidden!important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(22,100,180,.16),transparent 30%),
+    linear-gradient(180deg,#020812 0%,#050b14 48%,#03070d 100%)!important;
+  border:1px solid #12304b!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 18px 42px rgba(0,0,0,.25)!important;
 }
 .marketHeroTitle{height:30px!important;line-height:30px!important;align-items:center!important;overflow:visible!important}
 .marketHeroGrid{height:88px!important;margin-top:4px!important}
-.marketMetricCard,.marketActiveCard{overflow:visible!important;padding:10px 12px!important}
+.marketActiveCard,.marketMetricCard{
+  overflow:visible!important;
+  padding:11px 13px!important;
+  background:linear-gradient(180deg,#242932 0%,#1C2129 100%)!important;
+  border:1px solid #183852!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+.marketActiveCard{border-color:#19517a!important}
 .marketMetricSub{margin-top:8px!important;line-height:1.25!important;overflow:visible!important;color:#91abc4!important}
 .marketMetricSub b{color:#24a8ff!important}
 .marketHighlightsTitle{height:34px!important;margin-top:8px!important;align-items:center!important;overflow:visible!important}
 .marketSeeAll{line-height:1!important;white-space:nowrap!important}
-.marketHighlightsGrid{height:102px!important;gap:7px!important}
-
-/* Mercados em destaque: todos naturais iguais ao +9.5 / +10.5 */
+.marketHighlightsGrid{height:102px!important;gap:8px!important}
 .marketHighlightCard,
 .marketHighlightCard.tone-green,
 .marketHighlightCard.tone-yellow,
 .marketHighlightCard.tone-orange,
 .marketHighlightCard.tone-purple,
 .marketHighlightCard.tone-cyan{
-  background:linear-gradient(180deg,#061a30 0%,#04111f 100%)!important;
-  border:1px solid #0b4f86!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+  min-height:96px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:10px 10px 18px!important;
+  background:linear-gradient(180deg,#242932 0%,#1C2129 100%)!important;
+  border:1px solid #173853!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
 }
 .marketHighlightCard:hover,
 .marketHighlightCard.is-active{
   border-color:#159cff!important;
-  box-shadow:0 0 0 1px rgba(21,156,255,.28), inset 0 1px 0 rgba(255,255,255,.06)!important;
+  box-shadow:0 0 0 1px rgba(21,156,255,.22), inset 0 1px 0 rgba(255,255,255,.06)!important;
+}
+.marketHighlightCard .marketHighlightLabel,
+.marketHighlightLabel{
+  display:block!important;
+  max-width:100%!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:10.5px!important;
+  line-height:1.15!important;
+  letter-spacing:-.01em!important;
 }
 .marketHighlightCard strong,
 .marketHighlightCard.tone-green strong,
 .marketHighlightCard.tone-yellow strong,
 .marketHighlightCard.tone-orange strong,
 .marketHighlightCard.tone-purple strong,
-.marketHighlightCard.tone-cyan strong{
+.marketHighlightCard.tone-cyan strong,
+.marketHighlightValue{
+  margin-top:8px!important;
+  font-size:24px!important;
+  line-height:1!important;
   color:#26a8ff!important;
   text-shadow:0 0 12px rgba(38,168,255,.20)!important;
 }
+.marketHighlightCard small,
+.marketHighlightSub{color:#d8e8f8!important;font-size:8px!important;line-height:1.05!important}
+.marketSpark{left:12px!important;right:12px!important;bottom:9px!important;height:4px!important;background:#102339!important}
 .marketHighlightCard .marketSpark b,
 .marketHighlightCard.tone-green .marketSpark b,
 .marketHighlightCard.tone-yellow .marketSpark b,
 .marketHighlightCard.tone-orange .marketSpark b,
 .marketHighlightCard.tone-purple .marketSpark b,
-.marketHighlightCard.tone-cyan .marketSpark b{
-  background:linear-gradient(90deg,#1a9cff,#45c4ff)!important;
-}
-.marketHighlightCard small{color:#d8e8f8!important}
+.marketHighlightCard.tone-cyan .marketSpark b{background:linear-gradient(90deg,#1a9cff,#45c4ff)!important}
 
-/* Lista de jogos: scrollbar real e visível */
+.marketListPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  padding:0 10px 9px!important;
+  background:
+    radial-gradient(circle at 14% 0%,rgba(22,100,180,.10),transparent 28%),
+    linear-gradient(180deg,#020812 0%,#040a13 55%,#02060c 100%)!important;
+  border:1px solid #12304b!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
 .marketPremiumWrap{min-height:0!important;height:100%!important;overflow:hidden!important}
-.marketListPanel{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;padding-right:9px!important}
 .marketGameList{
   display:block!important;
   height:auto!important;
-  max-height:auto!important;
+  max-height:none!important;
   min-height:0!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
-  padding-right:8px!important;
+  padding:0 8px 8px 0!important;
   scrollbar-gutter:stable!important;
   scrollbar-width:thin!important;
   scrollbar-color:#1aa7ff #03111f!important;
 }
-.marketGameList::-webkit-scrollbar{width:9px!important}
-.marketGameList::-webkit-scrollbar-track{background:#03111f!important;border-radius:999px!important;border:1px solid #082846!important}
-.marketGameList::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#27b8ff,#0b72d9)!important;border-radius:999px!important;border:1px solid #05243d!important}
-.marketGameList::-webkit-scrollbar-thumb:hover{background:#33c2ff!important}
-
-/* Barrinhas dos jogos: verde, amarelo, laranja, roxo no final */
-.marketTrendMini i{background:#20d873!important;box-shadow:0 0 8px rgba(32,216,115,.20)!important}
+.marketGameRow{
+  min-height:68px!important;
+  height:68px!important;
+  margin-bottom:7px!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,#0a1624 0%,#07111d 100%)!important;
+  border:1px solid #183852!important;
+  display:grid!important;
+  grid-template-columns:78px minmax(245px,1.65fr) minmax(170px,.9fr) 58px minmax(150px,.78fr) minmax(150px,.82fr) 76px 116px!important;
+  align-items:center!important;
+  overflow:hidden!important;
+  color:#d8e8f8!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+.marketGameRow:hover,
+.marketGameRow.match-center-selected{
+  background:linear-gradient(180deg,#0b1d31 0%,#071827 100%)!important;
+  border-color:#159cff!important;
+  box-shadow:inset 3px 0 0 #159cff,0 0 0 1px rgba(21,156,255,.10)!important;
+}
+.marketGameRow>div{
+  min-width:0!important;
+  height:100%!important;
+  padding:0 12px!important;
+  border-left:1px solid rgba(40,89,132,.42)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+}
+.marketGameRow>div:first-child{border-left:0!important}
+.marketGameTime{align-items:center!important;text-align:center!important;padding:0 8px!important}
+.marketGameTime strong{font-size:21px!important;line-height:1!important;letter-spacing:-.02em!important;color:#fff!important}
+.marketGameTime span{font-size:11px!important;line-height:1.1!important;margin-top:5px!important;color:#a8cfff!important;font-weight:900!important}
+.marketGameTeams{align-items:flex-start!important;font-size:11.5px!important;font-weight:900!important;line-height:1.18!important;color:#fff!important}
+.marketGameTeams .teamName{max-width:100%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.marketGameLeague{font-size:10px!important;line-height:1.15!important;margin-top:4px!important;color:#9eb7cf!important;font-weight:800!important}
+.marketGameMeta,.marketGameFilterInfo{align-items:flex-start!important;text-align:left!important}
+.marketGameCompetition{font-size:10.5px!important;line-height:1.15!important;color:#eef6ff!important;text-transform:uppercase!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.marketGameSub,.marketGameStatsSub{font-size:9.5px!important;line-height:1.15!important;margin-top:4px!important;color:#b2c9df!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.marketGameStatsTitle{font-size:9.5px!important;line-height:1.15!important;color:#88a2bb!important;text-transform:uppercase!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.marketGameCircleCell,.marketGameTrendCell,.marketGameFinalCell{align-items:center!important;text-align:center!important;padding-left:8px!important;padding-right:8px!important}
+.marketCircle{width:38px!important;height:38px!important;margin:0 auto!important;background:conic-gradient(#159cff calc(var(--p)*1%),#142a42 0)!important}
+.marketCircle:before{background:#04101b!important}
+.marketCircle span{font-size:10.5px!important;color:#fff!important}
+.marketRealStats{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:18px!important;text-align:center!important;padding-left:10px!important;padding-right:10px!important}
+.marketRealStats span{display:block!important;min-width:32px!important;font-size:9.5px!important;line-height:1.05!important;color:#9db7d0!important;font-weight:900!important;white-space:nowrap!important}
+.marketRealStats strong{display:block!important;margin-top:4px!important;font-size:14px!important;line-height:1!important;color:#fff!important;font-weight:900!important}
+.marketTrendMini{height:34px!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;gap:4px!important;margin:0 auto!important}
+.marketTrendMini i{width:6px!important;border-radius:6px 6px 2px 2px!important;background:#20d873!important;box-shadow:0 0 8px rgba(32,216,115,.20)!important}
 .marketTrendMini i:nth-child(3){background:#8ee85f!important}
 .marketTrendMini i:nth-child(4){background:#f0c744!important}
 .marketTrendMini i:nth-child(5){background:#f08b2a!important}
 .marketTrendMini i:nth-child(6){background:#9b5cff!important;box-shadow:0 0 10px rgba(155,92,255,.32)!important}
 .marketTrendMini i:nth-child(n+7){background:#24a8ff!important;box-shadow:0 0 10px rgba(36,168,255,.28)!important}
+.marketGamePercent{font-size:21px!important;line-height:1!important;color:#a9d7ff!important;font-weight:900!important}
+.marketGameActions{margin-top:6px!important;display:flex!important;justify-content:center!important;width:100%!important}
+.matchCenterMiniBtn,.matchCenterBtn{height:26px!important;min-width:88px!important;border-radius:6px!important;background:#061a2c!important;border:1px solid #2196e9!important;color:#fff!important;font-size:8.5px!important;font-weight:900!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important}
+.matchCenterMiniBtn:hover,.matchCenterBtn:hover,.matchCenterMiniBtn.is-open{background:#0d4778!important;border-color:#35b6ff!important}
+.marketGameList::-webkit-scrollbar{width:9px!important}.marketGameList::-webkit-scrollbar-track{background:#03111f!important;border-radius:999px!important;border:1px solid #082846!important}.marketGameList::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#27b8ff,#0b72d9)!important;border-radius:999px!important;border:1px solid #05243d!important}.marketGameList::-webkit-scrollbar-thumb:hover{background:#33c2ff!important}
 
-/* Força do mercado no topo: verde até azul, com toque moderno */
-.marketStrengthBars i.on:nth-child(-n+4){background:linear-gradient(180deg,#32ef7d,#16c75f)!important}
-.marketStrengthBars i.on:nth-child(5),
-.marketStrengthBars i.on:nth-child(6){background:linear-gradient(180deg,#f0d15b,#e8b331)!important}
-.marketStrengthBars i.on:nth-child(7),
-.marketStrengthBars i.on:nth-child(8){background:linear-gradient(180deg,#28c1ff,#0b83df)!important}
-.marketStrengthBars i.on:nth-child(n+9){background:linear-gradient(180deg,#9d6cff,#6d35ff)!important}
-
-/* Coluna direita com scrollbar única */
-.dashboardRightRail{
-  height:calc(100vh - var(--topbar-h) - 20px)!important;
-  max-height:calc(100vh - var(--topbar-h) - 20px)!important;
-  min-height:0!important;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
-  padding-right:8px!important;
-  scrollbar-gutter:stable!important;
-  scrollbar-width:thin!important;
-  scrollbar-color:#1aa7ff #03111f!important;
-}
-.dashboardRightRail::-webkit-scrollbar{width:9px!important}
-.dashboardRightRail::-webkit-scrollbar-track{background:#03111f!important;border-radius:999px!important;border:1px solid #082846!important}
-.dashboardRightRail::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#27b8ff,#0b72d9)!important;border-radius:999px!important;border:1px solid #05243d!important}
-.dashboardRightRail::-webkit-scrollbar-thumb:hover{background:#33c2ff!important}
-
-/* Gráfico de pressão: azul x roxo */
-.pressureGraphBox,
-.railPressureChartBox{
-  background:linear-gradient(180deg,#07192f 0%,#071022 48%,#120b2b 100%)!important;
-  border:1px solid rgba(62,147,255,.35)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 18px rgba(37,99,235,.12)!important;
-}
-.pressureGraphBox:before{background:linear-gradient(90deg,#139bff,#7c3cff)!important}
-.pressureGraphLegend i.home,
-.railPressureLegend i,
-.railPressureSvg .homeBar,
-.mcPressureBar.home{
-  fill:#159cff!important;
-  background:#159cff!important;
-}
-.pressureGraphLegend i.away,
-.railPressureLegend .away i,
-.railPressureSvg .awayBar,
-.mcPressureBar.away{
-  fill:#8b5cf6!important;
-  background:#8b5cf6!important;
-}
-.pressureGraphSvg [fill="#1ed760"],
-.pressureGraphSvg [fill="#22c55e"],
-.pressureGraphSvg [fill="#20c765"]{fill:#159cff!important}
-.pressureGraphSvg [fill="#1878e8"],
-.pressureGraphSvg [fill="#4aa3df"]{fill:#8b5cf6!important}
-.pressureGraphSvg [stroke="#20e0c2"]{stroke:#45b6ff!important}
-.railPressureSvg .homeBar{fill:url(#mcHomeBarGrad)!important}
-.railPressureSvg .awayBar{fill:url(#mcAwayBarGrad)!important}
-
-@media(max-width:1360px){
-  .marketHeroPanel{height:282px!important;min-height:282px!important}
-  .marketGameList{height:auto!important;max-height:none!important}
-}
+.marketStrengthBars i.on:nth-child(-n+4){background:linear-gradient(180deg,#32ef7d,#16c75f)!important}.marketStrengthBars i.on:nth-child(5),.marketStrengthBars i.on:nth-child(6){background:linear-gradient(180deg,#f0d15b,#e8b331)!important}.marketStrengthBars i.on:nth-child(7),.marketStrengthBars i.on:nth-child(8){background:linear-gradient(180deg,#28c1ff,#0b83df)!important}.marketStrengthBars i.on:nth-child(n+9){background:linear-gradient(180deg,#9d6cff,#6d35ff)!important}
+.dashboardRightRail{height:calc(100vh - var(--topbar-h) - 20px)!important;max-height:calc(100vh - var(--topbar-h) - 20px)!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding-right:8px!important;scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#1aa7ff #03111f!important}.dashboardRightRail::-webkit-scrollbar{width:9px!important}.dashboardRightRail::-webkit-scrollbar-track{background:#03111f!important;border-radius:999px!important;border:1px solid #082846!important}.dashboardRightRail::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#27b8ff,#0b72d9)!important;border-radius:999px!important;border:1px solid #05243d!important}.dashboardRightRail::-webkit-scrollbar-thumb:hover{background:#33c2ff!important}
+.pressureGraphBox,.railPressureChartBox{background:linear-gradient(180deg,#07192f 0%,#071022 48%,#120b2b 100%)!important;border:1px solid rgba(62,147,255,.35)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 18px rgba(37,99,235,.12)!important}.pressureGraphBox:before{background:linear-gradient(90deg,#139bff,#7c3cff)!important}.pressureGraphLegend i.home,.railPressureLegend i,.railPressureSvg .homeBar,.mcPressureBar.home{fill:#159cff!important;background:#159cff!important}.pressureGraphLegend i.away,.railPressureLegend .away i,.railPressureSvg .awayBar,.mcPressureBar.away{fill:#8b5cf6!important;background:#8b5cf6!important}.pressureGraphSvg [fill="#1ed760"],.pressureGraphSvg [fill="#22c55e"],.pressureGraphSvg [fill="#20c765"]{fill:#159cff!important}.pressureGraphSvg [fill="#1878e8"],.pressureGraphSvg [fill="#4aa3df"]{fill:#8b5cf6!important}.pressureGraphSvg [stroke="#20e0c2"]{stroke:#45b6ff!important}.railPressureSvg .homeBar{fill:url(#mcHomeBarGrad)!important}.railPressureSvg .awayBar{fill:url(#mcAwayBarGrad)!important}
+@media(max-width:1360px){.marketHeroPanel{height:282px!important;min-height:282px!important}.marketGameList{height:auto!important;max-height:none!important}.marketGameRow{grid-template-columns:74px minmax(210px,1.45fr) minmax(130px,.75fr) 52px minmax(128px,.7fr) minmax(130px,.72fr) 66px 104px!important;height:66px!important;min-height:66px!important}.marketGameRow>div{padding-left:9px!important;padding-right:9px!important}.marketRealStats{gap:12px!important}.marketGameCompetition{font-size:9.5px!important}.marketGameSub,.marketGameStatsSub,.marketGameStatsTitle{font-size:8.8px!important}.matchCenterMiniBtn,.matchCenterBtn{min-width:82px!important}}
+@media(max-width:1120px){.marketGameRow{grid-template-columns:74px minmax(180px,1fr) 48px 92px!important}.marketGameRow>div:nth-child(3),.marketGameRow>div:nth-child(5),.marketGameRow>div:nth-child(6),.marketGameRow>div:nth-child(7){display:none!important}.marketGameFinalCell{padding-right:8px!important}}
 /* =========================================================
    LOADER PREMIUM — CORNERS RADAR
    Tela de carregamento profissional com radar, etapas,
@@ -3911,3 +3943,541 @@ button.marketSeeAll{
       width: 100% !important;
     }
   }
+
+/* =========================================================
+   PATCH FINAL — AJUSTE SOMENTE DOS MERCADOS E COLUNA DO MERCADO
+   1) Cards de mercados: texto, % e barra sem sobreposição
+   2) Lista de jogos: coluna do mercado mais limpa e alinhada
+   ========================================================= */
+
+/* ---------- 1. CARDS DOS MERCADOS EM DESTAQUE ---------- */
+.marketHighlightsGrid{
+  height: 88px !important;
+  min-height: 88px !important;
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+.marketHighlightCard,
+.marketHighlightCard.tone-green,
+.marketHighlightCard.tone-yellow,
+.marketHighlightCard.tone-orange,
+.marketHighlightCard.tone-purple,
+.marketHighlightCard.tone-cyan{
+  height: 74px !important;
+  min-height: 74px !important;
+  max-height: 74px !important;
+  padding: 7px 10px 12px !important;
+  display: grid !important;
+  grid-template-rows: 18px 28px 10px 5px !important;
+  align-items: center !important;
+  justify-items: center !important;
+  overflow: hidden !important;
+  text-align: center !important;
+}
+
+.marketHighlightCard .marketHighlightLabel,
+.marketHighlightLabel{
+  width: 100% !important;
+  min-height: 16px !important;
+  max-height: 18px !important;
+  margin: 0 !important;
+  display: block !important;
+  font-size: 9px !important;
+  line-height: 1.05 !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.marketHighlightCard strong,
+.marketHighlightValue{
+  margin: 0 !important;
+  display: block !important;
+  font-size: 21px !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  color: #4aa9ff !important;
+}
+
+.marketHighlightCard small,
+.marketHighlightSub{
+  margin: 0 !important;
+  display: block !important;
+  font-size: 6.8px !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  color: #d8e8f8 !important;
+  opacity: .95 !important;
+}
+
+.marketSpark{
+  position: static !important;
+  width: 100% !important;
+  height: 4px !important;
+  margin-top: 0 !important;
+  border-radius: 999px !important;
+  background: #10253a !important;
+  overflow: hidden !important;
+}
+
+.marketSpark b{
+  height: 100% !important;
+  display: block !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg,#2f80ff,#58c0ff) !important;
+}
+
+/* ---------- 2. COLUNA DO MERCADO NA LISTA DE JOGOS ---------- */
+.marketGameRow{
+  grid-template-columns:
+    76px
+    minmax(230px, 1.65fr)
+    minmax(155px, .85fr)
+    56px
+    minmax(126px, .68fr)
+    minmax(126px, .68fr)
+    96px
+    108px !important;
+  height: 64px !important;
+  min-height: 64px !important;
+}
+
+.marketGameRow > div{
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.marketRealStats,
+.marketGameMarket,
+.marketGameOdds,
+.marketGameMarketCell{
+  height: 100% !important;
+  min-width: 0 !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  text-align: center !important;
+  overflow: hidden !important;
+}
+
+.marketRealStats span,
+.marketGameMarket span,
+.marketGameOdds span,
+.marketGameMarketCell span{
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  font-size: 10px !important;
+  line-height: 1.05 !important;
+  font-weight: 900 !important;
+  color: #d7ebff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.marketRealStats strong,
+.marketGameMarket strong,
+.marketGameOdds strong,
+.marketGameMarketCell strong{
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  font-size: 18px !important;
+  line-height: 1.05 !important;
+  font-weight: 950 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+/* quando existirem dois mercados dentro da mesma célula, deixa em duas colunas limpas */
+.marketRealStats:has(span + strong + span + strong),
+.marketGameMarket:has(span + strong + span + strong),
+.marketGameOdds:has(span + strong + span + strong),
+.marketGameMarketCell:has(span + strong + span + strong){
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  grid-auto-rows: auto !important;
+  column-gap: 8px !important;
+  row-gap: 1px !important;
+  align-items: center !important;
+}
+
+.marketRealStats:has(span + strong + span + strong) span:nth-of-type(1),
+.marketGameMarket:has(span + strong + span + strong) span:nth-of-type(1),
+.marketGameOdds:has(span + strong + span + strong) span:nth-of-type(1),
+.marketGameMarketCell:has(span + strong + span + strong) span:nth-of-type(1){grid-column:1;grid-row:1}
+.marketRealStats:has(span + strong + span + strong) strong:nth-of-type(1),
+.marketGameMarket:has(span + strong + span + strong) strong:nth-of-type(1),
+.marketGameOdds:has(span + strong + span + strong) strong:nth-of-type(1),
+.marketGameMarketCell:has(span + strong + span + strong) strong:nth-of-type(1){grid-column:1;grid-row:2}
+.marketRealStats:has(span + strong + span + strong) span:nth-of-type(2),
+.marketGameMarket:has(span + strong + span + strong) span:nth-of-type(2),
+.marketGameOdds:has(span + strong + span + strong) span:nth-of-type(2),
+.marketGameMarketCell:has(span + strong + span + strong) span:nth-of-type(2){grid-column:2;grid-row:1}
+.marketRealStats:has(span + strong + span + strong) strong:nth-of-type(2),
+.marketGameMarket:has(span + strong + span + strong) strong:nth-of-type(2),
+.marketGameOdds:has(span + strong + span + strong) strong:nth-of-type(2),
+.marketGameMarketCell:has(span + strong + span + strong) strong:nth-of-type(2){grid-column:2;grid-row:2}
+
+@media(max-width:1360px){
+  .marketHighlightsGrid{
+    grid-template-columns: repeat(7, minmax(112px, 1fr)) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 5px !important;
+  }
+
+  .marketGameRow{
+    grid-template-columns: 72px minmax(200px,1.55fr) minmax(135px,.8fr) 54px minmax(112px,.65fr) minmax(112px,.65fr) 88px 100px !important;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE FINAL — MERCADO ATIVO EM GRAFITE ESCURO
+   Mantém o restante do site no azul escuro atual.
+   Aplicado no final para vencer regras anteriores.
+   ========================================================= */
+
+/* Painel principal da área de mercados */
+.marketHeroPanel{
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255,255,255,.026), transparent 34%),
+    linear-gradient(180deg,#080D12 0%,#0B1016 48%,#070B10 100%) !important;
+  border:1px solid #25303C !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 18px 42px rgba(0,0,0,.26) !important;
+}
+
+/* Título do bloco */
+.marketHeroTitle{
+  color:#F6F8FA !important;
+}
+
+.marketHeroTitle small{
+  color:#8E98A6 !important;
+}
+
+/* Cards superiores: Todos, Média Projetada, Média Recente, Força, Melhor Jogo */
+.marketActiveCard,
+.marketMetricCard{
+  background:
+    linear-gradient(180deg,#111820 0%,#0B1016 100%) !important;
+  border:1px solid #2C3744 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 8px 18px rgba(0,0,0,.14) !important;
+}
+
+/* Card "Todos" um pouco mais destacado, sem ficar azul */
+.marketActiveCard{
+  border-color:#334152 !important;
+}
+
+/* Área do botão e título dos mercados */
+.marketHighlightsTitle{
+  color:#F4F7FA !important;
+}
+
+/* Botão "Ver todos os mercados" permanece azul, mas com fundo escuro */
+.marketSeeAll,
+.marketSeeAllBtn,
+button.marketSeeAll{
+  background:#080D13 !important;
+  border:1px solid #2F80FF !important;
+  color:#56A3FF !important;
+  box-shadow:none !important;
+}
+
+/* Cards dos mercados em destaque */
+.marketHighlightCard,
+.marketHighlightCard.tone-green,
+.marketHighlightCard.tone-yellow,
+.marketHighlightCard.tone-orange,
+.marketHighlightCard.tone-purple,
+.marketHighlightCard.tone-cyan{
+  background:
+    linear-gradient(180deg,#1A2028 0%,#141A21 100%) !important;
+  border:1px solid #303A47 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 8px 18px rgba(0,0,0,.14) !important;
+}
+
+/* Hover/ativo nos mercados: detalhe azul discreto */
+.marketHighlightCard:hover,
+.marketHighlightCard.is-active{
+  background:
+    linear-gradient(180deg,#1E2630 0%,#161D25 100%) !important;
+  border-color:#2F80FF !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 0 0 1px rgba(47,128,255,.14),
+    0 10px 22px rgba(0,0,0,.18) !important;
+}
+
+/* Textos dos cards */
+.marketHighlightCard .marketHighlightLabel,
+.marketHighlightLabel{
+  color:#F5F7FA !important;
+}
+
+.marketHighlightCard strong,
+.marketHighlightCard.tone-green strong,
+.marketHighlightCard.tone-yellow strong,
+.marketHighlightCard.tone-orange strong,
+.marketHighlightCard.tone-purple strong,
+.marketHighlightCard.tone-cyan strong,
+.marketHighlightValue,
+.marketMetricValue{
+  color:#4A95FF !important;
+  text-shadow:0 0 12px rgba(74,149,255,.18) !important;
+}
+
+.marketActiveStrength strong,
+.marketMetricValue.green{
+  color:#25D76F !important;
+}
+
+/* Barras internas */
+.marketMiniBar,
+.marketSpark{
+  background:#26303B !important;
+}
+
+.marketMiniBar i,
+.marketSpark b,
+.marketHighlightCard .marketSpark b,
+.marketHighlightCard.tone-green .marketSpark b,
+.marketHighlightCard.tone-yellow .marketSpark b,
+.marketHighlightCard.tone-orange .marketSpark b,
+.marketHighlightCard.tone-purple .marketSpark b,
+.marketHighlightCard.tone-cyan .marketSpark b{
+  background:linear-gradient(90deg,#2F80FF 0%,#64B5FF 100%) !important;
+}
+
+/* Barras da força do mercado continuam coloridas, mas mais elegantes */
+.marketStrengthBars i{
+  background:#2A333D !important;
+}
+
+.marketStrengthBars i.on{
+  background:linear-gradient(180deg,#33E084 0%,#22C55E 100%) !important;
+}
+
+.marketStrengthBars i.on:nth-child(6),
+.marketStrengthBars i.on:nth-child(7){
+  background:linear-gradient(180deg,#F0C744 0%,#E8B72E 100%) !important;
+}
+
+.marketStrengthBars i.on:nth-child(8),
+.marketStrengthBars i.on:nth-child(9){
+  background:linear-gradient(180deg,#4A95FF 0%,#2F80FF 100%) !important;
+}
+
+/* Separação entre área de mercados e lista de jogos */
+.marketListPanel{
+  margin-top:0 !important;
+}
+
+/* Mantém o painel em altura segura nas telas menores */
+@media(max-width:1500px){
+  .marketHeroPanel{
+    height:auto !important;
+    min-height:0 !important;
+  }
+}
+
+@media(max-height:780px){
+  .marketHeroPanel{
+    height:auto !important;
+    min-height:0 !important;
+  }
+}
+
+
+/* ===== AJUSTE COLUNA PROJ. ===== */
+.marketGameRow .marketRealStats{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+}
+.marketGameRow .marketRealStats .marketGameStatsTitle{
+    font-size:9px!important;
+    margin-bottom:2px!important;
+}
+.marketGameRow .marketRealStats .marketGameStatsSub{
+    display:flex!important;
+    flex-direction:row!important;
+    justify-content:center!important;
+    gap:10px!important;
+    white-space:nowrap!important;
+}
+.marketGameRow .marketRealStats .marketGameStatsSub br{
+    display:none!important;
+}
+
+/* =========================================================
+   FIX DEFINITIVO — COLUNA FINAL / BOTÃO MATCH CENTER LIMPO
+   Aplicado no FINAL para vencer todos os estilos anteriores.
+   Objetivo:
+   - botão não cortar texto
+   - remover texto interno "Match Center" nas linhas
+   - deixar somente ícone compacto e profissional
+   - manter porcentagem centralizada e legível
+   ========================================================= */
+
+/* A última coluna fica estável e centralizada */
+.marketGameRow{
+  grid-template-columns:
+    78px minmax(245px,1.65fr) minmax(170px,.9fr) 58px
+    minmax(150px,.78fr) minmax(150px,.82fr) 82px 92px !important;
+}
+
+.marketGameFinalCell,
+.marketGameRow > div:last-child{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  padding:0 6px!important;
+  text-align:center!important;
+  overflow:hidden!important;
+}
+
+.marketGamePercent{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:19px!important;
+  line-height:1!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  color:#C7E3FF!important;
+  font-weight:900!important;
+}
+
+.marketGameActions{
+  width:100%!important;
+  height:26px!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+
+/* Botão pequeno sem texto quebrando */
+.matchCenterMiniBtn,
+.matchCenterBtn{
+  position:relative!important;
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  height:24px!important;
+  min-height:24px!important;
+  max-height:24px!important;
+  padding:0!important;
+  margin:0 auto!important;
+  border-radius:7px!important;
+  background:linear-gradient(180deg,#0D141D 0%,#080D13 100%)!important;
+  border:1px solid #2F80FF!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;
+  overflow:hidden!important;
+  text-indent:-9999px!important;
+  font-size:0!important;
+  line-height:0!important;
+  color:transparent!important;
+  white-space:nowrap!important;
+}
+
+/* Some com qualquer texto/span que o JS coloque dentro */
+.matchCenterMiniBtn *,
+.matchCenterBtn *{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  width:0!important;
+  height:0!important;
+  overflow:hidden!important;
+}
+
+/* Ícone único e limpo */
+.matchCenterMiniBtn::before,
+.matchCenterBtn::before{
+  content:"↗"!important;
+  position:absolute!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-indent:0!important;
+  font-size:13px!important;
+  line-height:1!important;
+  color:#58A9FF!important;
+  font-weight:900!important;
+}
+
+.matchCenterMiniBtn:hover,
+.matchCenterBtn:hover,
+.matchCenterMiniBtn.is-open,
+.matchCenterBtn.is-open{
+  background:linear-gradient(180deg,#161E29 0%,#101722 100%)!important;
+  border-color:#63B4FF!important;
+  box-shadow:0 0 0 1px rgba(47,128,255,.18), inset 0 1px 0 rgba(255,255,255,.06)!important;
+}
+
+/* Em telas menores, evita o botão voltar a quebrar */
+@media(max-width:1360px){
+  .marketGameRow{
+    grid-template-columns:
+      72px minmax(200px,1.55fr) minmax(135px,.8fr) 54px
+      minmax(112px,.65fr) minmax(112px,.65fr) 82px 86px !important;
+  }
+
+  .marketGamePercent{
+    font-size:18px!important;
+  }
+
+  .matchCenterMiniBtn,
+  .matchCenterBtn{
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:23px!important;
+    min-height:23px!important;
+    max-height:23px!important;
+  }
+}
+
+/* ===== GRAFITE DROPDOWN MERCADOS ===== */
+.allMarketsDropdown,
+.marketDropdown,
+.marketDropdownPanel{
+  background:linear-gradient(180deg,#242932 0%,#1C2129 55%,#171B22 100%)!important;
+  border:1px solid #394250!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.allMarketsDropdown .marketCategory,
+.marketDropdown .marketCategory{
+ border-right:1px solid rgba(255,255,255,.08)!important;
+}
+.allMarketsDropdown .marketCategory:last-child,
+.marketDropdown .marketCategory:last-child{border-right:none!important;}
