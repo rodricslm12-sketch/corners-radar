@@ -4481,3 +4481,33 @@ button.marketSeeAll{
 }
 .allMarketsDropdown .marketCategory:last-child,
 .marketDropdown .marketCategory:last-child{border-right:none!important;}
+
+@media (max-width:1360px){
+  :root{
+    --right-w:280px!important;
+    --sidebar-w:150px!important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) var(--right-w)!important;
+    gap:8px!important;
+  }
+
+  .dashboardRightRail{
+    display:flex!important;
+    min-width:0!important;
+    width:var(--right-w)!important;
+  }
+
+  .marketGameRow{
+    grid-template-columns:68px minmax(150px,1.35fr) minmax(115px,.75fr) 48px minmax(95px,.62fr) minmax(92px,.62fr) 64px 70px!important;
+  }
+
+  .matchCenterMiniBtn,
+  .matchCenterBtn{
+    width:34px!important;
+    min-width:34px!important;
+    height:28px!important;
+    font-size:0!important;
+  }
+}
