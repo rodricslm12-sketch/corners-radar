@@ -3778,3 +3778,136 @@ button.marketSeeAll{
 .marketHighlightCard{
   transform:none!important;
 }
+
+/* =========================================================
+   PATCH — CARDS MERCADOS PC MENOR
+   Corrige cards cortados/estranhos e evita sobreposição
+   Cole no FINAL do CSS
+   ========================================================= */
+
+   @media (max-width: 1500px){
+    :root{
+      --sidebar-w: 155px;
+      --right-w: 305px;
+      --topbar-h: 64px;
+    }
+  
+    .content{
+      padding: 8px 10px !important;
+    }
+  
+    .dashboardGrid{
+      grid-template-columns: minmax(0, 1fr) var(--right-w);
+      gap: 10px;
+    }
+  
+    .marketHeroPanel{
+      height: auto !important;
+      min-height: 240px !important;
+      padding: 12px 12px 14px !important;
+      overflow: visible !important;
+    }
+  
+    .marketHeroGrid{
+      grid-template-columns: 1.15fr 1fr 1fr 1.15fr 1.2fr !important;
+      gap: 8px !important;
+      height: 86px !important;
+      margin-top: 8px !important;
+    }
+  
+    .marketActiveCard,
+    .marketMetricCard{
+      min-height: 86px !important;
+      padding: 10px 12px !important;
+      overflow: hidden !important;
+    }
+  
+    .marketHighlightsTitle{
+      height: 28px !important;
+      margin-top: 12px !important;
+    }
+  
+    .marketHighlightsGrid{
+      height: auto !important;
+      min-height: 92px !important;
+      display: grid !important;
+      grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+      overflow: visible !important;
+    }
+  
+    .marketHighlightCard{
+      height: 92px !important;
+      min-height: 92px !important;
+      padding: 8px 9px 12px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+    }
+  
+    .marketHighlightCard .marketHighlightLabel{
+      font-size: 8.5px !important;
+      line-height: 1.05 !important;
+      min-height: 18px !important;
+      max-height: 20px !important;
+      overflow: hidden !important;
+      white-space: normal !important;
+    }
+  
+    .marketHighlightCard strong{
+      margin-top: 10px !important;
+      font-size: 22px !important;
+      line-height: 1 !important;
+      display: block !important;
+    }
+  
+    .marketHighlightCard small{
+      margin-top: 3px !important;
+      font-size: 7.5px !important;
+      line-height: 1 !important;
+      display: block !important;
+    }
+  
+    .marketSpark{
+      left: 10px !important;
+      right: 10px !important;
+      bottom: 9px !important;
+      height: 4px !important;
+    }
+  
+    .marketListPanel{
+      margin-top: 8px !important;
+    }
+  }
+  
+  @media (max-width: 1280px){
+    :root{
+      --sidebar-w: 145px;
+      --right-w: 280px;
+    }
+  
+    .nav{
+      gap: 14px !important;
+    }
+  
+    .nav-link{
+      font-size: 9.5px !important;
+    }
+  
+    .marketHeroGrid{
+      grid-template-columns: 1.1fr 1fr 1fr 1.1fr 1.15fr !important;
+    }
+  
+    .marketHighlightsGrid{
+      grid-template-columns: repeat(7, minmax(88px, 1fr)) !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding-bottom: 4px !important;
+    }
+  
+    .marketHighlightCard{
+      width: 100% !important;
+    }
+  }
