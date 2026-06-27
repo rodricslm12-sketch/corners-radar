@@ -2876,3 +2876,543 @@ body{font-size:12px;}
   .marketHighlightsGrid{height:62px!important;}
   .marketHighlightCard strong{font-size:15px!important;}
 }
+/* =========================================================
+   CAMADAS PROFISSIONAIS — PRETO NAS LATERAIS / MEIO MAIS CLARO
+   COLE NO FINAL DO CSS OU USE ESTE ARQUIVO COMPLETO
+   ========================================================= */
+
+:root{
+  --bg:#05070A !important;
+  --bg2:#080C12 !important;
+  --sidebar:#05080D !important;
+  --top:#070B10 !important;
+  --panel:#111923 !important;
+  --panel2:#17212C !important;
+  --panel3:#1B2633 !important;
+  --line:#2A3543 !important;
+  --line2:#364352 !important;
+  --text:#F4F7FA !important;
+  --muted:#A7B3C2 !important;
+  --muted2:#7F8C9D !important;
+  --blue:#2F80FF !important;
+  --blue2:#1F6FFF !important;
+}
+
+html,
+body,
+body.dashboard{
+  background:#05070A !important;
+  color:#F4F7FA !important;
+}
+
+/* Fundo geral mais escuro */
+body.dashboard,
+.main{
+  background:
+    radial-gradient(circle at 48% 18%,rgba(47,128,255,.045),transparent 34%),
+    linear-gradient(180deg,#05070A 0%,#070A0F 100%) !important;
+}
+
+/* Sidebar bem mais escura */
+.sidebar{
+  background:
+    linear-gradient(180deg,#05080D 0%,#070B10 52%,#05070A 100%) !important;
+  border-right:1px solid #1A2230 !important;
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.025),18px 0 42px rgba(0,0,0,.20) !important;
+}
+
+/* Topo bem escuro, separado do centro */
+.topbar{
+  background:#070B10 !important;
+  border-bottom:1px solid #202B38 !important;
+  box-shadow:0 8px 28px rgba(0,0,0,.18) !important;
+}
+
+/* Área central: um pouco mais clara e profissional */
+.content{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(47,128,255,.055),transparent 38%),
+    linear-gradient(180deg,#0B1017 0%,#080C12 100%) !important;
+}
+
+.dashboardMainColumn,
+.panel,
+.top-host,
+.marketPremiumWrap{
+  background:transparent !important;
+}
+
+/* Trilho direito escuro como sidebar */
+.dashboardRightRail{
+  background:transparent !important;
+}
+
+/* Painéis principais do meio: mais claros que fundo e laterais */
+.marketHeroPanel,
+.marketListPanel{
+  background:
+    linear-gradient(180deg,#131C27 0%,#101721 100%) !important;
+  border:1px solid #2C3848 !important;
+  box-shadow:0 16px 34px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+/* Painéis da direita: mais escuros que o meio */
+.railCard,
+.matchRailCard,
+.railEmptyHero,
+.railEmptyStatsCard,
+.railEmptyEventsCard{
+  background:
+    linear-gradient(180deg,#0C121A 0%,#080D14 100%) !important;
+  border:1px solid #273241 !important;
+  box-shadow:0 14px 30px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+
+/* Cards internos: uma camada acima do painel */
+.marketActiveCard,
+.marketMetricCard,
+.marketHighlightCard,
+.marketHighlightCard.tone-green,
+.marketHighlightCard.tone-yellow,
+.marketHighlightCard.tone-orange,
+.marketHighlightCard.tone-purple,
+.marketHighlightCard.tone-cyan,
+.railLiveStat,
+.railEmptyStatBox,
+.filterStatCard,
+.matchStatCard,
+.statMiniCard{
+  background:
+    linear-gradient(180deg,#182231 0%,#131B25 100%) !important;
+  border:1px solid #364352 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 22px rgba(0,0,0,.12) !important;
+}
+
+/* Lista de jogos: linhas claras o suficiente para destacar */
+.marketGameRow{
+  background:
+    linear-gradient(180deg,#1A2430 0%,#141D28 100%) !important;
+  border:1px solid #344252 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+.marketGameRow:hover,
+.marketGameRow.match-center-selected{
+  background:
+    linear-gradient(180deg,#202C39 0%,#182331 100%) !important;
+  border-color:#2F80FF !important;
+  box-shadow:inset 3px 0 0 #2F80FF,0 8px 18px rgba(47,128,255,.10) !important;
+}
+.marketGameRow>div{
+  border-left:1px solid rgba(90,112,140,.26) !important;
+}
+
+/* Menus, inputs e botões do topo */
+.datePickerWrap,
+.accountButton,
+.marketListSort select{
+  background:#0B1119 !important;
+  border:1px solid #2A3543 !important;
+}
+.datePickerIcon{
+  background:#101722 !important;
+  border-left:1px solid #2A3543 !important;
+  color:#7DB5FF !important;
+}
+#btn,
+.btnOutline{
+  background:linear-gradient(180deg,#3B8DFF 0%,#1F6FFF 100%) !important;
+  border:1px solid #4A95FF !important;
+  box-shadow:0 10px 22px rgba(47,128,255,.22) !important;
+}
+
+/* Menu lateral: ativo com azul, restante bem limpo */
+.side-item{
+  background:transparent !important;
+  border:1px solid transparent !important;
+  color:#AEB8C6 !important;
+}
+.side-item:hover{
+  background:#0D141D !important;
+  border-color:#273241 !important;
+  color:#F4F7FA !important;
+}
+.side-item.active{
+  background:linear-gradient(180deg,#0E2542 0%,#0B1728 100%) !important;
+  border-color:#2F80FF !important;
+  color:#FFFFFF !important;
+  box-shadow:inset 3px 0 0 #2F80FF,0 10px 20px rgba(47,128,255,.12) !important;
+}
+
+.sidebar-bottom,
+.premiumBox,
+.userBox{
+  background:linear-gradient(180deg,#0B1119,#070B10) !important;
+  border-color:#263241 !important;
+}
+
+/* Realces azuis controlados */
+.nav-link.active,
+.marketHighlightCard strong,
+.marketMetricValue,
+.marketGamePercent,
+.marketSeeAll,
+.marketActiveBadge,
+.railTitle b{
+  color:#4A95FF !important;
+}
+.marketActiveStrength strong,
+.marketMetricValue.green{
+  color:#38E37B !important;
+}
+.marketMiniBar,
+.marketSpark{
+  background:#253241 !important;
+}
+.marketMiniBar i,
+.marketSpark b,
+.marketHighlightCard .marketSpark b,
+.marketHighlightCard.tone-green .marketSpark b,
+.marketHighlightCard.tone-yellow .marketSpark b,
+.marketHighlightCard.tone-orange .marketSpark b,
+.marketHighlightCard.tone-purple .marketSpark b,
+.marketHighlightCard.tone-cyan .marketSpark b{
+  background:linear-gradient(90deg,#2F80FF,#64B5FF) !important;
+}
+
+/* Match center com radar bem escuro e azul discreto */
+.radarRing{border-color:rgba(47,128,255,.34) !important;}
+.radarBall{
+  background:rgba(47,128,255,.16) !important;
+  border-color:rgba(77,157,255,.38) !important;
+}
+
+/* Scrollbars */
+.marketGameList,
+.dashboardRightRail{scrollbar-color:#2F80FF #0A0F16 !important;}
+.marketGameList::-webkit-scrollbar-track,
+.dashboardRightRail::-webkit-scrollbar-track{
+  background:#0A0F16 !important;
+  border-color:#1D2633 !important;
+}
+.marketGameList::-webkit-scrollbar-thumb,
+.dashboardRightRail::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#4A95FF,#1F6FFF) !important;
+  border-color:#0A0F16 !important;
+}
+
+/* Um pouco mais compacto em telas menores, sem perder camadas */
+@media(max-width:1400px){
+  .marketHeroPanel{height:214px !important;min-height:214px !important;}
+  .marketHeroGrid{height:68px !important;}
+  .marketHighlightsGrid{height:78px !important;}
+  .marketHighlightCard{padding:6px 7px !important;}
+  .marketHighlightCard strong{font-size:18px !important;margin-top:5px !important;}
+  .marketGameRow{height:54px !important;}
+}
+
+@media(max-height:760px){
+  .marketHeroPanel{height:188px !important;min-height:188px !important;}
+  .marketHeroGrid{height:56px !important;}
+  .marketHighlightsGrid{height:66px !important;}
+  .marketGameRow{height:48px !important;}
+}
+
+
+
+/* =========================================================
+   CR THEME FIX V2 — CAMADAS PROFISSIONAIS 27"
+   Cole sempre no FINAL do CSS.
+   Objetivo:
+   - Lateral esquerda, topo e lateral direita mais escuros
+   - Miolo/área central menos escura
+   - Cards internos com separação clara
+   - Azul apenas como detalhe
+   ========================================================= */
+
+:root{
+  --bg:#05070B !important;
+  --bg2:#0B1017 !important;
+  --sidebar:#05080D !important;
+  --top:#060A10 !important;
+  --panel:#121A24 !important;
+  --panel2:#172231 !important;
+  --panel3:#1B2838 !important;
+  --line:#2C3847 !important;
+  --line2:#3A4A5D !important;
+  --text:#F4F7FA !important;
+  --muted:#A5B1C0 !important;
+  --muted2:#7E8B9C !important;
+  --blue:#2F80FF !important;
+  --blue2:#1F6FFF !important;
+}
+
+/* Fundo geral */
+html,
+body,
+body.dashboard{
+  background:#05070B !important;
+  color:#F4F7FA !important;
+}
+
+/* Área principal fora da sidebar */
+.main{
+  background:#070B11 !important;
+}
+
+/* Miolo: levemente mais claro para separar das laterais */
+.content{
+  background:
+    radial-gradient(circle at 42% 0%, rgba(47,128,255,.045), transparent 34%),
+    linear-gradient(180deg,#0B1017 0%,#090D13 100%) !important;
+}
+
+/* Sidebar esquerda bem mais escura */
+.sidebar{
+  background:
+    linear-gradient(180deg,#05080D 0%,#070B11 58%,#04070B 100%) !important;
+  border-right:1px solid #1E2937 !important;
+  box-shadow:12px 0 34px rgba(0,0,0,.30) !important;
+}
+
+/* Topo bem escuro */
+.topbar{
+  background:#060A10 !important;
+  border-bottom:1px solid #1E2937 !important;
+  box-shadow:0 10px 26px rgba(0,0,0,.22) !important;
+}
+
+/* Menu lateral */
+.side-item{
+  background:transparent !important;
+  border-color:transparent !important;
+  color:#C2CAD6 !important;
+}
+.side-item:hover{
+  background:#0B1119 !important;
+  border-color:#273547 !important;
+}
+.side-item.active{
+  background:linear-gradient(180deg,#0E2748,#0A1728) !important;
+  border-color:#2F80FF !important;
+  color:#EAF3FF !important;
+  box-shadow:inset 3px 0 0 #2F80FF !important;
+}
+.sidebar-bottom,
+.premiumBox,
+.userBox{
+  background:#080D14 !important;
+  border-color:#253243 !important;
+}
+
+/* Botões e topo */
+.datePickerWrap,
+.accountButton,
+.btnOutline{
+  background:#0A0F16 !important;
+  border-color:#293648 !important;
+}
+#btn{
+  background:linear-gradient(180deg,#3D8DFF,#1F6FFF) !important;
+  border-color:#4A95FF !important;
+  color:#fff !important;
+}
+.nav-link.active{
+  color:#4A95FF !important;
+}
+.nav-link.active:after{
+  background:#2F80FF !important;
+  box-shadow:0 0 16px rgba(47,128,255,.35) !important;
+}
+
+/* Área central: mais clara que laterais */
+.marketHeroPanel,
+.marketListPanel{
+  background:
+    linear-gradient(180deg,#121A24 0%,#101722 100%) !important;
+  border:1px solid #2C3847 !important;
+  box-shadow:
+    0 14px 40px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+/* Right rail mais escuro que o centro */
+.dashboardRightRail{
+  background:transparent !important;
+}
+.dashboardRightRail .railCard,
+.railCard{
+  background:
+    linear-gradient(180deg,#0A0F16 0%,#070B11 100%) !important;
+  border:1px solid #243142 !important;
+  box-shadow:
+    0 12px 34px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+
+/* Cards internos do miolo: separação real */
+.marketActiveCard,
+.marketMetricCard,
+.marketHighlightCard,
+.marketHighlightCard.tone-green,
+.marketHighlightCard.tone-yellow,
+.marketHighlightCard.tone-orange,
+.marketHighlightCard.tone-purple,
+.marketHighlightCard.tone-cyan{
+  background:
+    linear-gradient(180deg,#182433 0%,#141D29 100%) !important;
+  border:1px solid #344254 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 10px 26px rgba(0,0,0,.18) !important;
+}
+
+/* Hover dos cards */
+.marketActiveCard:hover,
+.marketMetricCard:hover,
+.marketHighlightCard:hover{
+  background:
+    linear-gradient(180deg,#1B293A 0%,#152232 100%) !important;
+  border-color:#2F80FF !important;
+}
+
+/* Lista de jogos: mais clara que o painel, com contraste */
+.marketGameRow{
+  background:
+    linear-gradient(180deg,#1A2533 0%,#162231 100%) !important;
+  border:1px solid #344254 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+.marketGameRow:hover,
+.marketGameRow.match-center-selected{
+  background:
+    linear-gradient(180deg,#202E3F 0%,#18283A 100%) !important;
+  border-color:#2F80FF !important;
+  box-shadow:
+    inset 3px 0 0 #2F80FF,
+    0 0 0 1px rgba(47,128,255,.16) !important;
+}
+
+/* Linhas divisórias internas mais discretas */
+.marketGameRow>div{
+  border-left-color:rgba(116,139,164,.22) !important;
+}
+
+/* Cards da direita internos mais escuros */
+.railEmptyStatBox,
+.railLiveStat{
+  background:
+    linear-gradient(180deg,#0E1724 0%,#0B121C 100%) !important;
+  border:1px solid #26384E !important;
+}
+
+/* Match center radar mais premium */
+.railEmptyHero,
+.railEmptyRadar,
+.radarBall{
+  color:#F4F7FA !important;
+}
+.radarRing{
+  border-color:rgba(47,128,255,.34) !important;
+}
+.radarBall{
+  background:
+    radial-gradient(circle at center,rgba(47,128,255,.32),rgba(47,128,255,.10) 58%,rgba(7,11,17,.82)) !important;
+  border-color:rgba(74,149,255,.48) !important;
+  box-shadow:0 0 30px rgba(47,128,255,.18) !important;
+}
+
+/* Números e detalhes azuis */
+.marketMetricValue,
+.marketHighlightCard strong,
+.marketGamePercent,
+.marketSeeAll,
+.railTitle b,
+.marketActiveBadge{
+  color:#5EA2FF !important;
+}
+
+.marketMiniBar,
+.marketSpark{
+  background:#263443 !important;
+}
+.marketMiniBar i,
+.marketSpark b,
+.marketHighlightCard .marketSpark b,
+.marketHighlightCard.tone-green .marketSpark b,
+.marketHighlightCard.tone-yellow .marketSpark b,
+.marketHighlightCard.tone-orange .marketSpark b,
+.marketHighlightCard.tone-purple .marketSpark b,
+.marketHighlightCard.tone-cyan .marketSpark b{
+  background:linear-gradient(90deg,#2F80FF,#69B8FF) !important;
+}
+
+/* Mantém verde só na assertividade e melhor jogo */
+.marketActiveStrength strong,
+.marketMetricValue.green{
+  color:#38E37B !important;
+}
+
+/* Select e botão de mercado */
+.marketListSort select,
+.marketSeeAll,
+.marketSeeAllBtn,
+button.marketSeeAll{
+  background:#0B111A !important;
+  border-color:#2F80FF !important;
+}
+
+/* Scrollbars */
+.marketGameList,
+.dashboardRightRail{
+  scrollbar-color:#2F80FF #080D14 !important;
+}
+.marketGameList::-webkit-scrollbar-track,
+.dashboardRightRail::-webkit-scrollbar-track{
+  background:#080D14 !important;
+  border-color:#1E2937 !important;
+}
+.marketGameList::-webkit-scrollbar-thumb,
+.dashboardRightRail::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#5EA2FF,#1F6FFF) !important;
+  border-color:#080D14 !important;
+}
+
+/* Compactação suave para notebooks/monitores menores */
+@media(max-width:1500px){
+  .marketHeroPanel{
+    height:214px !important;
+    min-height:214px !important;
+  }
+  .marketHeroGrid{
+    height:68px !important;
+  }
+  .marketHighlightsGrid{
+    height:78px !important;
+  }
+  .marketHighlightCard{
+    padding:6px 7px !important;
+  }
+  .marketHighlightCard strong{
+    font-size:18px !important;
+    margin-top:5px !important;
+  }
+  .marketGameRow{
+    height:54px !important;
+  }
+}
+
+@media(max-height:780px){
+  .marketHeroPanel{
+    height:190px !important;
+    min-height:190px !important;
+  }
+  .marketHeroGrid{
+    height:56px !important;
+  }
+  .marketHighlightsGrid{
+    height:66px !important;
+  }
+  .marketGameRow{
+    height:48px !important;
+  }
+}
