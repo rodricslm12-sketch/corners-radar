@@ -4511,3 +4511,289 @@ button.marketSeeAll{
     font-size:0!important;
   }
 }
+
+/* =========================================================
+   FIX FINAL — PC MENOR: MATCH CENTER SEM SUMIR
+   Ajuste aplicado no final para vencer regras antigas.
+   ========================================================= */
+
+/* Garante que o grid principal nunca empurre a lateral direita para fora */
+.dashboardGrid,
+.dashboardMainColumn,
+.marketPremiumWrap,
+.panel,
+.top-host{
+  min-width:0!important;
+}
+
+/* Mantém a coluna do Match Center fixa e visível */
+.dashboardRightRail{
+  display:flex!important;
+  flex-shrink:0!important;
+  min-width:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+
+/* Notebook / PC menor — prioridade: manter Match Center visível */
+@media (max-width:1500px){
+  :root{
+    --sidebar-w:150px!important;
+    --right-w:285px!important;
+    --topbar-h:56px!important;
+  }
+
+  .sidebar{
+    width:var(--sidebar-w)!important;
+  }
+
+  .main{
+    margin-left:var(--sidebar-w)!important;
+    width:calc(100% - var(--sidebar-w))!important;
+  }
+
+  .content{
+    padding:8px 8px 7px!important;
+    overflow:hidden!important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) var(--right-w)!important;
+    gap:8px!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+
+  .dashboardRightRail{
+    width:var(--right-w)!important;
+    min-width:var(--right-w)!important;
+    max-width:var(--right-w)!important;
+  }
+
+  .railCard{
+    padding:8px 9px!important;
+  }
+
+  .railTitle span,
+  .railCard h3{
+    font-size:12px!important;
+  }
+
+  .railEmptyRadar{
+    transform:scale(.88)!important;
+    transform-origin:center!important;
+    margin-top:-6px!important;
+    margin-bottom:-6px!important;
+  }
+
+  .railEmptyText strong{
+    font-size:12px!important;
+  }
+
+  .railEmptyText span{
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+
+  .railEmptyStatsGrid{
+    gap:7px!important;
+  }
+
+  .railEmptyStatBox{
+    min-height:70px!important;
+    height:72px!important;
+    padding:9px!important;
+  }
+
+  /* Reduz a área superior dos mercados para liberar espaço */
+  .marketHeroPanel{
+    height:280px!important;
+    min-height:280px!important;
+  }
+
+  .marketHeroGrid{
+    grid-template-columns:1.08fr .82fr .82fr .9fr 1fr!important;
+    gap:7px!important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard{
+    padding:9px 10px!important;
+  }
+
+  .marketMetricValue{
+    font-size:21px!important;
+  }
+
+  .marketHeroGrid > .marketMetricCard:last-child .marketMetricValue,
+  .marketHeroGrid > .marketMetricCard:last-child .marketMetricValue.green{
+    font-size:17px!important;
+    line-height:1.05!important;
+  }
+
+  .marketHighlightsGrid{
+    grid-template-columns:repeat(7,minmax(92px,1fr))!important;
+    gap:7px!important;
+    overflow:hidden!important;
+  }
+
+  .marketHighlightCard{
+    padding:8px 8px 15px!important;
+  }
+
+  .marketHighlightCard .marketHighlightLabel,
+  .marketHighlightLabel{
+    font-size:9.5px!important;
+  }
+
+  .marketHighlightCard strong,
+  .marketHighlightValue{
+    font-size:20px!important;
+  }
+
+  /* Lista: reduz as colunas para não invadir o Match Center */
+  .marketGameRow{
+    grid-template-columns:
+      64px
+      minmax(138px,1.35fr)
+      minmax(118px,.74fr)
+      45px
+      minmax(92px,.58fr)
+      minmax(78px,.52fr)
+      56px
+      46px!important;
+    min-height:62px!important;
+    height:62px!important;
+  }
+
+  .marketGameRow>div{
+    padding:0 7px!important;
+  }
+
+  .marketGameTime strong{
+    font-size:18px!important;
+  }
+
+  .marketGameTime span{
+    font-size:10px!important;
+  }
+
+  .marketGameTeams{
+    font-size:10.2px!important;
+  }
+
+  .marketGameCompetition{
+    font-size:9px!important;
+  }
+
+  .marketGameSub,
+  .marketGameStatsSub,
+  .marketGameStatsTitle{
+    font-size:8px!important;
+  }
+
+  .marketCircle{
+    width:32px!important;
+    height:32px!important;
+  }
+
+  .marketCircle span{
+    font-size:9px!important;
+  }
+
+  .marketTrendMini{
+    height:28px!important;
+    gap:3px!important;
+  }
+
+  .marketTrendMini i{
+    width:5px!important;
+  }
+
+  .marketGamePercent{
+    font-size:16px!important;
+  }
+
+  .marketGameActions{
+    margin-top:3px!important;
+  }
+
+  .matchCenterMiniBtn,
+  .matchCenterBtn{
+    width:30px!important;
+    min-width:30px!important;
+    height:25px!important;
+    padding:0!important;
+    font-size:0!important;
+    overflow:hidden!important;
+  }
+
+  .matchCenterMiniBtn::before,
+  .matchCenterBtn::before{
+    content:"↗"!important;
+    font-size:12px!important;
+    line-height:1!important;
+    color:#58A9FF!important;
+    font-weight:900!important;
+  }
+}
+
+/* Tela ainda menor: esconde colunas menos importantes, mas mantém Match Center */
+@media (max-width:1280px){
+  :root{
+    --right-w:270px!important;
+    --sidebar-w:142px!important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) var(--right-w)!important;
+    gap:7px!important;
+  }
+
+  .dashboardRightRail{
+    width:var(--right-w)!important;
+    min-width:var(--right-w)!important;
+    max-width:var(--right-w)!important;
+  }
+
+  .marketGameRow{
+    grid-template-columns:
+      60px
+      minmax(132px,1.4fr)
+      minmax(105px,.7fr)
+      42px
+      minmax(82px,.55fr)
+      52px
+      42px!important;
+  }
+
+  .marketGameRow>div:nth-child(6){
+    display:none!important;
+  }
+
+  .marketGameRow>div{
+    padding:0 6px!important;
+  }
+
+  .marketGamePercent{
+    font-size:15px!important;
+  }
+}
+
+/* Mantém o dropdown de mercados em grafite, sem voltar para azul */
+.allMarketsDropdown,
+.marketDropdown,
+.marketMenu,
+.marketAllMarkets{
+  background:
+    radial-gradient(circle at 20% 0%,rgba(255,255,255,.025),transparent 35%),
+    linear-gradient(180deg,#242932 0%,#1E242D 45%,#181D25 100%)!important;
+  border:1px solid #394250!important;
+  box-shadow:0 20px 55px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+
+.allMarketsDropdown::before,
+.marketDropdown::before{
+  display:none!important;
+}
