@@ -3416,3 +3416,365 @@ button.marketSeeAll{
     height:48px !important;
   }
 }
+
+/* =========================================================
+   FIX DEFINITIVO — PC MENOR / MERCADOS SEM SOBREPOR A LISTA
+   Cole este bloco no FINAL do CSS.
+   Objetivo:
+   - cards de mercados não passam por cima dos jogos
+   - Mercado Ativo ganha altura automática
+   - lista de jogos começa sempre abaixo dos cards
+   - funciona melhor em notebook / 1366x768 / telas menores
+   ========================================================= */
+
+/* Estrutura principal nunca pode deixar filho vazar */
+.dashboardMainColumn,
+.top-host,
+.marketPremiumWrap{
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+.marketPremiumWrap{
+  height:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:10px!important;
+}
+
+/* O painel de mercado deixa de ter altura travada */
+.marketHeroPanel{
+  height:auto!important;
+  min-height:0!important;
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  padding:12px 13px 14px!important;
+  position:relative!important;
+  z-index:2!important;
+}
+
+/* Topo do Mercado Ativo */
+.marketHeroTitle{
+  height:auto!important;
+  min-height:28px!important;
+  line-height:1.2!important;
+  margin-bottom:8px!important;
+  overflow:visible!important;
+  flex-wrap:wrap!important;
+}
+
+/* Cards superiores mais flexíveis */
+.marketHeroGrid{
+  height:auto!important;
+  min-height:74px!important;
+  display:grid!important;
+  grid-template-columns:1.25fr .95fr .95fr 1.05fr 1.15fr!important;
+  gap:8px!important;
+  margin-top:0!important;
+}
+
+.marketActiveCard,
+.marketMetricCard{
+  min-height:74px!important;
+  height:auto!important;
+  overflow:hidden!important;
+  padding:9px 12px!important;
+}
+
+/* Título dos mercados */
+.marketHighlightsTitle{
+  height:auto!important;
+  min-height:26px!important;
+  margin-top:10px!important;
+  margin-bottom:7px!important;
+  overflow:visible!important;
+}
+
+/* Grade dos mercados: não deixa passar por cima */
+.marketHighlightsGrid{
+  height:auto!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  gap:7px!important;
+  overflow:visible!important;
+}
+
+/* Cards dos mercados menores e estáveis */
+.marketHighlightCard{
+  min-width:0!important;
+  height:74px!important;
+  min-height:74px!important;
+  max-height:74px!important;
+  padding:7px 9px 8px!important;
+  overflow:hidden!important;
+  position:relative!important;
+}
+
+.marketHighlightCard .marketHighlightLabel,
+.marketHighlightLabel{
+  display:block!important;
+  font-size:8.5px!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.marketHighlightCard strong,
+.marketHighlightValue{
+  display:block!important;
+  font-size:20px!important;
+  line-height:1!important;
+  margin-top:6px!important;
+}
+
+.marketHighlightCard small,
+.marketHighlightSub{
+  display:block!important;
+  font-size:7px!important;
+  line-height:1!important;
+  margin-top:2px!important;
+}
+
+.marketSpark{
+  left:9px!important;
+  right:9px!important;
+  bottom:7px!important;
+  height:4px!important;
+}
+
+/* Lista de jogos sempre abaixo, com scroll interno */
+.marketListPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  position:relative!important;
+  z-index:1!important;
+  margin-top:0!important;
+}
+
+.marketGameList{
+  height:calc(100% - 45px)!important;
+  max-height:calc(100% - 45px)!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+
+/* Ajuste para monitores menores: 1366x768 / notebook */
+@media (max-width:1500px), (max-height:820px){
+  :root{
+    --topbar-h:56px!important;
+    --right-w:320px!important;
+  }
+
+  .content{
+    padding:8px 10px 8px!important;
+  }
+
+  .dashboardGrid{
+    gap:9px!important;
+  }
+
+  .marketPremiumWrap{
+    gap:8px!important;
+  }
+
+  .marketHeroPanel{
+    padding:10px 11px 12px!important;
+  }
+
+  .marketHeroTitle{
+    min-height:24px!important;
+    margin-bottom:6px!important;
+    font-size:13px!important;
+  }
+
+  .marketHeroTitle small{
+    font-size:8px!important;
+  }
+
+  .marketHeroGrid{
+    min-height:68px!important;
+    gap:7px!important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard{
+    min-height:68px!important;
+    padding:8px 10px!important;
+  }
+
+  .marketActiveName{
+    font-size:14px!important;
+  }
+
+  .marketActiveStrength strong{
+    font-size:24px!important;
+  }
+
+  .marketMetricValue{
+    font-size:21px!important;
+  }
+
+  .marketMetricLabel,
+  .marketActiveSub,
+  .marketMetricSub{
+    font-size:8px!important;
+  }
+
+  .marketHighlightsTitle{
+    min-height:22px!important;
+    margin-top:8px!important;
+    margin-bottom:6px!important;
+    font-size:9px!important;
+  }
+
+  .marketHighlightsGrid{
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+
+  .marketHighlightCard{
+    height:64px!important;
+    min-height:64px!important;
+    max-height:64px!important;
+    padding:6px 8px 7px!important;
+  }
+
+  .marketHighlightCard .marketHighlightLabel,
+  .marketHighlightLabel{
+    font-size:7.5px!important;
+  }
+
+  .marketHighlightCard strong,
+  .marketHighlightValue{
+    font-size:18px!important;
+    margin-top:5px!important;
+  }
+
+  .marketHighlightCard small,
+  .marketHighlightSub{
+    font-size:6.5px!important;
+  }
+
+  .marketSpark{
+    bottom:6px!important;
+  }
+
+  .marketListTop{
+    height:40px!important;
+  }
+
+  .marketGameList{
+    height:calc(100% - 40px)!important;
+    max-height:calc(100% - 40px)!important;
+  }
+
+  .marketGameRow{
+    height:54px!important;
+    margin-bottom:5px!important;
+  }
+
+  .marketGameRow > div{
+    height:34px!important;
+    padding:0 7px!important;
+  }
+
+  .marketGameTime strong{
+    font-size:18px!important;
+  }
+
+  .marketGameTeams{
+    font-size:9.5px!important;
+  }
+
+  .marketGamePercent{
+    font-size:18px!important;
+  }
+}
+
+/* Em telas mais estreitas, quebra os mercados para não sobrepor */
+@media (max-width:1280px){
+  :root{
+    --sidebar-w:150px!important;
+    --right-w:300px!important;
+  }
+
+  .marketHeroGrid{
+    grid-template-columns:1.2fr 1fr 1fr!important;
+  }
+
+  .marketHighlightsGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+
+  .marketHighlightCard{
+    height:58px!important;
+    min-height:58px!important;
+    max-height:58px!important;
+  }
+
+  .marketGameRow{
+    grid-template-columns:68px 1.6fr .9fr 48px .75fr .75fr 54px 88px!important;
+  }
+
+  .matchCenterMiniBtn,
+  .matchCenterBtn{
+    min-width:74px!important;
+    font-size:7px!important;
+  }
+}
+
+/* Telas baixas: ainda mais compacto */
+@media (max-height:760px){
+  .marketHeroPanel{
+    padding:9px 10px 10px!important;
+  }
+
+  .marketHeroGrid{
+    min-height:62px!important;
+  }
+
+  .marketActiveCard,
+  .marketMetricCard{
+    min-height:62px!important;
+  }
+
+  .marketHighlightsGrid{
+    gap:5px!important;
+  }
+
+  .marketHighlightCard{
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+  }
+
+  .marketHighlightCard strong,
+  .marketHighlightValue{
+    font-size:17px!important;
+    margin-top:4px!important;
+  }
+
+  .marketSpark{
+    height:3px!important;
+    bottom:5px!important;
+  }
+
+  .marketGameRow{
+    height:50px!important;
+  }
+}
+
+/* Segurança final: impede qualquer sobreposição visual */
+.marketHeroPanel + .marketListPanel{
+  margin-top:0!important;
+  clear:both!important;
+}
+
+.marketHighlightsGrid,
+.marketHighlightCard{
+  transform:none!important;
+}
