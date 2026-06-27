@@ -7,20 +7,20 @@
    *::before,*::after{box-sizing:border-box}
    
    :root{
-     --bg:#020711;
-     --bg2:#030b15;
-     --sidebar:#03101d;
-     --top:#020711;
-     --panel:#03101d;
-     --panel2:#06172a;
-     --panel3:#071b31;
-     --line:#0a2b49;
-     --line2:#0e2d4c;
-     --text:#edf5fc;
-     --muted:#8fa3ba;
-     --muted2:#6f839b;
-     --blue:#0b83df;
-     --blue2:#0d67b8;
+     --bg:#0B0E13;
+     --bg2:#101722;
+     --sidebar:#10151D;
+     --top:#0E131A;
+     --panel:#141B24;
+     --panel2:#171F2A;
+     --panel3:#1A2432;
+     --line:#263241;
+     --line2:#334256;
+     --text:#F2F5F9;
+     --muted:#A8B2C0;
+     --muted2:#7F8C9D;
+     --blue:#2F80FF;
+     --blue2:#1F6FFF;
      --green:#22c55e;
      --green2:#159b4d;
      --yellow:#e8bf43;
@@ -229,10 +229,10 @@
      --sidebar-w:162px;
      --topbar-h:56px;
      --right-w:340px;
-     --bg:#020711;
-     --panel:#03101d;
+     --bg:#0B0E13;
+     --panel:#141B24;
      --line:#092a47;
-     --blue:#0b83df;
+     --blue:#2F80FF;
      --green:#22c55e;
    }
    
@@ -2476,3 +2476,197 @@ body{
     max-height:94px!important;
   }
 }
+
+/* =========================================================
+   REDESIGN PREMIUM — PRETO + AZUL PROFISSIONAL
+   Aplicado por cima do CSS original para manter toda a lógica.
+   ========================================================= */
+:root{
+  --bg:#0B0E13;
+  --bg2:#101722;
+  --sidebar:#10151D;
+  --top:#0E131A;
+  --panel:#141B24;
+  --panel2:#171F2A;
+  --panel3:#1A2432;
+  --line:#263241;
+  --line2:#334256;
+  --text:#F2F5F9;
+  --muted:#A8B2C0;
+  --muted2:#7F8C9D;
+  --blue:#2F80FF;
+  --blue2:#1F6FFF;
+  --green:#28D47A;
+  --green2:#17A35A;
+}
+
+html,body,body.dashboard,.main,.content{
+  background:
+    radial-gradient(circle at 14% 0%, rgba(47,128,255,.13), transparent 30%),
+    radial-gradient(circle at 88% 18%, rgba(47,128,255,.08), transparent 34%),
+    linear-gradient(180deg,#0B0E13 0%,#080B10 100%) !important;
+  color:var(--text) !important;
+}
+
+.sidebar{
+  background:linear-gradient(180deg,#111720 0%,#0D121A 100%) !important;
+  border-right:1px solid rgba(255,255,255,.075) !important;
+  box-shadow:8px 0 28px rgba(0,0,0,.26) !important;
+}
+.logo,.loginLogo{
+  background:linear-gradient(135deg,#2F80FF,#1F6FFF) !important;
+  box-shadow:0 14px 34px rgba(47,128,255,.28) !important;
+}
+.side-item{
+  color:#B7C3D1 !important;
+  border:1px solid transparent !important;
+  transition:.18s ease !important;
+}
+.side-item:hover{
+  background:#151D28 !important;
+  border-color:#2A3544 !important;
+  color:#fff !important;
+}
+.side-item.active{
+  background:linear-gradient(135deg,rgba(47,128,255,.22),rgba(47,128,255,.08)) !important;
+  border-color:rgba(47,128,255,.45) !important;
+  color:#fff !important;
+  box-shadow:inset 3px 0 0 #2F80FF, 0 8px 24px rgba(47,128,255,.09) !important;
+}
+.sidebar-bottom,.premiumBox,.userBox{
+  background:#111820 !important;
+  border-color:#2A3442 !important;
+}
+
+.topbar{
+  background:rgba(14,19,26,.94) !important;
+  border-bottom:1px solid rgba(255,255,255,.075) !important;
+  backdrop-filter:blur(12px);
+}
+.nav-link{color:#AEB8C6 !important;}
+.nav-link.active{color:#70A9FF !important;}
+.nav-link.active:after{
+  background:linear-gradient(90deg,#2F80FF,#70A9FF) !important;
+  box-shadow:0 0 20px rgba(47,128,255,.45) !important;
+}
+.datePickerWrap,.accountButton,.marketListSort select{
+  background:#121923 !important;
+  border-color:#2A3442 !important;
+}
+.datePickerIcon,.customDateNav,.customDateFooter button,.accountDropBtn{
+  background:#171F2A !important;
+  border-color:#2A3442 !important;
+}
+.btnOutline,#btn,.loginButton{
+  background:linear-gradient(135deg,#2F80FF,#1F6FFF) !important;
+  border-color:#4A95FF !important;
+  box-shadow:0 10px 24px rgba(47,128,255,.22) !important;
+}
+#btn:hover,.btnOutline:hover,.loginButton:hover{
+  background:linear-gradient(135deg,#4A95FF,#2F80FF) !important;
+}
+
+.marketHeroPanel,.marketListPanel,.railCard,.loginCard,.customDatePicker,.accountDropdown{
+  background:
+    linear-gradient(180deg,rgba(24,32,43,.98),rgba(14,19,27,.98)) !important;
+  border:1px solid #2A3442 !important;
+  box-shadow:0 18px 42px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+.marketHeroPanel::after,.marketListPanel::after,.railCard::after{
+  content:"";
+  position:absolute;
+  left:18px;right:18px;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(47,128,255,.65),transparent);
+  pointer-events:none;
+}
+.marketHeroPanel,.marketListPanel,.railCard{position:relative;}
+
+.marketActiveCard,.marketMetricCard,.marketHighlightCard,.marketGameRow,.railLiveStat,.accountDropHeader,.loginFeature{
+  background:
+    radial-gradient(circle at 50% 100%, rgba(47,128,255,.10), transparent 55%),
+    linear-gradient(180deg,#171F2A,#111820) !important;
+  border:1px solid #2A3442 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+.marketHighlightCard.tone-green,.marketHighlightCard.tone-yellow,.marketHighlightCard.tone-orange,.marketHighlightCard.tone-purple,.marketHighlightCard.tone-cyan{
+  background:
+    radial-gradient(circle at 50% 100%, rgba(47,128,255,.12), transparent 58%),
+    linear-gradient(180deg,#171F2A,#111820) !important;
+  border-color:#2A3442 !important;
+}
+.marketHighlightCard strong,.marketMetricValue,.marketGamePercent{color:#70A9FF !important;}
+.marketMetricValue.green,.marketActiveStrength strong,.railScore strong{color:#28D47A !important;}
+.marketActiveBadge,.railTitle b,.matchRailCard.is-live .railTitle b,.matchRailCard.is-finished .railTitle b{
+  background:rgba(47,128,255,.14) !important;
+  color:#BFD9FF !important;
+  border-color:rgba(47,128,255,.42) !important;
+}
+.marketMiniBar,.marketSpark,.railProgress{
+  background:#263241 !important;
+}
+.marketMiniBar i,.marketSpark b,.railProgress i{
+  background:linear-gradient(90deg,#2F80FF,#70A9FF) !important;
+  box-shadow:0 0 16px rgba(47,128,255,.35) !important;
+}
+.marketStrengthBars i{background:#2A3442 !important;}
+.marketStrengthBars i.on{background:linear-gradient(180deg,#70A9FF,#2F80FF) !important;}
+
+.marketGameRow{
+  color:#DCE6F2 !important;
+  transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease !important;
+}
+.marketGameRow:hover,.marketGameRow.match-center-selected{
+  transform:translateY(-1px);
+  background:#1A2230 !important;
+  border-color:#2F80FF !important;
+  box-shadow:inset 3px 0 0 #2F80FF, 0 8px 28px rgba(0,0,0,.24) !important;
+}
+.marketGameRow>div{border-left:1px solid rgba(255,255,255,.055) !important;}
+.marketGameTime span,.marketGameLeague,.marketGameSub,.marketGameStatsSub,.marketMetricSub,.marketHeroTitle small{color:#A8B2C0 !important;}
+.marketCircle{
+  background:conic-gradient(#2F80FF calc(var(--p)*1%),#2A3442 0) !important;
+  box-shadow:0 0 18px rgba(47,128,255,.16) !important;
+}
+.marketCircle:before{background:#151D28 !important;}
+.matchCenterMiniBtn,.matchCenterBtn{
+  background:#151D28 !important;
+  border-color:rgba(47,128,255,.45) !important;
+  color:#DCEBFF !important;
+}
+.matchCenterMiniBtn:hover,.matchCenterBtn:hover,.matchCenterMiniBtn.is-open{
+  background:rgba(47,128,255,.18) !important;
+  border-color:#2F80FF !important;
+}
+
+.railBadge{
+  background:linear-gradient(180deg,#70A9FF,#2F80FF) !important;
+  color:#06101B !important;
+  box-shadow:0 0 26px rgba(47,128,255,.30) !important;
+}
+.railScore span{
+  background:#151D28 !important;
+  border:1px solid #2A3442 !important;
+  color:#DCE6F2 !important;
+}
+.railStat{color:#A8B2C0 !important;}
+.railStat b{color:#F2F5F9 !important;}
+
+.chip,.chip-ia-safe,.chip-ia-warn,.chip-ia-danger{
+  border-radius:999px !important;
+  border:1px solid rgba(47,128,255,.35) !important;
+  background:rgba(47,128,255,.10) !important;
+  color:#CFE2FF !important;
+}
+.chip-ia-safe,.is-ok{border-color:rgba(40,212,122,.38) !important;background:rgba(40,212,122,.10) !important;color:#A8F0C6 !important;}
+.chip-ia-warn,.is-atencao{border-color:rgba(232,191,67,.45) !important;background:rgba(232,191,67,.10) !important;color:#FFE29A !important;}
+.chip-ia-danger,.is-cuidado{border-color:rgba(239,68,68,.45) !important;background:rgba(239,68,68,.10) !important;color:#FFB0B0 !important;}
+
+.marketGameList,.dashboardRightRail{
+  scrollbar-color:#2F80FF #111820 !important;
+}
+.marketGameList::-webkit-scrollbar,.dashboardRightRail::-webkit-scrollbar{width:8px;}
+.marketGameList::-webkit-scrollbar-track,.dashboardRightRail::-webkit-scrollbar-track{background:#111820;border-radius:999px;}
+.marketGameList::-webkit-scrollbar-thumb,.dashboardRightRail::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#2F80FF,#1F6FFF);border-radius:999px;}
+
+input,select,button{outline-color:#2F80FF !important;}
+::selection{background:rgba(47,128,255,.35);color:#fff;}
