@@ -4797,3 +4797,341 @@ button.marketSeeAll{
 .marketDropdown::before{
   display:none!important;
 }
+
+/* =========================================================
+   PRÓXIMOS JOGOS — VISUAL PREMIUM FINAL INTEGRADO
+   Ajuste da área central para tirar o aspecto chapado/azulado
+   ========================================================= */
+
+/* Painel principal da lista */
+.marketListPanel{
+  background:
+    radial-gradient(circle at 12% -8%,rgba(47,128,255,.18),transparent 30%),
+    linear-gradient(180deg,#08111d 0%,#06101a 48%,#040a12 100%)!important;
+  border:1px solid rgba(73,118,166,.32)!important;
+  border-radius:12px!important;
+  padding:0 12px 10px!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 18px 45px rgba(0,0,0,.28)!important;
+}
+
+/* Topo da seção */
+.marketListTop{
+  height:50px!important;
+  padding:0 2px!important;
+  border-bottom:1px solid rgba(95,140,190,.14)!important;
+  margin-bottom:8px!important;
+}
+
+.marketListTitle{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  font-size:15px!important;
+  color:#f4f8ff!important;
+  letter-spacing:-.02em!important;
+  text-shadow:0 0 12px rgba(80,150,255,.16)!important;
+}
+
+.marketListSort{
+  color:#8ea8c3!important;
+}
+
+.marketListSort select{
+  height:34px!important;
+  min-width:178px!important;
+  background:
+    linear-gradient(180deg,#0b1a2b 0%,#071321 100%)!important;
+  border:1px solid rgba(75,139,210,.65)!important;
+  color:#fff!important;
+  border-radius:9px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;
+}
+
+/* Área rolável dos jogos */
+.marketGameList{
+  height:calc(100% - 58px)!important;
+  max-height:calc(100% - 58px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 9px 10px 2px!important;
+  scrollbar-gutter:stable!important;
+}
+
+/* Cards dos jogos */
+.marketGameRow{
+  height:66px!important;
+  min-height:66px!important;
+  margin-bottom:8px!important;
+  border-radius:11px!important;
+  background:
+    linear-gradient(90deg,rgba(47,128,255,.08),transparent 22%),
+    linear-gradient(180deg,#111c2a 0%,#0b1521 100%)!important;
+  border:1px solid rgba(83,123,166,.34)!important;
+  grid-template-columns:78px minmax(230px,1.65fr) minmax(160px,.9fr) 58px minmax(140px,.78fr) minmax(140px,.82fr) 76px 112px!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 8px 18px rgba(0,0,0,.16)!important;
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    transform .18s ease,
+    box-shadow .18s ease!important;
+}
+
+/* Leve alternância para não ficar uma cor só */
+.marketGameRow:nth-child(even){
+  background:
+    linear-gradient(90deg,rgba(47,128,255,.055),transparent 22%),
+    linear-gradient(180deg,#0f1a27 0%,#09131f 100%)!important;
+}
+
+.marketGameRow:hover,
+.marketGameRow.match-center-selected{
+  transform:translateY(-1px)!important;
+  background:
+    linear-gradient(90deg,rgba(47,128,255,.18),transparent 28%),
+    linear-gradient(180deg,#142338 0%,#0b1a2b 100%)!important;
+  border-color:#2f9bff!important;
+  box-shadow:
+    inset 3px 0 0 #2f9bff,
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 12px 26px rgba(0,0,0,.28),
+    0 0 0 1px rgba(47,155,255,.13)!important;
+}
+
+/* Divisórias mais discretas */
+.marketGameRow>div{
+  height:100%!important;
+  padding:0 12px!important;
+  border-left:1px solid rgba(111,158,210,.16)!important;
+}
+
+.marketGameRow>div:first-child{
+  border-left:0!important;
+}
+
+/* Bloco do horário com destaque mais bonito */
+.marketGameTime{
+  align-items:center!important;
+  text-align:center!important;
+  background:
+    linear-gradient(180deg,rgba(47,128,255,.14),rgba(47,128,255,.035))!important;
+  border-radius:9px 0 0 9px!important;
+}
+
+.marketGameTime strong{
+  font-size:21px!important;
+  color:#d8ecff!important;
+  text-shadow:0 0 14px rgba(47,155,255,.24)!important;
+}
+
+.marketGameTime span{
+  color:#8fbdf0!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+
+/* Times e campeonato */
+.marketGameTeams{
+  font-size:11.5px!important;
+  line-height:1.18!important;
+  font-weight:900!important;
+}
+
+.marketTeamName,
+.marketGameTeams .teamName{
+  color:#f4f8ff!important;
+  max-width:100%!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.marketGameLeague{
+  color:#9eb4cb!important;
+  font-size:10px!important;
+  margin-top:4px!important;
+}
+
+.marketGameCompetition{
+  color:#ecf5ff!important;
+  font-size:10.5px!important;
+  letter-spacing:.01em!important;
+}
+
+.marketGameSub,
+.marketGameStatsSub{
+  color:#a7bdd4!important;
+  font-size:9.5px!important;
+}
+
+.marketGameStatsTitle{
+  color:#8da8c2!important;
+  font-size:9.5px!important;
+}
+
+/* Círculo e percentual */
+.marketCircle{
+  width:38px!important;
+  height:38px!important;
+  background:conic-gradient(#35a9ff calc(var(--p)*1%),#14283f 0)!important;
+  box-shadow:0 0 16px rgba(53,169,255,.12)!important;
+}
+
+.marketCircle:before{
+  background:#081522!important;
+}
+
+.marketCircle span{
+  color:#fff!important;
+  font-size:10.5px!important;
+}
+
+.marketGamePercent{
+  color:#b9ddff!important;
+  font-size:21px!important;
+  text-shadow:0 0 12px rgba(53,169,255,.18)!important;
+}
+
+/* Mini gráfico dos jogos */
+.marketTrendMini{
+  height:34px!important;
+  gap:4px!important;
+}
+
+.marketTrendMini i{
+  width:6px!important;
+  border-radius:6px 6px 2px 2px!important;
+  box-shadow:0 0 9px rgba(34,197,94,.18)!important;
+}
+
+.marketTrendMini i:nth-child(1),
+.marketTrendMini i:nth-child(2),
+.marketTrendMini i:nth-child(3){
+  background:#25d875!important;
+}
+
+.marketTrendMini i:nth-child(4){
+  background:#e6c84d!important;
+}
+
+.marketTrendMini i:nth-child(5),
+.marketTrendMini i:nth-child(6){
+  background:#f09a35!important;
+}
+
+/* Botão de abrir Match Center */
+.matchCenterMiniBtn,
+.matchCenterBtn{
+  height:26px!important;
+  min-width:88px!important;
+  border-radius:7px!important;
+  background:
+    linear-gradient(180deg,#09233c 0%,#06172a 100%)!important;
+  border:1px solid rgba(53,169,255,.78)!important;
+  color:#eaf6ff!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    0 0 0 1px rgba(53,169,255,.06)!important;
+}
+
+.matchCenterMiniBtn:hover,
+.matchCenterBtn:hover,
+.matchCenterMiniBtn.is-open{
+  background:
+    linear-gradient(180deg,#0f4f83 0%,#0a2a49 100%)!important;
+  border-color:#5cc2ff!important;
+}
+
+/* Scrollbar da lista */
+.marketGameList::-webkit-scrollbar{
+  width:9px!important;
+}
+
+.marketGameList::-webkit-scrollbar-track{
+  background:#04111e!important;
+  border-radius:999px!important;
+  border:1px solid rgba(38,87,132,.45)!important;
+}
+
+.marketGameList::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#35b6ff,#116fc8)!important;
+  border-radius:999px!important;
+  border:1px solid #05243d!important;
+}
+
+.marketGameList::-webkit-scrollbar-thumb:hover{
+  background:#46c4ff!important;
+}
+
+/* Ajuste para telas menores sem quebrar o Match Center */
+@media(max-width:1360px){
+  .marketGameRow{
+    grid-template-columns:74px minmax(190px,1.55fr) minmax(135px,.82fr) 52px minmax(118px,.7fr) minmax(118px,.76fr) 68px 100px!important;
+  }
+
+  .marketGameRow>div{
+    padding:0 9px!important;
+  }
+
+  .marketGameTeams{
+    font-size:10.8px!important;
+  }
+
+  .marketGameCompetition{
+    font-size:9.8px!important;
+  }
+
+  .marketGameSub,
+  .marketGameStatsSub,
+  .marketGameStatsTitle{
+    font-size:8.8px!important;
+  }
+}
+
+@media(max-width:1120px){
+  .marketGameRow{
+    grid-template-columns:74px minmax(190px,1fr) 52px 94px!important;
+  }
+
+  .marketGameRow>div:nth-child(3),
+  .marketGameRow>div:nth-child(5),
+  .marketGameRow>div:nth-child(6),
+  .marketGameRow>div:nth-child(7){
+    display:none!important;
+  }
+}
+/* ===== DROPDOWN "ORDENAR POR" ===== */
+
+.marketListSort select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+
+  background:#0B111A !important;
+  color:#F4F7FA !important;
+  border:1px solid #2F80FF !important;
+}
+
+/* opções */
+.marketListSort select option{
+  background:#0B111A !important;
+  color:#F4F7FA !important;
+}
+
+.marketListSort select option:checked{
+  background:#1F6FFF !important;
+  color:#fff !important;
+}
+
+.marketListSort select option:hover{
+  background:#1F6FFF !important;
+  color:#fff !important;
+}
+
+.marketListSort select:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(47,128,255,.18);
+}
