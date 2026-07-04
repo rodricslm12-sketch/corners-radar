@@ -2,190 +2,159 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Corners Radar</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
-    rel="stylesheet"
-  />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corner Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <script src="script.js" defer></script>
 </head>
-
-<body class="dashboard locked">
-
-  <!-- LOGIN SCREEN PREMIUM -->
-  <section id="loginScreen" class="loginScreen">
-    <div class="loginCard">
-      <div class="loginLogo">CR</div>
-
-      <div class="loginBadge">ACESSO PREMIUM</div>
-
-      <h1>Corners Radar</h1>
-      <p>Entre para liberar o painel completo, os mercados inteligentes e o Match Center com leitura de jogo.</p>
-
-      <div class="loginFeatures" aria-label="Recursos do painel">
-        <div class="loginFeature"><b>📊</b><span>Dados reais</span></div>
-        <div class="loginFeature"><b>🧠</b><span>Filtros IA</span></div>
-        <div class="loginFeature"><b>⚽</b><span>Match Center</span></div>
-      </div>
-
-      <form id="loginForm" class="loginForm">
-        <div class="loginField">
-          <label for="loginUser">Usuário</label>
-          <input id="loginUser" type="text" placeholder="Digite seu usuário" autocomplete="username" />
-        </div>
-
-        <div class="loginField">
-          <label for="loginPass">Senha</label>
-          <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
-        </div>
-
-        <button type="submit" class="loginButton">Entrar no painel →</button>
-        <span id="loginError" class="loginError"></span>
-      </form>
-
-      <div class="loginHint">
-        🔐 Ambiente protegido. O mercado fica oculto até o usuário entrar.
-      </div>
-    </div>
-  </section>
-
-  <!-- SIDEBAR DESKTOP PROFISSIONAL -->
+<body class="dashboard">
   <aside class="sidebar">
-    <div class="sidebar-top">
-      <div class="brandBlock">
-        <div class="logo">CR</div>
-        <div class="brandText">
-          <strong>Corners</strong>
-          <span>Radar de cantos</span>
+    <div class="brandBlock">
+      <div class="brandLogo">
+        <span class="brandMark">⚑</span>
+        <div>
+          <strong>CORNER<span>PRO</span></strong>
+          <small>ANÁLISES ESPORTIVAS</small>
         </div>
       </div>
     </div>
 
     <nav class="sidebar-nav" aria-label="Menu lateral">
-      <a class="side-item active" data-tab="filters"><span class="side-icon">⌯</span><b>Filtros</b></a>
-      <a class="side-item" data-tab="pre"><span class="side-icon">⚽</span><b>Pré-jogo</b></a>
-      <a class="side-item" data-tab="corners"><span class="side-icon">⚑</span><b>Escanteios</b></a>
-      <a class="side-item" data-tab="stats"><span class="side-icon">▥</span><b>Estatísticas</b></a>
-      <a class="side-item" data-tab="favorites"><span class="side-icon">☆</span><b>Favoritos</b></a>
-      <a class="side-item" data-tab="history"><span class="side-icon">◷</span><b>Histórico</b></a>
-      <a class="side-item"><span class="side-icon">⚙</span><b>Configurações</b></a>
+      <a class="side-item active"><span>⌂</span><b>Dashboard</b></a>
+      <a class="side-item"><span>⚽</span><b>Pré-Jogo</b></a>
+      <a class="side-item"><span>◎</span><b>Ao Vivo</b></a>
+      <a class="side-item"><span>⚑</span><b>Escanteios</b></a>
+      <a class="side-item"><span>◌</span><b>Gols</b></a>
+      <a class="side-item"><span>▯</span><b>Cartões</b></a>
+      <a class="side-item"><span>♞</span><b>Player Props</b></a>
+      <a class="side-item"><span>◉</span><b>Ligas</b></a>
+      <a class="side-item"><span>☆</span><b>Favoritos</b></a>
+      <a class="side-item"><span>♧</span><b>Meus Alertas</b></a>
+      <a class="side-item"><span>▤</span><b>Relatórios</b></a>
+      <a class="side-item"><span>◈</span><b>Lives & Vídeos</b></a>
+      <a class="side-item"><span>ⓘ</span><b>Suporte</b></a>
     </nav>
 
-    <div class="sidebar-bottom">
-      <div class="premiumBox"><span>👑</span><b>Premium</b><small>Plano ativo</small></div>
-      <div class="userBox"><span>◉</span><b>Usuário</b><small>● Online</small></div>
+    <div class="proBox">
+      <h3>SEJA PRO</h3>
+      <p>Tenha acesso a ferramentas exclusivas e aumente seus lucros!</p>
+      <div class="crown">♛</div>
+      <button>ASSINAR AGORA</button>
     </div>
   </aside>
 
-  <!-- MAIN -->
-  <div class="main">
-
-    <!-- TOPBAR -->
+  <main class="main">
     <header class="topbar">
-      <div class="topbar-inner">
-
-        <div class="top-left">
-          <div class="logo-text">
-            <div class="logo-title">Corners</div>
-            <div class="logo-sub">Radar de cantos</div>
-          </div>
-
-          <nav class="nav">
-            <a class="nav-link" data-tab="pre">ANÁLISE PRÉ JOGO</a>
-            <a class="nav-link" data-tab="corners">ESCANTEIOS</a>
-            <a class="nav-link" data-tab="stats">ESTATÍSTICAS</a>
-            <a class="nav-link" data-tab="history">HISTÓRICO</a>
-            <a class="nav-link active" data-tab="filters">FILTROS</a>
-            <a class="nav-link" data-tab="favorites">FAVORITOS</a>
-          </nav>
-        </div>
-
-        <div class="top-right top-actions">
-          <div class="datePickerWrap" id="datePickerWrap">
-            <input id="date" type="text" readonly inputmode="none" aria-label="Selecionar data" />
-            <button id="datePickerIcon" class="datePickerIcon" type="button" aria-label="Abrir calendário">▦</button>
-            <div id="customDatePicker" class="customDatePicker" aria-hidden="true"></div>
-          </div>
-          <button id="btn" class="btnOutline">Atualizar</button>
-
-          <div class="accountMenu" tabindex="0">
-            <button class="accountButton" type="button" aria-label="Menu da conta">
-              <span class="accountCrown">👑</span>
-              <strong>Premium</strong>
-              <i>▾</i>
-            </button>
-
-            <div class="accountDropdown">
-              <div class="accountDropHeader">
-                <span>👤</span>
-                <div>
-                  <strong>Usuário</strong>
-                  <small>Premium ativo</small>
-                </div>
-              </div>
-
-              <button id="logoutBtn" class="accountDropBtn btnLogout" type="button">
-                🚪 Sair
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <nav class="nav">
+        <a>PRÉ-JOGO</a>
+        <a>AO VIVO</a>
+        <a>ESCANTEIOS</a>
+        <a>GOLS</a>
+        <a>CARTÕES</a>
+        <a>PLAYER PROPS</a>
+        <a>ESTATÍSTICAS</a>
+        <a>BOTS</a>
+        <a href="#" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</a>
+      </nav>
+      <div class="topUser">
+        <button class="bell">♧</button>
+        <div class="avatar">CP</div>
+        <div class="userText"><strong>Olá, Rodrigo</strong><small></small></div>
+        <span class="chev">⌄</span>
       </div>
     </header>
 
-    <!-- CONTEÚDO -->
-    <main class="content">
+    <div class="topCalendarDropdown" id="topCalendarDropdown" aria-hidden="true">
+      <div class="topCalendarBox">
+        <div class="topCalendarHeader">
+          <button class="topCalNav" type="button" id="topCalPrev" aria-label="Mês anterior">‹</button>
+          <strong id="topCalTitle">Calendário</strong>
+          <button class="topCalNav" type="button" id="topCalNext" aria-label="Próximo mês">›</button>
+        </div>
+
+        <div class="topCalendarWeek">
+          <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+        </div>
+
+        <div class="topCalendarDays" id="topCalendarDays"></div>
+
+        <div class="topCalendarFooter">
+          <button type="button" id="topCalToday">HOJE</button>
+        </div>
+      </div>
+    </div>
+
+
+    <section class="content">
       <div class="dashboardGrid">
-
         <section class="dashboardMainColumn">
-          <div class="center-title">
-            <h1 id="mainTitle">FILTROS</h1>
-            <span id="mainSubtitle">ESCOLHA UM MERCADO E ENCONTRE OS JOGOS COM MAIOR FORÇA</span>
-          </div>
-
-          <section id="prePanel" class="panel">
-            <div class="panel-title">
-              <h2 id="panelTitleText">◆ FILTROS</h2>
-              <span id="countTop">0</span>
+          <section class="heroPanel">
+            <div class="heroCopy">
+              <h1>ANÁLISE. ESTATÍSTICA.<br><span>VANTAGEM!</span></h1>
+              <p>Pré-jogo completo, escanteios, gols e muito mais. Informação que gera lucro!</p>
+              <div class="heroStats">
+                <div><b>+96%</b><small>ASSERTIVIDADE</small></div>
+                <div><b>+12.500</b><small>USUÁRIOS PRO</small></div>
+                <div><b>+3 ANOS</b><small>DE MERCADO</small></div>
+              </div>
             </div>
-
-            <div id="top1" class="top-host top-host-dynamic top-host-dual"></div>
+            <div class="heroPlayer" aria-hidden="true"></div>
           </section>
 
-          <section id="filtersPanel" class="panel filters-panel" style="display:none;">
-            <div class="panel-title">
-              <h2>⚙ FILTROS DE MERCADO</h2>
-              <span id="countFilters">0</span>
-            </div>
-            <div id="filteredGames" class="filtered-games"></div>
+          <section class="marketTabs">
+            <button class="marketTab active"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
+            <button class="marketTab"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
+            <button class="marketTab"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
+            <button class="marketTab"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
+            <button class="marketTab"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
           </section>
 
-          <div class="cleanFooterNote footerDesktopNote">🛡️ Análises baseadas em dados reais e inteligência artificial</div>
-        </section>
+          <section class="gamesPanel">
+            <div class="sectionHead">
+              <h2>Jogos em Destaque</h2>
+              <div class="filterPills"><button>Todos</button><button class="active">Hoje</button><button>Amanhã</button></div>
+              <a>Ver todos ›</a>
+            </div>
+
+            <div class="gameRow">
+              <div class="gameMeta"><small>🇧🇷 BRASIL - SÉRIE A</small><b><span>19:00</span> Flamengo<br><em>Palmeiras</em></b></div>
+              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 8.5</b><span>1.85</span></div>
+              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 2.5</b><span>1.90</span></div>
+              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.65</span></div>
+              <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.75</span></div>
+              <button class="signal">▮▮▮</button>
+            </div>
+
+            <div class="gameRow">
+              <div class="gameMeta"><small>🏴 INGLATERRA - PREMIER LEAGUE ★</small><b><span>16:00</span> Manchester City<br><em>Arsenal</em></b></div>
+              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 9.5</b><span>1.80</span></div>
+              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.5</b><span>1.95</span></div>
+              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.60</span></div>
+              <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.70</span></div>
+              <button class="signal">▮▮▮</button>
+            </div>
+
+            <div class="gameRow">
+              <div class="gameMeta"><small>🇪🇸 ESPANHA - LA LIGA ★</small><b><span>17:15</span> Real Madrid<br><em>Barcelona</em></b></div>
+              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 9.5</b><span>1.78</span></div>
+              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.0</b><span>1.88</span></div>
+              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.55</span></div>
+              <div class="oddBox"><small>CARTÕES</small><b>OVER 5.5</b><span>1.85</span></div>
+              <button class="signal">▮▮▮</button>
+            </div>
+            <button class="viewAll">VER TODOS OS JOGOS</button>
+          </section>
+</section>
 
         <aside class="dashboardRightRail" id="desktopMatchRail">
           <section class="railCard matchRailCard railEmptyHero">
             <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-            <div class="railEmptyRadar" aria-hidden="true">
-              <span class="radarRing ring1"></span>
-              <span class="radarRing ring2"></span>
-              <span class="radarRing ring3"></span>
-              <span class="radarSweep"></span>
-              <span class="radarBall">⚽</span>
-            </div>
-            <div class="railEmptyText">
-              <strong>Aguardando partida</strong>
-              <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
-            </div>
+            <div class="railEmptyRadar" aria-hidden="true"><span class="radarRing ring1"></span><span class="radarRing ring2"></span><span class="radarRing ring3"></span><span class="radarSweep"></span><span class="radarBall">⚽</span></div>
+            <div class="railEmptyText"><strong>Aguardando partida</strong><span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span></div>
           </section>
-
           <section class="railCard railEmptyStatsCard">
             <h3>ESTATÍSTICAS DO FILTRO</h3>
             <div class="railEmptyStatsGrid">
@@ -196,119 +165,23 @@
             </div>
             <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
           </section>
-
           <section class="railCard railEmptyEventsCard">
             <h3>EVENTOS / LEITURA</h3>
-            <div class="railEmptyEventIcons">
-              <span><i>◎</i><b>Pressão</b><small>--</small></span>
-              <span><i>◔</i><b>Posse</b><small>--</small></span>
-              <span><i>▣</i><b>Cartões</b><small>--</small></span>
-              <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
-              <span><i>⚽</i><b>Gols</b><small>--</small></span>
-            </div>
+            <div class="railEmptyEventIcons"><span><i>◎</i><b>Pressão</b><small>--</small></span><span><i>◔</i><b>Posse</b><small>--</small></span><span><i>▣</i><b>Cartões</b><small>--</small></span><span><i>⚑</i><b>Escanteios</b><small>--</small></span><span><i>⚽</i><b>Gols</b><small>--</small></span></div>
             <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
-            <div class="railEmptyReadBox">
-              <b>📋</b>
-              <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
-            </div>
+            <div class="railEmptyReadBox"><b>📋</b><p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p></div>
           </section>
-
-          <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
-            <span>▶ INICIAR MATCH CENTER</span>
-            <small>Selecione um jogo para continuar</small>
-          </button>
+          <button class="railFullBtn railFullBtnDisabled" type="button" disabled><span>▶ INICIAR MATCH CENTER</span><small>Selecione um jogo para continuar</small></button>
         </aside>
-
-      </div>
-    </main>
-  </div>
-
-  <!-- TEMPLATE TOP CARD -->
-  <template id="tplTopCard">
-    <div class="bigcard">
-      <div class="bigcard-top">
-        <div class="titleRow">
-          <div class="rankBallWrap">⚽</div>
-          <div class="teamsBlock">
-            <div class="teamsText">
-              <span class="teamName js-home"></span>
-              <span class="vs">VS</span>
-              <span class="teamName js-away"></span>
-            </div>
-            <div class="meta js-meta"></div>
-          </div>
-        </div>
-
-        <div class="chipsRow js-chips"></div>
-
-        <div class="infoGrid">
-          <div class="infoLine">⏰ <b>Hora:</b><span class="js-hora"></span></div>
-          <div class="infoLine">🏆 <b>Tabela:</b><span class="js-pos"></span></div>
-          <div class="infoLine">📌 <b>Proj:</b><span class="js-proj"></span></div>
-          <div class="infoLine">📈 <b>2ºT:</b><span class="js-2t"></span></div>
-        </div>
-
-        <div class="decisionRow">
-          <div class="pillOver js-pill"></div>
-        </div>
-
-        <div class="bar"><div class="barFill"></div></div>
       </div>
 
-      <div class="note js-note"></div>
-
-      <div class="h2hBox">
-        <div class="h2hTitle">Últimos H2H de escanteios</div>
-        <div class="h2hAvg">Média:<span class="js-h2h-avg">—</span></div>
-        <div class="h2hList js-h2h"></div>
-      </div>
-    </div>
-  </template>
-
-  <!-- TEMPLATE SECUNDÁRIO -->
-  <template id="tplOtherCard">
-    <div class="item">
-      <div class="itemTop">
-        <div class="miniBall">⚽</div>
-        <div class="itemTexts">
-          <div class="smallTeams js-teams"></div>
-          <div class="smallMeta js-meta"></div>
-          <div class="chipsRow js-chips"></div>
-          <div class="miniDecisionRow"></div>
-          <div class="miniBar"><div class="miniBarFill"></div></div>
-          <div class="note js-note"></div>
-        </div>
-      </div>
-    </div>
-  </template>
-
-  <!-- IA BOX -->
-  <div id="iaBox" style="display:none;">
-    <div id="iaStatus"></div>
-    <button id="iaReload"></button>
-    <div id="iaGame"></div>
-    <div id="iaSug"></div>
-    <div id="iaConf"></div>
-    <div id="iaWhy"></div>
-    <div id="iaRisk"></div>
-  </div>
-
-  <!-- MODAL ESTATÍSTICAS -->
-  <div id="matchStatsModal" class="matchStatsModal">
-    <div class="matchStatsContent">
-      <button id="closeStatsModal" class="closeStatsModal">✕</button>
-      <div id="statsModalBody"><div class="loadingStats">Carregando estatísticas...</div></div>
-    </div>
-  </div>
-
-  <!-- MODAL / PAINEL ÚLTIMOS 5 JOGOS -->
-  <div id="last5Modal" class="last5Modal" style="display:none;">
-    <div class="last5Content">
-      <button id="closeLast5Modal" class="closeLast5Modal" type="button">✕</button>
-      <div id="last5ModalBody"><div class="loadingStats">Carregando últimos 5 jogos...</div></div>
-    </div>
-  </div>
-  <!-- Login controlado somente pelo script.js -->
-  <!-- MATCH CENTER: painel expansível inserido pelo script.js -->
+      <footer class="bottomStrip">
+        <div><b>◎ ANÁLISES 24H</b><span>Conteúdo atualizado diariamente</span></div>
+        <div><b>♧ SUPORTE PREMIUM</b><span>Suporte rápido e especializado</span></div>
+        <div><b>◉ FERRAMENTAS EXCLUSIVAS</b><span>Tenha acesso a ferramentas que realmente funcionam</span></div>
+        <div><b>♚ COMUNIDADE PRO</b><span>Participe da nossa comunidade de vencedores</span></div>
+      </footer>
+    </section>
+  </main>
 </body>
 </html>

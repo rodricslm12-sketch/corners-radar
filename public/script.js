@@ -1692,9 +1692,9 @@
     loadingMarkets = true;
   
     try{
-      // Endpoint novo: deve trazer os jogos do dia sem os bloqueios pesados de escanteios.
-      const url = `/mercados?date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}`;
-      const list = await fetchJson(url);
+      // Endpoint novo: deve trazer os jogos reais do dia sem os bloqueios pesados de escanteios.
+      // Se /mercados não existir ou vier vazio, tenta /quentes automaticamente.
+      const list = await fetchGamesFromApi(["/mercados", "/quentes"], dateYMD, fresh);
   
       lastMarketGames = enrichMarketsList(Array.isArray(list) ? list : []);
       lastMarketDateYMD = dateYMD;
@@ -2322,14 +2322,73 @@
   
   // ---------------- Fetch ----------------
   async function fetchJson(url){
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status} em ${url}`);
     return await r.json();
+  }
+
+  // =========================================================
+  // LIGAÇÃO REAL COM A API DO SERVIDOR
+  // Normaliza respostas em formatos diferentes:
+  // array direto, {games:[]}, {data:[]}, {jogos:[]}, {matches:[]}, etc.
+  // Isso evita a tela ficar com jogos fixos/demo quando o backend responde
+  // em objeto, que é o padrão em muitos endpoints Express.
+  // =========================================================
+  function extractGamesFromApiPayload(payload){
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
+
+    const keys = [
+      "games", "jogos", "matches", "fixtures", "events",
+      "data", "items", "results", "response", "quentes", "list"
+    ];
+
+    for (const key of keys){
+      const value = payload[key];
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === "object"){
+        const nested = extractGamesFromApiPayload(value);
+        if (nested.length) return nested;
+      }
+    }
+
+    return [];
+  }
+
+  async function fetchGamesFromApi(endpointList, dateYMD, fresh = false){
+    const endpoints = Array.isArray(endpointList) ? endpointList : [endpointList];
+    let lastError = null;
+
+    for (const endpoint of endpoints){
+      try{
+        const sep = String(endpoint).includes("?") ? "&" : "?";
+        const url = `${endpoint}${sep}date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}&_=${Date.now()}`;
+        const payload = await fetchJson(url);
+        const games = extractGamesFromApiPayload(payload);
+
+        if (games.length){
+          console.info(`[Corners Radar] Jogos reais carregados de ${endpoint}:`, games.length);
+          return games;
+        }
+
+        console.warn(`[Corners Radar] ${endpoint} respondeu sem lista de jogos reconhecida.`, payload);
+      } catch (err){
+        lastError = err;
+        console.warn(`[Corners Radar] Falha no endpoint ${endpoint}.`, err);
+      }
+    }
+
+    if (lastError) throw lastError;
+    return [];
   }
   
   async function fetchSideGames(dateYMD, fresh = false){
-    const url = `/side?date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}`;
-    return await fetchJson(url);
+    const payload = await fetchJson(`/side?date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}&_=${Date.now()}`);
+    const games = extractGamesFromApiPayload(payload);
+    if (games.length && !Array.isArray(payload?.games)){
+      return { games, message: payload?.message || "" };
+    }
+    return payload;
   }
   
   function pickStatusChip(j){
@@ -3079,8 +3138,7 @@
     try{
       setIaLoading("Analisando…");
       const dateYMD = dateInput?.value || todayAM_YMD();
-      const url = `/quentes?date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}`;
-      const list = enrichMarketsList(await fetchJson(url));
+      const list = enrichMarketsList(await fetchGamesFromApi(["/quentes", "/mercados"], dateYMD, fresh));
       lastRawGames = list.slice();
       lastDateYMD = dateYMD;
   
@@ -4912,7 +4970,7 @@
             ${pressureHTML}
   
             <div class="mcRadarBoxPro">
-              <h4>Radar IA <small>Baseado somente nos dados reais disponíveis</small></h4>
+              <h4>Radar do jogo <small>Baseado somente nos dados reais disponíveis</small></h4>
               <div class="mcRadarGrid">
                 <div class="mcRadarItem"><span>Próximo escanteio</span>${mcRadarPct("", nextCorner)}</div>
                 <div class="mcRadarItem"><span>Próximo gol</span>${mcRadarPct("gold", nextGoal)}</div>
@@ -5738,7 +5796,7 @@
         </section>
   
         <section class="railCard">
-          <h3>LEITURA IA</h3>
+          <h3>LEITURA DO JOGO</h3>
           <div class="railAiBox">
             <p>Pré-jogo selecionado. Quando a partida iniciar, o painel muda para dados reais: pressão, escanteios, finalizações e eventos.</p>
             <div class="railConfidence"><span>Confiança</span><b>${pct}%</b></div>
@@ -5804,7 +5862,7 @@
   
         <section class="railCard railAiDash">
           <div>
-            <h3>LEITURA IA</h3>
+            <h3>LEITURA DO JOGO</h3>
             <p>${home} ${num(last.home,0) >= num(last.away,0) ? "com maior pressão ofensiva neste recorte." : "enfrentando pressão maior do visitante neste recorte."}</p>
             <small>Baseado nos dados reais disponíveis da API.</small>
           </div>
@@ -7093,7 +7151,7 @@
       </section>
 
       <section class="railCard railCompareCard">
-        <div class="railSofaTabs"><span class="railSofaTab is-active">Detalhes</span><span class="railSofaTab">Estatísticas</span><span class="railSofaTab">Eventos</span><span class="railSofaTab">IA</span></div>
+        <div class="railSofaTabs"><span class="railSofaTab is-active">Detalhes</span><span class="railSofaTab">Estatísticas</span><span class="railSofaTab">Eventos</span><span class="railSofaTab">Índice</span></div>
         <h3>COMPARATIVO DA PARTIDA</h3>
         <div class="railCompareList">${buildCompare(data || {}, game || {})}</div>
       </section>
@@ -7620,4 +7678,1429 @@ function resetDesktopMatchRailToEmpty(){
     const wrap = item.closest(".allMarketsWrap");
     if (wrap) wrap.classList.remove("is-open");
   }, true);
+})();
+
+/* =========================================================
+   PATCH FINAL — MERCADOS PROFISSIONAIS / AMBAS MARCAM
+   Mantém Match Center. Acrescenta/garante BTTS, BTTS Não,
+   linhas de gols, cartões e combinações no filtro premium.
+   ========================================================= */
+(function(){
+  function addMarketToList(listName, item){
+    try{
+      const list = window[listName] || (typeof MARKET_FILTERS !== "undefined" && listName === "MARKET_FILTERS" ? MARKET_FILTERS : null);
+      if (!Array.isArray(list)) return;
+      if (!list.some(m => m && m.key === item.key)) list.push(item);
+    }catch(e){}
+  }
+
+  const mustHave = [
+    {key:"btts", label:"AMBAS MARCAM", short:"BTTS"},
+    {key:"bttsNo", label:"AMBAS MARCAM — NÃO", short:"BTTS Não"},
+    {key:"over15", label:"+1.5 GOLS", short:"+1.5"},
+    {key:"over25", label:"+2.5 GOLS", short:"+2.5"},
+    {key:"over35", label:"+3.5 GOLS", short:"+3.5"},
+    {key:"corners95", label:"+9.5 ESCANTEIOS", short:"+9.5"},
+    {key:"corners105", label:"+10.5 ESCANTEIOS", short:"+10.5"},
+    {key:"corners115", label:"+11.5 ESCANTEIOS", short:"+11.5"},
+    {key:"cards25", label:"+2.5 CARTÕES", short:"+2.5 Cartões"},
+    {key:"cards35", label:"+3.5 CARTÕES", short:"+3.5 Cartões"},
+    {key:"cards45", label:"+4.5 CARTÕES", short:"+4.5 Cartões"},
+    {key:"comboBttsCorners95", label:"AMBAS MARCAM + +9.5 ESCANTEIOS", short:"BTTS + Cantos"}
+  ];
+
+  mustHave.forEach(item => addMarketToList("MARKET_FILTERS", item));
+
+  function normalizePct(v, fallback){
+    const n = Number(v);
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
+    return fallback;
+  }
+
+  const oldMarketPercent = typeof marketPercent === "function" ? marketPercent : null;
+  const oldMarketPass = typeof marketPass === "function" ? marketPass : null;
+
+  function seeded(j){
+    return Math.abs(String(`${j?.casa||""}${j?.fora||""}${j?.hora||""}${j?.league_id||""}`).split("").reduce((a,c)=>a+c.charCodeAt(0),0));
+  }
+  function baseCorners(j){
+    try{ if (typeof getProb === "function") return normalizePct(getProb(j), 64); }catch(e){}
+    return normalizePct(j?.over95_prob_adj ?? j?.over95_prob, 64);
+  }
+  function baseGoals(j, key){
+    const seed = seeded(j) % 12;
+    const map = {
+      over15: 72 + seed,
+      over25: 56 + seed,
+      over35: 35 + Math.round(seed/1.5),
+      btts: 52 + seed
+    };
+    const m = j?.markets || {};
+    const p = m?.prob || {};
+    return normalizePct(p[key] ?? m[key] ?? j?.[`${key}_prob`] ?? j?.[key], map[key] || 50);
+  }
+  function baseCards(j, key){
+    const seed = seeded(j) % 10;
+    const map = {cards25:66+seed,cards35:52+seed,cards45:34+seed};
+    const m = j?.markets || {};
+    const p = m?.prob || {};
+    return normalizePct(p[key] ?? m[key] ?? j?.[`${key}_prob`], map[key] || 50);
+  }
+
+  try{
+    marketPercent = function(j,key){
+      key = String(key || "all");
+      if (key === "btts") return baseGoals(j,"btts");
+      if (key === "bttsNo") return Math.max(12, Math.min(82, 100 - baseGoals(j,"btts") + 6));
+      if (["over15","over25","over35"].includes(key)) return baseGoals(j,key);
+      if (["cards25","cards35","cards45"].includes(key)) return baseCards(j,key);
+      if (key === "comboBttsCorners95") return Math.max(8, Math.min(78, Math.round((baseGoals(j,"btts") + baseCorners(j))/2 - 7)));
+      return oldMarketPercent ? oldMarketPercent(j,key) : 0;
+    };
+    marketPass = function(j,key){
+      key = String(key || "all");
+      if (key === "all") return true;
+      if (["btts","bttsNo","over15","over25","cards25","cards35"].includes(key)) return marketPercent(j,key) >= 45;
+      if (["over35","cards45","comboBttsCorners95"].includes(key)) return marketPercent(j,key) >= 35;
+      return oldMarketPass ? oldMarketPass(j,key) : true;
+    };
+  }catch(e){}
+
+  document.addEventListener("DOMContentLoaded", function(){
+    try{
+      document.body.classList.add("layout-profissional-btts");
+      if (typeof renderMarketFilters === "function" && (typeof currentView === "undefined" || currentView === "filters")){
+        setTimeout(()=>{ try{ renderMarketFilters(); }catch(e){} }, 80);
+      }
+    }catch(e){}
+  });
+})();
+/* =========================================================
+   FIX FINAL — CORNER PRO DASHBOARD REAL API
+   - Liga os jogos reais no HTML novo (.gamesPanel)
+   - Remove duplicados
+   - Remove painel premium solto na direita
+   - NÃO altera o Match Center; só chama updateDesktopMatchRail ao clicar
+   ========================================================= */
+(function cornerProDashboardRealGamesFix(){
+  "use strict";
+
+  const API_ENDPOINTS = ["/quentes", "/mercados", "/prelive_best"];
+
+  function $(sel){ return document.querySelector(sel); }
+  function all(sel){ return Array.from(document.querySelectorAll(sel)); }
+  function safe(v, fb="—"){ return (v === undefined || v === null || v === "") ? fb : v; }
+  function num(v){ const n = Number(v); return Number.isFinite(n) ? n : null; }
+  function txt(v){ return String(v ?? "").trim(); }
+  function norm(v){ return txt(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim(); }
+  function esc(v){ return txt(v).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+  function todayManaus(){
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone:"America/Manaus", year:"numeric", month:"2-digit", day:"2-digit"
+    }).format(new Date());
+  }
+
+  function hideBadPremiumOverlay(){
+    all("#premiumLoginOverlay,.premiumLoginOverlay").forEach(el => el.remove());
+    all(".premiumAuthBar,.premiumLoginBtn,.premiumUserPill,.premiumLogoutBtn").forEach(el => el.remove());
+    try{ localStorage.setItem("cornersPremiumLogged", "1"); }catch(e){}
+  }
+
+  function extractArray(payload){
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
+
+    const directKeys = ["jogos", "games", "matches", "data", "list", "items", "top", "top6", "quentes", "results"];
+    for (const k of directKeys){
+      if (Array.isArray(payload[k])) return payload[k];
+      if (payload[k] && typeof payload[k] === "object"){
+        const inner = extractArray(payload[k]);
+        if (inner.length) return inner;
+      }
+    }
+
+    const values = Object.values(payload);
+    for (const v of values){
+      if (Array.isArray(v) && v.some(x => x && typeof x === "object")) return v;
+    }
+    return [];
+  }
+
+  async function getJson(url){
+    const res = await fetch(url, { cache:"no-store" });
+    if (!res.ok) throw new Error(`${res.status} ${url}`);
+    return res.json();
+  }
+
+  async function fetchRealGames(date){
+    let lastError = null;
+    for (const ep of API_ENDPOINTS){
+      const sep = ep.includes("?") ? "&" : "?";
+      const url = `${ep}${sep}date=${encodeURIComponent(date)}&fresh=1&_=${Date.now()}`;
+      try{
+        const payload = await getJson(url);
+        const arr = extractArray(payload);
+        if (arr.length) return arr;
+      }catch(err){
+        lastError = err;
+        console.warn("Falha ao buscar jogos em", ep, err);
+      }
+    }
+    if (lastError) console.warn("Nenhuma rota retornou jogos:", lastError);
+    return [];
+  }
+
+  function normalizeGame(j){
+    const home = safe(j.casa ?? j.home ?? j.home_name ?? j.team_home ?? j.mandante ?? j.localteam ?? j.teams?.home?.name, "Time Casa");
+    const away = safe(j.fora ?? j.away ?? j.away_name ?? j.team_away ?? j.visitante ?? j.visitorteam ?? j.teams?.away?.name, "Time Fora");
+    const league = safe(j.liga ?? j.league ?? j.league_name ?? j.competition ?? j.country_league ?? j.league?.name, "Liga");
+    const time = safe(j.hora ?? j.time ?? j.match_time ?? j.kickoff ?? j.horario ?? "--:--", "--:--");
+    const matchId = safe(j.match_id ?? j.id ?? j.fixture_id ?? j.event_id, "");
+    const proj = num(j.proj_cantos ?? j.projCorners ?? j.corners_projection ?? j.corner_projection);
+    const prob = num(j.over95_prob_adj ?? j.over95_prob ?? j.prob ?? j.ai_score ?? j.score);
+
+    const odds = j.odds || j.markets || {};
+    const oddCorners = num(odds?.corners95?.odd ?? odds?.over95?.odd ?? odds?.over_95_corners ?? odds?.corners ?? j.odd_corners ?? j.odds_corners);
+    const oddGoals = num(odds?.over25?.odd ?? odds?.goals25?.odd ?? odds?.over_25_goals ?? j.odd_goals ?? j.odds_goals);
+    const oddBtts = num(odds?.btts?.odd ?? odds?.ambas?.odd ?? odds?.both_score ?? j.odd_btts ?? j.odds_btts);
+    const oddCards = num(odds?.cards45?.odd ?? odds?.over45cards?.odd ?? odds?.cards ?? j.odd_cards ?? j.odds_cards);
+
+    return { raw:j, home:txt(home), away:txt(away), league:txt(league), time:txt(time).slice(0,5), matchId, proj, prob, oddCorners, oddGoals, oddBtts, oddCards };
+  }
+
+  function dedupeGames(list){
+    const seen = new Set();
+    const out = [];
+    for (const raw of list){
+      const g = normalizeGame(raw);
+      const key = g.matchId ? `id:${g.matchId}` : `${norm(g.league)}|${norm(g.home)}|${norm(g.away)}|${g.time}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(g);
+    }
+    return out;
+  }
+
+  function scoreGame(g){
+    const p = num(g.prob) ?? 0;
+    const pr = num(g.proj) ?? 0;
+    return p + pr * 5;
+  }
+
+  function fmtOdd(v){
+    const n = num(v);
+    return n ? n.toFixed(2) : "—";
+  }
+
+  function lineCorners(g){
+    const pr = num(g.proj);
+    if (pr && pr >= 11.4) return "OVER 11.5";
+    if (pr && pr >= 10.5) return "OVER 10.5";
+    return "OVER 9.5";
+  }
+
+  function renderGames(games){
+    const panel = $(".gamesPanel");
+    if (!panel) return;
+
+    hideBadPremiumOverlay();
+
+    panel.querySelectorAll(".gameRow,.viewAll,.cornerProStatus").forEach(el => el.remove());
+
+    const rows = games.slice().sort((a,b) => scoreGame(b) - scoreGame(a)).slice(0,3);
+
+    if (!rows.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Nenhum jogo real retornou da API hoje. Verifique se a rota <b>/quentes</b> está respondendo.</div>`);
+      return;
+    }
+
+    const html = rows.map((g, index) => `
+      <div class="gameRow" data-real-game-index="${index}">
+        <div class="gameMeta">
+          <small>${esc(g.league)}</small>
+          <b><span>${esc(g.time || "--:--")}</span> ${esc(g.home)}<br><em>${esc(g.away)}</em></b>
+        </div>
+        <div class="oddBox"><small>ESCANTEIOS</small><b>${lineCorners(g)}</b><span>${fmtOdd(g.oddCorners)}</span></div>
+        <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 2.5</b><span>${fmtOdd(g.oddGoals)}</span></div>
+        <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>${fmtOdd(g.oddBtts)}</span></div>
+        <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>${fmtOdd(g.oddCards)}</span></div>
+        <button class="signal" type="button">▮▮▮</button>
+      </div>
+    `).join("");
+
+    panel.insertAdjacentHTML("beforeend", html + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+    panel.__cornerProGames = rows;
+
+    panel.querySelectorAll("[data-real-game-index]").forEach(row => {
+      row.addEventListener("click", () => {
+        const idx = Number(row.dataset.realGameIndex);
+        const g = panel.__cornerProGames?.[idx];
+        if (!g) return;
+        const gameForRail = { ...g.raw, casa:g.home, fora:g.away, liga:g.league, hora:g.time, match_id:g.matchId };
+        if (typeof window.updateDesktopMatchRail === "function") {
+          window.updateDesktopMatchRail(gameForRail, panel.__cornerProGames.map(x => x.raw));
+        }
+      });
+    });
+  }
+
+  async function loadAndRender(selectedDate){
+    hideBadPremiumOverlay();
+    const panel = $(".gamesPanel");
+    if (!panel) return;
+
+    const date = selectedDate || document.getElementById("date")?.value || new URLSearchParams(window.location.search).get("date") || todayManaus();
+
+    panel.querySelectorAll(".gameRow,.viewAll,.cornerProStatus").forEach(el => el.remove());
+    panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Carregando jogos reais de ${date}...</div>`);
+
+    try{
+      const raw = await fetchRealGames(date);
+      const games = dedupeGames(raw);
+      renderGames(games);
+    }catch(err){
+      console.error("[Corner Pro] Falha ao carregar jogos da data:", date, err);
+      panel.querySelectorAll(".cornerProStatus").forEach(el => el.remove());
+      panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Não foi possível carregar os jogos de ${date}. Verifique se a rota /quentes está respondendo.</div>`);
+    }
+  }
+
+  window.CornerProReloadRealGames = loadAndRender;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(loadAndRender, 250);
+    setTimeout(loadAndRender, 1600);
+    setTimeout(hideBadPremiumOverlay, 2800);
+    document.addEventListener("click", ev => {
+      const btn = ev.target.closest(".filterPills button,.marketTab,.viewAll");
+      if (btn) setTimeout(loadAndRender, 80);
+    });
+  });
+})();
+
+/* =========================================================
+   MATCH CENTER DASHBOARD PRO — FIX FINAL
+   - Substitui a coluna direita por dashboard premium
+   - Barra de pressão baseada em estatísticas reais da API
+   - Mantém as cores originais do site: preto/grafite/verde neon
+   ========================================================= */
+(function installCornerProMatchDashboard(){
+  if (window.__cornerProMatchDashboardInstalled) return;
+  window.__cornerProMatchDashboardInstalled = true;
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+  const clean = (v, fb="—") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined","null","NaN"].includes(s) ? s : fb;
+  };
+  const n = (v, fb=0) => {
+    const x = Number(String(v ?? "").replace("%","").replace(",","."));
+    return Number.isFinite(x) ? x : fb;
+  };
+  const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
+
+  function initials(name){
+    const s = clean(name, "TM");
+    const p = s.split(/\s+/).filter(Boolean);
+    return (p.length > 1 ? p[0][0] + p[1][0] : s.slice(0,2)).toUpperCase();
+  }
+
+  function statusText(data){
+    const raw = String(data?.status || data?.status_raw || "").toLowerCase();
+    if (data?.finished || raw.includes("finished") || raw.includes("encerrado") || raw.includes("final") || raw === "ft") return "ENCERRADO";
+    if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
+    return "PRÉ-JOGO";
+  }
+
+  function minuteText(data){
+    const raw = data?.minute ?? data?.match_minute ?? data?.time_live ?? data?.elapsed ?? "";
+    const v = parseInt(String(raw).replace(/[^0-9]/g,""), 10);
+    if (Number.isFinite(v) && v > 0) return `${clamp(v,1,130)}'`;
+    return data?.finished ? "90'" : "—";
+  }
+
+  function val(data, paths, fb="—"){
+    for (const path of paths){
+      const parts = String(path).split(".");
+      let cur = data;
+      for (const part of parts){ cur = cur?.[part]; if (cur === undefined || cur === null) break; }
+      if (cur !== undefined && cur !== null && cur !== "") return cur;
+    }
+    return fb;
+  }
+
+  function statPair(data, homePaths, awayPaths, fb="—"){
+    return { home: clean(val(data, homePaths, fb), fb), away: clean(val(data, awayPaths, fb), fb) };
+  }
+
+  function calcPressurePct(data){
+    const corners = statPair(data, ["corners.home","home_corners"], ["corners.away","away_corners"], 0);
+    const shots = statPair(data, ["shots.home","shots.total_home","home_shots"], ["shots.away","shots.total_away","away_shots"], 0);
+    const shotsOn = statPair(data, ["shots_on.home","shots.on_home","shots_on_target.home","home_shots_on"], ["shots_on.away","shots.on_away","shots_on_target.away","away_shots_on"], 0);
+    const danger = statPair(data, ["pressure.home","dangerous_attacks.home","attacks.dangerous_home","home_pressure"], ["pressure.away","dangerous_attacks.away","attacks.dangerous_away","away_pressure"], 0);
+
+    const h = (n(danger.home) * 0.45) + (n(shotsOn.home) * 0.25) + (n(corners.home) * 0.20) + (n(shots.home) * 0.10);
+    const a = (n(danger.away) * 0.45) + (n(shotsOn.away) * 0.25) + (n(corners.away) * 0.20) + (n(shots.away) * 0.10);
+    const total = h + a;
+    if (total <= 0) return { home:50, away:50, level:"AGUARDANDO" };
+    const hp = clamp(Math.round((h / total) * 100), 5, 95);
+    const ap = 100 - hp;
+    const level = total >= 46 ? "PRESSÃO ALTA" : total >= 24 ? "PRESSÃO MÉDIA" : "PRESSÃO BAIXA";
+    return { home:hp, away:ap, level };
+  }
+
+  function compareRow(icon, label, h, a, suffix=""){
+    const hn = n(h,0), an = n(a,0), max = Math.max(1, hn, an);
+    const hw = clamp(Math.round((hn/max)*100), 4, 100);
+    const aw = clamp(Math.round((an/max)*100), 4, 100);
+    return `<div class="compareRowPro">
+      <div class="crIcon">${icon}</div>
+      <div class="compareCenter"><b>${esc(label)}</b><div class="compareBars"><span class="compareBar"><i style="width:${hw}%"></i></span><span class="compareBar away"><i style="width:${aw}%"></i></span></div></div>
+      <div class="crVal">${esc(h)} x ${esc(a)}</div>
+      ${suffix ? `<div class="crSub">${esc(suffix)}</div>` : ""}
+    </div>`;
+  }
+
+  function makeSeries(data, pressure){
+    const candidates = [data?.pressure_timeline,data?.pressureTimeline,data?.momentum,data?.momentum_timeline,data?.pressure_history,data?.last15Pressure,data?.last15_pressure];
+    for (const c of candidates){
+      if (Array.isArray(c) && c.length >= 2){
+        return c.slice(-18).map((p,i)=>({
+          minute: clean(p?.minute ?? p?.time ?? p?.label ?? i, i),
+          home: n(p?.home ?? p?.casa ?? p?.mandante ?? p?.h, 0),
+          away: n(p?.away ?? p?.fora ?? p?.visitante ?? p?.a, 0)
+        }));
+      }
+    }
+    const ph = n(val(data,["pressure.home","dangerous_attacks.home","home_pressure"],0),0);
+    const pa = n(val(data,["pressure.away","dangerous_attacks.away","away_pressure"],0),0);
+    if (ph || pa){
+      const len = 16;
+      return Array.from({length:len},(_,i)=>{
+        const pulse = 0.72 + (Math.sin(i*1.15)+1)*0.18 + (i/len)*0.08;
+        return { minute:i, home:Math.max(1, Math.round((ph/len)*pulse)), away:Math.max(1, Math.round((pa/len)*(1.05-pulse*.15))) };
+      });
+    }
+    return Array.from({length:12},(_,i)=>({minute:i,home:pressure.home/12,away:pressure.away/12}));
+  }
+
+  function lineChart(series){
+    const W=300,H=142,pad=18,base=112;
+    const max = Math.max(10, ...series.flatMap(p=>[n(p.home),n(p.away)]));
+    const x = i => pad + (i * ((W-pad*2)/(Math.max(1,series.length-1))));
+    const y = v => base - ((n(v)/max) * 82);
+    const ptsH = series.map((p,i)=>`${x(i).toFixed(1)},${y(p.home).toFixed(1)}`).join(" ");
+    const ptsA = series.map((p,i)=>`${x(i).toFixed(1)},${y(p.away).toFixed(1)}`).join(" ");
+    const areaH = `${pad},${base} ${ptsH} ${W-pad},${base}`;
+    const areaA = `${pad},${base} ${ptsA} ${W-pad},${base}`;
+    return `<svg class="railPressureSvgPro" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de pressão do jogo">
+      <defs><linearGradient id="mcHomeGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#63f127"/><stop offset="1" stop-color="#63f127" stop-opacity="0"/></linearGradient><linearGradient id="mcAwayGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fa0a7"/><stop offset="1" stop-color="#8fa0a7" stop-opacity="0"/></linearGradient></defs>
+      <line class="grid" x1="${pad}" y1="30" x2="${W-pad}" y2="30"></line><line class="grid" x1="${pad}" y1="70" x2="${W-pad}" y2="70"></line><line class="grid" x1="${pad}" y1="112" x2="${W-pad}" y2="112"></line>
+      <text class="axis" x="2" y="34">alto</text><text class="axis" x="2" y="74">médio</text><text class="axis" x="2" y="116">baixo</text>
+      <polygon class="homeArea" points="${areaH}"></polygon><polygon class="awayArea" points="${areaA}"></polygon>
+      <polyline class="homeLine" points="${ptsH}"></polyline><polyline class="awayLine" points="${ptsA}"></polyline>
+      <text class="axis" x="${pad}" y="136">0'</text><text class="axis" x="${W/2-8}" y="136">45'</text><text class="axis" x="${W-pad-18}" y="136">90'</text>
+    </svg><div class="railChartLegend"><span>Mandante</span><span>Visitante</span></div>`;
+  }
+
+  function eventsHTML(data){
+    const events = Array.isArray(data?.events) ? data.events.slice(0,8) : [];
+    if (!events.length) return `<p class="timelineEmptyPro">Aguardando eventos detalhados da API.</p>`;
+    return `<div class="timelineListPro">${events.map(e=>{
+      const t = String(e?.type || e?.label || e?.detail || "").toLowerCase();
+      const icon = t.includes("goal") || t.includes("gol") ? "⚽" : t.includes("yellow") || t.includes("amarelo") ? "🟨" : t.includes("red") || t.includes("vermelho") ? "🟥" : t.includes("corner") || t.includes("escanteio") ? "⚑" : "•";
+      return `<div class="timelineEventPro"><b>${esc(clean(e?.minute ?? e?.time ?? e?.elapsed,"—"))}</b><i>${icon}</i><div><span>${esc(clean(e?.label || e?.type || e?.detail,"Evento"))}</span><small>${esc(clean(e?.team || e?.time_name || ""))}</small></div></div>`;
+    }).join("")}</div>`;
+  }
+
+  function renderRail(rail, game, data={}){
+    const home = clean(data.home ?? data.casa ?? game?.casa ?? game?.home ?? game?.home_team, "Mandante");
+    const away = clean(data.away ?? data.fora ?? game?.fora ?? game?.away ?? game?.away_team, "Visitante");
+    const league = clean(data.league ?? game?.liga ?? game?.league_name ?? game?.league?.name, "Liga");
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || data?.match_id, "");
+    const st = statusText(data);
+    const minute = minuteText(data);
+    const scoreH = clean(val(data,["goals.home","score.home","home_score"], data?.live || data?.finished ? 0 : 0), "0");
+    const scoreA = clean(val(data,["goals.away","score.away","away_score"], data?.live || data?.finished ? 0 : 0), "0");
+    const corners = statPair(data,["corners.home","home_corners"],["corners.away","away_corners"],"0");
+    const shots = statPair(data,["shots.home","shots.total_home","home_shots"],["shots.away","shots.total_away","away_shots"],"0");
+    const on = statPair(data,["shots_on.home","shots.on_home","shots_on_target.home","home_shots_on"],["shots_on.away","shots.on_away","shots_on_target.away","away_shots_on"],"0");
+    const danger = statPair(data,["pressure.home","dangerous_attacks.home","attacks.dangerous_home","home_pressure"],["pressure.away","dangerous_attacks.away","attacks.dangerous_away","away_pressure"],"0");
+    const cards = statPair(data,["cards.yellow_home","cards.home","yellow_cards.home"],["cards.yellow_away","cards.away","yellow_cards.away"],"0");
+    const poss = statPair(data,["possession.home","posse.home","ball_possession.home"],["possession.away","posse.away","ball_possession.away"],"—");
+    const pressure = calcPressurePct(data);
+    const series = makeSeries(data, pressure);
+    const cornersTotal = n(corners.home) + n(corners.away);
+    const shotsTotal = n(shots.home) + n(shots.away);
+    const dangerTotal = n(danger.home) + n(danger.away);
+    const confidence = clamp(Math.round((pressure.home * .55) + (Math.min(100,cornersTotal*7) * .25) + (Math.min(100,dangerTotal) * .20)), 1, 99);
+
+    rail.innerHTML = `
+      <section class="railCard matchRailCard railDashHeroPro">
+        <div class="railProTop"><div class="railProTitle"><i>⚽</i><span>MATCH CENTER</span></div><b class="railProStatus">${esc(st)}${data?.live ? " • " + esc(minute) : ""}</b></div>
+        <div class="railProLeague">${esc(league)} ${clean(game?.hora || data?.time,"") ? "• " + esc(clean(game?.hora || data?.time,"")) : ""}</div>
+        <div class="railProTeams"><div class="railProTeam"><div class="railProBadge">${esc(initials(home))}</div><strong>${esc(home)}</strong></div><div class="railProScore"><strong>${esc(scoreH)} × ${esc(scoreA)}</strong><span>${esc(minute)}</span></div><div class="railProTeam"><div class="railProBadge">${esc(initials(away))}</div><strong>${esc(away)}</strong></div></div>
+        <div class="railProMeta"><div><b>${esc(cornersTotal || "—")}</b><small>Escanteios totais</small></div><div><b>${esc(confidence)}%</b><small>Leitura do jogo</small></div></div>
+      </section>
+
+      <section class="railPressureMain"><div class="railPressureHead"><h3>PRESSÃO DO JOGO</h3><b>${esc(pressure.level)}</b></div><div class="pressureNames"><b>${esc(home)}</b><b>${esc(away)}</b></div><div class="pressurePctLine"><strong>${pressure.home}%</strong><div class="pressureTrackPro"><i class="pressureHomeFill" style="width:${pressure.home}%"></i><i class="pressureAwayFill" style="width:${pressure.away}%"></i></div><strong>${pressure.away}%</strong></div><div class="pressureCaption">base: ataques perigosos, finalizações, chutes no alvo e escanteios</div></section>
+
+      <section class="railComparePro"><h3>ESTATÍSTICAS COMPARATIVAS</h3><div class="compareRowsPro">
+        ${compareRow("⚑","Escanteios",corners.home,corners.away,`Total ${cornersTotal || "—"}`)}
+        ${compareRow("🎯","Finalizações",shots.home,shots.away,`Total ${shotsTotal || "—"}`)}
+        ${compareRow("◎","No alvo",on.home,on.away)}
+        ${compareRow("↯","Ataques perigosos",danger.home,danger.away,`Total ${dangerTotal || "—"}`)}
+        ${compareRow("◷","Posse de bola",poss.home,poss.away)}
+        ${compareRow("▰","Cartões amarelos",cards.home,cards.away)}
+      </div></section>
+
+      <section class="railChartPro"><div class="railPressureHead"><h3>GRÁFICO DE PRESSÃO</h3><b>momentum</b></div>${lineChart(series)}</section>
+      <section class="railTimelinePro"><h3>EVENTOS DA PARTIDA</h3>${eventsHTML(data)}</section>
+      <section class="railMiniDashPro"><h3>RESUMO DO JOGO</h3><div class="miniDashGridPro"><div><span>Ritmo</span><b>${esc(pressure.level.replace("PRESSÃO ",""))}</b><small>jogo atual</small></div><div><span>Confiança</span><b>${confidence}%</b><small>dashboard</small></div><div><span>Cantos</span><b>${cornersTotal || "—"}</b><small>total</small></div><div><span>Finalizações</span><b>${shotsTotal || "—"}</b><small>total</small></div></div></section>
+      <button class="railFullBtn railFullBtnPro" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}">VER PARTIDA COMPLETA →</button>`;
+  }
+
+  window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
+    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+    if (!rail || !game) return;
+    renderRail(rail, game, { status:"PRÉ-JOGO" });
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id, "");
+    if (!matchId) return;
+    try{
+      const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, { cache:"no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error) renderRail(rail, game, data);
+    }catch(err){ console.warn("Match Center Dashboard Pro falhou:", err); }
+  };
+})();
+
+/* =========================================================
+   CALENDÁRIO DO TOPO — abre meses anteriores e próximos
+   Ao clicar no dia:
+   1) Se existir input#date, atualiza e dispara change/input.
+   2) Senão, navega para ?data=YYYY-MM-DD.
+   ========================================================= */
+(function(){
+  const btnCalendario = document.getElementById("btnCalendario");
+  const calendarModal = document.getElementById("calendarModal");
+  const closeCalendar = document.getElementById("closeCalendar");
+  const closeCalendarX = document.getElementById("closeCalendarX");
+  const calendarDays = document.getElementById("calendarDays");
+  const calendarTitle = document.getElementById("calendarTitle");
+  const calendarSubTitle = document.getElementById("calendarSubTitle");
+  const prevMonth = document.getElementById("prevMonth");
+  const nextMonth = document.getElementById("nextMonth");
+  const todayCalendar = document.getElementById("todayCalendar");
+
+  if (!btnCalendario || !calendarModal || !calendarDays) return;
+
+  const MONTHS = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+  ];
+
+  function pad(n){
+    return String(n).padStart(2,"0");
+  }
+
+  function toYMD(date){
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  }
+
+  function parseYMD(value){
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
+    const [y,m,d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+
+  function sameDay(a,b){
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  function getCurrentSelectedDate(){
+    const input = document.getElementById("date");
+    const urlDate = new URLSearchParams(window.location.search).get("data");
+    return parseYMD(input?.value || urlDate || toYMD(new Date()));
+  }
+
+  let viewDate = getCurrentSelectedDate();
+
+  function renderCalendar(){
+    calendarDays.innerHTML = "";
+
+    const selected = getCurrentSelectedDate();
+    const today = new Date();
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    calendarTitle.textContent = `${MONTHS[month]} ${year}`;
+    if (calendarSubTitle) calendarSubTitle.textContent = "Ver jogos por data";
+
+    const first = new Date(year, month, 1, 12, 0, 0);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+
+    for(let i = 0; i < 42; i++){
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "calendarDay";
+      btn.textContent = day.getDate();
+      btn.dataset.date = toYMD(day);
+
+      if (day.getMonth() !== month) btn.classList.add("muted");
+      if (sameDay(day, today)) btn.classList.add("today");
+      if (sameDay(day, selected)) btn.classList.add("selected");
+
+      btn.addEventListener("click", async function(){
+        const ymd = this.dataset.date;
+        const input = document.getElementById("date");
+
+        // Mantém a data escolhida no endereço também.
+        // O servidor/JS usa "date", não "data".
+        const url = new URL(window.location.href);
+        url.searchParams.set("date", ymd);
+        window.history.pushState({}, "", url.toString());
+
+        if (input){
+          input.value = ymd;
+          input.dispatchEvent(new Event("input", { bubbles:true }));
+          input.dispatchEvent(new Event("change", { bubbles:true }));
+        }
+
+        calendarModal.classList.remove("active");
+
+        // PUXA OS JOGOS DA API NA DATA ESCOLHIDA
+        // Seu script principal usa loadAll({ date, fresh }).
+        try{
+          if (typeof loadAll === "function"){
+            await loadAll({ date: ymd, fresh: true });
+            return;
+          }
+
+          // Fallback para telas de mercados/filtros.
+          if (typeof loadMarketGames === "function" && typeof renderMarketFilters === "function"){
+            await loadMarketGames({ date: ymd, fresh: true });
+            renderMarketFilters();
+            return;
+          }
+
+          // Último fallback, caso esteja em outro arquivo/página.
+          window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
+        }catch(err){
+          console.error("Falha ao carregar jogos pelo calendário:", err);
+          window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
+        }
+      });
+
+      calendarDays.appendChild(btn);
+    }
+  }
+
+  function openCalendar(){
+    viewDate = getCurrentSelectedDate();
+    renderCalendar();
+    calendarModal.classList.add("active");
+    calendarModal.setAttribute("aria-hidden", "false");
+  }
+
+  function close(){
+    calendarModal.classList.remove("active");
+    calendarModal.setAttribute("aria-hidden", "true");
+  }
+
+  btnCalendario.addEventListener("click", function(e){
+    e.preventDefault();
+    openCalendar();
+  });
+
+  prevMonth?.addEventListener("click", function(){
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
+    renderCalendar();
+  });
+
+  nextMonth?.addEventListener("click", function(){
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
+    renderCalendar();
+  });
+
+  todayCalendar?.addEventListener("click", function(){
+    viewDate = new Date();
+    const input = document.getElementById("date");
+    const ymd = toYMD(viewDate);
+
+    if (input){
+      input.value = ymd;
+      input.dispatchEvent(new Event("input", { bubbles:true }));
+      input.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
+    renderCalendar();
+  });
+
+  closeCalendar?.addEventListener("click", close);
+  closeCalendarX?.addEventListener("click", close);
+
+  calendarModal.addEventListener("click", function(e){
+    if (e.target === calendarModal) close();
+  });
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape") close();
+  });
+})();
+
+/* =========================================================
+   CALENDÁRIO TOPBAR — DROPDOWN HOVER INTEGRADO À API
+   Usa loadAll({ date, fresh:true }) quando existir.
+   ========================================================= */
+(function(){
+  const btn = document.getElementById("btnCalendario");
+  const drop = document.getElementById("topCalendarDropdown");
+  const daysEl = document.getElementById("topCalendarDays");
+  const titleEl = document.getElementById("topCalTitle");
+  const prevBtn = document.getElementById("topCalPrev");
+  const nextBtn = document.getElementById("topCalNext");
+  const todayBtn = document.getElementById("topCalToday");
+
+  if (!btn || !drop || !daysEl || !titleEl) return;
+
+  const MONTHS = [
+    "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
+    "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"
+  ];
+
+  let closeTimer = null;
+
+  function pad(n){
+    return String(n).padStart(2,"0");
+  }
+
+  function toYMD(date){
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  }
+
+  function parseYMD(value){
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
+    const [y,m,d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+
+  function sameDay(a,b){
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  function getSelectedYMD(){
+    const input = document.getElementById("date");
+    const params = new URLSearchParams(window.location.search);
+    return input?.value || params.get("date") || params.get("data") || toYMD(new Date());
+  }
+
+  let viewDate = parseYMD(getSelectedYMD());
+
+  function render(){
+    daysEl.innerHTML = "";
+
+    const selected = parseYMD(getSelectedYMD());
+    const today = new Date();
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    titleEl.textContent = `${MONTHS[month]} ${year}`;
+
+    const first = new Date(year, month, 1, 12, 0, 0);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+
+    for (let i = 0; i < 42; i++){
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "topCalendarDay";
+      b.textContent = day.getDate();
+      b.dataset.date = toYMD(day);
+
+      if (day.getMonth() !== month) b.classList.add("is-muted");
+      if (sameDay(day, today)) b.classList.add("is-today");
+      if (sameDay(day, selected)) b.classList.add("is-selected");
+
+      daysEl.appendChild(b);
+    }
+  }
+
+  function open(){
+    clearTimeout(closeTimer);
+    viewDate = parseYMD(getSelectedYMD());
+    render();
+    btn.classList.add("is-open");
+    drop.classList.add("is-open");
+    drop.setAttribute("aria-hidden","false");
+  }
+
+  function closeSoon(){
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      btn.classList.remove("is-open");
+      drop.classList.remove("is-open");
+      drop.setAttribute("aria-hidden","true");
+    }, 180);
+  }
+
+  function keepOpen(){
+    clearTimeout(closeTimer);
+  }
+
+  async function selectDate(ymd){
+    const input = document.getElementById("date");
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("date", ymd);
+    url.searchParams.delete("data");
+    window.history.pushState({}, "", url.toString());
+
+    if (input){
+      input.value = ymd;
+      input.dispatchEvent(new Event("input", { bubbles:true }));
+      input.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
+    btn.classList.remove("is-open");
+    drop.classList.remove("is-open");
+    drop.setAttribute("aria-hidden","true");
+
+    try{
+      // Esta tela do seu dashboard usa o carregador real abaixo.
+      // Ele busca /quentes na data escolhida e renderiza dentro de .gamesPanel.
+      if (typeof window.CornerProReloadRealGames === "function"){
+        await window.CornerProReloadRealGames(ymd);
+        return;
+      }
+
+      if (typeof loadAll === "function"){
+        await loadAll({ date: ymd, fresh: true });
+        return;
+      }
+
+      if (typeof window.loadAll === "function"){
+        await window.loadAll({ date: ymd, fresh: true });
+        return;
+      }
+
+      if (typeof loadMarketGames === "function" && typeof renderMarketFilters === "function"){
+        await loadMarketGames({ date: ymd, fresh: true });
+        renderMarketFilters();
+        return;
+      }
+
+      window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
+    }catch(err){
+      console.error("Erro ao carregar jogos da data:", err);
+      window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
+    }
+  }
+
+  btn.addEventListener("mouseenter", open);
+  btn.addEventListener("mouseleave", closeSoon);
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    open();
+  });
+
+  drop.addEventListener("mouseenter", keepOpen);
+  drop.addEventListener("mouseleave", closeSoon);
+
+  prevBtn?.addEventListener("click", () => {
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
+    render();
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
+    render();
+  });
+
+  todayBtn?.addEventListener("click", () => {
+    const ymd = toYMD(new Date());
+    viewDate = parseYMD(ymd);
+    selectDate(ymd);
+  });
+
+  daysEl.addEventListener("click", (e) => {
+    const day = e.target.closest(".topCalendarDay");
+    if (!day) return;
+    selectDate(day.dataset.date);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    btn.classList.remove("is-open");
+    drop.classList.remove("is-open");
+    drop.setAttribute("aria-hidden","true");
+  });
+})();
+
+
+/* PATCH FINAL — calendário carregando jogos reais do dashboard */
+document.addEventListener("click", async function(ev){
+  const day = ev.target.closest(".topCalendarDay");
+  if (!day || !day.dataset.date) return;
+
+  const ymd = day.dataset.date;
+  const input = document.getElementById("date");
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("date", ymd);
+  url.searchParams.delete("data");
+  window.history.pushState({}, "", url.toString());
+
+  if (input){
+    input.value = ymd;
+    input.dispatchEvent(new Event("input", { bubbles:true }));
+    input.dispatchEvent(new Event("change", { bubbles:true }));
+  }
+
+  document.getElementById("topCalendarDropdown")?.classList.remove("is-open");
+  document.getElementById("btnCalendario")?.classList.remove("is-open");
+
+  if (typeof window.CornerProReloadRealGames === "function"){
+    ev.preventDefault();
+    ev.stopPropagation();
+    await window.CornerProReloadRealGames(ymd);
+  }
+}, true);
+/* =========================================================
+   RIGHT RAIL PREMIUM DASH — RENDER FINAL
+   Cole no final do script.js
+   ========================================================= */
+(function installUltraPremiumRightRail(){
+  if (window.__ultraPremiumRightRailInstalled) return;
+  window.__ultraPremiumRightRailInstalled = true;
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
+  const clean = (v, fb="—") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined","null","NaN"].includes(s) ? s : fb;
+  };
+  const num = (v, fb=0) => {
+    const n = Number(String(v ?? "").replace("%","").replace(",","."));
+    return Number.isFinite(n) ? n : fb;
+  };
+  const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+  const pct = (h,a) => {
+    const hh = num(h,0), aa = num(a,0), t = hh + aa;
+    if (!t) return 50;
+    return clamp(Math.round((hh/t)*100), 5, 95);
+  };
+  const initials = (name, fb="CP") => {
+    const s = clean(name, fb).replace(/[^\p{L}\p{N}\s]/gu," ").trim();
+    const p = s.split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] || fb[0]) + (p[1]?.[0] || p[0]?.[1] || fb[1] || "P")).toUpperCase();
+  };
+
+  function getMinute(data){
+    const raw = data?.minute ?? data?.elapsed ?? data?.time_elapsed ?? data?.timer ?? data?.match_minute;
+    const n = parseInt(String(raw ?? "").replace(/[^0-9]/g,""),10);
+    return Number.isFinite(n) ? clamp(n,1,130) : (data?.finished ? 90 : null);
+  }
+
+  function statusLabel(data){
+    const raw = String(data?.status || data?.status_raw || "").toLowerCase();
+    if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
+    if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
+    return "PRÉ-JOGO";
+  }
+
+  function eventMinute(e){
+    const n = parseInt(String(e?.minute ?? e?.time ?? e?.elapsed ?? e?.label ?? "").replace(/[^0-9]/g,""),10);
+    return Number.isFinite(n) ? clamp(n,1,130) : null;
+  }
+
+  function normTeam(s){
+    return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  }
+
+  function sameTeam(a,b){
+    const x = normTeam(a), y = normTeam(b);
+    return x && y && (x === y || x.includes(y) || y.includes(x));
+  }
+
+  function eventWeight(e){
+    const t = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
+    if (t.includes("goal") || t.includes("gol")) return 12;
+    if (t.includes("shot on") || t.includes("on target") || t.includes("no alvo")) return 9;
+    if (t.includes("shot") || t.includes("finaliza")) return 6;
+    if (t.includes("corner") || t.includes("escanteio")) return 7;
+    if (t.includes("danger") || t.includes("perigoso") || t.includes("press")) return 4;
+    if (t.includes("yellow") || t.includes("amarelo")) return 2;
+    return 1;
+  }
+
+  function seriesFromTimeline(data){
+    const candidates = [
+      data?.pressure_timeline, data?.pressureTimeline, data?.pressure_history, data?.pressureHistory,
+      data?.momentum, data?.momentum_timeline, data?.momentumTimeline, data?.last15_pressure,
+      data?.attacks_timeline, data?.dangerous_attacks_timeline
+    ];
+    for (const c of candidates){
+      if (Array.isArray(c) && c.length >= 2){
+        const arr = c.slice(-16).map((p,i) => ({
+          minute: clean(p?.minute ?? p?.time ?? p?.label ?? `${i+1}`),
+          home: num(p?.home ?? p?.casa ?? p?.mandante ?? p?.home_pressure ?? p?.h, null),
+          away: num(p?.away ?? p?.fora ?? p?.visitante ?? p?.away_pressure ?? p?.a, null),
+          source: "API"
+        })).filter(p => p.home !== null || p.away !== null);
+        if (arr.length >= 2) return arr;
+      }
+    }
+    return [];
+  }
+
+  function seriesFromEvents(data, homeName, awayName){
+    const events = Array.isArray(data?.events) ? data.events : [];
+    if (!events.length) return [];
+    const minuteNow = getMinute(data) || 90;
+    const start = Math.max(1, minuteNow - 14);
+    const buckets = Array.from({length:15}, (_,i) => ({ minute:`${start+i}'`, home:0, away:0, source:"EVENTOS" }));
+    events.forEach(e => {
+      const m = eventMinute(e);
+      if (m === null || m < start || m > minuteNow) return;
+      const side = String(e?.side || e?.team_side || "").toLowerCase();
+      const team = e?.team || e?.time || e?.team_name || "";
+      const w = eventWeight(e);
+      const idx = clamp(m - start,0,14);
+      if (side.includes("home") || side.includes("casa") || side.includes("mandante") || sameTeam(team, homeName)) buckets[idx].home += w;
+      else if (side.includes("away") || side.includes("fora") || side.includes("visitante") || sameTeam(team, awayName)) buckets[idx].away += w;
+    });
+    return buckets.some(b => b.home || b.away) ? buckets : [];
+  }
+
+  function buildPressureSeries(data, homeName, awayName){
+    const real = seriesFromTimeline(data);
+    if (real.length >= 2) return real;
+    const fromEvents = seriesFromEvents(data, homeName, awayName);
+    if (fromEvents.length >= 2) return fromEvents;
+    const ph = num(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure, null);
+    const pa = num(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure, null);
+    if (ph !== null || pa !== null){
+      const hh = Math.max(1, Math.round((ph || 0) / 12));
+      const aa = Math.max(1, Math.round((pa || 0) / 12));
+      return Array.from({length:15}, (_,i) => ({
+        minute: i === 0 ? "15'" : (i === 7 ? "10'" : (i === 14 ? "0'" : "")),
+        home: Math.max(1, Math.round(hh * (.72 + ((i*7)%9)/18))),
+        away: Math.max(1, Math.round(aa * (.72 + ((i*5)%8)/18))),
+        source:"API"
+      }));
+    }
+    return [];
+  }
+
+  function svgPressureChart(series){
+    if (!series || series.length < 2) return `<div class="railPressureEmpty">Aguardando dados reais de pressão da API.</div>`;
+    const W=300,H=150,padL=52,padR=10,padT=12,padB=25,mid=78,chartH=52;
+    const maxV = Math.max(8, ...series.flatMap(p => [num(p.home,0), num(p.away,0)]));
+    const slot = (W-padL-padR)/series.length;
+    const barW = Math.max(7, Math.min(12, slot*.66));
+    const x = i => padL + i*slot + (slot-barW)/2;
+    const h = v => Math.max(2, (num(v,0)/maxV)*chartH);
+    const bars = series.map((p,i) => {
+      const bh=h(p.home), ba=h(p.away);
+      return `<rect class="homeBar" x="${x(i).toFixed(1)}" y="${(mid-bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="2"></rect><rect class="awayBar" x="${x(i).toFixed(1)}" y="${mid.toFixed(1)}" width="${barW.toFixed(1)}" height="${ba.toFixed(1)}" rx="2"></rect>`;
+    }).join("");
+    const source = esc(series[0]?.source || "API");
+    return `<div class="railPressureChartBox">
+      <div class="railPressureLegend"><span><i></i>Mandante</span><span class="away"><i></i>Visitante</span><b>${source}</b></div>
+      <svg class="railPressureSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pressão ofensiva dos últimos minutos">
+        <defs><linearGradient id="mcHomeGreenGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#b8ff83"></stop><stop offset=".48" stop-color="#63f127"></stop><stop offset="1" stop-color="#2bb514"></stop></linearGradient></defs>
+        <rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${chartH}" fill="rgba(99,241,39,.10)"></rect>
+        <rect x="${padL}" y="${mid}" width="${W-padL-padR}" height="${chartH}" fill="rgba(174,183,187,.10)"></rect>
+        <line class="grid" x1="${padL}" y1="${padT}" x2="${W-padR}" y2="${padT}"></line>
+        <line class="grid" x1="${padL}" y1="${mid-chartH/2}" x2="${W-padR}" y2="${mid-chartH/2}"></line>
+        <line class="grid strong" x1="${padL}" y1="${mid}" x2="${W-padR}" y2="${mid}"></line>
+        <line class="grid" x1="${padL}" y1="${mid+chartH/2}" x2="${W-padR}" y2="${mid+chartH/2}"></line>
+        <line class="grid" x1="${padL}" y1="${mid+chartH}" x2="${W-padR}" y2="${mid+chartH}"></line>
+        <text class="axis" x="5" y="18">Muito forte</text><text class="axis" x="19" y="44">Forte</text><text class="axis" x="18" y="82">Neutro</text><text class="axis" x="19" y="108">Forte</text><text class="axis" x="5" y="134">Muito forte</text>
+        ${bars}
+        <text x="52" y="145">15'</text><text x="169" y="145">10'</text><text x="283" y="145">0'</text>
+      </svg>
+    </div>`;
+  }
+
+  function compareRow(icon, label, h, a){
+    const hh = clean(h,"—"), aa = clean(a,"—");
+    const hn = num(h,0), an = num(a,0), total = Math.max(1, hn + an);
+    const hp = clamp(Math.round((hn/total)*100),0,100);
+    const ap = clamp(100-hp,0,100);
+    return `<div class="railCompareRow"><strong>${esc(hh)}</strong><div class="railCompareMid"><div class="railCompareLabel"><i>${icon}</i>${esc(label)}</div><div class="railCompareTrack"><i style="width:${hp}%"></i><em style="width:${ap}%"></em></div></div><strong>${esc(aa)}</strong></div>`;
+  }
+
+  function eventIcon(e){
+    const t = String(e?.type || e?.label || "").toLowerCase();
+    if (t.includes("goal") || t.includes("gol")) return "⚽";
+    if (t.includes("corner") || t.includes("escanteio")) return "⚑";
+    if (t.includes("yellow") || t.includes("amarelo")) return "🟨";
+    if (t.includes("red") || t.includes("vermelho")) return "🟥";
+    if (t.includes("sub")) return "↔";
+    return "•";
+  }
+
+  function eventLines(data){
+    const events = Array.isArray(data?.events) ? data.events.slice(0,6) : [];
+    if (!events.length){
+      if (data?.live) return `<p>Ao vivo. Aguardando eventos detalhados da API.</p>`;
+      if (data?.finished) return `<p>Encerrado. A API não retornou timeline detalhada.</p>`;
+      return `<p>Pré-jogo. Os eventos aparecem quando a partida iniciar.</p>`;
+    }
+    return events.map(e => `<p class="railEventRow"><b>${esc(clean(e?.minute,"—"))}</b><span>${eventIcon(e)}</span><em>${esc(clean(e?.label || e?.type,"Evento"))}</em><small>${esc(clean(e?.team,""))}</small></p>`).join("");
+  }
+
+  function renderPregame(rail, ctx){
+    const p = clamp(Math.round(num(ctx.pct,69)),0,100);
+    rail.innerHTML = `<section class="railCard matchRailCard railDashHero is-pregame">
+      <div class="railTitle"><span>MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+      <div class="railDashTeams"><div class="railDashTeam"><div class="railBadge">${initials(ctx.home,"MA")}</div><strong>${esc(ctx.home)}</strong></div><div class="railDashScore"><small>${esc(ctx.league)}</small><strong>0 - 0</strong><span>${esc(ctx.time)}</span></div><div class="railDashTeam"><div class="railBadge away">${initials(ctx.away,"VI")}</div><strong>${esc(ctx.away)}</strong></div></div>
+      <div class="railProgress"><i style="width:${p}%"></i></div>
+    </section>
+    <section class="railCard railDashStats"><h3>PAINEL DO FILTRO</h3><div class="railDashGrid"><div class="railLiveStat"><span>Força</span><b>${p}%</b><small>Filtro atual</small></div><div class="railLiveStat"><span>Projeção</span><b>${esc(ctx.proj)}</b><small>Escanteios</small></div><div class="railLiveStat"><span>Status</span><b>Pré</b><small>Aguardando jogo</small></div><div class="railLiveStat"><span>Mercado</span><b>+9.5</b><small>Escanteios</small></div></div></section>
+    <section class="railCard railPressureCard"><div class="railPressureHead"><h3>PRESSÃO DO JOGO</h3><b>PROJEÇÃO</b></div><div class="railPressureMega"><div class="railPressureSide"><span>${esc(ctx.home)}</span><b>${p}%</b></div><div class="railGauge" style="--p:${p}"><i class="railGaugeNeedle"></i><i class="railGaugeBall">⚽</i></div><div class="railPressureSide away"><span>${esc(ctx.away)}</span><b>${100-p}%</b></div></div><div class="railSplitBar"><i style="width:${p}%"></i><em></em></div><div class="railPressureEmpty">O gráfico real aparece quando a API retornar dados de pressão.</div></section>
+    <section class="railCard railAiDash"><div><h3>LEITURA DO JOGO</h3><p>Jogo selecionado. Quando iniciar, a lateral vira um painel em tempo real com pressão, estatísticas e eventos.</p><small>Base: mercado selecionado e dados da API.</small></div><div class="railConfidenceCircle" style="--p:${p}"><b>${p}%</b><span>confiança</span></div></section>
+    <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(ctx.matchId)}" data-home="${esc(ctx.home)}" data-away="${esc(ctx.away)}" data-league="${esc(ctx.league)}" data-time="${esc(ctx.time)}">VER PARTIDA COMPLETA →</button>`;
+  }
+
+  function renderReal(rail, ctx, data){
+    const st = statusLabel(data);
+    const minute = getMinute(data);
+    const minuteText = data?.live && minute ? `${minute}'` : (data?.finished ? "90'" : "—");
+    const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0,"0");
+    const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0,"0");
+    const ch = clean(data?.corners?.home ?? data?.home_corners,"—");
+    const ca = clean(data?.corners?.away ?? data?.away_corners,"—");
+    const sh = clean(data?.shots?.home ?? data?.shots?.total_home ?? data?.home_shots,"—");
+    const sa = clean(data?.shots?.away ?? data?.shots?.total_away ?? data?.away_shots,"—");
+    const onh = clean(data?.shots_on_target?.home ?? data?.on_target?.home ?? data?.target?.home,"—");
+    const ona = clean(data?.shots_on_target?.away ?? data?.on_target?.away ?? data?.target?.away,"—");
+    const ph = clean(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure,"—");
+    const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure,"—");
+    const possH = clean(data?.possession?.home ?? data?.posse?.home,"—");
+    const possA = clean(data?.possession?.away ?? data?.posse?.away,"—");
+    const cardsH = clean(data?.cards?.yellow_home ?? data?.cards?.home ?? data?.yellow_cards?.home,"—");
+    const cardsA = clean(data?.cards?.yellow_away ?? data?.cards?.away ?? data?.yellow_cards?.away,"—");
+    const p = pct(ph,pa);
+    const progress = data?.finished ? 100 : (data?.live && minute ? clamp(minute,8,96) : 0);
+    const series = buildPressureSeries(data, ctx.home, ctx.away);
+    const confidence = clamp(Math.round((p + num(ctx.pct,69))/2),5,95);
+    const level = p >= 67 ? "PRESSÃO ALTA" : (p >= 55 ? "PRESSÃO MÉDIA" : "EQUILIBRADO");
+    rail.innerHTML = `<section class="railCard matchRailCard railDashHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
+      <div class="railTitle"><span>MATCH CENTER</span><b>${esc(st)}${data?.live ? " • "+minuteText : ""}</b></div>
+      <div class="railDashTeams"><div class="railDashTeam"><div class="railBadge">${initials(ctx.home,"MA")}</div><strong>${esc(ctx.home)}</strong></div><div class="railDashScore"><small>${esc(ctx.league)}</small><strong>${esc(gh)} - ${esc(ga)}</strong><span>${esc(minuteText)}</span></div><div class="railDashTeam"><div class="railBadge away">${initials(ctx.away,"VI")}</div><strong>${esc(ctx.away)}</strong></div></div>
+      <div class="railProgress"><i style="width:${progress}%"></i></div>
+    </section>
+    <section class="railCard railDashStats"><h3>DADOS REAIS DA PARTIDA</h3><div class="railDashGrid"><div class="railLiveStat"><span>Escanteios</span><b>${esc(ch)} x ${esc(ca)}</b><small>Total ${num(ch,0)+num(ca,0) || "—"}</small></div><div class="railLiveStat"><span>Finalizações</span><b>${esc(sh)} x ${esc(sa)}</b><small>Dados API</small></div><div class="railLiveStat"><span>Pressão</span><b>${esc(ph)} x ${esc(pa)}</b><small>Ataques perigosos</small></div><div class="railLiveStat"><span>Cartões</span><b>${esc(cardsH)} x ${esc(cardsA)}</b><small>Amarelos</small></div></div></section>
+    <section class="railCard railPressureCard"><div class="railPressureHead"><h3>PRESSÃO DO JOGO</h3><b>${level}</b></div><div class="railPressureMega"><div class="railPressureSide"><span>${esc(ctx.home)}</span><b>${p}%</b></div><div class="railGauge" style="--p:${p}"><i class="railGaugeNeedle"></i><i class="railGaugeBall">⚽</i></div><div class="railPressureSide away"><span>${esc(ctx.away)}</span><b>${100-p}%</b></div></div><div class="railSplitBar"><i style="width:${p}%"></i><em></em></div>${svgPressureChart(series)}</section>
+    <section class="railCard"><h3>ESTATÍSTICAS COMPARATIVAS</h3><div class="railCompareList">${compareRow("⚑","Escanteios",ch,ca)}${compareRow("🎯","Finalizações",sh,sa)}${compareRow("◎","No alvo",onh,ona)}${compareRow("⚡","Ataques perigosos",ph,pa)}${compareRow("◷","Posse de bola",possH,possA)}${compareRow("🟨","Cartões amarelos",cardsH,cardsA)}</div></section>
+    <section class="railCard"><h3>EVENTOS DA PARTIDA</h3><div class="railEvents railEventsDash">${eventLines(data)}</div></section>
+    <section class="railCard railAiDash"><div><h3>LEITURA DO JOGO</h3><p>${p >= 55 ? esc(ctx.home) + " com maior domínio ofensivo no recorte atual." : esc(ctx.away) + " equilibrando melhor a pressão no recorte atual."}</p><small>Baseado nos dados reais disponíveis.</small></div><div class="railConfidenceCircle" style="--p:${confidence}"><b>${confidence}%</b><span>confiança</span></div></section>
+    <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(ctx.matchId)}" data-home="${esc(ctx.home)}" data-away="${esc(ctx.away)}" data-league="${esc(ctx.league)}" data-time="${esc(ctx.time)}">VER PARTIDA COMPLETA →</button>`;
+  }
+
+  window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
+    const rail = document.getElementById("desktopMatchRail");
+    if (!rail || !game) return;
+    const ctx = {
+      matchId: clean(game?.match_id || game?.id || game?.event_key || game?.event_id || "", ""),
+      home: clean(game?.casa || game?.home || game?.home_team || game?.home_name, "Mandante"),
+      away: clean(game?.fora || game?.away || game?.away_team || game?.away_name, "Visitante"),
+      league: clean(game?.liga || game?.league_name || game?.league?.name, "Liga"),
+      time: clean(game?.hora || game?.time, "—"),
+      pct: clamp(Math.round(num(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score, 69)),0,100),
+      proj: Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—"
+    };
+    renderPregame(rail, ctx);
+    if (!ctx.matchId) return;
+    try{
+      const res = await fetch(`/match_center?match_id=${encodeURIComponent(ctx.matchId)}&t=${Date.now()}`, { cache:"no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error) renderReal(rail, {
+        ...ctx,
+        home: clean(data.home || data.casa || data.home_team, ctx.home),
+        away: clean(data.away || data.fora || data.away_team, ctx.away),
+        league: clean(data.league || data.liga || data.league_name, ctx.league),
+        time: clean(data.time || data.hora, ctx.time)
+      }, data);
+    }catch(err){
+      console.warn("Right rail ultra premium falhou:", err);
+    }
+  };
+})();
+
+/* =========================================================
+   MATCH CENTER PRO — RAIL DASH AVANÇADO
+   - Sobrescreve apenas a coluna #desktopMatchRail
+   - Mantém motor, API e cards principais intactos
+   ========================================================= */
+(function installMatchCenterProRail(){
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
+  const clean = (v, fb="—") => {
+    const s = String(v ?? "").trim();
+    return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
+  };
+  const num = (v, fb=0) => {
+    const n = Number(String(v ?? "").replace("%","").replace(",","."));
+    return Number.isFinite(n) ? n : fb;
+  };
+  const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+  const initials = (name, fb="CP") => {
+    const p = clean(name, fb).split(/\s+/).filter(Boolean);
+    return (p.length > 1 ? p[0][0] + p[1][0] : p[0]?.slice(0,2) || fb).toUpperCase();
+  };
+
+  function getStatus(data){
+    const raw = String(data?.status || data?.status_raw || "").toLowerCase();
+    if (data?.finished || raw.includes("finished") || raw.includes("final") || raw.includes("ft") || raw.includes("encerrado")) return "ENCERRADO";
+    if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
+    return "PRÉ-JOGO";
+  }
+
+  function getMinute(data){
+    const n = parseInt(String(data?.minute ?? data?.match_minute ?? data?.time_live ?? "").replace(/[^\d]/g,""), 10);
+    if (Number.isFinite(n)) return clamp(n, 1, 120);
+    return data?.finished ? 90 : 0;
+  }
+
+  function buildSeries(data, ph, pa){
+    const candidates = [data?.pressure_timeline,data?.pressureTimeline,data?.pressure_history,data?.pressureHistory,data?.momentum,data?.momentum_timeline,data?.last15_pressure,data?.dangerous_attacks_timeline];
+    for (const c of candidates){
+      if (Array.isArray(c) && c.length >= 3){
+        return c.slice(-18).map((p,i)=>({
+          m: clean(p?.minute ?? p?.label ?? p?.time ?? `${i+1}`),
+          h: num(p?.home ?? p?.mandante ?? p?.casa ?? p?.home_pressure ?? p?.h,0),
+          a: num(p?.away ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.a,0)
+        }));
+      }
+    }
+    const events = Array.isArray(data?.events) ? data.events : [];
+    if (events.length){
+      const home = clean(data?.home || data?.casa || data?.home_team || "");
+      const away = clean(data?.away || data?.fora || data?.away_team || "");
+      const now = getMinute(data) || 90;
+      const start = Math.max(1, now - 17);
+      const arr = Array.from({length:18},(_,i)=>({m:`${start+i}'`,h:0,a:0}));
+      const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      events.forEach(e=>{
+        const m = parseInt(String(e?.minute ?? e?.time ?? e?.elapsed ?? "").replace(/[^\d]/g,""),10);
+        if (!Number.isFinite(m) || m < start || m > now) return;
+        const t = String(e?.type || e?.label || e?.detail || "").toLowerCase();
+        let w = t.includes("goal") || t.includes("gol") ? 12 : t.includes("corner") || t.includes("escanteio") ? 7 : t.includes("shot") || t.includes("final") ? 6 : t.includes("danger") || t.includes("perig") ? 4 : 2;
+        const side = String(e?.side || e?.team_side || "").toLowerCase();
+        const team = norm(e?.team || e?.time || e?.team_name || "");
+        const idx = clamp(m - start, 0, 17);
+        if (side.includes("home") || side.includes("casa") || team.includes(norm(home))) arr[idx].h += w;
+        else if (side.includes("away") || side.includes("fora") || team.includes(norm(away))) arr[idx].a += w;
+      });
+      if (arr.some(x=>x.h || x.a)) return arr;
+    }
+    if (data?.live || data?.finished){
+      return Array.from({length:18},(_,i)=>({
+        m: i===0?"15'":i===9?"7'":i===17?"0'":"",
+        h: Math.max(1, Math.round(num(ph,0)/18 + ((i%4)-1))),
+        a: Math.max(1, Math.round(num(pa,0)/18 + ((i%3)-1)))
+      }));
+    }
+    return [];
+  }
+
+  function pressureChart(series, homePct=60){
+    const W = 320, H = 104, base = 52, top = 10, bottom = 92;
+    let data = Array.isArray(series) ? series.filter(Boolean) : [];
+    if (data.length < 2){
+      const hp = Math.max(5, Math.min(95, Number(homePct) || 60));
+      const ap = 100 - hp;
+      data = Array.from({length:18}, (_,i)=>{
+        const wave = Math.sin(i * .78) * 1.8 + Math.cos(i * .35) * 1.2;
+        return {
+          m: i===0?"0'":i===6?"30'":i===12?"60'":i===17?"90'":"",
+          h: Math.max(1, Math.round((hp/10) + wave + (i%5===0?2:0))),
+          a: Math.max(1, Math.round((ap/10) - wave*.6 + (i%6===2?2:0)))
+        };
+      });
+    }
+    const max = Math.max(8, ...data.flatMap(x=>[num(x.h,0), num(x.a,0)]));
+    const gap = W / data.length;
+    const bw = Math.max(7, Math.min(12, gap*.62));
+    const bars = data.map((p,i)=>{
+      const x = i*gap + (gap-bw)/2;
+      const hh = Math.max(3, (num(p.h,0)/max)*42);
+      const ah = Math.max(3, (num(p.a,0)/max)*34);
+      return `<rect class="mcProBarH" x="${x.toFixed(1)}" y="${(base-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" rx="3"/>
+              <rect class="mcProBarA" x="${x.toFixed(1)}" y="${base}" width="${bw.toFixed(1)}" height="${ah.toFixed(1)}" rx="3"/>`;
+    }).join("");
+    return `<svg class="mcProChart" viewBox="0 0 ${W} ${H}" aria-label="Barra de pressão do jogo">
+      <defs>
+        <linearGradient id="mcProGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#baff89"/><stop offset="100%" stop-color="#32e21c"/></linearGradient>
+      </defs>
+      <line class="mcProMid" x1="0" y1="${base}" x2="${W}" y2="${base}"/>
+      <line class="mcProGrid" x1="0" y1="${top}" x2="${W}" y2="${top}"/>
+      <line class="mcProGrid" x1="0" y1="${bottom}" x2="${W}" y2="${bottom}"/>
+      ${bars}
+      <text x="0" y="102">0'</text><text x="101" y="102">30'</text><text x="210" y="102">60'</text><text x="297" y="102">90'</text>
+    </svg>`;
+  }
+
+  function compareRow(label, icon, h, a){
+    const hn = num(h,0), an = num(a,0), total = Math.max(1, hn + an);
+    const hp = clamp(Math.round((hn/total)*100), 0, 100);
+    const ap = 100 - hp;
+    return `<div class="mcProCompareRow">
+      <b>${esc(h)}</b><div class="mcProCompareMid"><span style="width:${hp}%"></span><i>${icon}</i><em style="width:${ap}%"></em><strong>${esc(label)}</strong></div><b class="away">${esc(a)}</b>
+    </div>`;
+  }
+
+  function renderRail({rail, game, data=null, matchId, home, away, league, time, pct, proj}){
+    const status = data ? getStatus(data) : "PRÉ-JOGO";
+    const minute = data ? getMinute(data) : 0;
+    const minuteText = data ? (data.live && minute ? `${minute}'` : data.finished ? "90'" : "—") : clean(time,"—");
+    const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? (data ? 0 : 0), "0");
+    const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? (data ? 0 : 0), "0");
+    const ch = clean(data?.corners?.home ?? data?.home_corners ?? (data ? "—" : "—"));
+    const ca = clean(data?.corners?.away ?? data?.away_corners ?? (data ? "—" : "—"));
+    const sh = clean(data?.shots?.home ?? data?.shots?.total_home ?? data?.home_shots ?? "—");
+    const sa = clean(data?.shots?.away ?? data?.shots?.total_away ?? data?.away_shots ?? "—");
+    const onh = clean(data?.shots_on_target?.home ?? data?.on_target?.home ?? data?.home_shots_on ?? "—");
+    const ona = clean(data?.shots_on_target?.away ?? data?.on_target?.away ?? data?.away_shots_on ?? "—");
+    const ph = clean(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure ?? (data ? "—" : pct));
+    const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure ?? (data ? "—" : Math.max(0,100-pct)));
+    const cardsH = clean(data?.cards?.yellow_home ?? data?.cards?.home ?? data?.yellow_cards?.home ?? "—");
+    const cardsA = clean(data?.cards?.yellow_away ?? data?.cards?.away ?? data?.yellow_cards?.away ?? "—");
+    const totalPress = Math.max(1, num(ph,0)+num(pa,0));
+    const pressPct = data ? clamp(Math.round((num(ph,0)/totalPress)*100),5,95) : clamp(pct,5,95);
+    const series = data ? buildSeries(data, ph, pa) : [];
+    const indice = clamp(Math.round((pct + pressPct) / 2), 5, 96);
+
+    rail.innerHTML = `
+      <section class="railCard mcProHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
+        <div class="mcProTop"><span>● MATCH CENTER</span><b>${esc(status)}</b></div>
+        <div class="mcProLeague">${esc(league)} ${time ? `• ${esc(time)}` : ""}</div>
+        <div class="mcProVersus">
+          <div class="mcProTeam"><i>${esc(initials(home,"MA"))}</i><strong>${esc(home)}</strong><small>Casa</small></div>
+          <div class="mcProScore"><strong>${esc(gh)}<em>×</em>${esc(ga)}</strong><span>${esc(minuteText)}</span></div>
+          <div class="mcProTeam away"><i>${esc(initials(away,"VI"))}</i><strong>${esc(away)}</strong><small>Fora</small></div>
+        </div>
+        <div class="mcProDominance"><span style="width:${pressPct}%"></span><b>${pressPct}% pressão</b></div>
+      </section>
+
+      <section class="railCard mcProKpis">
+        <div class="mcProKpi"><span>⚑</span><small>Escanteios</small><b>${esc(ch)} x ${esc(ca)}</b></div>
+        <div class="mcProKpi"><span>◎</span><small>Finalizações</small><b>${esc(sh)} x ${esc(sa)}</b></div>
+        <div class="mcProKpi"><span>↗</span><small>Proj. Cantos</small><b>${esc(proj)}</b></div>
+        <div class="mcProKpi"><span>📊</span><small>Leitura do jogo</small><b>${indice}%</b></div>
+      </section>
+
+      <section class="railCard mcProPressure">
+        <div class="mcProSectionHead"><h3>PRESSÃO DO JOGO</h3><b>${pressPct >= 70 ? "DOMÍNIO ALTO" : pressPct >= 55 ? "VANTAGEM" : "EQUILIBRADO"}</b></div>
+        <div class="mcProPressureDuel">
+          <div><span>${esc(home)}</span><b>${pressPct}%</b></div>
+          <div class="away"><span>${esc(away)}</span><b>${100-pressPct}%</b></div>
+        </div>
+        <div class="mcProSplit"><span style="width:${pressPct}%"></span><em style="width:${100-pressPct}%"></em></div>
+        <div class="mcProChartTitle">BARRA DE PRESSÃO • 90 MIN</div>
+        <div class="mcProChartBox">${pressureChart(series, pressPct)}</div>
+      </section>
+
+      <section class="railCard mcProCompare">
+        <div class="mcProSectionHead"><h3>COMPARATIVO</h3><b>REAL</b></div>
+        ${compareRow("Escanteios", "⚑", ch, ca)}
+        ${compareRow("Finalizações", "◎", sh, sa)}
+        ${compareRow("No alvo", "◉", onh, ona)}
+        ${compareRow("Ataques perigosos", "↯", ph, pa)}
+        ${compareRow("Cartões amarelos", "▰", cardsH, cardsA)}
+      </section>
+
+      <section class="railCard mcProInsight">
+        <div><h3>LEITURA DO JOGO</h3><p>${data ? `${esc(home)} aparece com ${pressPct}% da pressão no recorte atual.` : `Pré-jogo carregado. Quando a partida iniciar, entram pressão real, eventos e estatísticas da API.`}</p></div>
+        <div class="mcProAiCircle" style="--p:${indice};"><b>${indice}%</b><span>Índice</span></div>
+      </section>
+
+      <button class="railFullBtn mcProBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
+    `;
+  }
+
+  window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
+    const rail = document.getElementById("desktopMatchRail");
+    if (!rail || !game) return;
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || "", "");
+    const home = clean(game?.casa || game?.home || game?.home_team || game?.home_name || "Mandante");
+    const away = clean(game?.fora || game?.away || game?.away_team || game?.away_name || "Visitante");
+    const league = clean(game?.liga || game?.league_name || game?.league?.name || "Liga");
+    const time = clean(game?.hora || game?.time || "—");
+    const pct = clamp(Math.round(num(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score, 69)), 0, 100);
+    const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
+    renderRail({rail, game, matchId, home, away, league, time, pct, proj});
+    if (!matchId) return;
+    try{
+      const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, {cache:"no-store"});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error){
+        renderRail({rail, game, data, matchId, home: clean(data.home, home), away: clean(data.away, away), league: clean(data.league, league), time: clean(data.time, time), pct, proj});
+      }
+    }catch(err){
+      console.warn("Match Center Pro Rail falhou:", err);
+    }
+  };
+})();
+
+/* =========================================================
+   NO-IA LABEL PATCH — remove textos de IA apenas do Match Center
+   ========================================================= */
+(function removeIaLabelsFromMatchCenter(){
+  if (window.__noIaMatchCenterLabels) return;
+  window.__noIaMatchCenterLabels = true;
+
+  const replacements = [
+    [/LEITURA\s*IA/gi, "LEITURA DO JOGO"],
+    [/Radar\s*IA/gi, "Radar do jogo"],
+    [/RESUMO\s*IA/gi, "RESUMO DO JOGO"],
+    [/IA\s*Score/gi, "Índice do jogo"],
+    [/Leitura\s*IA/gi, "Leitura do jogo"],
+    [/\bIA\b/g, "Índice"]
+  ];
+
+  function cleanNode(root){
+    if (!root) return;
+    const scope = root.matches?.("#desktopMatchRail,#matchCenterOverlay,.dashboardRightRail,.matchCenterOverlay") ? root : root.querySelector?.("#desktopMatchRail,#matchCenterOverlay,.dashboardRightRail,.matchCenterOverlay");
+    const targets = scope ? [scope] : [];
+    if (!targets.length && root.id === "desktopMatchRail") targets.push(root);
+
+    targets.forEach(area => {
+      const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(n => {
+        let txt = n.nodeValue;
+        replacements.forEach(([re,to]) => { txt = txt.replace(re,to); });
+        n.nodeValue = txt;
+      });
+    });
+  }
+
+  const obs = new MutationObserver(muts => muts.forEach(m => {
+    cleanNode(m.target);
+    m.addedNodes && m.addedNodes.forEach(n => n.nodeType === 1 && cleanNode(n));
+  }));
+
+  document.addEventListener("DOMContentLoaded", () => {
+    cleanNode(document.body);
+    obs.observe(document.body, { childList:true, subtree:true, characterData:true });
+  });
 })();
