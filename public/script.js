@@ -10003,3 +10003,184 @@ document.addEventListener("click", async function(ev){
     if (tab) closeMenus();
   }, true);
 })();
+
+/* =========================================================
+   MERCADOS INLINE DISCRETO — IGUAL AO MODELO ENVIADO
+   - Remove dropdown grande dentro das abas
+   - Cria painel fixo abaixo das abas
+   - Troca conteúdo ao clicar em Pré-jogo, Escanteios, Gols, Cartões e Player Props
+   - Não recarrega API e não mexe no motor dos jogos
+   ========================================================= */
+(function installCornerProInlineMarkets(){
+  if (window.__cornerProInlineMarketsInstalled) return;
+  window.__cornerProInlineMarketsInstalled = true;
+
+  const MARKET_DATA = {
+    "PRÉ-JOGO": {
+      count:"12 MERCADOS",
+      title:"Mercados Pré-Jogo",
+      subtitle:"principais leituras antes da partida",
+      tip:"Use o pré-jogo para comparar valor, probabilidade e cenário da partida.",
+      all:"VER TODOS OS MERCADOS",
+      sections:[
+        {title:"Resultado", icon:"⚽", items:[["Casa vence","1.85"],["Empate","3.30"],["Visitante vence","4.20"],["Dupla chance casa","1.28"],["Dupla chance visitante","1.65"]]},
+        {title:"Gols", icon:"◎", items:[["Over 1.5","1.35"],["Over 2.5","1.75","POPULAR"],["Over 3.5","2.35"],["Ambas marcam","1.85"],["Under 2.5","2.05"]]},
+        {title:"Combinadas", icon:"▣", items:[["Casa + Over 1.5","2.20"],["Visitante + Over 1.5","3.10"],["Ambas + Over 2.5","2.45"],["Empate anula casa","1.42"],["Mais chances Pro","--"]]}
+      ]
+    },
+    "ESCANTEIOS": {
+      count:"18 MERCADOS",
+      title:"Mercados de Escanteios",
+      subtitle:"totais, tempos, equipes e linhas especiais",
+      tip:"Dica Corner Pro: jogos acima de 9.5 escanteios entram como prioridade no radar.",
+      all:"VER TODOS OS ESCANTEIOS",
+      sections:[
+        {title:"Totais de Escanteios", icon:"⚑", items:[["Over 8.5","1.35"],["Over 9.5","1.55","POPULAR"],["Over 10.5","1.80"],["Over 11.5","2.10"],["Over 12.5","2.45"]]},
+        {title:"Escanteios por Tempo", icon:"◷", items:[["Over 4.5 HT","1.85"],["Over 5.5 HT","2.20"],["Under 4.5 HT","1.70"],["Over 9.5 FT","1.45"],["Over 10.5 FT","1.70"]]},
+        {title:"Por Equipe / Especiais", icon:"▤", items:[["Casa Over 4.5","1.60"],["Casa Over 5.5","2.05"],["Visitante Over 4.5","1.75"],["Visitante Over 5.5","2.20"],["Escanteios exatos","6.00"]]}
+      ]
+    },
+    "GOLS": {
+      count:"16 MERCADOS",
+      title:"Mercados de Gols",
+      subtitle:"totais, ambas marcam e linhas HT/FT",
+      tip:"Priorize jogos com leitura ofensiva clara e boa média recente de finalizações.",
+      all:"VER TODOS OS GOLS",
+      sections:[
+        {title:"Totais de Gols", icon:"✹", items:[["Over 0.5","1.10"],["Over 1.5","1.35"],["Over 2.5","1.78","POPULAR"],["Over 3.5","2.45"],["Under 2.5","2.05"]]},
+        {title:"Ambas / Tempo", icon:"◷", items:[["Ambas marcam - Sim","1.85"],["Ambas marcam - Não","1.90"],["Gol no 1º tempo","1.42"],["Over 1.5 HT","2.15"],["Over 2.5 FT","1.78"]]},
+        {title:"Equipe", icon:"▤", items:[["Casa Over 0.5","1.22"],["Casa Over 1.5","1.85"],["Visitante Over 0.5","1.34"],["Visitante Over 1.5","2.20"],["Gol nos dois tempos","2.40"]]}
+      ]
+    },
+    "CARTÕES": {
+      count:"14 MERCADOS",
+      title:"Mercados de Cartões",
+      subtitle:"linhas de cartões, equipe e leitura disciplinar",
+      tip:"Mercado indicado para jogos tensos, rivais diretos e árbitros com média alta.",
+      all:"VER TODOS OS CARTÕES",
+      sections:[
+        {title:"Totais de Cartões", icon:"▯", items:[["Over 2.5","1.35"],["Over 3.5","1.65","POPULAR"],["Over 4.5","2.05"],["Over 5.5","2.60"],["Under 4.5","1.80"]]},
+        {title:"Por Tempo", icon:"◷", items:[["Over 1.5 HT","1.80"],["Over 2.5 HT","2.65"],["Cartão no 1º tempo","1.40"],["Sem cartão 1º tempo","3.10"],["Vermelho - Sim","4.50"]]},
+        {title:"Por Equipe", icon:"▤", items:[["Casa Over 1.5","1.55"],["Casa Over 2.5","2.10"],["Visitante Over 1.5","1.62"],["Visitante Over 2.5","2.20"],["Mais cartões Casa","1.95"]]}
+      ]
+    },
+    "PLAYER PROPS": {
+      count:"PRO",
+      title:"Player Props",
+      subtitle:"desempenho individual e participação ofensiva",
+      tip:"Mercado avançado para leitura individual do atleta no contexto da partida.",
+      all:"ABRIR PLAYER PROPS",
+      sections:[
+        {title:"Finalizações", icon:"◎", items:[["Jogador 1+ chute","1.35"],["Jogador 2+ chutes","1.85"],["Chute no alvo","2.10"],["Finalização HT","2.40"],["Finalização FT","1.55"]]},
+        {title:"Participação", icon:"◉", items:[["Assistência","3.10"],["Gol ou assistência","1.95","POPULAR"],["Passe chave","1.70"],["Participa de gol","2.20"],["Criar grande chance","2.65"]]},
+        {title:"Disciplina", icon:"▯", items:[["Jogador cartão","2.80"],["Falta cometida","1.55"],["Desarme","1.75"],["Impedimento","2.30"],["Cartão HT","4.20"]]}
+      ]
+    }
+  };
+
+  function esc(value){
+    return String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function normalizeLabel(text){
+    return String(text || "")
+      .replace(/\s+/g," ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function findDataForTab(tab){
+    const b = tab.querySelector("b");
+    const label = normalizeLabel(b ? b.textContent : tab.textContent);
+    return MARKET_DATA[label] ? { key:label, data:MARKET_DATA[label] } : null;
+  }
+
+  function panelHTML(data){
+    const sections = data.sections.map(section => `
+      <section class="marketInlineSection">
+        <h4><i>${esc(section.icon)}</i>${esc(section.title)}</h4>
+        <div class="marketInlineList">
+          ${section.items.map(item => `
+            <button class="marketInlineItem" type="button" data-market-line="${esc(item[0])}">
+              <span>${esc(item[0])}${item[2] ? `<em class="marketInlineHot">${esc(item[2])}</em>` : ""}</span>
+              <b>${esc(item[1])}</b>
+            </button>
+          `).join("")}
+        </div>
+        <button class="marketInlineMore" type="button">Ver mais⌄</button>
+      </section>
+    `).join("");
+
+    return `
+      <div class="marketInlineHead">
+        <div class="marketInlineTitle">
+          <strong>${esc(data.title)}</strong>
+          <small>${esc(data.subtitle)}</small>
+        </div>
+        <div class="marketInlineCount">${esc(data.count)}</div>
+      </div>
+      <div class="marketInlineGrid">${sections}</div>
+      <div class="marketInlineFooter">
+        <div class="marketInlineTip"><i>i</i><span>${esc(data.tip)}</span></div>
+        <button class="marketInlineAll" type="button">${esc(data.all)} →</button>
+      </div>
+    `;
+  }
+
+  function build(){
+    const tabsBox = document.querySelector(".marketTabs");
+    if (!tabsBox || tabsBox.dataset.inlineReady === "1") return;
+
+    const tabs = Array.from(tabsBox.querySelectorAll(".marketTab"));
+    const validTabs = tabs.map(tab => ({ tab, found:findDataForTab(tab) })).filter(x => x.found);
+    if (!validTabs.length) return;
+
+    // Remove menus antigos que ficavam dentro das abas.
+    tabsBox.querySelectorAll(".marketMenuPro").forEach(el => el.remove());
+
+    const panel = document.createElement("section");
+    panel.className = "marketInlinePanel";
+    panel.setAttribute("aria-live", "polite");
+
+    const gamesPanel = document.querySelector(".gamesPanel");
+    const parent = tabsBox.parentElement;
+
+    if (gamesPanel && parent && gamesPanel.parentElement === parent){
+      const work = document.createElement("div");
+      work.className = "marketWorkArea";
+      parent.insertBefore(work, gamesPanel);
+      work.appendChild(gamesPanel);
+      work.appendChild(panel);
+    } else {
+      tabsBox.insertAdjacentElement("afterend", panel);
+    }
+
+    function activate(tab){
+      const found = findDataForTab(tab);
+      if (!found) return;
+      validTabs.forEach(x => x.tab.classList.remove("is-active-market"));
+      tab.classList.add("is-active-market");
+      panel.innerHTML = panelHTML(found.data);
+    }
+
+    validTabs.forEach(({tab}) => {
+      tab.addEventListener("click", event => {
+        activate(tab);
+      }, true);
+    });
+
+    const initial = validTabs.find(x => x.tab.classList.contains("active")) || validTabs[1] || validTabs[0];
+    activate(initial.tab);
+    tabsBox.dataset.inlineReady = "1";
+  }
+
+  document.addEventListener("DOMContentLoaded", build);
+
+  const observer = new MutationObserver(build);
+  observer.observe(document.documentElement, { childList:true, subtree:true });
+})();
