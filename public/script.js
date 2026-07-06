@@ -10492,29 +10492,14 @@ function resetDesktopMatchRailToEmpty(){
       }
     }catch(e){}
 
-    // 4) API só uma vez por data.
-    let loaded = [];
+    // 4) IMPORTANTE: clique em mercado NÃO chama API.
+    // A API deve ser chamada somente no carregamento inicial ou ao trocar a data.
+    // Se ainda não existe cache para a data, devolve vazio para evitar loop de "Carregando jogos...".
     try{
       if (typeof loadingMarkets !== "undefined") loadingMarkets = false;
+    }catch(e){}
 
-      if (typeof loadMarketGames === "function"){
-        loaded = await loadMarketGames({ date:ymd, fresh:false });
-      }
-    }catch(e){
-      console.warn("[Corner Pro] loadMarketGames falhou:", ymd, e);
-    }
-
-    if (!Array.isArray(loaded) || !loaded.length){
-      try{
-        if (typeof fetchGamesFromApi === "function"){
-          loaded = await fetchGamesFromApi(["/mercados", "/quentes"], ymd, false);
-        }
-      }catch(e){
-        console.warn("[Corner Pro] fetchGamesFromApi falhou:", ymd, e);
-      }
-    }
-
-    return storeMarketGames(ymd, Array.isArray(loaded) ? loaded : []);
+    return storeMarketGames(ymd, []);
   }
 
   function lineFromText(text){
@@ -10788,10 +10773,45 @@ function resetDesktopMatchRailToEmpty(){
     panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
 
     let games = MARKET_CACHE.get(ymd);
+
+    // Clique em mercado deve filtrar LOCALMENTE.
+    // Não mostra loading e não chama API de novo.
     if (!games || !games.length){
-      panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Carregando jogos de <b>${esc(ymd)}</b>...</div>`);
+      try{
+        const panelCache = panel.__cornerProAllGames;
+        const panelDate = panel.dataset?.marketCacheDate;
+        if (panelDate === ymd && Array.isArray(panelCache) && panelCache.length){
+          games = storeMarketGames(ymd, panelCache);
+        }
+      }catch(e){}
+    }
+
+    if (!games || !games.length){
+      try{
+        if (window.__cornerProAllGamesDate === ymd && Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
+          games = storeMarketGames(ymd, window.__cornerProAllGames);
+        }
+      }catch(e){}
+    }
+
+    if (!games || !games.length){
+      try{
+        if (typeof lastMarketDateYMD !== "undefined" && lastMarketDateYMD === ymd && Array.isArray(lastMarketGames) && lastMarketGames.length){
+          games = storeMarketGames(ymd, lastMarketGames);
+        }
+      }catch(e){}
+    }
+
+    if (!games || !games.length){
+      try{
+        if (typeof lastDateYMD !== "undefined" && lastDateYMD === ymd && Array.isArray(lastRawGames) && lastRawGames.length){
+          games = storeMarketGames(ymd, lastRawGames);
+        }
+      }catch(e){}
+    }
+
+    if (!games || !games.length){
       games = await loadGamesOnceForDate(ymd);
-      panel.querySelectorAll(".cornerProStatus").forEach(el => el.remove());
     }
 
     if (!games.length){
@@ -10825,7 +10845,8 @@ function resetDesktopMatchRailToEmpty(){
 
   async function restoreAll(){
     const ymd = selectedDate();
-    const games = await loadGamesOnceForDate(ymd);
+    let games = MARKET_CACHE.get(ymd);
+    if (!games || !games.length) games = await loadGamesOnceForDate(ymd);
     const panel = $(".gamesPanel");
 
     if (typeof renderGames === "function"){
@@ -11476,4 +11497,777 @@ function resetDesktopMatchRailToEmpty(){
   document.addEventListener("DOMContentLoaded", scheduleTodayFinal);
   window.addEventListener("load", scheduleTodayFinal);
   window.addEventListener("pageshow", scheduleTodayFinal);
+})();
+/* =========================================================
+   FIX FINAL — FILTRO CONSISTENTE PARA TODOS OS MERCADOS
+   - Clique em qualquer mercado destacado não chama API
+   - Não apaga os jogos carregados
+   - Filtra localmente conforme o mercado clicado
+   - Escanteios, gols, cartões, resultado e combinadas
+   ========================================================= */
+(function(){
+  if (window.__cornerProStrictAllMarketsV2) return;
+  window.__cornerProStrictAllMarketsV2 = true;
+
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function clean(v, fallback=""){
+    const s = String(v ?? "").replace(/\s+/g," ").trim();
+    return s || fallback;
+  }
+
+  function norm(v){
+    return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  }
+
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function num(v, fallback=null){
+    if (v === undefined || v === null || v === "") return fallback;
+    if (typeof v === "string") v = v.replace(",", ".").replace("%", "");
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function raw(g){ return g?.raw || g?.data || g || {}; }
+
+  function getPath(obj, paths){
+    const r = raw(obj);
+    for (const path of paths){
+      const parts = String(path).split(".");
+      let cur = r;
+      for (const part of parts){
+        if (cur == null) break;
+        cur = cur[part];
+      }
+      if (cur !== undefined && cur !== null && cur !== "") return cur;
+    }
+    return null;
+  }
+
+  function pctValue(v, fallback=null){
+    if (typeof v === "boolean") return fallback;
+    const n = num(v, null);
+    if (n === null) return fallback;
+    if (n > 0 && n <= 1) return clamp(Math.round(n * 100), 0, 100);
+    return clamp(Math.round(n), 0, 100);
+  }
+
+  function seed(g){
+    const d = info(g);
+    let s = `${d.league}|${d.home}|${d.away}|${d.time}`;
+    let h = 0;
+    for (let i=0;i<s.length;i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  function info(g){
+    const r = raw(g);
+    return {
+      league: clean(r.liga || r.league || r.league_name || r.country || r.competition || r.campeonato, "Liga"),
+      time: clean(r.hora || r.time || r.match_time || r.event_time || "--:--"),
+      home: clean(r.casa || r.home || r.home_name || r.homeTeam || r.team_home || r.local || "Casa"),
+      away: clean(r.fora || r.away || r.away_name || r.awayTeam || r.team_away || r.visitante || "Visitante")
+    };
+  }
+
+  function projectedCorners(g){
+    const r = raw(g);
+    const direct = num(
+      r.proj_cantos ?? r.projCorners ?? r.corners_projection ?? r.corner_projection ??
+      r.expected_corners ?? r.total_corners_avg ?? r.media_cantos ?? r.cantos_proj,
+      null
+    );
+    if (direct !== null && direct > 0) return direct;
+
+    const home = num(r.home_corners_avg ?? r.casa_cantos_media ?? r.home?.corners_avg ?? r.stats?.home_corners_avg, null);
+    const away = num(r.away_corners_avg ?? r.fora_cantos_media ?? r.away?.corners_avg ?? r.stats?.away_corners_avg, null);
+    if (home !== null && away !== null) return clamp(home + away, 5.5, 15.8);
+
+    return 9.2 + (seed(g) % 31) / 10;
+  }
+
+  function expectedGoals(g){
+    const r = raw(g);
+    const direct = num(
+      r.expected_goals_total ?? r.totalExpected ?? r.markets?.totalExpected ?? r.goals_projection ??
+      r.proj_gols ?? r.xg_total ?? r.total_goals_avg,
+      null
+    );
+    if (direct !== null && direct > 0) return direct;
+
+    const hg = num(r.home_goals_avg ?? r.casa_gols_media ?? r.home?.goals_avg, null);
+    const ag = num(r.away_goals_avg ?? r.fora_gols_media ?? r.away?.goals_avg, null);
+    if (hg !== null && ag !== null) return clamp(hg + ag, 0.8, 5.2);
+
+    const p25 = pctValue(getPath(g,["markets.prob.over25","over25_prob","prob_over25"]), null);
+    if (p25 !== null) return clamp(2.5 + (p25 - 50) / 32, 1.2, 4.4);
+
+    return 2.25 + (seed(g) % 18) / 10;
+  }
+
+  function projectedCards(g){
+    const r = raw(g);
+    const direct = num(
+      r.proj_cards ?? r.cards_projection ?? r.expected_cards ?? r.total_cards_avg ??
+      r.cartoes_proj ?? r.cards?.total,
+      null
+    );
+    if (direct !== null && direct > 0) return direct;
+
+    const league = norm(info(g).league);
+    let total = 3.4;
+    if (league.includes("serie a") || league.includes("la liga") || league.includes("portugal") || league.includes("turk")) total += .45;
+    if (league.includes("premier") || league.includes("bundesliga")) total -= .12;
+    total += (seed(g) % 9) * .08;
+    return clamp(total, 1.8, 6.6);
+  }
+
+  function lineFromText(text){
+    const m = String(text || "").match(/(?:over|under|\+)\s*(\d+(?:\.\d+)?)/i);
+    return m ? Number(m[1]) : null;
+  }
+
+  function ctxFromButton(btn){
+    const label = clean(btn.dataset.marketLine || btn.dataset.market || btn.textContent || "Mercado");
+    const panel = btn.closest(".marketInlinePanel,.gamesPanel,.dashboardMainColumn");
+    const title = clean(panel?.querySelector(".marketInlineTitle strong,.sectionHead h2,h2,h3")?.textContent || "");
+    const section = clean(btn.closest(".marketInlineSection,article,.marketCard")?.querySelector("h4,h3,b,strong")?.textContent || "");
+    const text = norm(`${title} ${section} ${label}`);
+    return { label, title, section, text };
+  }
+
+  function percentCorners(g, line, ht=false){
+    const key = `corners${String(line).replace(".","")}${ht ? "ht" : ""}`;
+    const ready = pctValue(getPath(g,[`markets.prob.${key}`,`markets.filterProb.${key}`,`${key}_prob`,`${key}_filter_prob`]), null);
+    if (ready !== null && ready > 5) return ready;
+    const proj = projectedCorners(g) * (ht ? .46 : 1);
+    return clamp(Math.round(50 + (proj - line) * 16), 3, 96);
+  }
+
+  function percentGoals(g, line){
+    const key = `over${String(line).replace(".","")}`;
+    const ready = pctValue(getPath(g,[`markets.prob.${key}`,`markets.${key}_prob`,`${key}_prob`,`prob_${key}`]), null);
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(50 + (expectedGoals(g) - line) * 24), 3, 94);
+  }
+
+  function percentBtts(g){
+    const ready = pctValue(getPath(g,["markets.prob.btts","markets.btts_prob","btts_prob","prob_btts","ambas_marcam_prob"]), null);
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(42 + (expectedGoals(g) - 2.1) * 17 + (seed(g) % 7)), 8, 86);
+  }
+
+  function percentCards(g, line){
+    const key = `cards${String(line).replace(".","")}`;
+    const ready = pctValue(getPath(g,[`markets.prob.${key}`,`${key}_prob`,`over${String(line).replace(".","")}cards_prob`]), null);
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(50 + (projectedCards(g) - line) * 15), 3, 92);
+  }
+
+  function resultOdd(g, kind){
+    const paths = {
+      home:["odds.home","odds.casa","odds.home_win","odd_home","casa_odd","homeOdd"],
+      draw:["odds.draw","odds.empate","odd_draw","empate_odd","drawOdd"],
+      away:["odds.away","odds.fora","odds.away_win","odd_away","fora_odd","awayOdd"]
+    }[kind] || [];
+    return num(getPath(g, paths), null);
+  }
+
+  function passResult(g, t){
+    if (t.includes("dupla") && t.includes("casa")) return true;
+    if (t.includes("dupla") && (t.includes("visit") || t.includes("fora"))) return true;
+
+    if (t.includes("empate")){
+      const odd = resultOdd(g,"draw");
+      return odd === null ? true : odd <= 3.65;
+    }
+    if (t.includes("visitante vence") || t.includes("fora vence")){
+      const odd = resultOdd(g,"away");
+      return odd === null ? true : odd <= 2.35;
+    }
+    if (t.includes("casa vence") || t.includes("mandante vence")){
+      const odd = resultOdd(g,"home");
+      return odd === null ? true : odd <= 2.25;
+    }
+    return true;
+  }
+
+  function marketPercent(g, ctx){
+    const t = ctx.text;
+    const line = lineFromText(ctx.label);
+
+    if (t.includes("ambas") || t.includes("btts")) return percentBtts(g);
+
+    if (t.includes("cart")){
+      const l = line || (t.includes("vermelh") ? 5 : 3.5);
+      if (t.includes("under") || t.includes("sem cart")) return clamp(Math.round(56 + (l - projectedCards(g)) * 15), 3, 92);
+      return percentCards(g, l);
+    }
+
+    if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
+      const l = line || 9.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      if (t.includes("under")){
+        const proj = projectedCorners(g) * (ht ? .46 : 1);
+        return clamp(Math.round(56 + (l - proj) * 16), 3, 94);
+      }
+      return percentCorners(g, l, ht);
+    }
+
+    if (t.includes("gol") || t.includes("gols")){
+      const l = line || 2.5;
+      if (t.includes("under") || t.includes("menos")) return clamp(Math.round(56 + (l - expectedGoals(g)) * 24), 3, 94);
+      return percentGoals(g, l);
+    }
+
+    const base = num(getPath(g,["ai_score","score","local_score","over95_prob_adj","over95_prob"]), 58);
+    return clamp(Math.round(base), 8, 94);
+  }
+
+  function marketPass(g, ctx){
+    const t = ctx.text;
+    const p = marketPercent(g, ctx);
+
+    // COMBINADAS: precisa passar em todas as partes relevantes.
+    if (t.includes("+") && (t.includes("casa") || t.includes("visitante") || t.includes("empate"))){
+      if (!passResult(g, t)) return false;
+      if (t.includes("over") || t.includes("+") || t.includes("gol")) return p >= 48;
+      return true;
+    }
+
+    if (t.includes("ambas") || t.includes("btts")) return p >= 50;
+
+    if (t.includes("resultado") || t.includes("vence") || t.includes("empate") || t.includes("dupla")){
+      return passResult(g, t);
+    }
+
+    if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
+      const line = lineFromText(ctx.label) || 9.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      const proj = projectedCorners(g) * (ht ? .46 : 1);
+      if (t.includes("under")) return proj <= line && p >= 46;
+      return proj >= line && p >= (line >= 11.5 ? 44 : line >= 10.5 ? 48 : 50);
+    }
+
+    if (t.includes("gol") || t.includes("gols")){
+      const line = lineFromText(ctx.label) || 2.5;
+      const proj = expectedGoals(g);
+      if (t.includes("under") || t.includes("menos")) return proj <= line && p >= 46;
+      return proj >= line - 0.05 && p >= (line >= 3.5 ? 38 : line >= 2.5 ? 45 : 50);
+    }
+
+    if (t.includes("cart")){
+      const line = lineFromText(ctx.label) || 3.5;
+      const proj = projectedCards(g);
+      if (t.includes("under") || t.includes("sem cart")) return proj <= line && p >= 44;
+      return proj >= line && p >= (line >= 5.5 ? 34 : line >= 4.5 ? 40 : 45);
+    }
+
+    // Player props/mercados sem estatística direta: mantém os jogos com maior força geral.
+    return p >= 52;
+  }
+
+  function getCurrentGames(){
+    const ymd = selectedDate();
+    const panel = $(".gamesPanel");
+    const candidates = [
+      panel?.__cornerProAllGames,
+      window.__cornerProAllGamesDate === ymd ? window.__cornerProAllGames : null,
+      panel?.__cornerProGames,
+      window.__cornerProApiCache?.[ymd]
+    ];
+
+    for (const arr of candidates){
+      if (Array.isArray(arr) && arr.length) return arr.map(x => x?.raw || x);
+    }
+    return [];
+  }
+
+  function selectedDate(){
+    const input = document.getElementById("date");
+    if (input?.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) return input.value;
+    if (window.__cornerProSelectedDate && /^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProSelectedDate)) return window.__cornerProSelectedDate;
+    return new Date().toISOString().slice(0,10);
+  }
+
+  function makeRow(g, ctx, index){
+    const d = info(g);
+    const p = Math.round(marketPercent(g, ctx));
+    return `
+      <div class="gameRow" data-strict-market-row="1" data-game-index="${index}">
+        <div class="gameMeta">
+          <small>${esc(d.league)}</small>
+          <b><span>${esc(d.time)}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
+        </div>
+        <div class="oddBox"><small>MERCADO</small><b>${esc(ctx.label)}</b><span>${p}%</span></div>
+        <div class="oddBox"><small>CANTOS</small><b>PROJ.</b><span>${projectedCorners(g).toFixed(1)}</span></div>
+        <div class="oddBox"><small>GOLS</small><b>PROJ.</b><span>${expectedGoals(g).toFixed(1)}</span></div>
+        <div class="oddBox"><small>CARTÕES</small><b>PROJ.</b><span>${projectedCards(g).toFixed(1)}</span></div>
+        <button class="signal" type="button">▮▮▮</button>
+      </div>
+    `;
+  }
+
+  function renderStrictMarket(ctx){
+    const panel = $(".gamesPanel");
+    if (!panel) return;
+
+    const ymd = selectedDate();
+    const games = getCurrentGames();
+    const title = $(".sectionHead h2", panel);
+    if (title) title.textContent = `Jogos — ${ctx.label}`;
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+
+    if (!games.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para <b>${esc(ymd)}</b>.</div>`);
+      return;
+    }
+
+    const filtered = games
+      .map((g,i)=>({g,i}))
+      .filter(item => marketPass(item.g, ctx))
+      .sort((a,b)=> marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
+      .slice(0,18);
+
+    if (!filtered.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(ctx.label)}</b> em <b>${esc(ymd)}</b>.</div>`);
+      return;
+    }
+
+    panel.insertAdjacentHTML("beforeend", filtered.map(item => makeRow(item.g, ctx, item.i)).join(""));
+  }
+
+  // Intercepta antes dos handlers antigos no document.
+  window.addEventListener("click", function(ev){
+    const btn = ev.target.closest?.(".marketInlineItem");
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
+    btn.classList.add("is-selected");
+
+    renderStrictMarket(ctxFromButton(btn));
+  }, true);
+})();
+
+/* =========================================================
+   FIX DEFINITIVO — FILTRO REAL PARA TODOS OS MERCADOS INLINE
+   - Pré-jogo, Resultado, Gols, Escanteios, Cartões, Combinadas e Player Props
+   - Não chama API ao clicar em mercado
+   - Usa somente os jogos já carregados/cacheados
+   - Esconde jogos que não são consistentes com o mercado clicado
+   ========================================================= */
+(function cornerProStrictInlineMarketEngine(){
+  if (window.__cornerProStrictInlineMarketEngineV4) return;
+  window.__cornerProStrictInlineMarketEngineV4 = true;
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  function esc(v){
+    return String(v ?? "").replace(/[&<>"']/g, ch => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+    }[ch]));
+  }
+
+  function clean(v){ return String(v ?? "").replace(/\s+/g," ").trim(); }
+  function norm(v){
+    return clean(v).toLowerCase().normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9.+\-º°/ ]+/g," ")
+      .replace(/\s+/g," ").trim();
+  }
+  function num(v, fb = null){
+    if (v === true || v === false) return fb;
+    const n = Number(String(v ?? "").replace("%","").replace(",","."));
+    return Number.isFinite(n) ? n : fb;
+  }
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function getPath(obj, paths){
+    for (const p of paths){
+      let cur = obj;
+      for (const part of String(p).split(".")){
+        if (cur == null) break;
+        cur = cur[part];
+      }
+      if (cur !== undefined && cur !== null && cur !== "") return cur;
+    }
+    return null;
+  }
+  function raw(g){ return g?.raw || g || {}; }
+
+  function dateKey(){
+    const input = document.getElementById("date")?.value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input || "")) return input;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProAllGamesDate || "")) return window.__cornerProAllGamesDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProSelectedDate || "")) return window.__cornerProSelectedDate;
+    return "";
+  }
+
+  function getGames(){
+    const panel = document.querySelector(".gamesPanel");
+    const sources = [
+      panel?.__cornerProAllGames,
+      window.__cornerProAllGames,
+      panel?.__cornerProGames,
+      window.__cornerProGames
+    ];
+
+    try{ if (Array.isArray(lastMarketGames) && lastMarketGames.length) sources.push(lastMarketGames); }catch(e){}
+    try{ if (Array.isArray(lastRawGames) && lastRawGames.length) sources.push(lastRawGames); }catch(e){}
+
+    const first = sources.find(x => Array.isArray(x) && x.length) || [];
+    const seen = new Set();
+    return first.filter(g => {
+      const r = raw(g);
+      const key = String(r.match_id || r.id || r.fixture_id || `${info(g).league}|${info(g).home}|${info(g).away}|${info(g).time}`).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function info(g){
+    const r = raw(g);
+    return {
+      home: clean(g?.home ?? r.casa ?? r.home ?? r.home_name ?? r.team_home ?? r.mandante ?? r.teams?.home?.name ?? "Casa"),
+      away: clean(g?.away ?? r.fora ?? r.away ?? r.away_name ?? r.team_away ?? r.visitante ?? r.teams?.away?.name ?? "Visitante"),
+      league: clean(g?.league ?? r.liga ?? r.league_name ?? r.competition ?? r.league?.name ?? "Liga"),
+      time: clean(g?.time ?? r.hora ?? r.time ?? r.match_time ?? r.horario ?? "--:--").slice(0,5)
+    };
+  }
+
+  function projectedCorners(g){
+    const r = raw(g);
+    const direct = num(g?.proj ?? r.proj_cantos ?? r.projected_corners ?? r.expected_corners ?? r.corners_projection ?? r.media_cantos_total);
+    if (direct !== null) return direct;
+    const p = num(r.over95_prob_adj ?? r.over95_prob ?? r.ai_score ?? r.score ?? g?.prob, 62);
+    return clamp(8.8 + (p - 55) / 10, 7.5, 13.8);
+  }
+
+  function expectedGoals(g){
+    const r = raw(g);
+    const direct = num(r.expected_goals_total ?? r.xg_total ?? r.total_goals_avg ?? r.media_gols_total ?? r.goals_projection);
+    if (direct !== null) return direct;
+    const corners = projectedCorners(g);
+    let base = 2.15 + (corners - 9.5) * 0.18;
+    const league = norm(info(g).league);
+    if (league.includes("eredivisie") || league.includes("bundesliga") || league.includes("premier") || league.includes("belgium") || league.includes("allsvenskan")) base += .20;
+    if (league.includes("serie a") || league.includes("ligue 1")) base -= .10;
+    return clamp(base, 1.1, 4.4);
+  }
+
+  function homeExpected(g){
+    const r = raw(g);
+    const direct = num(r.home_expected_goals ?? r.home_xg);
+    if (direct !== null) return direct;
+    return expectedGoals(g) * 0.53;
+  }
+
+  function awayExpected(g){
+    const r = raw(g);
+    const direct = num(r.away_expected_goals ?? r.away_xg);
+    if (direct !== null) return direct;
+    return expectedGoals(g) * 0.47;
+  }
+
+  function projectedCards(g){
+    const r = raw(g);
+    const direct = num(r.proj_cards ?? r.cards_projection ?? r.expected_cards_total ?? r.total_cards_avg ?? r.media_cartoes_total ?? r.cartoes_media);
+    if (direct !== null) return direct;
+    const league = norm(info(g).league);
+    let base = 3.55 + (projectedCorners(g) - 9.8) * .10;
+    if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig")) base += .45;
+    if (league.includes("premier") || league.includes("bundesliga")) base -= .10;
+    return clamp(base, 2.1, 6.4);
+  }
+
+  function percentCorners(g, line = 9.5, ht = false){
+    const proj = projectedCorners(g) * (ht ? .46 : 1);
+    return clamp(Math.round(52 + (proj - line) * 15), 3, 94);
+  }
+  function percentGoals(g, line = 2.5, ht = false){
+    const eg = expectedGoals(g) * (ht ? .45 : 1);
+    return clamp(Math.round(52 + (eg - line) * 24), 3, 94);
+  }
+  function percentBtts(g){
+    const h = homeExpected(g);
+    const a = awayExpected(g);
+    const weaker = Math.min(h,a), stronger = Math.max(h,a);
+    return clamp(Math.round(42 + (weaker - .75) * 30 + (stronger - 1.15) * 8), 5, 82);
+  }
+  function percentCards(g, line = 3.5, ht = false){
+    const cards = projectedCards(g) * (ht ? .48 : 1);
+    return clamp(Math.round(52 + (cards - line) * 14), 3, 94);
+  }
+
+  function favoriteSide(g){
+    const r = raw(g);
+    const homeOdd = num(r.odds?.home ?? r.odds?.casa ?? r.home_odd ?? r.odd_home ?? r.odds_home);
+    const awayOdd = num(r.odds?.away ?? r.odds?.fora ?? r.away_odd ?? r.odd_away ?? r.odds_away);
+    const drawOdd = num(r.odds?.draw ?? r.odds?.empate ?? r.draw_odd ?? r.odd_draw);
+    if (homeOdd !== null && awayOdd !== null){
+      if (homeOdd + 0.12 < awayOdd && (drawOdd === null || homeOdd < drawOdd)) return "home";
+      if (awayOdd + 0.12 < homeOdd && (drawOdd === null || awayOdd < drawOdd)) return "away";
+    }
+    const scoreHome = num(r.home_win_prob ?? r.prob_home ?? r.casa_prob ?? r.home_prob);
+    const scoreAway = num(r.away_win_prob ?? r.prob_away ?? r.visitante_prob ?? r.away_prob);
+    if (scoreHome !== null && scoreAway !== null){
+      if (scoreHome >= scoreAway + 8) return "home";
+      if (scoreAway >= scoreHome + 8) return "away";
+    }
+    return "balanced";
+  }
+
+  function lineFromText(text){
+    const m = String(text || "").replace(",",".").match(/(\d+(?:\.\d+)?)/);
+    return m ? Number(m[1]) : null;
+  }
+
+  function ctxFromButton(btn){
+    const label = clean(btn.dataset.marketLine || btn.textContent || "");
+    const section = clean(btn.closest(".marketInlineSection")?.querySelector("h4")?.textContent || "");
+    const panelTitle = clean(btn.closest(".marketInlinePanel")?.querySelector(".marketInlineTitle strong")?.textContent || "");
+    const text = norm(`${panelTitle} ${section} ${label}`);
+    return { label, section, panelTitle, text, line: lineFromText(label) };
+  }
+
+  function passResult(g, text){
+    const fav = favoriteSide(g);
+    const eg = expectedGoals(g);
+    if (text.includes("casa vence")) return fav === "home" && homeExpected(g) >= awayExpected(g) + .18;
+    if (text.includes("visitante vence")) return fav === "away" && awayExpected(g) >= homeExpected(g) + .12;
+    if (text.includes("empate anula casa")) return homeExpected(g) >= awayExpected(g) - .05;
+    if (text.includes("empate anula visitante")) return awayExpected(g) >= homeExpected(g) - .05;
+    if (text.includes("dupla chance casa")) return homeExpected(g) >= awayExpected(g) - .30;
+    if (text.includes("dupla chance visitante")) return awayExpected(g) >= homeExpected(g) - .30;
+    if (text.includes("empate")) return Math.abs(homeExpected(g) - awayExpected(g)) <= .28 && eg <= 2.85;
+    return true;
+  }
+
+  function marketPercent(g, ctx){
+    const t = ctx.text;
+    const line = ctx.line;
+
+    if (t.includes("casa vence")) return clamp(Math.round(50 + (homeExpected(g) - awayExpected(g)) * 30), 5, 88);
+    if (t.includes("visitante vence")) return clamp(Math.round(50 + (awayExpected(g) - homeExpected(g)) * 30), 5, 88);
+    if (t.includes("empate")) return clamp(Math.round(62 - Math.abs(homeExpected(g) - awayExpected(g)) * 42), 5, 76);
+    if (t.includes("dupla chance casa")) return clamp(Math.round(64 + (homeExpected(g) - awayExpected(g)) * 20), 20, 92);
+    if (t.includes("dupla chance visitante")) return clamp(Math.round(64 + (awayExpected(g) - homeExpected(g)) * 20), 20, 92);
+
+    if (t.includes("ambas") || t.includes("btts")) return t.includes("nao") || t.includes("não") ? 100 - percentBtts(g) : percentBtts(g);
+
+    if (t.includes("cart")){
+      const l = line || (t.includes("vermelh") ? 5.5 : 3.5);
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      if (t.includes("under") || t.includes("sem cart")) return clamp(Math.round(56 + (l - projectedCards(g) * (ht ? .48 : 1)) * 15), 3, 94);
+      return percentCards(g, l, ht);
+    }
+
+    if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
+      const l = line || 9.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      if (t.includes("under")) return clamp(Math.round(56 + (l - projectedCorners(g) * (ht ? .46 : 1)) * 16), 3, 94);
+      return percentCorners(g, l, ht);
+    }
+
+    if (t.includes("gol") || t.includes("gols") || t.includes("over") || t.includes("under")){
+      const l = line || 2.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      if (t.includes("under") || t.includes("menos")) return clamp(Math.round(56 + (l - expectedGoals(g) * (ht ? .45 : 1)) * 24), 3, 94);
+      return percentGoals(g, l, ht);
+    }
+
+    if (t.includes("jogador") || t.includes("finalizacao") || t.includes("finalizações") || t.includes("chute") || t.includes("assistencia") || t.includes("assistência")){
+      return clamp(Math.round(48 + (projectedCorners(g) - 9.5) * 7 + (expectedGoals(g) - 2.2) * 9), 10, 82);
+    }
+
+    return clamp(Math.round(num(raw(g).ai_score ?? raw(g).score ?? raw(g).over95_prob_adj ?? raw(g).over95_prob, 58)), 8, 94);
+  }
+
+  function marketPass(g, ctx){
+    const t = ctx.text;
+    const p = marketPercent(g, ctx);
+
+    // Combinadas precisam passar em todas as pernas relevantes.
+    if (t.includes("+")){
+      if ((t.includes("casa") || t.includes("visitante") || t.includes("empate")) && !passResult(g, t)) return false;
+      if (t.includes("ambas") && percentBtts(g) < 50) return false;
+      if (t.includes("over") || t.includes("gol")){
+        const line = ctx.line || 1.5;
+        if (expectedGoals(g) < line - .05) return false;
+      }
+      if (t.includes("escanteio") || t.includes("canto")){
+        const line = ctx.line || 9.5;
+        if (projectedCorners(g) < line) return false;
+      }
+      return p >= 44;
+    }
+
+    if (t.includes("resultado") || t.includes("vence") || t.includes("empate") || t.includes("dupla")) return passResult(g, t);
+    if (t.includes("ambas") || t.includes("btts")) return t.includes("nao") || t.includes("não") ? p >= 50 : p >= 50;
+
+    if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
+      const line = ctx.line || 9.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      const proj = projectedCorners(g) * (ht ? .46 : 1);
+      if (t.includes("exato")) return Math.abs(proj - line) <= .6;
+      if (t.includes("under")) return proj <= line && p >= 46;
+      return proj >= line && p >= (line >= 12.5 ? 38 : line >= 11.5 ? 42 : line >= 10.5 ? 46 : 50);
+    }
+
+    if (t.includes("gol") || t.includes("gols") || t.includes("over") || t.includes("under")){
+      const line = ctx.line || 2.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      const proj = expectedGoals(g) * (ht ? .45 : 1);
+      if (t.includes("under") || t.includes("menos")) return proj <= line && p >= 46;
+      return proj >= line - .05 && p >= (line >= 3.5 ? 38 : line >= 2.5 ? 45 : 50);
+    }
+
+    if (t.includes("cart")){
+      const line = ctx.line || 3.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
+      const proj = projectedCards(g) * (ht ? .48 : 1);
+      if (t.includes("under") || t.includes("sem cart")) return proj <= line && p >= 44;
+      if (t.includes("vermelh")) return projectedCards(g) >= 4.4;
+      return proj >= line && p >= (line >= 5.5 ? 34 : line >= 4.5 ? 38 : 44);
+    }
+
+    if (t.includes("player") || t.includes("jogador") || t.includes("finalizacao") || t.includes("finalizações") || t.includes("chute") || t.includes("assistencia") || t.includes("assistência")){
+      return p >= 48;
+    }
+
+    return p >= 50;
+  }
+
+  function rowHTML(g, ctx, index){
+    const d = info(g);
+    const pct = Math.round(marketPercent(g, ctx));
+    return `
+      <div class="gameRow compactGameRow" data-strict-market-row="1" data-game-index="${index}">
+        <div class="gameMeta">
+          <small>${esc(d.league)}</small>
+          <b><span>${esc(d.time || "--:--")}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
+        </div>
+        <div class="oddBox"><small>MERCADO</small><b>${esc(ctx.label)}</b><span>${pct ? `${pct}%` : "—"}</span></div>
+        <div class="oddBox"><small>ESCANTEIOS</small><b>PROJ. ${projectedCorners(g).toFixed(1)}</b><span>${percentCorners(g, 9.5)}%</span></div>
+        <div class="oddBox"><small>GOLS</small><b>EXP. ${expectedGoals(g).toFixed(1)}</b><span>${percentGoals(g, 2.5)}%</span></div>
+        <div class="oddBox"><small>CARTÕES</small><b>PROJ. ${projectedCards(g).toFixed(1)}</b><span>${percentCards(g, 3.5)}%</span></div>
+        <button class="signal" type="button">▮▮▮</button>
+      </div>
+    `;
+  }
+
+  function renderFiltered(ctx){
+    const panel = document.querySelector(".gamesPanel");
+    if (!panel) return;
+
+    const games = getGames();
+    const title = panel.querySelector(".sectionHead h2");
+    if (title) title.textContent = `Jogos — ${ctx.label}`;
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+
+    if (!games.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para esta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+      return;
+    }
+
+    const filtered = games
+      .map((g,i) => ({g,i}))
+      .filter(x => marketPass(x.g, ctx))
+      .sort((a,b) => marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
+      .slice(0, 18);
+
+    if (!filtered.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(ctx.label)}</b> nesta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+      return;
+    }
+
+    panel.insertAdjacentHTML("beforeend", filtered.map(x => rowHTML(x.g, ctx, x.i)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+
+    panel.querySelectorAll("[data-strict-market-row]").forEach(row => {
+      row.addEventListener("click", () => {
+        const idx = Number(row.dataset.gameIndex);
+        const g = games[idx];
+        if (!g) return;
+        const d = info(g);
+        const r = raw(g);
+        const gameForRail = { ...r, casa:d.home, fora:d.away, liga:d.league, hora:d.time, match_id:r.match_id || r.id };
+        if (typeof window.updateDesktopMatchRail === "function") window.updateDesktopMatchRail(gameForRail, games.map(raw));
+      });
+    });
+  }
+
+  function restoreAll(){
+    const panel = document.querySelector(".gamesPanel");
+    const games = getGames();
+    if (!panel || !games.length) return;
+
+    const title = panel.querySelector(".sectionHead h2");
+    if (title) title.textContent = "Jogos em Destaque";
+
+    if (typeof window.renderGames === "function"){
+      try{ window.renderGames(games); return; }catch(e){}
+    }
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+    const ctx = { label:"Todos", text:"todos", line:null };
+    panel.insertAdjacentHTML("beforeend", games.slice(0,9).map((g,i)=>rowHTML(g,ctx,i)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+  }
+
+  function markInlineButtons(){
+    $$(".marketInlineItem").forEach(btn => {
+      if (btn.dataset.strictReady === "1") return;
+      const ctx = ctxFromButton(btn);
+      btn.dataset.strictReady = "1";
+      btn.dataset.marketFilter = norm(`${ctx.panelTitle} ${ctx.section} ${ctx.label}`);
+    });
+  }
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest?.(".marketInlineItem");
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    markInlineButtons();
+    $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
+    btn.classList.add("is-selected");
+
+    renderFiltered(ctxFromButton(btn));
+  }, true);
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest?.(".viewAll,.marketInlineAll");
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
+    restoreAll();
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", markInlineButtons);
+  new MutationObserver(markInlineButtons).observe(document.documentElement, { childList:true, subtree:true });
+
+  window.cornerProFilterInlineMarket = function(label){
+    renderFiltered({ label: clean(label), section:"", panelTitle:"", text:norm(label), line:lineFromText(label) });
+  };
 })();

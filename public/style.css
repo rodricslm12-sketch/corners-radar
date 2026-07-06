@@ -2469,3 +2469,973 @@ body.marketMenuClosedByClick .marketTab.hasMarketMenu::after{
     max-width:calc(100vw - 24px)!important;
   }
 }
+
+/* =========================================================
+   CORREÇÃO FINAL — JOGOS EM DESTAQUE LIMPO E SUAVE
+   - Mantém o card do mesmo tamanho
+   - Remove o excesso de verde neon
+   - Dá mais respiro aos nomes dos times
+   - Compatível com JS antigo e com JS que usa teamsStack
+   ========================================================= */
+:root{
+  --green-soft-final:#4fe02d;
+  --green-calm-final:#93b58d;
+  --line-soft-final:rgba(120,150,155,.16);
+}
+
+.marketWorkArea > .gamesPanel{
+  height:390px!important;
+  max-height:390px!important;
+  min-height:390px!important;
+  padding:11px 10px 10px!important;
+  border-radius:12px!important;
+  background:linear-gradient(180deg,#10181e 0%,#0a1115 100%)!important;
+  border:1px solid rgba(79,224,45,.18)!important;
+  box-shadow:0 16px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.035)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead{
+  height:28px!important;
+  min-height:28px!important;
+  margin:0 0 8px!important;
+  padding:0 2px!important;
+  background:transparent!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead h2{
+  font-size:15px!important;
+  line-height:1!important;
+  color:#f7faf8!important;
+  letter-spacing:-.25px!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a{
+  font-size:8px!important;
+  color:var(--green-soft-final)!important;
+  opacity:.9!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .filterPills,
+.marketWorkArea > .gamesPanel .oddBox{
+  display:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow,
+.marketWorkArea > .gamesPanel .compactGameRow{
+  grid-template-columns:1fr 24px!important;
+  min-height:68px!important;
+  height:auto!important;
+  gap:8px!important;
+  padding:10px 8px!important;
+  margin:0 0 8px!important;
+  border-top:0!important;
+  border:1px solid var(--line-soft-final)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,rgba(12,19,24,.72),rgba(7,12,16,.62))!important;
+  outline:none!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow:hover,
+.marketWorkArea > .gamesPanel .compactGameRow:hover{
+  background:linear-gradient(180deg,rgba(14,22,27,.86),rgba(8,14,18,.78))!important;
+  border-color:rgba(79,224,45,.24)!important;
+  padding-left:8px!important;
+  padding-right:8px!important;
+  transform:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta small{
+  display:block!important;
+  margin:0 0 7px!important;
+  color:#89979a!important;
+  font-size:7.5px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  letter-spacing:.45px!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Estrutura antiga: <b><span>14:00</span> Hacken<br><em>Djurgarden</em></b> */
+.marketWorkArea > .gamesPanel .gameMeta b{
+  display:block!important;
+  color:#f4f8f6!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+  font-weight:900!important;
+  white-space:normal!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta b > span:not(.teamLine):not(.matchTime){
+  display:inline-flex!important;
+  align-items:center!important;
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  margin:0 0 7px!important;
+  padding:0!important;
+  color:var(--green-calm-final)!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta em{
+  display:block!important;
+  margin:3px 0 0!important;
+  color:#dce5e2!important;
+  font-style:normal!important;
+  font-size:11px!important;
+  line-height:1.35!important;
+  font-weight:900!important;
+  text-shadow:none!important;
+}
+
+/* Estrutura nova: teamsStack, caso esteja no JS atual */
+.marketWorkArea > .gamesPanel .gameMeta .teamsStack{
+  display:block!important;
+  color:#f4f8f6!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+  font-weight:900!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta .matchTime{
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  margin:0 0 8px!important;
+  padding:0!important;
+  color:var(--green-calm-final)!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta .teamLine{
+  display:block!important;
+  color:#f4f8f6!important;
+  font-size:11px!important;
+  line-height:1.36!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta .awayTeam{
+  margin-top:4px!important;
+  color:#dce5e2!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow .signal,
+.marketWorkArea > .gamesPanel .compactGameRow .signal{
+  display:grid!important;
+  place-items:center!important;
+  width:23px!important;
+  height:26px!important;
+  margin:0!important;
+  border-radius:8px!important;
+  color:var(--green-calm-final)!important;
+  background:rgba(255,255,255,.035)!important;
+  border:1px solid rgba(147,181,141,.20)!important;
+  box-shadow:none!important;
+  font-size:10px!important;
+  letter-spacing:-1px!important;
+  opacity:.95!important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll{
+  height:31px!important;
+  min-height:31px!important;
+  margin:8px 0 0!important;
+  border-radius:9px!important;
+  background:rgba(79,224,45,.045)!important;
+  border:1px solid rgba(79,224,45,.25)!important;
+  color:var(--green-soft-final)!important;
+  font-size:9px!important;
+  font-weight:950!important;
+  text-shadow:none!important;
+  box-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll:hover{
+  background:rgba(79,224,45,.075)!important;
+  border-color:rgba(79,224,45,.36)!important;
+}
+
+.marketWorkArea > .gamesPanel::-webkit-scrollbar{width:5px!important;}
+.marketWorkArea > .gamesPanel::-webkit-scrollbar-thumb{background:rgba(79,224,45,.22)!important;border-radius:20px!important;}
+.marketWorkArea > .gamesPanel::-webkit-scrollbar-track{background:rgba(255,255,255,.035)!important;border-radius:20px!important;}
+
+@media(max-width:980px){
+  .marketWorkArea > .gamesPanel{
+    height:auto!important;
+    max-height:none!important;
+    min-height:0!important;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE DEFINITIVO — JOGOS EM DESTAQUE NAS CORES DO SITE
+   - Remove verde chapado dentro do card
+   - Horário fica em linha própria
+   - Nomes respiram sem aumentar o card principal
+   ========================================================= */
+:root{
+  --games-green:#63f127;
+  --games-green-muted:#8dbb83;
+  --games-bg:#0b1116;
+  --games-bg-2:#0f171c;
+  --games-line:#1a2a31;
+  --games-line-green:rgba(99,241,39,.22);
+}
+
+.marketWorkArea > .gamesPanel{
+  height:390px!important;
+  max-height:390px!important;
+  min-height:390px!important;
+  padding:11px 10px 10px!important;
+  border-radius:8px!important;
+  background:linear-gradient(180deg,#10171c 0%,#0b1116 100%)!important;
+  border:1px solid rgba(99,241,39,.24)!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.24)!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead{
+  height:30px!important;
+  margin:0 0 8px!important;
+  padding:0!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead h2{
+  font-size:16px!important;
+  color:#f5f7f7!important;
+  letter-spacing:-.35px!important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a{
+  color:var(--games-green)!important;
+  font-size:8px!important;
+  font-weight:950!important;
+  opacity:.92!important;
+}
+
+.marketWorkArea > .gamesPanel .filterPills,
+.marketWorkArea > .gamesPanel .oddBox{
+  display:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow,
+.marketWorkArea > .gamesPanel .compactGameRow{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 28px!important;
+  align-items:center!important;
+  min-height:78px!important;
+  height:78px!important;
+  gap:8px!important;
+  margin:0 0 10px!important;
+  padding:11px 9px!important;
+  border-top:0!important;
+  border:1px solid #1a2a31!important;
+  border-radius:8px!important;
+  background:linear-gradient(180deg,rgba(14,20,25,.92),rgba(8,13,17,.88))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  overflow:hidden!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow:hover,
+.marketWorkArea > .gamesPanel .compactGameRow:hover{
+  background:linear-gradient(180deg,rgba(16,24,29,.96),rgba(9,15,19,.92))!important;
+  border-color:rgba(99,241,39,.28)!important;
+  padding-left:9px!important;
+  padding-right:9px!important;
+  transform:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta small{
+  display:block!important;
+  margin:0 0 8px!important;
+  color:#889497!important;
+  font-size:7px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  letter-spacing:.6px!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta b{
+  display:block!important;
+  color:#f5f7f7!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+  font-weight:900!important;
+  white-space:normal!important;
+  text-shadow:none!important;
+}
+
+/* horário separado: corrige o problema de ficar colado em Hacken */
+.marketWorkArea > .gamesPanel .gameMeta b > span:not(.teamLine):not(.matchTime),
+.marketWorkArea > .gamesPanel .gameMeta .matchTime{
+  display:block!important;
+  width:max-content!important;
+  min-width:0!important;
+  height:auto!important;
+  margin:0 0 7px!important;
+  padding:0!important;
+  color:var(--games-green-muted)!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta em,
+.marketWorkArea > .gamesPanel .gameMeta .awayTeam{
+  display:block!important;
+  margin:5px 0 0!important;
+  color:#d8e0dd!important;
+  font-style:normal!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  font-weight:900!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta .teamLine{
+  display:block!important;
+  color:#f5f7f7!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow .signal,
+.marketWorkArea > .gamesPanel .compactGameRow .signal{
+  display:grid!important;
+  place-items:center!important;
+  width:25px!important;
+  height:28px!important;
+  margin:0!important;
+  border-radius:8px!important;
+  color:#8dbb83!important;
+  background:#101820!important;
+  border:1px solid rgba(141,187,131,.22)!important;
+  box-shadow:none!important;
+  font-size:10px!important;
+  letter-spacing:-1px!important;
+  opacity:.9!important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll{
+  height:34px!important;
+  min-height:34px!important;
+  margin:10px 0 0!important;
+  border-radius:7px!important;
+  background:rgba(99,241,39,.035)!important;
+  border:1px solid rgba(99,241,39,.32)!important;
+  color:var(--games-green)!important;
+  font-size:9px!important;
+  font-weight:950!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll:hover{
+  background:rgba(99,241,39,.06)!important;
+  border-color:rgba(99,241,39,.45)!important;
+}
+
+.marketWorkArea > .gamesPanel::-webkit-scrollbar{width:5px!important;}
+.marketWorkArea > .gamesPanel::-webkit-scrollbar-thumb{background:rgba(99,241,39,.22)!important;border-radius:20px!important;}
+.marketWorkArea > .gamesPanel::-webkit-scrollbar-track{background:rgba(255,255,255,.035)!important;border-radius:20px!important;}
+
+/* =========================================================
+   AJUSTE FINAL — CORES SUAVES NO PRÉ-JOGO + VER TODOS
+   Mantém o tamanho do card e troca o verde neon por verde premium.
+   ========================================================= */
+:root{
+  --soft-green:#9fb8ad;
+  --soft-green-2:#7fa296;
+  --soft-line:rgba(127,162,150,.34);
+  --soft-line-strong:rgba(127,162,150,.48);
+  --soft-bg:rgba(127,162,150,.045);
+}
+
+/* Card superior PRÉ-JOGO */
+.marketTab.active,
+.marketTab[data-tab="pregame"],
+.marketTab.preGameTab,
+.marketTab:first-child{
+  background:
+    radial-gradient(circle at 12% 50%, rgba(127,162,150,.12), transparent 34%),
+    linear-gradient(180deg,#0d1715 0%, #091113 100%) !important;
+  border-color:var(--soft-line-strong) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 8px 22px rgba(0,0,0,.22) !important;
+}
+
+.marketTab.active span,
+.marketTab[data-tab="pregame"] span,
+.marketTab.preGameTab span,
+.marketTab:first-child span{
+  color:var(--soft-green) !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+.marketTab.active b,
+.marketTab[data-tab="pregame"] b,
+.marketTab.preGameTab b,
+.marketTab:first-child b{
+  color:#f3f7f5 !important;
+}
+
+.marketTab.active small,
+.marketTab[data-tab="pregame"] small,
+.marketTab.preGameTab small,
+.marketTab:first-child small{
+  color:#8ea09c !important;
+}
+
+/* Link VER TODOS do título */
+.sectionHead a,
+.sectionHead .viewAllLink,
+.gamesPanelHeader a{
+  color:var(--soft-green) !important;
+  text-shadow:none !important;
+  opacity:.95;
+}
+
+.sectionHead a:hover,
+.sectionHead .viewAllLink:hover,
+.gamesPanelHeader a:hover{
+  color:#c3d4ce !important;
+}
+
+/* Botão VER TODOS OS JOGOS */
+.viewAll,
+#viewAllGames,
+button.viewAllGames,
+.gamesPanel .viewAll,
+.gamesPanel button[class*="view"]{
+  color:var(--soft-green) !important;
+  background:linear-gradient(180deg,rgba(127,162,150,.07),rgba(127,162,150,.025)) !important;
+  border-color:var(--soft-line-strong) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+  text-shadow:none !important;
+}
+
+.viewAll:hover,
+#viewAllGames:hover,
+button.viewAllGames:hover,
+.gamesPanel .viewAll:hover,
+.gamesPanel button[class*="view"]:hover{
+  color:#d6e2de !important;
+  background:linear-gradient(180deg,rgba(127,162,150,.11),rgba(127,162,150,.04)) !important;
+  border-color:rgba(159,184,173,.62) !important;
+}
+
+/* Suaviza verdes dentro do card de destaque */
+.featuredGameCard,
+.gameMiniCard,
+.highlightGame,
+.gamesPanel article,
+.gamesPanel .game-card,
+.gamesPanel .gameCard{
+  border-color:rgba(127,162,150,.20) !important;
+  background:linear-gradient(180deg,#0c1417,#081014) !important;
+}
+
+.gamesPanel .gameTime,
+.gamesPanel [class*="time"],
+.gamesPanel .matchTime{
+  color:var(--soft-green) !important;
+  text-shadow:none !important;
+}
+
+.gamesPanel .signal,
+.gamesPanel .signal *{
+  color:var(--soft-green) !important;
+}
+
+/* =========================================================
+   REVISÃO COMPLETA — COLUNA ESQUERDA / JOGOS EM DESTAQUE
+   Objetivo:
+   - manter o tamanho do card
+   - reduzir verde neon
+   - dar mais respiro aos times
+   - deixar PRÉ-JOGO e VER TODOS OS JOGOS no verde suave
+   - evitar conflito com regras antigas usando seletor mais específico
+   ========================================================= */
+
+:root{
+  --cp-green-soft:#9bb9a0;
+  --cp-green-soft-2:#7fa28f;
+  --cp-green-border:rgba(128,176,128,.34);
+  --cp-green-border-soft:rgba(128,176,128,.20);
+  --cp-green-bg:rgba(128,176,128,.055);
+  --cp-card-dark:#0a1115;
+  --cp-card-dark-2:#0d151a;
+  --cp-line-soft:#203038;
+}
+
+/* ABA PRÉ-JOGO — mais premium, menos neon */
+.marketTabs .marketTab.active,
+.marketTabs .marketTab.is-active-market,
+.marketTabs .marketTab[data-market="pregame"],
+.marketTabs .marketTab[data-tab="pregame"]{
+  background:
+    radial-gradient(circle at 12% 50%,rgba(155,185,160,.10),transparent 34%),
+    linear-gradient(180deg,#0d1713,#081014) !important;
+  border-color:var(--cp-green-border) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 22px rgba(0,0,0,.20) !important;
+}
+
+.marketTabs .marketTab.active span,
+.marketTabs .marketTab.is-active-market span,
+.marketTabs .marketTab[data-market="pregame"] span,
+.marketTabs .marketTab[data-tab="pregame"] span{
+  color:var(--cp-green-soft) !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+.marketTabs .marketTab.active b,
+.marketTabs .marketTab.is-active-market b,
+.marketTabs .marketTab[data-market="pregame"] b,
+.marketTabs .marketTab[data-tab="pregame"] b{
+  color:#f4f7f5 !important;
+  letter-spacing:.1px;
+  text-shadow:none !important;
+}
+
+.marketTabs .marketTab.active small,
+.marketTabs .marketTab.is-active-market small,
+.marketTabs .marketTab[data-market="pregame"] small,
+.marketTabs .marketTab[data-tab="pregame"] small{
+  color:#8fa29a !important;
+}
+
+/* PAINEL JOGOS EM DESTAQUE — somente o card da coluna esquerda */
+.marketWorkArea > .gamesPanel{
+  background:
+    radial-gradient(circle at 88% 10%,rgba(155,185,160,.045),transparent 32%),
+    linear-gradient(180deg,#0e171b 0%,#081014 100%) !important;
+  border-color:var(--cp-green-border-soft) !important;
+  box-shadow:0 14px 32px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.035) !important;
+  padding:12px !important;
+  border-radius:9px !important;
+}
+
+/* Título e link VER TODOS */
+.marketWorkArea > .gamesPanel .sectionHead{
+  height:30px !important;
+  padding:0 2px !important;
+  align-items:center !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead h2{
+  color:#f4f7f5 !important;
+  font-size:16px !important;
+  line-height:1 !important;
+  font-weight:900 !important;
+  letter-spacing:-.25px !important;
+  text-shadow:none !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a,
+.marketWorkArea > .gamesPanel .sectionHead a:visited{
+  color:var(--cp-green-soft) !important;
+  font-size:8.5px !important;
+  font-weight:900 !important;
+  letter-spacing:.15px !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a:hover{
+  color:#d9e6dc !important;
+}
+
+/* CARD DO JOGO — limpa o fundo verde e melhora estrutura */
+.marketWorkArea > .gamesPanel .gameRow{
+  position:relative !important;
+  height:76px !important;
+  min-height:76px !important;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 34px !important;
+  align-items:center !important;
+  gap:10px !important;
+  padding:10px 10px !important;
+  margin:7px 0 12px !important;
+  border:1px solid var(--cp-line-soft) !important;
+  border-radius:8px !important;
+  background:
+    linear-gradient(180deg,rgba(13,22,27,.88),rgba(7,13,17,.96)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025) !important;
+  cursor:pointer !important;
+  overflow:hidden !important;
+}
+
+/* remove a barra/fundo neon antigo */
+.marketWorkArea > .gamesPanel .gameRow::before,
+.marketWorkArea > .gamesPanel .gameRow::after{
+  content:none !important;
+  display:none !important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow:hover{
+  background:
+    linear-gradient(180deg,rgba(15,25,30,.95),rgba(8,15,18,.98)) !important;
+  border-color:rgba(155,185,160,.32) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035), 0 8px 18px rgba(0,0,0,.18) !important;
+  transform:none !important;
+}
+
+/* Conteúdo do jogo */
+.marketWorkArea > .gamesPanel .gameMeta{
+  min-width:0 !important;
+  padding:0 !important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta small{
+  display:block !important;
+  margin:0 0 6px !important;
+  color:#87959a !important;
+  font-size:7.6px !important;
+  line-height:1 !important;
+  font-weight:900 !important;
+  letter-spacing:.55px !important;
+  text-transform:uppercase !important;
+  text-shadow:none !important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta span{
+  display:block !important;
+  margin:0 0 7px !important;
+  color:var(--cp-green-soft) !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+  letter-spacing:.1px !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta b{
+  display:block !important;
+  color:#f1f5f3 !important;
+  font-size:11.5px !important;
+  line-height:1.55 !important;
+  font-weight:900 !important;
+  letter-spacing:-.05px !important;
+  text-shadow:none !important;
+  white-space:normal !important;
+}
+
+.marketWorkArea > .gamesPanel .gameMeta em{
+  display:block !important;
+  margin:2px 0 0 !important;
+  color:#f1f5f3 !important;
+  font-style:normal !important;
+  line-height:1.55 !important;
+}
+
+/* remove odds/caixas extras nessa coluna, deixa só o botão lateral discreto */
+.marketWorkArea > .gamesPanel .gameRow .oddBox{
+  display:none !important;
+}
+
+/* botão lateral do card — cor suave */
+.marketWorkArea > .gamesPanel .gameRow .signal{
+  width:30px !important;
+  height:30px !important;
+  margin:0 !important;
+  justify-self:end !important;
+  display:grid !important;
+  place-items:center !important;
+  border-radius:9px !important;
+  background:rgba(155,185,160,.055) !important;
+  border:1px solid rgba(155,185,160,.24) !important;
+  color:var(--cp-green-soft) !important;
+  box-shadow:none !important;
+  opacity:.95 !important;
+  padding:0 !important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow .signal svg,
+.marketWorkArea > .gamesPanel .gameRow .signal i,
+.marketWorkArea > .gamesPanel .gameRow .signal span{
+  color:var(--cp-green-soft) !important;
+  fill:var(--cp-green-soft) !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+/* BOTÃO VER TODOS OS JOGOS — verde suave igual referência */
+.marketWorkArea > .gamesPanel .viewAll,
+.marketWorkArea > .gamesPanel #viewAllGames,
+.marketWorkArea > .gamesPanel button.viewAllGames,
+.marketWorkArea > .gamesPanel button[class*="view"]{
+  width:100% !important;
+  height:34px !important;
+  border-radius:8px !important;
+  color:var(--cp-green-soft) !important;
+  background:
+    linear-gradient(180deg,rgba(155,185,160,.060),rgba(155,185,160,.025)) !important;
+  border:1px solid rgba(155,185,160,.34) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03) !important;
+  text-shadow:none !important;
+  filter:none !important;
+  font-size:9.5px !important;
+  font-weight:900 !important;
+  letter-spacing:.15px !important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll:hover,
+.marketWorkArea > .gamesPanel #viewAllGames:hover,
+.marketWorkArea > .gamesPanel button.viewAllGames:hover,
+.marketWorkArea > .gamesPanel button[class*="view"]:hover{
+  color:#dbe8df !important;
+  background:
+    linear-gradient(180deg,rgba(155,185,160,.095),rgba(155,185,160,.035)) !important;
+  border-color:rgba(155,185,160,.58) !important;
+  box-shadow:0 8px 18px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+/* garante que nenhum verde neon volte nessa área */
+.marketWorkArea > .gamesPanel [style*="#63f127"],
+.marketWorkArea > .gamesPanel [style*="rgb(99, 241, 39)"]{
+  color:var(--cp-green-soft) !important;
+  border-color:rgba(155,185,160,.34) !important;
+}
+
+/* responsivo */
+@media(max-width:1180px){
+  .marketWorkArea{
+    grid-template-columns:minmax(210px,250px) minmax(0,1fr) !important;
+  }
+
+  .marketWorkArea > .gamesPanel .gameRow{
+    height:78px !important;
+    min-height:78px !important;
+  }
+}
+
+@media(max-width:980px){
+  .marketWorkArea{
+    grid-template-columns:1fr !important;
+  }
+
+  .marketWorkArea > .gamesPanel .gameRow{
+    grid-template-columns:minmax(0,1fr) 34px !important;
+  }
+}
+
+/* ===== Jogos em Destaque - acabamento ===== */
+.sectionHead{
+  min-height:30px!important;
+  margin-bottom:8px!important;
+  align-items:center!important;
+}
+.sectionHead h2{
+  font-size:13px!important;
+  line-height:1.05!important;
+  letter-spacing:-.2px!important;
+  font-weight:850!important;
+  margin:0!important;
+}
+.sectionHead a{
+  margin-left:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  white-space:nowrap!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  color:#8fb69a!important;
+}
+.sectionHead a::after{
+  content:""!important;
+}
+.viewAll{
+  color:#9fd7a8!important;
+  border-color:#2d5e3e!important;
+  background:#0f171a!important;
+}
+.viewAll:hover{
+  background:#152025!important;
+  border-color:#3e7a54!important;
+  color:#dff3e5!important;
+}
+
+/* =========================================================
+   AJUSTE FINAL COMPACTO — JOGOS EM DESTAQUE
+   - Título menor em uma linha
+   - Link VER TODOS sem quebra
+   - Botão VER TODOS OS JOGOS menor e suave
+   ========================================================= */
+:root{
+  --cp-green-soft:#9bb9a0;
+  --cp-green-soft-2:#7fa78a;
+  --cp-line-soft:rgba(155,185,160,.30);
+}
+
+.marketWorkArea > .gamesPanel,
+.gamesPanel{
+  padding:10px 10px 12px !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead,
+.gamesPanel .sectionHead,
+.sectionHead{
+  height:22px !important;
+  min-height:22px !important;
+  max-height:22px !important;
+  margin:0 0 7px !important;
+  padding:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+  overflow:hidden !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead h2,
+.gamesPanel .sectionHead h2,
+.sectionHead h2{
+  margin:0 !important;
+  padding:0 !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:-.15px !important;
+  white-space:nowrap !important;
+  max-width:145px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  color:#f1f5f3 !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a,
+.gamesPanel .sectionHead a,
+.sectionHead a{
+  margin-left:auto !important;
+  padding:0 !important;
+  height:16px !important;
+  min-width:auto !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:3px !important;
+  white-space:nowrap !important;
+  color:var(--cp-green-soft) !important;
+  font-size:7.5px !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:.15px !important;
+  text-shadow:none !important;
+  filter:none !important;
+  opacity:.95 !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a::after,
+.gamesPanel .sectionHead a::after,
+.sectionHead a::after{
+  content:"›" !important;
+  display:inline-block !important;
+  margin-left:1px !important;
+  line-height:1 !important;
+  font-size:9px !important;
+  color:var(--cp-green-soft) !important;
+  transform:none !important;
+}
+
+.marketWorkArea > .gamesPanel .sectionHead a > br,
+.gamesPanel .sectionHead a > br,
+.sectionHead a > br,
+.marketWorkArea > .gamesPanel .sectionHead a br,
+.gamesPanel .sectionHead a br,
+.sectionHead a br{
+  display:none !important;
+}
+
+.marketWorkArea > .gamesPanel .gameRow,
+.gamesPanel .gameRow{
+  margin-top:4px !important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll,
+.gamesPanel .viewAll,
+.viewAll,
+.marketWorkArea > .gamesPanel #viewAllGames,
+.gamesPanel #viewAllGames,
+.marketWorkArea > .gamesPanel button.viewAllGames,
+.gamesPanel button.viewAllGames{
+  height:27px !important;
+  min-height:27px !important;
+  max-height:27px !important;
+  margin-top:8px !important;
+  border-radius:7px !important;
+  font-size:8px !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:.25px !important;
+  color:var(--cp-green-soft) !important;
+  background:linear-gradient(180deg,rgba(155,185,160,.045),rgba(155,185,160,.018)) !important;
+  border:1px solid var(--cp-line-soft) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025) !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+
+.marketWorkArea > .gamesPanel .viewAll:hover,
+.gamesPanel .viewAll:hover,
+.viewAll:hover,
+.marketWorkArea > .gamesPanel #viewAllGames:hover,
+.gamesPanel #viewAllGames:hover,
+.marketWorkArea > .gamesPanel button.viewAllGames:hover,
+.gamesPanel button.viewAllGames:hover{
+  color:#d7eadb !important;
+  background:linear-gradient(180deg,rgba(155,185,160,.075),rgba(155,185,160,.028)) !important;
+  border-color:rgba(155,185,160,.48) !important;
+}
