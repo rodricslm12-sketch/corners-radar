@@ -879,60 +879,38 @@
   }
   
   // ---------------- Horário AMAZONAS ----------------
-  function toAmazonasParts(dateYMD, hhmmUTC){
-    if (!dateYMD || !hhmmUTC || !/^\d{2}:\d{2}$/.test(hhmmUTC)){
-      return { hhmm: hhmmUTC, dateBR: "", ymdBR: dateYMD, delta: 0 };
+  // A API já entrega o horário local da partida.
+  // Portanto, não convertemos mais como UTC para evitar erro tipo 19:00 virar diferente do horário real.
+  function toAmazonasParts(dateYMD, hhmm){
+    const cleanTime = String(hhmm || "").trim();
+
+    if (!dateYMD || !cleanTime || !/^\d{2}:\d{2}$/.test(cleanTime)){
+      return {
+        hhmm: cleanTime || "--:--",
+        dateBR: "",
+        ymdBR: dateYMD,
+        delta: 0
+      };
     }
-  
-    const [H, M] = hhmmUTC.split(":").map(Number);
-    const dtUTC = new Date(Date.UTC(
-      Number(dateYMD.slice(0, 4)),
-      Number(dateYMD.slice(5, 7)) - 1,
-      Number(dateYMD.slice(8, 10)),
-      H, M, 0
-    ));
-  
-    const fmtDate = new Intl.DateTimeFormat("pt-BR", {
-      timeZone: "America/Manaus",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  
-    const fmtTime = new Intl.DateTimeFormat("pt-BR", {
-      timeZone: "America/Manaus",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false
-    });
-  
-    const dateBR = fmtDate.format(dtUTC);
-    const hhmm = fmtTime.format(dtUTC);
-    const ymdBR = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Manaus",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).format(dtUTC);
-  
-    let delta = 0;
-    if (ymdBR !== dateYMD){
-      const base = new Date(Date.UTC(Number(dateYMD.slice(0, 4)), Number(dateYMD.slice(5, 7)) - 1, Number(dateYMD.slice(8, 10)), 0, 0, 0));
-      const br = new Date(Date.UTC(Number(ymdBR.slice(0, 4)), Number(ymdBR.slice(5, 7)) - 1, Number(ymdBR.slice(8, 10)), 0, 0, 0));
-      delta = Math.round((br - base) / (24 * 3600 * 1000));
-    }
-  
-    return { hhmm, dateBR, ymdBR, delta };
+
+    return {
+      hhmm: cleanTime,
+      dateBR: String(dateYMD || "").split("-").reverse().join("/"),
+      ymdBR: dateYMD,
+      delta: 0
+    };
   }
-  
-  function timeLabelAM(dateYMD, hhmmUTC){
-    const p = toAmazonasParts(dateYMD, hhmmUTC);
-    if (p.delta !== 0 && p.dateBR) return `${p.dateBR} • ${p.hhmm}`;
-    return p.hhmm;
+
+  function timeLabelAM(dateYMD, hhmm){
+    const cleanTime = String(hhmm || "").trim();
+    if (!/^\d{2}:\d{2}$/.test(cleanTime)) return cleanTime || "--:--";
+    return cleanTime;
   }
-  
-  function timeOnlyAM(dateYMD, hhmmUTC){
-    return toAmazonasParts(dateYMD, hhmmUTC).hhmm;
+
+  function timeOnlyAM(dateYMD, hhmm){
+    const cleanTime = String(hhmm || "").trim();
+    if (!/^\d{2}:\d{2}$/.test(cleanTime)) return cleanTime || "--:--";
+    return cleanTime;
   }
   
   function getMatchMinutesAM(j, dateYMD){
@@ -1684,6 +1662,24 @@
   
     // Se já carregou a data e não é refresh, reaproveita.
     if (!fresh && lastMarketDateYMD === dateYMD && Array.isArray(lastMarketGames) && lastMarketGames.length){
+      return lastMarketGames;
+    }
+
+
+    // FIX: se os jogos do dia já estão carregados na tela principal,
+    // usa esse cache imediatamente e NÃO chama /mercados nem /quentes de novo.
+    const gamesPanelCacheEl = document.querySelector(".gamesPanel");
+    const panelCache = gamesPanelCacheEl?.__cornerProAllGames;
+    const panelCacheDate = gamesPanelCacheEl?.dataset?.marketCacheDate;
+    if (!fresh && panelCacheDate === dateYMD && Array.isArray(panelCache) && panelCache.length){
+      lastMarketGames = enrichMarketsList(panelCache.map(g => g?.raw || g));
+      lastMarketDateYMD = dateYMD;
+      return lastMarketGames;
+    }
+
+    if (!fresh && lastDateYMD === dateYMD && Array.isArray(lastRawGames) && lastRawGames.length){
+      lastMarketGames = enrichMarketsList(lastRawGames);
+      lastMarketDateYMD = dateYMD;
       return lastMarketGames;
     }
   
@@ -3236,6 +3232,17 @@
       console.error("❌ Falta #date ou #btn no HTML");
       return;
     }
+
+    // Ao atualizar ou abrir a página, sempre volta para o dia atual.
+    const todayOnRefresh = todayAM_YMD();
+    dateInput.value = todayOnRefresh;
+
+    try{
+      const url = new URL(window.location.href);
+      url.searchParams.delete("date");
+      url.searchParams.delete("data");
+      window.history.replaceState({}, "", url.toString());
+    }catch(e){}
   
     ensureDateVisible();
   
@@ -3730,7 +3737,7 @@
         const home = teamNameHTML(homeRaw, "liveTeamName");
         const away = teamNameHTML(awayRaw, "liveTeamName");
         const league = escapeHtml(game.league || game.liga || "Liga");
-        const time = escapeHtml(game.time || game.hora || "--:--");
+        const time = escapeHtml(displayKickoffTimeFromGame(game));
         const prob = game.probability ?? game.prob ?? game.over95_prob_adj ?? "-";
         const corners = game.projectedCorners ?? game.proj_cantos ?? game.corners ?? "-";
   
@@ -7834,7 +7841,8 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   async function fetchRealGames(date){
-    const cacheKey = `cornerProRealGamesCache:${date}`;
+    try{ sessionStorage.removeItem(`cornerProRealGamesCache:${date}`); }catch(e){}
+    const cacheKey = `cornerProRealGamesCache:v2:${date}`;
 
     // Cache em memória da própria página
     window.__cornerProApiCache = window.__cornerProApiCache || {};
@@ -7874,11 +7882,61 @@ function resetDesktopMatchRailToEmpty(){
     return [];
   }
 
+
+  function normalizeKickoffDisplayTime(raw, shouldAdjust = false){
+    const value = String(raw ?? "").trim();
+    const m = value.match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return value || "--:--";
+
+    let total = Number(m[1]) * 60 + Number(m[2]);
+
+    // A API/servidor antigo costuma entregar 5h à frente.
+    // Ex.: 19:00 precisa aparecer 14:00.
+    if (shouldAdjust) total -= 5 * 60;
+
+    while (total < 0) total += 24 * 60;
+    total = total % (24 * 60);
+
+    return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`;
+  }
+
+  function normalizeNoShiftTime(raw){
+    return normalizeKickoffDisplayTime(raw, false);
+  }
+
+  function displayKickoffTimeFromGame(j){
+    if (!j || typeof j !== "object") return "--:--";
+
+    // Novo servidor: já envia o horário correto de Manaus.
+    const ready =
+      j.hora_manaus ??
+      j.hora_am ??
+      j.time_manaus ??
+      j.kickoff_manaus ??
+      j.horario_manaus;
+
+    if (ready) return normalizeNoShiftTime(ready);
+
+    const rawApi =
+      j.hora_raw ??
+      j.match_time ??
+      j.event_time ??
+      j.kickoff_raw;
+
+    // Se vier o campo bruto da API, ele precisa do ajuste -5.
+    if (rawApi) return normalizeKickoffDisplayTime(rawApi, true);
+
+    // Compatibilidade com servidor antigo:
+    // quando só existe hora/time, aplica -5 para corrigir o caso 19:00 -> 14:00.
+    const legacy = j.hora ?? j.time ?? j.kickoff ?? j.horario ?? "--:--";
+    return normalizeKickoffDisplayTime(legacy, true);
+  }
+
   function normalizeGame(j){
     const home = safe(j.casa ?? j.home ?? j.home_name ?? j.team_home ?? j.mandante ?? j.localteam ?? j.teams?.home?.name, "Time Casa");
     const away = safe(j.fora ?? j.away ?? j.away_name ?? j.team_away ?? j.visitante ?? j.visitorteam ?? j.teams?.away?.name, "Time Fora");
     const league = safe(j.liga ?? j.league ?? j.league_name ?? j.competition ?? j.country_league ?? j.league?.name, "Liga");
-    const time = safe(j.hora ?? j.time ?? j.match_time ?? j.kickoff ?? j.horario ?? "--:--", "--:--");
+    const time = displayKickoffTimeFromGame(j);
     const matchId = safe(j.match_id ?? j.id ?? j.fixture_id ?? j.event_id, "");
     const proj = num(j.proj_cantos ?? j.projCorners ?? j.corners_projection ?? j.corner_projection);
     const prob = num(j.over95_prob_adj ?? j.over95_prob ?? j.prob ?? j.ai_score ?? j.score);
@@ -8118,7 +8176,26 @@ function resetDesktopMatchRailToEmpty(){
     panel.__cornerProAllGames = games.slice();
     window.__cornerProAllGames = games.slice();
 
-    const rows = games.slice().sort((a,b) => scoreGame(b) - scoreGame(a)).slice(0,3);
+    // FIX: grava a data do cache dos jogos.
+    // Assim, ao clicar em mercado, o site filtra os jogos já carregados
+    // e não chama a API novamente.
+    const cacheDate =
+      document.getElementById("date")?.value ||
+      new URLSearchParams(window.location.search).get("date") ||
+      new URLSearchParams(window.location.search).get("data") ||
+      "";
+    if (cacheDate){
+      panel.dataset.marketCacheDate = cacheDate;
+      window.__cornerProAllGamesDate = cacheDate;
+      try{
+        if (typeof lastRawGames !== "undefined") lastRawGames = games.map(x => x.raw || x);
+        if (typeof lastDateYMD !== "undefined") lastDateYMD = cacheDate;
+        if (typeof lastMarketGames !== "undefined") lastMarketGames = games.map(x => x.raw || x);
+        if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = cacheDate;
+      }catch(e){}
+    }
+
+    const rows = games.slice().sort((a,b) => scoreGame(b) - scoreGame(a)).slice(0,9);
 
     if (!rows.length){
       panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Nenhum jogo real retornou da API hoje. Verifique se a rota <b>/quentes</b> está respondendo.</div>`);
@@ -8126,7 +8203,7 @@ function resetDesktopMatchRailToEmpty(){
     }
 
     const html = rows.map((g, index) => `
-      <div class="gameRow" data-real-game-index="${index}">
+      <div class="gameRow compactGameRow" data-real-game-index="${index}">
         <div class="gameMeta">
           <small>${esc(g.league)}</small>
           <b><span>${esc(g.time || "--:--")}</span> ${esc(g.home)}<br><em>${esc(g.away)}</em></b>
@@ -8183,7 +8260,7 @@ function resetDesktopMatchRailToEmpty(){
     setTimeout(loadAndRender, 1600);
     setTimeout(hideBadPremiumOverlay, 2800);
     document.addEventListener("click", ev => {
-      const btn = ev.target.closest(".filterPills button,.marketTab,.viewAll");
+      const btn = ev.target.closest(".filterPills button,.viewAll");
       if (btn) setTimeout(loadAndRender, 80);
     });
   });
@@ -8611,8 +8688,7 @@ function resetDesktopMatchRailToEmpty(){
 
   function getSelectedYMD(){
     const input = document.getElementById("date");
-    const params = new URLSearchParams(window.location.search);
-    return input?.value || params.get("date") || params.get("data") || toYMD(new Date());
+    return input?.value || toYMD(new Date());
   }
 
   let viewDate = parseYMD(getSelectedYMD());
@@ -8649,10 +8725,23 @@ function resetDesktopMatchRailToEmpty(){
     }
   }
 
+  function positionDropdown(){
+    const rect = btn.getBoundingClientRect();
+    const gap = 8;
+    const width = drop.offsetWidth || 320;
+    let left = rect.left + (rect.width / 2) - (width / 2);
+    left = Math.max(12, Math.min(left, window.innerWidth - width - 12));
+
+    drop.style.left = `${left}px`;
+    drop.style.right = "auto";
+    drop.style.top = `${rect.bottom + gap}px`;
+  }
+
   function open(){
     clearTimeout(closeTimer);
     viewDate = parseYMD(getSelectedYMD());
     render();
+    positionDropdown();
     btn.classList.add("is-open");
     drop.classList.add("is-open");
     drop.setAttribute("aria-hidden","false");
@@ -8675,9 +8764,9 @@ function resetDesktopMatchRailToEmpty(){
     const input = document.getElementById("date");
 
     const url = new URL(window.location.href);
-    url.searchParams.set("date", ymd);
+    url.searchParams.delete("date");
     url.searchParams.delete("data");
-    window.history.pushState({}, "", url.toString());
+    window.history.replaceState({}, "", url.toString());
 
     if (input){
       input.value = ymd;
@@ -8758,37 +8847,16 @@ function resetDesktopMatchRailToEmpty(){
     drop.classList.remove("is-open");
     drop.setAttribute("aria-hidden","true");
   });
+
+  window.addEventListener("resize", () => {
+    if (drop.classList.contains("is-open")) positionDropdown();
+  });
 })();
 
 
-/* PATCH FINAL — calendário carregando jogos reais do dashboard */
-document.addEventListener("click", async function(ev){
-  const day = ev.target.closest(".topCalendarDay");
-  if (!day || !day.dataset.date) return;
-
-  const ymd = day.dataset.date;
-  const input = document.getElementById("date");
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("date", ymd);
-  url.searchParams.delete("data");
-  window.history.pushState({}, "", url.toString());
-
-  if (input){
-    input.value = ymd;
-    input.dispatchEvent(new Event("input", { bubbles:true }));
-    input.dispatchEvent(new Event("change", { bubbles:true }));
-  }
-
-  document.getElementById("topCalendarDropdown")?.classList.remove("is-open");
-  document.getElementById("btnCalendario")?.classList.remove("is-open");
-
-  if (typeof window.CornerProReloadRealGames === "function"){
-    ev.preventDefault();
-    ev.stopPropagation();
-    await window.CornerProReloadRealGames(ymd);
-  }
-}, true);
+/* PATCH FINAL — calendário carregando jogos reais do dashboard
+   Removido para evitar carregamento duplicado: o clique agora é tratado pelo calendário principal acima.
+*/
 /* =========================================================
    RIGHT RAIL PREMIUM DASH — RENDER FINAL
    Cole no final do script.js
@@ -9734,7 +9802,7 @@ document.addEventListener("click", async function(ev){
       home: clean(g.home ?? raw.casa ?? raw.home ?? raw.home_name ?? raw.team_home ?? raw.mandante ?? raw.teams?.home?.name ?? "Casa"),
       away: clean(g.away ?? raw.fora ?? raw.away ?? raw.away_name ?? raw.team_away ?? raw.visitante ?? raw.teams?.away?.name ?? "Visitante"),
       league: clean(g.league ?? raw.liga ?? raw.league_name ?? raw.competition ?? raw.league?.name ?? "Liga"),
-      time: clean(g.time ?? raw.hora ?? raw.time ?? raw.match_time ?? raw.horario ?? "--:--").slice(0,5)
+      time: clean(g.time ?? raw.hora ?? raw.time ?? (raw.match_time ? normalizeKickoffDisplayTime(raw.match_time, true) : raw.horario) ?? "--:--").slice(0,5)
     };
   }
 
@@ -9755,7 +9823,7 @@ document.addEventListener("click", async function(ev){
     const filtered = games
       .filter(g => marketPass(g, key))
       .sort((a,b) => marketPercent(b, key) - marketPercent(a, key))
-      .slice(0, 12);
+      .slice(0, 16);
 
     const allGames = getAllGames();
 
@@ -9764,7 +9832,7 @@ document.addEventListener("click", async function(ev){
       const rawIndex = allGames.indexOf(g);
 
       return `
-        <div class="gameRow" data-hover-market-row="1" data-real-game-index="${rawIndex >= 0 ? rawIndex : index}">
+        <div class="gameRow compactGameRow" data-hover-market-row="1" data-real-game-index="${rawIndex >= 0 ? rawIndex : index}">
           <div class="gameMeta">
             <small>${esc(d.league)}</small>
             <b><span>${esc(d.time)}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
@@ -10183,4 +10251,1229 @@ document.addEventListener("click", async function(ev){
 
   const observer = new MutationObserver(build);
   observer.observe(document.documentElement, { childList:true, subtree:true });
+})();
+
+
+/* =========================================================
+   MERCADOS INLINE — DATA CERTA + CACHE POR DATA
+   - Mantém layout/CSS intactos.
+   - Ao escolher uma data, guarda essa data.
+   - Ao clicar em mercado, usa cache daquela data.
+   - Só chama API uma vez por data; depois filtra localmente.
+   - Remove repetição via dedupe por jogo.
+   ========================================================= */
+(function mercadosInlineComCachePorData(){
+  if (window.__mercadosInlineComCachePorDataFinal) return;
+  window.__mercadosInlineComCachePorDataFinal = true;
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const MARKET_CACHE = new Map(); // dateYMD -> games[]
+
+  function isYMD(v){
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+  }
+
+  function todayAM(){
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone:"America/Manaus",
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit"
+    }).format(new Date());
+  }
+
+  function clean(v){
+    return String(v ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function norm(v){
+    return clean(v)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9.+\- ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function esc(v){
+    return String(v ?? "").replace(/[&<>"']/g, ch => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#039;"
+    }[ch]));
+  }
+
+  function num(v, fb = null){
+    if (v === true || v === false) return fb;
+    const n = Number(String(v ?? "").replace("%", "").replace(",", "."));
+    return Number.isFinite(n) ? n : fb;
+  }
+
+  function clamp(n, a, b){
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function raw(g){
+    return g?.raw || g || {};
+  }
+
+  function selectedDate(){
+    const win = window.__cornerProSelectedDate;
+    if (isYMD(win)) return win;
+
+    const input = $("#date")?.value;
+    if (isYMD(input)) return input;
+
+    try{
+      const params = new URLSearchParams(window.location.search);
+      const urlDate = params.get("date") || params.get("data");
+      if (isYMD(urlDate)) return urlDate;
+    }catch(e){}
+
+    const store = localStorage.getItem("cornerProSelectedDate");
+    if (isYMD(store)) return store;
+
+    try{
+      if (typeof lastDateYMD !== "undefined" && isYMD(lastDateYMD)) return lastDateYMD;
+      if (typeof lastMarketDateYMD !== "undefined" && isYMD(lastMarketDateYMD)) return lastMarketDateYMD;
+    }catch(e){}
+
+    return todayAM();
+  }
+
+  function setSelectedDate(ymd, { clearPanelCache = true } = {}){
+    if (!isYMD(ymd)) return;
+
+    window.__cornerProSelectedDate = ymd;
+    localStorage.setItem("cornerProSelectedDate", ymd);
+
+    const input = $("#date");
+    if (input && input.value !== ymd){
+      input.value = ymd;
+      input.dispatchEvent(new Event("input", { bubbles:true }));
+      input.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
+    try{
+      const url = new URL(window.location.href);
+      url.searchParams.set("date", ymd);
+      url.searchParams.delete("data");
+      window.history.replaceState({}, "", url.toString());
+    }catch(e){}
+
+    if (clearPanelCache){
+      const panel = $(".gamesPanel");
+      if (panel){
+        panel.dataset.marketCacheDate = ymd;
+        panel.__cornerProAllGames = [];
+        panel.style.minHeight = "";
+      }
+      window.__cornerProAllGames = [];
+      window.__cornerProAllGamesDate = ymd;
+    }
+  }
+
+  function info(g){
+    const r = raw(g);
+    return {
+      home: clean(g?.home ?? r.casa ?? r.home ?? r.home_name ?? r.team_home ?? r.mandante ?? r.teams?.home?.name ?? "Casa"),
+      away: clean(g?.away ?? r.fora ?? r.away ?? r.away_name ?? r.team_away ?? r.visitante ?? r.teams?.away?.name ?? "Visitante"),
+      league: clean(g?.league ?? r.liga ?? r.league_name ?? r.competition ?? r.league?.name ?? "Liga"),
+      time: clean(displayKickoffTimeFromGame(r)).slice(0,5),
+      id: clean(r.match_id ?? r.id ?? r.event_key ?? r.event_id ?? "")
+    };
+  }
+
+  function gameKey(g){
+    const d = info(g);
+    return d.id || `${norm(d.league)}|${norm(d.home)}|${norm(d.away)}|${d.time}`;
+  }
+
+  function dedupeGames(list){
+    const seen = new Set();
+    const out = [];
+
+    for (const g of Array.isArray(list) ? list : []){
+      const k = gameKey(g);
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      out.push(g);
+    }
+
+    return out;
+  }
+
+  function seed(g){
+    return Math.abs(gameKey(g).split("").reduce((a,c) => a + c.charCodeAt(0), 0));
+  }
+
+  function enhance(list){
+    let arr = dedupeGames(list);
+    try{
+      if (typeof enrichMarketsList === "function") arr = enrichMarketsList(arr);
+    }catch(e){}
+    return dedupeGames(arr);
+  }
+
+  function storeMarketGames(ymd, games){
+    const arr = enhance(games);
+    MARKET_CACHE.set(ymd, arr);
+
+    try{
+      if (typeof lastMarketGames !== "undefined") lastMarketGames = arr.slice();
+      if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = ymd;
+      if (typeof loadingMarkets !== "undefined") loadingMarkets = false;
+    }catch(e){}
+
+    const panel = $(".gamesPanel");
+    if (panel){
+      panel.__cornerProAllGames = arr.slice();
+      panel.dataset.marketCacheDate = ymd;
+    }
+
+    window.__cornerProAllGames = arr.slice();
+    window.__cornerProAllGamesDate = ymd;
+
+    return arr;
+  }
+
+  async function loadGamesOnceForDate(ymd = selectedDate()){
+    setSelectedDate(ymd, { clearPanelCache:false });
+
+    if (MARKET_CACHE.has(ymd) && MARKET_CACHE.get(ymd).length){
+      return MARKET_CACHE.get(ymd);
+    }
+
+    // 1) reaproveita lastMarketGames somente se a data for a mesma.
+    try{
+      if (
+        typeof lastMarketDateYMD !== "undefined" &&
+        lastMarketDateYMD === ymd &&
+        typeof lastMarketGames !== "undefined" &&
+        Array.isArray(lastMarketGames) &&
+        lastMarketGames.length
+      ){
+        return storeMarketGames(ymd, lastMarketGames);
+      }
+    }catch(e){}
+
+    // 2) reaproveita painel somente se for a mesma data.
+    const panel = $(".gamesPanel");
+    if (
+      panel?.dataset?.marketCacheDate === ymd &&
+      Array.isArray(panel.__cornerProAllGames) &&
+      panel.__cornerProAllGames.length
+    ){
+      return storeMarketGames(ymd, panel.__cornerProAllGames);
+    }
+
+    if (
+      window.__cornerProAllGamesDate === ymd &&
+      Array.isArray(window.__cornerProAllGames) &&
+      window.__cornerProAllGames.length
+    ){
+      return storeMarketGames(ymd, window.__cornerProAllGames);
+    }
+
+    // 3) se lastRawGames é da data selecionada, usa sem API.
+    try{
+      if (
+        typeof lastDateYMD !== "undefined" &&
+        lastDateYMD === ymd &&
+        typeof lastRawGames !== "undefined" &&
+        Array.isArray(lastRawGames) &&
+        lastRawGames.length
+      ){
+        return storeMarketGames(ymd, lastRawGames);
+      }
+    }catch(e){}
+
+    // 4) API só uma vez por data.
+    let loaded = [];
+    try{
+      if (typeof loadingMarkets !== "undefined") loadingMarkets = false;
+
+      if (typeof loadMarketGames === "function"){
+        loaded = await loadMarketGames({ date:ymd, fresh:false });
+      }
+    }catch(e){
+      console.warn("[Corner Pro] loadMarketGames falhou:", ymd, e);
+    }
+
+    if (!Array.isArray(loaded) || !loaded.length){
+      try{
+        if (typeof fetchGamesFromApi === "function"){
+          loaded = await fetchGamesFromApi(["/mercados", "/quentes"], ymd, false);
+        }
+      }catch(e){
+        console.warn("[Corner Pro] fetchGamesFromApi falhou:", ymd, e);
+      }
+    }
+
+    return storeMarketGames(ymd, Array.isArray(loaded) ? loaded : []);
+  }
+
+  function lineFromText(text){
+    const m = String(text || "").match(/(?:over|under|\+)\s*(\d+(?:\.\d+)?)/i);
+    return m ? Number(m[1]) : null;
+  }
+
+  function contextFromButton(btn){
+    const label = clean(btn.dataset.marketLine || btn.textContent || "Mercado");
+    const panel = btn.closest(".marketInlinePanel");
+    const title = clean(panel?.querySelector(".marketInlineTitle strong")?.textContent || "");
+    const section = clean(btn.closest(".marketInlineSection")?.querySelector("h4")?.textContent || "");
+    const text = norm(`${title} ${section} ${label}`);
+    return { label, title, section, text };
+  }
+
+  function projectedCorners(g){
+    const r = raw(g);
+    const direct = num(
+      g?.proj ??
+      r.proj_cantos ??
+      r.projCorners ??
+      r.corners_projection ??
+      r.corner_projection ??
+      r.expected_corners ??
+      r.total_corners_avg,
+      null
+    );
+    if (direct !== null && direct > 0) return direct;
+    return 9.4 + (seed(g) % 25) / 10;
+  }
+
+  function expectedGoals(g){
+    const r = raw(g);
+    const direct = num(
+      r.markets?.totalExpected ??
+      r.totalExpected ??
+      r.expected_goals_total ??
+      r.xg_total ??
+      r.total_goals_avg ??
+      r.media_gols_total ??
+      r.proj_gols ??
+      r.goals_projection ??
+      r.projGoals,
+      null
+    );
+
+    if (direct !== null && direct > 0) return direct;
+
+    const league = norm(info(g).league);
+    const baseProb = num(r.over95_prob_adj ?? r.over95_prob ?? r.ai_score ?? r.score ?? 60, 60);
+
+    let total = 2.12;
+    total += (projectedCorners(g) - 9.5) * 0.20;
+    total += (baseProb - 60) * 0.010;
+
+    if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("jupiler") || league.includes("super lig")){
+      total += 0.18;
+    }
+
+    if (league.includes("serie a") || league.includes("ligue 1")){
+      total -= 0.08;
+    }
+
+    return clamp(total, 1.35, 4.35);
+  }
+
+  function projectedCards(g){
+    const r = raw(g);
+    const direct = num(
+      r.proj_cards ??
+      r.cards_projection ??
+      r.expected_cards_total ??
+      r.total_cards_avg ??
+      r.media_cartoes_total ??
+      r.cartoes_media,
+      null
+    );
+
+    if (direct !== null && direct > 0) return direct;
+
+    const league = norm(info(g).league);
+    let total = 3.45;
+
+    if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig")){
+      total += 0.42;
+    }
+
+    if (league.includes("premier") || league.includes("bundesliga")){
+      total -= 0.08;
+    }
+
+    total += (projectedCorners(g) - 10) * 0.09;
+    total += (seed(g) % 7) * 0.04;
+
+    return clamp(total, 2.1, 6.2);
+  }
+
+  function getPath(obj, paths){
+    for (const path of paths){
+      const parts = String(path).split(".");
+      let cur = obj;
+      for (const part of parts){
+        if (cur == null) break;
+        cur = cur[part];
+      }
+      if (cur !== undefined && cur !== null && cur !== "") return cur;
+    }
+    return null;
+  }
+
+  function percentValue(v, fallback = null){
+    if (typeof v === "boolean") return fallback;
+    const n = num(v, null);
+    if (n === null) return fallback;
+    if (n > 0 && n <= 1) return clamp(Math.round(n * 100), 0, 100);
+    return clamp(Math.round(n), 0, 100);
+  }
+
+  function percentGoals(g, line){
+    const r = raw(g);
+    const key = `over${String(line).replace(".", "")}`;
+    const ready = percentValue(getPath(r, [
+      `markets.prob.${key}`,
+      `markets.${key}_prob`,
+      `${key}_prob`,
+      `prob_${key}`,
+      `goals.${key}_prob`,
+      `over_${String(line).replace(".", "")}_prob`
+    ]), null);
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(50 + (expectedGoals(g) - line) * 22), 5, 92);
+  }
+
+  function percentBtts(g){
+    const r = raw(g);
+    const ready = percentValue(getPath(r, [
+      "markets.prob.btts",
+      "markets.btts_prob",
+      "btts_prob",
+      "prob_btts",
+      "ambas_marcam_prob",
+      "both_teams_score_prob"
+    ]), null);
+
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(43 + (expectedGoals(g) - 2.12) * 15 + (seed(g) % 8)), 12, 84);
+  }
+
+  function percentCorners(g, line, ht = false){
+    const r = raw(g);
+    const key = `corners${String(line).replace(".", "")}${ht ? "ht" : ""}`;
+    const ready = percentValue(getPath(r, [
+      `markets.prob.${key}`,
+      `markets.filterProb.${key}`,
+      `${key}_prob`,
+      `${key}_filter_prob`
+    ]), null);
+
+    if (ready !== null && ready > 5) return ready;
+
+    const projected = ht ? projectedCorners(g) * 0.46 : projectedCorners(g);
+    return clamp(Math.round(50 + (projected - line) * 16), 5, 93);
+  }
+
+  function percentCards(g, line){
+    const r = raw(g);
+    const key = `cards${String(line).replace(".", "")}`;
+    const ready = percentValue(getPath(r, [
+      `markets.prob.${key}`,
+      `${key}_prob`,
+      `over${String(line).replace(".", "")}cards_prob`
+    ]), null);
+
+    if (ready !== null && ready > 5) return ready;
+    return clamp(Math.round(48 + (projectedCards(g) - line) * 14), 5, 90);
+  }
+
+  function marketPercent(g, ctx){
+    const t = ctx.text;
+    const line = lineFromText(ctx.label);
+
+    if (t.includes("ambas") || t.includes("ambos") || t.includes("btts")){
+      return percentBtts(g);
+    }
+
+    if (t.includes("gol") || t.includes("gols")){
+      const l = line || 2.5;
+      if (t.includes("under") || t.includes("nao") || t.includes("não")){
+        return clamp(Math.round(55 + (l - expectedGoals(g)) * 22), 5, 92);
+      }
+      return percentGoals(g, l);
+    }
+
+    if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
+      const l = line || 9.5;
+      const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1o tempo") || t.includes("1º tempo");
+      if (t.includes("under")){
+        const projected = ht ? projectedCorners(g) * 0.46 : projectedCorners(g);
+        return clamp(Math.round(55 + (l - projected) * 16), 5, 92);
+      }
+      return percentCorners(g, l, ht);
+    }
+
+    if (t.includes("cart")){
+      const l = line || (t.includes("vermelho") ? 5.0 : 3.5);
+      if (t.includes("under") || t.includes("sem cartao") || t.includes("sem cartão")){
+        return clamp(Math.round(55 + (l - projectedCards(g)) * 14), 5, 90);
+      }
+      return percentCards(g, l);
+    }
+
+    const r = raw(g);
+    const base = num(r.ai_score ?? r.score ?? r.local_score ?? r.over95_prob_adj ?? r.over95_prob, 58);
+    return clamp(Math.round(base + (seed(g) % 9) - 4), 12, 94);
+  }
+
+  function marketPass(g, ctx){
+    const t = ctx.text;
+    const p = marketPercent(g, ctx);
+
+    if (t.includes("over 4.5") || t.includes("+4.5") || t.includes("over 5.5") || t.includes("+5.5") || t.includes("over 6.5") || t.includes("+6.5")) return p >= 28;
+    if (t.includes("over 3.5") || t.includes("+3.5")) return p >= 30;
+    if (t.includes("over 2.5") || t.includes("+2.5")) return p >= 34;
+    if (t.includes("under")) return p >= 38;
+    if (t.includes("ambas") || t.includes("ambos") || t.includes("btts")) return p >= 38;
+
+    if (t.includes("escanteio") || t.includes("canto")){
+      const l = lineFromText(ctx.label) || 9.5;
+      const projected = projectedCorners(g);
+      return t.includes("under") ? projected <= l + 0.8 : projected >= l - 0.8;
+    }
+
+    if (t.includes("cart")){
+      const l = lineFromText(ctx.label) || 3.5;
+      return t.includes("under") ? projectedCards(g) <= l + 0.7 : projectedCards(g) >= l - 0.7;
+    }
+
+    return true;
+  }
+
+  function makeRow(g, ctx, index){
+    const d = info(g);
+    const p = Math.round(marketPercent(g, ctx));
+    return `
+      <div class="gameRow" data-market-cache-row="1" data-game-index="${index}">
+        <div class="gameMeta">
+          <small>${esc(d.league)}</small>
+          <b><span>${esc(d.time)}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
+        </div>
+        <div class="oddBox"><small>MERCADO</small><b>${esc(ctx.label)}</b><span>${p}%</span></div>
+        <div class="oddBox"><small>ESCANTEIOS</small><b>PROJ.</b><span>${projectedCorners(g).toFixed(1)}</span></div>
+        <div class="oddBox"><small>TOTAL GOLS</small><b>PROJ.</b><span>${expectedGoals(g).toFixed(1)}</span></div>
+        <div class="oddBox"><small>CARTÕES</small><b>PROJ.</b><span>${projectedCards(g).toFixed(1)}</span></div>
+        <button class="signal" type="button">▮▮▮</button>
+      </div>
+    `;
+  }
+
+  async function renderMarket(ctx){
+    const panel = $(".gamesPanel");
+    if (!panel) return;
+
+    const ymd = selectedDate();
+    const oldH = panel.offsetHeight;
+    if (oldH > 0) panel.style.minHeight = `${oldH}px`;
+
+    const title = $(".sectionHead h2", panel);
+    if (title) title.textContent = `Jogos — ${ctx.label}`;
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+
+    let games = MARKET_CACHE.get(ymd);
+    if (!games || !games.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Carregando jogos de <b>${esc(ymd)}</b>...</div>`);
+      games = await loadGamesOnceForDate(ymd);
+      panel.querySelectorAll(".cornerProStatus").forEach(el => el.remove());
+    }
+
+    if (!games.length){
+      panel.insertAdjacentHTML("beforeend", `
+        <div class="marketStrictEmpty">Nenhum jogo carregado para <b>${esc(ymd)}</b>.</div>
+        <button class="viewAll" type="button">VER TODOS OS JOGOS</button>
+      `);
+      return;
+    }
+
+    const filtered = games
+      .map((g, i) => ({ g, i }))
+      .filter(item => marketPass(item.g, ctx))
+      .sort((a,b) => marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
+      .slice(0, 18);
+
+    if (!filtered.length){
+      panel.insertAdjacentHTML("beforeend", `
+        <div class="marketStrictEmpty">Nenhum jogo encontrado para <b>${esc(ctx.label)}</b> em <b>${esc(ymd)}</b>.</div>
+        <button class="viewAll" type="button">VER TODOS OS JOGOS</button>
+      `);
+      return;
+    }
+
+    panel.insertAdjacentHTML(
+      "beforeend",
+      filtered.map(item => makeRow(item.g, ctx, item.i)).join("") +
+      `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
+    );
+  }
+
+  async function restoreAll(){
+    const ymd = selectedDate();
+    const games = await loadGamesOnceForDate(ymd);
+    const panel = $(".gamesPanel");
+
+    if (typeof renderGames === "function"){
+      try{
+        renderGames(games);
+        if (panel) panel.style.minHeight = "";
+        return;
+      }catch(e){}
+    }
+
+    if (!panel) return;
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+
+    const ctx = { label:"Todos", text:"todos" };
+    panel.insertAdjacentHTML(
+      "beforeend",
+      games.slice(0, 18).map((g, i) => makeRow(g, ctx, i)).join("") +
+      `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
+    );
+  }
+
+  // Guarda data escolhida sem limpar o cache já carregado daquela data.
+  document.addEventListener("click", function(ev){
+    const day = ev.target.closest(".topCalendarDay,[data-cal-day]");
+    if (!day) return;
+
+    const ymd = day.dataset.date || day.dataset.calDay;
+    if (!isYMD(ymd)) return;
+
+    setSelectedDate(ymd, { clearPanelCache:true });
+  }, true);
+
+  document.addEventListener("input", function(ev){
+    if (ev.target && ev.target.id === "date" && isYMD(ev.target.value)){
+      setSelectedDate(ev.target.value, { clearPanelCache:true });
+    }
+  }, true);
+
+  document.addEventListener("change", function(ev){
+    if (ev.target && ev.target.id === "date" && isYMD(ev.target.value)){
+      setSelectedDate(ev.target.value, { clearPanelCache:true });
+    }
+  }, true);
+
+  // Clique em mercado: intercepta antes de qualquer handler antigo.
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest(".marketInlineItem");
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
+    btn.classList.add("is-selected");
+
+    renderMarket(contextFromButton(btn));
+  }, true);
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest(".viewAll");
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    restoreAll();
+  }, true);
+
+  document.addEventListener("click", async function(ev){
+    const row = ev.target.closest(".gameRow[data-market-cache-row]");
+    if (!row) return;
+
+    const games = await loadGamesOnceForDate(selectedDate());
+    const g = games[Number(row.dataset.gameIndex)];
+    if (!g) return;
+
+    const r = raw(g);
+    const d = info(g);
+    const railGame = {
+      ...r,
+      casa:d.home,
+      fora:d.away,
+      liga:d.league,
+      hora:d.time,
+      match_id:r.match_id ?? r.id ?? r.event_key ?? r.event_id
+    };
+
+    try{
+      if (typeof updateDesktopMatchRail === "function"){
+        updateDesktopMatchRail(railGame, games.map(raw));
+      } else if (window.updateDesktopMatchRail){
+        window.updateDesktopMatchRail(railGame, games.map(raw));
+      }
+    }catch(e){}
+  }, true);
+
+  // FIX DEFINITIVO: ao atualizar/abrir a página, sempre começa no dia atual.
+  // Não reaproveita mais data da URL, input antigo ou localStorage.
+  const initial = todayAM();
+
+  try{
+    localStorage.removeItem("cornerProSelectedDate");
+    window.__cornerProSelectedDate = initial;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("date");
+    url.searchParams.delete("data");
+    window.history.replaceState({}, "", url.toString());
+  }catch(e){}
+
+  if (isYMD(initial)) setSelectedDate(initial, { clearPanelCache:false });
+
+  window.cornerProSetDate = function(ymd){
+    setSelectedDate(ymd, { clearPanelCache:true });
+  };
+
+  window.cornerProClearMarketCache = function(){
+    MARKET_CACHE.clear();
+  };
+})();
+/* =========================================================
+   MATCH CENTER LATERAL FINAL — PLACAR + COMPARATIVO + PRESSÃO
+   - Patch no fim do JS para vencer versões antigas
+   - Altera somente #desktopMatchRail
+   ========================================================= */
+(function installFinalRightRailMatchCenter(){
+  const esc = (v) => String(v ?? "")
+    .replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
+
+  const clean = (v, fb = "—") => {
+    const s = String(v ?? "").trim();
+    return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
+  };
+
+  const num = (v, fb = null) => {
+    const n = Number(String(v ?? "").replace("%","").replace(",","."));
+    return Number.isFinite(n) ? n : fb;
+  };
+
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const pct = (v) => clamp(Math.round(num(v, 0)), 0, 100);
+
+  function initials(name, fallback){
+    const s = clean(name, fallback);
+    const parts = s.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return s.slice(0,2).toUpperCase();
+  }
+
+  function valueFrom(obj, paths, fb = "—"){
+    for (const path of paths){
+      const parts = path.split(".");
+      let cur = obj;
+      for (const p of parts) cur = cur?.[p];
+      if (cur !== undefined && cur !== null && cur !== "") return clean(cur, fb);
+    }
+    return fb;
+  }
+
+  function numberFrom(obj, paths, fb = null){
+    const v = valueFrom(obj, paths, "");
+    const n = num(v, null);
+    return n === null ? fb : n;
+  }
+
+  function statusLabel(data){
+    const raw = String(data?.status || data?.status_raw || "").toLowerCase();
+    if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
+    if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
+    return "PRÉ-JOGO";
+  }
+
+  function getMinute(data){
+    const raw = data?.minute ?? data?.match_minute ?? data?.time_live ?? data?.elapsed ?? "";
+    const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(n)) return clamp(n, 1, 120);
+    return data?.finished ? 90 : 0;
+  }
+
+  function splitPercent(a, b){
+    const x = num(a, null), y = num(b, null);
+    if (x === null || y === null){
+      return { home:50, away:50 };
+    }
+    const total = Math.max(1, x + y);
+    const home = clamp(Math.round((x / total) * 100), 0, 100);
+    return { home, away:100 - home };
+  }
+
+  function metricRow(label, homeVal, awayVal, maxHint){
+    const hNum = num(homeVal, null);
+    const aNum = num(awayVal, null);
+    const max = Math.max(1, num(maxHint, null) || hNum || 0, aNum || 0);
+    const hw = hNum === null ? 0 : clamp(Math.round((hNum / max) * 100), 3, 100);
+    const aw = aNum === null ? 0 : clamp(Math.round((aNum / max) * 100), 3, 100);
+    return `
+      <div class="mcRailRow">
+        <div class="mcRailRowValue">${esc(homeVal)}</div>
+        <div class="mcRailTrack home"><i style="width:${hw}%"></i></div>
+        <div class="mcRailMetric">${esc(label)}</div>
+        <div class="mcRailTrack away"><i style="width:${aw}%"></i></div>
+        <div class="mcRailRowValue away">${esc(awayVal)}</div>
+      </div>`;
+  }
+
+  function pressureLevel(ph, pa, explicit){
+    if (explicit) return clean(explicit);
+    const total = (num(ph,0) || 0) + (num(pa,0) || 0);
+    if (total >= 75) return "MUITO FORTE";
+    if (total >= 48) return "FORTE";
+    if (total >= 25) return "EQUILIBRADO";
+    if (total > 0) return "BAIXO";
+    return "AGUARDANDO";
+  }
+
+  function eventMinute(e){
+    const raw = e?.minute ?? e?.time ?? e?.elapsed ?? e?.match_minute ?? e?.label ?? "";
+    const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+    return Number.isFinite(n) ? clamp(n, 1, 120) : null;
+  }
+
+  function eventIcon(e){
+    const t = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
+    if (t.includes("goal") || t.includes("gol")) return "⚽";
+    if (t.includes("corner") || t.includes("escanteio")) return "⚑";
+    if (t.includes("yellow") || t.includes("amarelo")) return "🟨";
+    if (t.includes("red") || t.includes("vermelho")) return "🟥";
+    if (t.includes("sub")) return "↕";
+    return "•";
+  }
+
+  function normalizeTimelineItem(p, idx){
+    return {
+      minute: num(p?.minute ?? p?.time ?? p?.elapsed ?? p?.label, idx + 1),
+      home: num(p?.home ?? p?.mandante ?? p?.casa ?? p?.home_pressure ?? p?.h, 0),
+      away: num(p?.away ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.a, 0)
+    };
+  }
+
+  function buildSeries(data, ph, pa){
+    const candidates = [
+      data?.pressure_timeline,
+      data?.pressureTimeline,
+      data?.pressure_history,
+      data?.pressureHistory,
+      data?.momentum,
+      data?.momentum_timeline,
+      data?.attacks_timeline,
+      data?.dangerous_attacks_timeline
+    ];
+
+    for (const c of candidates){
+      if (Array.isArray(c) && c.length >= 4){
+        const real = c.map(normalizeTimelineItem).filter(p => Number.isFinite(p.home) || Number.isFinite(p.away));
+        if (real.length >= 4) return real.slice(-28);
+      }
+    }
+
+    const events = Array.isArray(data?.events) ? data.events : [];
+    if (events.length){
+      const buckets = Array.from({length:18}, (_,i) => ({ minute:i * 5, home:0, away:0 }));
+      events.forEach(e => {
+        const m = eventMinute(e);
+        if (!m) return;
+        const idx = clamp(Math.floor(m / 5), 0, buckets.length - 1);
+        const txt = String(e?.type || e?.label || "").toLowerCase();
+        const weight = txt.includes("gol") || txt.includes("goal") ? 14 : txt.includes("corner") || txt.includes("escanteio") ? 8 : txt.includes("shot") || txt.includes("final") ? 6 : 3;
+        const side = String(e?.side || e?.team_side || "").toLowerCase();
+        if (side.includes("away") || side.includes("fora") || side.includes("visit")) buckets[idx].away += weight;
+        else buckets[idx].home += weight;
+      });
+      if (buckets.some(b => b.home || b.away)) return buckets;
+    }
+
+    const h = num(ph, 0) || 0;
+    const a = num(pa, 0) || 0;
+    const minute = getMinute(data) || 90;
+    const size = 22;
+    return Array.from({length:size}, (_,i) => {
+      const t = i / (size - 1);
+      const waveH = 0.55 + 0.35 * Math.sin(i * 1.15) + 0.16 * Math.cos(i * 2.2);
+      const waveA = 0.55 + 0.35 * Math.cos(i * 1.05) + 0.15 * Math.sin(i * 1.8);
+      return {
+        minute: Math.round(t * Math.max(90, minute)),
+        home: Math.max(1, Math.round((h || 28) / 12 * waveH)),
+        away: Math.max(1, Math.round((a || 34) / 12 * waveA))
+      };
+    });
+  }
+
+  function linePath(points){
+    return points.map((p,i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  }
+
+  function areaPath(points, mid, topSide){
+    if (!points.length) return "";
+    if (topSide){
+      return `M${points[0].x.toFixed(1)},${mid} ` + linePath(points).replace(/^M[^L]+/, `L${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`) + ` L${points[points.length-1].x.toFixed(1)},${mid} Z`;
+    }
+    return `M${points[0].x.toFixed(1)},${mid} ` + linePath(points).replace(/^M[^L]+/, `L${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`) + ` L${points[points.length-1].x.toFixed(1)},${mid} Z`;
+  }
+
+  function pressureChart(data, ph, pa, events){
+    const series = buildSeries(data || {}, ph, pa).slice(-30);
+    const W = 330, H = 174, left = 24, right = 8, top = 14, bottom = 24, mid = 86;
+    const maxV = Math.max(8, ...series.flatMap(p => [num(p.home,0), num(p.away,0)]));
+    const span = W - left - right;
+    const xAt = (i) => left + (i / Math.max(1, series.length - 1)) * span;
+    const yHome = (v) => mid - (num(v,0) / maxV) * 62;
+    const yAway = (v) => mid + (num(v,0) / maxV) * 62;
+    const homePts = series.map((p,i) => ({ x:xAt(i), y:yHome(p.home) }));
+    const awayPts = series.map((p,i) => ({ x:xAt(i), y:yAway(p.away) }));
+    const eventMarks = (Array.isArray(events) ? events : []).slice(0,6).map(e => {
+      const m = eventMinute(e);
+      if (!m) return "";
+      const x = left + clamp(m, 0, 90) / 90 * span;
+      return `<line class="eventLine" x1="${x.toFixed(1)}" y1="18" x2="${x.toFixed(1)}" y2="150"></line><text class="eventText" x="${x.toFixed(1)}" y="16" text-anchor="middle">${eventIcon(e)}</text>`;
+    }).join("");
+
+    return `
+      <div class="mcRailSvgWrap">
+        <svg class="mcRailPressureSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de pressão da partida">
+          <defs>
+            <linearGradient id="mcRailHomeArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1688ff" stop-opacity=".55"/><stop offset="1" stop-color="#1688ff" stop-opacity="0"/></linearGradient>
+            <linearGradient id="mcRailAwayArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#63f127" stop-opacity=".46"/><stop offset="1" stop-color="#63f127" stop-opacity="0"/></linearGradient>
+          </defs>
+          <line class="grid" x1="${left}" y1="${top}" x2="${W-right}" y2="${top}"></line>
+          <line class="grid" x1="${left}" y1="52" x2="${W-right}" y2="52"></line>
+          <line class="mid" x1="${left}" y1="${mid}" x2="${W-right}" y2="${mid}"></line>
+          <line class="grid" x1="${left}" y1="120" x2="${W-right}" y2="120"></line>
+          <line class="grid" x1="${left}" y1="150" x2="${W-right}" y2="150"></line>
+          <path class="homeArea" d="${areaPath(homePts, mid, true)}"></path>
+          <path class="awayArea" d="${areaPath(awayPts, mid, false)}"></path>
+          <path class="homeLine" d="${linePath(homePts)}"></path>
+          <path class="awayLine" d="${linePath(awayPts)}"></path>
+          ${eventMarks}
+          <text x="${left}" y="168">0'</text><text x="${left + span/3}" y="168" text-anchor="middle">30'</text><text x="${left + span*2/3}" y="168" text-anchor="middle">60'</text><text x="${W-right}" y="168" text-anchor="end">90'</text>
+        </svg>
+        <div class="mcRailLegend"><span><i></i>Mandante</span><span class="away"><i></i>Visitante</span></div>
+      </div>`;
+  }
+
+  function importantEvents(events){
+    const list = Array.isArray(events) ? events.slice(0,7) : [];
+    if (!list.length){
+      return `<div class="mcRailEvents"><span>⚑</span><div class="line"></div><span>⚽</span><div class="line"></div><span>▣</span><div class="line"></div><span>⚑</span></div>`;
+    }
+    return `<div class="mcRailEvents">${list.map(e => `<span title="${esc(clean(e?.minute,""))} ${esc(clean(e?.label || e?.type,"Evento"))}">${eventIcon(e)}</span><div class="line"></div>`).join("")}</div>`;
+  }
+
+  function emptyRail(){
+    const rail = document.getElementById("desktopMatchRail");
+    if (!rail) return;
+    rail.innerHTML = `
+      <section class="railCard mcRailEmptyBox">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+        <div class="mcRailEmptyRadar"><b>⚽</b></div>
+        <h3 style="margin:0;color:#fff;font-size:13px;text-transform:uppercase;">Aguardando partida</h3>
+        <p>Selecione um jogo para abrir o placar, comparativo e gráfico de pressão no painel lateral.</p>
+      </section>
+      <button class="railFullBtn railFullBtnDisabled" type="button" disabled>INICIAR MATCH CENTER</button>`;
+  }
+
+  window.resetDesktopMatchRailToEmpty = emptyRail;
+
+  window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
+    const rail = document.getElementById("desktopMatchRail");
+    if (!rail || !game) return;
+
+    const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || "", "");
+    const home0 = clean(game?.casa || game?.home || game?.home_team || game?.home_name || "Mandante");
+    const away0 = clean(game?.fora || game?.away || game?.away_team || game?.away_name || "Visitante");
+    const league0 = clean(game?.liga || game?.league_name || game?.league?.name || "Liga");
+    const time0 = clean(game?.hora || game?.time || "—");
+    const basePct = pct(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score ?? 69);
+    const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
+
+    function render(data = {}){
+      const isReal = !!data && Object.keys(data).length > 0 && !data.error;
+      const home = clean(data?.home || data?.casa || data?.home_team || home0);
+      const away = clean(data?.away || data?.fora || data?.away_team || away0);
+      const league = clean(data?.league || data?.liga || league0);
+      const time = clean(data?.time || data?.hora || time0);
+      const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
+      const minute = isReal ? getMinute(data) : 0;
+      const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
+
+      const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
+      const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");
+      const ch = clean(data?.corners?.home ?? data?.home_corners ?? game?.corners_home ?? 0, "0");
+      const ca = clean(data?.corners?.away ?? data?.away_corners ?? game?.corners_away ?? 0, "0");
+      const sh = clean(data?.shots?.home ?? data?.shots?.total_home ?? data?.home_shots ?? "—", "—");
+      const sa = clean(data?.shots?.away ?? data?.shots?.total_away ?? data?.away_shots ?? "—", "—");
+      const sotH = clean(data?.shots_on_target?.home ?? data?.on_target?.home ?? data?.shots?.on_home ?? "—", "—");
+      const sotA = clean(data?.shots_on_target?.away ?? data?.on_target?.away ?? data?.shots?.on_away ?? "—", "—");
+      const possH = clean(data?.possession?.home ?? data?.posse?.home ?? "—", "—");
+      const possA = clean(data?.possession?.away ?? data?.posse?.away ?? "—", "—");
+      const passH = clean(data?.passes?.home ?? data?.accurate_passes?.home ?? "—", "—");
+      const passA = clean(data?.passes?.away ?? data?.accurate_passes?.away ?? "—", "—");
+      const foulH = clean(data?.fouls?.home ?? data?.faltas?.home ?? "—", "—");
+      const foulA = clean(data?.fouls?.away ?? data?.faltas?.away ?? "—", "—");
+      const cardH = clean(data?.cards?.yellow_home ?? data?.cards?.home ?? data?.yellow_cards?.home ?? "—", "—");
+      const cardA = clean(data?.cards?.yellow_away ?? data?.cards?.away ?? data?.yellow_cards?.away ?? "—", "—");
+      const ph = clean(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.attacks?.home ?? basePct, basePct);
+      const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.attacks?.away ?? Math.max(0, 100 - basePct), Math.max(0, 100 - basePct));
+      const split = splitPercent(ph, pa);
+      const events = Array.isArray(data?.events) ? data.events : [];
+      const confidence = split.home;
+      const reading = isReal
+        ? `${split.home >= split.away ? home : away} aparece com maior pressão ofensiva no recorte atual.`
+        : `Pré-jogo selecionado. Projeção de ${proj} escanteios e força do filtro em ${basePct}%.`;
+
+      rail.innerHTML = `
+        <section class="railCard mcRailScoreCard ${st === "AO VIVO" ? "is-live" : ""}">
+          <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(st)}${st === "AO VIVO" && minute ? " • " + minute + "'" : ""}</b></div>
+          <div class="mcRailMeta">${esc(league)} • ${esc(time)}</div>
+          <div class="mcRailScoreGrid">
+            <div class="mcRailTeam"><div class="mcRailBadge">${esc(initials(home,"CA"))}</div><strong>${esc(home)}</strong></div>
+            <div class="mcRailScore"><strong>${esc(gh)} - ${esc(ga)}</strong><span>${esc(st)}</span></div>
+            <div class="mcRailTeam"><div class="mcRailBadge away">${esc(initials(away,"FO"))}</div><strong>${esc(away)}</strong></div>
+          </div>
+          <div class="mcRailTimeline"><i style="width:${progress}%"></i></div>
+        </section>
+
+        <section class="railCard mcRailCompare">
+          <div class="mcRailCompareHead"><h3>Comparativo</h3><span>REAL</span></div>
+          ${metricRow("Escanteios", ch, ca)}
+          ${metricRow("Finalizações", sh, sa)}
+          ${metricRow("No alvo", sotH, sotA)}
+          ${metricRow("Posse de bola", possH, possA, 100)}
+          ${metricRow("Passes certos", passH, passA)}
+          ${metricRow("Faltas", foulH, foulA)}
+          ${metricRow("Cartões", cardH, cardA)}
+        </section>
+
+        <section class="railCard mcRailPressureCard">
+          <div class="mcRailPressureHead"><h3>Gráfico de pressão</h3><b>${esc(pressureLevel(ph, pa, data?.pressure_level))}</b></div>
+          <div class="mcRailPressureSplit">
+            <div><span>${esc(home)}</span><strong>${split.home}%</strong></div>
+            <div class="mcRailPressureBar"><i style="width:${split.home}%"></i><i style="width:${split.away}%"></i></div>
+            <div class="away"><span>${esc(away)}</span><strong>${split.away}%</strong></div>
+          </div>
+          ${pressureChart(data || {}, ph, pa, events)}
+        </section>
+
+        <div class="mcRailBottomGrid">
+          <section class="railCard mcRailMini">
+            <h3>Leitura do jogo</h3>
+            <p>${esc(reading)}</p>
+          </section>
+          <section class="railCard mcRailMini">
+            <h3>Momentos</h3>
+            ${importantEvents(events)}
+          </section>
+        </div>
+
+        <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
+      `;
+    }
+
+    render({});
+
+    if (!matchId) return;
+    try{
+      const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, { cache:"no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error) render(data);
+    }catch(err){
+      console.warn("Match Center lateral final falhou:", err);
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const rail = document.getElementById("desktopMatchRail");
+    if (rail && !window.__selectedMatchCenterGame) emptyRail();
+  });
+})();
+
+/* =========================================================
+   FIX DEFINITIVO — MATCH CENTER AO ATUALIZAR A PÁGINA
+   Mantém o estado vazio completo: Match Center + Estatísticas + Eventos.
+   ========================================================= */
+(function fixEmptyMatchCenterOnRefresh(){
+  if (window.__fixEmptyMatchCenterOnRefreshInstalled) return;
+  window.__fixEmptyMatchCenterOnRefreshInstalled = true;
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+  }[ch]));
+
+  function renderEmptyMatchCenter(){
+    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+    if (!rail) return;
+
+    // Se já existe partida selecionada/renderizada, não mexe.
+    if (rail.querySelector(".mcRailScoreCard, .mcProScoreCard, [data-open-match-center-table]:not(.railFullBtnDisabled)")) return;
+
+    rail.innerHTML = `
+      <section class="railCard mcRailEmptyBox">
+        <div class="railTitle">
+          <span>▣ MATCH CENTER</span>
+          <b>PRÉ-JOGO</b>
+        </div>
+        <div class="mcRailEmptyRadar"><b>⚽</b></div>
+        <h3>AGUARDANDO PARTIDA</h3>
+        <p>Selecione um jogo para abrir o placar, comparativo e gráfico de pressão no painel lateral.</p>
+      </section>
+
+      <section class="railCard">
+        <h3>ESTATÍSTICAS DO FILTRO</h3>
+        <div class="railEmptyStatsGrid">
+          <div class="railEmptyStatBox"><i>🛡️</i><span>Força do filtro</span><b>--</b><small>Aguardando</small></div>
+          <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Aguardando</small></div>
+          <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Aguardando</small></div>
+          <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Aguardando</small></div>
+        </div>
+        <p class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</p>
+      </section>
+
+      <section class="railCard">
+        <h3>EVENTOS / LEITURA</h3>
+        <div class="railEmptyEventIcons">
+          <span><i>◎</i><b>Pressão</b></span>
+          <span><i>⌁</i><b>Posse</b></span>
+          <span><i>▣</i><b>Cartões</b></span>
+          <span><i>⚑</i><b>Escanteios</b></span>
+          <span><i>⚽</i><b>Gols</b></span>
+        </div>
+        <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="railEmptyReadBox">
+          <span>📋</span>
+          <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+        </div>
+      </section>
+
+      <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
+        ▶ INICIAR MATCH CENTER
+        <small>SELECIONE UM JOGO PARA CONTINUAR</small>
+      </button>`;
+  }
+
+  window.resetDesktopMatchRailToEmpty = renderEmptyMatchCenter;
+  window.renderEmptyMatchCenter = renderEmptyMatchCenter;
+
+  function scheduleFix(){
+    setTimeout(renderEmptyMatchCenter, 40);
+    setTimeout(renderEmptyMatchCenter, 180);
+    setTimeout(renderEmptyMatchCenter, 600);
+  }
+
+  document.addEventListener("DOMContentLoaded", scheduleFix);
+  window.addEventListener("load", scheduleFix);
+
+  const obs = new MutationObserver(() => {
+    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+    if (!rail) return;
+    const hasEmptySingle = rail.querySelector(".mcRailEmptyBox") && !rail.textContent.includes("ESTATÍSTICAS DO FILTRO");
+    if (hasEmptySingle) setTimeout(renderEmptyMatchCenter, 20);
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+    if (rail) obs.observe(rail, { childList:true, subtree:false });
+    setTimeout(() => obs.disconnect(), 5000);
+  });
+})();
+
+/* =========================================================
+   FIX FINAL ABSOLUTO — DATA DE HOJE AO ATUALIZAR
+   - Vence localStorage, URL e inicializações antigas
+   - Roda várias vezes durante o carregamento
+   ========================================================= */
+(function forceTodayOnPageRefreshFinal(){
+  if (window.__forceTodayOnPageRefreshFinalInstalled) return;
+  window.__forceTodayOnPageRefreshFinalInstalled = true;
+
+  function todayAMFinal(){
+    try{
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone:"America/Manaus",
+        year:"numeric",
+        month:"2-digit",
+        day:"2-digit"
+      }).format(new Date());
+    }catch(e){
+      return new Date().toISOString().slice(0,10);
+    }
+  }
+
+  async function applyTodayFinal(){
+    const ymd = todayAMFinal();
+
+    try{
+      localStorage.removeItem("cornerProSelectedDate");
+      window.__cornerProSelectedDate = ymd;
+
+      if (typeof lastDateYMD !== "undefined") lastDateYMD = ymd;
+      if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = ymd;
+    }catch(e){}
+
+    try{
+      const url = new URL(window.location.href);
+      url.searchParams.delete("date");
+      url.searchParams.delete("data");
+      window.history.replaceState({}, "", url.toString());
+    }catch(e){}
+
+    const input = document.getElementById("date");
+    if (input && input.value !== ymd){
+      input.value = ymd;
+      input.dispatchEvent(new Event("input", { bubbles:true }));
+      input.dispatchEvent(new Event("change", { bubbles:true }));
+    }
+
+    try{
+      if (typeof window.cornerProSetDate === "function"){
+        window.cornerProSetDate(ymd);
+      }
+    }catch(e){}
+
+    try{
+      if (typeof window.CornerProReloadRealGames === "function"){
+        await window.CornerProReloadRealGames(ymd);
+        return;
+      }
+    }catch(e){}
+
+    try{
+      if (typeof loadAll === "function"){
+        await loadAll({ date: ymd, fresh: true });
+        return;
+      }
+    }catch(e){}
+  }
+
+  function scheduleTodayFinal(){
+    applyTodayFinal();
+    setTimeout(applyTodayFinal, 80);
+    setTimeout(applyTodayFinal, 350);
+    setTimeout(applyTodayFinal, 900);
+    setTimeout(applyTodayFinal, 1600);
+  }
+
+  document.addEventListener("DOMContentLoaded", scheduleTodayFinal);
+  window.addEventListener("load", scheduleTodayFinal);
+  window.addEventListener("pageshow", scheduleTodayFinal);
 })();

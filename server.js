@@ -2747,11 +2747,37 @@ function exclusionFlags({ home, away, perfil }) {
   return flags;
 }
 
+
+// ---------------- HORÁRIO LOCAL (Manaus/site) ----------------
+// A API está chegando 5 horas à frente do horário que deve aparecer no site.
+// Ex.: 19:00 -> 14:00. Centraliza a correção no servidor para todos os cards.
+function normalizeKickoffTimeAM(raw){
+  const value = String(raw ?? "").trim();
+  const m = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return value || "—";
+
+  let total = (Number(m[1]) * 60 + Number(m[2])) - (5 * 60);
+  while (total < 0) total += 24 * 60;
+  total = total % (24 * 60);
+
+  const hh = String(Math.floor(total / 60)).padStart(2, "0");
+  const mm = String(total % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function rawKickoffTimeFromEvent(e){
+  return e?.match_time ?? e?.event_time ?? e?.time ?? e?.match_status ?? "";
+}
+
+function horaFromEventAM(e){
+  return normalizeKickoffTimeAM(rawKickoffTimeFromEvent(e));
+}
+
 // ---------------- LITE ----------------
 function liteFromEvent(e, league, posHome = null, posAway = null, lite_reason = "no_base"){
   const casa = teamFromEvent(e, "home");
   const fora = teamFromEvent(e, "away");
-  const hora = (e.match_time || e.match_status || e.time || "").toString() || "—";
+  const hora = horaFromEventAM(e);
   if (!casa || !fora) return null;
 
   // evita Champions KO no lite
@@ -2787,6 +2813,8 @@ function liteFromEvent(e, league, posHome = null, posAway = null, lite_reason = 
     liga: league.name,
     league_id: league.id,
     hora,
+    hora_raw: rawKickoffTimeFromEvent(e),
+    hora_manaus: hora,
 
     round_raw: e.match_round ?? e.round ?? null,
     stage_raw: e.stage ?? e.match_stage ?? e.match_type ?? null,
@@ -4067,7 +4095,7 @@ if (isEuropeanClassic(casaN, foraN)) {
 }
 
     const match_id = e.match_id;
-    const hora = (e.match_time || e.match_status || e.time || "").toString() || "—";
+    const hora = horaFromEventAM(e);
 
     // odds (PRIMEIRO)
     let oddsInfo = null;
@@ -4335,6 +4363,8 @@ if (isEuropeanClassic(casaN, foraN)) {
         liga: league.name,
         league_id: league.id,
         hora,
+        hora_raw: rawKickoffTimeFromEvent(e),
+        hora_manaus: hora,
 
         round_raw: e.match_round ?? e.round ?? null,
         stage_raw: e.stage ?? e.match_stage ?? e.match_type ?? null,
@@ -4467,6 +4497,8 @@ if (isEuropeanClassic(casaN, foraN)) {
       liga: league.name,
       league_id: league.id,
       hora,
+      hora_raw: rawKickoffTimeFromEvent(e),
+      hora_manaus: hora,
 
       round_raw: e.match_round ?? e.round ?? null,
       stage_raw: e.stage ?? e.match_stage ?? e.match_type ?? null,
@@ -5088,7 +5120,239 @@ function mcPressureLevel(homeDanger, awayDanger, totalDanger){
 }
 
 
-function buildMatchResultPayload(eventData){
+
+/* =========================================================
+   MATCH CENTER DATA PRO — timeline real/inferida por eventos + stats
+   ========================================================= */
+function mcRawStatsList(statsData){
+  const out = [];
+  const seen = new Set();
+
+  function pushRow(row){
+    if (!row || typeof row !== "object") return;
+    const type = row.type ?? row.name ?? row.label ?? row.stat_type ?? row.statistic ?? row.key;
+    const hasValues = row.home !== undefined || row.away !== undefined || row.home_value !== undefined || row.away_value !== undefined || row.hometeam !== undefined || row.awayteam !== undefined || row.match_hometeam !== undefined || row.match_awayteam !== undefined;
+    if (!type || !hasValues) return;
+    const sig = `${type}|${row.home ?? row.home_value ?? row.hometeam ?? row.match_hometeam ?? ""}|${row.away ?? row.away_value ?? row.awayteam ?? row.match_awayteam ?? ""}`;
+    if (seen.has(sig)) return;
+    seen.add(sig);
+    out.push(row);
+  }
+
+  function walk(node, depth = 0){
+    if (!node || depth > 5) return;
+    if (Array.isArray(node)){
+      for (const item of node){
+        if (item && typeof item === "object"){
+          pushRow(item);
+          walk(item.statistics, depth + 1);
+          walk(item.match_statistics, depth + 1);
+          walk(item.statistics_fulltime, depth + 1);
+          walk(item.statistics_1half, depth + 1);
+          walk(item.statistics_2half, depth + 1);
+        }
+      }
+      return;
+    }
+    if (typeof node === "object"){
+      pushRow(node);
+      for (const key of ["statistics","stats","match_statistics","statistics_fulltime","statistics_1half","statistics_2half","data","response","result"]){
+        walk(node[key], depth + 1);
+      }
+    }
+  }
+
+  walk(statsData);
+  return out;
+}
+
+function mcMergeStatsIntoEvent(eventData, statsData){
+  const raw = mcRawStatsList(statsData);
+  if (!raw.length) return eventData;
+  const merged = { ...(eventData || {}) };
+  const existing = [];
+  for (const key of ["statistics","stats","match_statistics"]){
+    const v = eventData?.[key];
+    if (Array.isArray(v)) existing.push(...v);
+  }
+  merged.statistics = [...existing, ...raw];
+  merged.match_statistics = merged.statistics;
+  return merged;
+}
+
+function mcStatFromAny(eventData, statsData, side, aliases = []){
+  const direct = pickResultStat(eventData, side, aliases);
+  if (Number.isFinite(direct)) return direct;
+
+  const rows = mcRawStatsList(statsData);
+  const normAliases = aliases.map(a => String(a || "").toLowerCase());
+  const isHome = side === "home";
+
+  for (const row of rows){
+    const type = String(row?.type ?? row?.stat_type ?? row?.name ?? row?.label ?? row?.statistic ?? row?.key ?? "").toLowerCase();
+    if (!type) continue;
+    const ok = normAliases.some(a => type.includes(a));
+    if (!ok) continue;
+
+    const rawValue = isHome
+      ? (row.home ?? row.home_value ?? row.hometeam ?? row.match_hometeam ?? row.homeTeam)
+      : (row.away ?? row.away_value ?? row.awayteam ?? row.match_awayteam ?? row.awayTeam);
+
+    const n = resultNum(rawValue);
+    if (Number.isFinite(n)) return n;
+  }
+
+  return null;
+}
+
+function mcBuildPeriods(statsData){
+  const root = Array.isArray(statsData) ? statsData[0] : statsData;
+  if (!root || typeof root !== "object") return null;
+
+  const fromBlock = (block) => {
+    if (!block) return null;
+    const merged = { statistics: Array.isArray(block) ? block : Object.values(block).flat().filter(Boolean) };
+    return {
+      possession: {
+        home: mcStatFromAny(merged, null, "home", ["ball possession", "possession", "posse"]),
+        away: mcStatFromAny(merged, null, "away", ["ball possession", "possession", "posse"])
+      },
+      shots: {
+        home: mcStatFromAny(merged, null, "home", ["shots total", "total shots", "shots", "finaliza"]),
+        away: mcStatFromAny(merged, null, "away", ["shots total", "total shots", "shots", "finaliza"])
+      },
+      corners: {
+        home: mcStatFromAny(merged, null, "home", ["corner", "escanteio"]),
+        away: mcStatFromAny(merged, null, "away", ["corner", "escanteio"])
+      },
+      pressure: {
+        home: mcStatFromAny(merged, null, "home", ["dangerous attacks", "dangerous", "ataques perigosos"]),
+        away: mcStatFromAny(merged, null, "away", ["dangerous attacks", "dangerous", "ataques perigosos"])
+      }
+    };
+  };
+
+  const first = fromBlock(root.statistics_1half || root.first_half || root.firstHalf);
+  const second = fromBlock(root.statistics_2half || root.second_half || root.secondHalf);
+  return (first || second) ? { first, second } : null;
+}
+
+function mcEventMinute(e){
+  const n = Number(String(e?.minute ?? e?.time ?? e?.elapsed ?? e?.match_minute ?? "").replace(/[^0-9]/g, ""));
+  return Number.isFinite(n) ? Math.max(1, Math.min(120, n)) : null;
+}
+
+function mcEventSide(e, home, away){
+  const side = String(e?.side ?? e?.team_side ?? e?.home_away ?? "").toLowerCase();
+  if (side.includes("home") || side.includes("casa")) return "home";
+  if (side.includes("away") || side.includes("fora")) return "away";
+
+  const team = normTeamKey(e?.team ?? e?.team_name ?? e?.player_team ?? "");
+  const h = normTeamKey(home);
+  const a = normTeamKey(away);
+  if (team && h && (team.includes(h) || h.includes(team))) return "home";
+  if (team && a && (team.includes(a) || a.includes(team))) return "away";
+  return null;
+}
+
+function mcEventWeight(e){
+  const t = String(e?.type ?? e?.label ?? e?.detail ?? e?.event_type ?? "").toLowerCase();
+  if (t.includes("goal") || t.includes("gol")) return 22;
+  if (t.includes("shot") || t.includes("final")) return 8;
+  if (t.includes("corner") || t.includes("escanteio")) return 9;
+  if (t.includes("danger") || t.includes("perig")) return 5;
+  if (t.includes("red") || t.includes("vermelho")) return 10;
+  if (t.includes("yellow") || t.includes("amarelo")) return 3;
+  if (t.includes("sub")) return 1;
+  return 2;
+}
+
+function mcBuildRealPressureTimeline({ eventData, statsData, statusInfo, eventsInfo, home, away } = {}){
+  const merged = mcMergeStatsIntoEvent(eventData, statsData);
+  const finished = !!statusInfo?.finished;
+  const minute = finished ? 90 : (Number.isFinite(Number(statusInfo?.minute)) ? Math.max(1, Math.min(90, Number(statusInfo.minute))) : 90);
+  const bucket = 5;
+  const maxMinute = finished ? 90 : Math.max(10, minute);
+  const buckets = Array.from({ length: Math.ceil(maxMinute / bucket) }, (_, i) => ({
+    minute: `${Math.min(90, (i + 1) * bucket)}'`,
+    home: 0,
+    away: 0
+  }));
+
+  const addAt = (m, side, w) => {
+    if (!Number.isFinite(m) || !side || !w) return;
+    const idx = Math.max(0, Math.min(buckets.length - 1, Math.ceil(m / bucket) - 1));
+    buckets[idx][side] += w;
+    if (idx > 0) buckets[idx - 1][side] += Math.round(w * 0.30);
+    if (idx < buckets.length - 1) buckets[idx + 1][side] += Math.round(w * 0.18);
+  };
+
+  for (const e of (Array.isArray(eventsInfo) ? eventsInfo : [])){
+    const m = mcEventMinute(e);
+    const side = mcEventSide(e, home, away);
+    addAt(m, side, mcEventWeight(e));
+  }
+
+  const metrics = {
+    cornersHome: pickResultCorners(merged, "home"),
+    cornersAway: pickResultCorners(merged, "away"),
+    shotsHome: mcStatFromAny(merged, statsData, "home", ["shots total", "total shots", "shots", "finaliza"]),
+    shotsAway: mcStatFromAny(merged, statsData, "away", ["shots total", "total shots", "shots", "finaliza"]),
+    onHome: mcStatFromAny(merged, statsData, "home", ["shots on goal", "shots on target", "on target", "no alvo"]),
+    onAway: mcStatFromAny(merged, statsData, "away", ["shots on goal", "shots on target", "on target", "no alvo"]),
+    dangerHome: mcStatFromAny(merged, statsData, "home", ["dangerous attacks", "dangerous", "ataques perigosos"]),
+    dangerAway: mcStatFromAny(merged, statsData, "away", ["dangerous attacks", "dangerous", "ataques perigosos"]),
+    attacksHome: mcStatFromAny(merged, statsData, "home", ["attacks", "ataques"]),
+    attacksAway: mcStatFromAny(merged, statsData, "away", ["attacks", "ataques"])
+  };
+
+  const totalScore = (side) => {
+    const suf = side === "home" ? "Home" : "Away";
+    return (
+      (Number(metrics[`danger${suf}`]) || 0) * 0.38 +
+      (Number(metrics[`attacks${suf}`]) || 0) * 0.10 +
+      (Number(metrics[`shots${suf}`]) || 0) * 3.2 +
+      (Number(metrics[`on${suf}`]) || 0) * 5.2 +
+      (Number(metrics[`corners${suf}`]) || 0) * 4.8
+    );
+  };
+
+  const hTotal = totalScore("home");
+  const aTotal = totalScore("away");
+
+  const spread = (side, total) => {
+    if (!Number.isFinite(total) || total <= 0) return;
+    let currentSum = buckets.reduce((s,b) => s + (Number(b[side]) || 0), 0);
+    const need = Math.max(0, total - currentSum);
+    if (need <= 0) return;
+
+    const weights = buckets.map((_, i) => {
+      const t = i / Math.max(1, buckets.length - 1);
+      const wave = side === "home"
+        ? (0.72 + Math.sin((i + 1) * 1.37) * 0.22 + Math.cos((i + 2) * .77) * 0.12)
+        : (0.72 + Math.cos((i + 1) * 1.21) * 0.22 + Math.sin((i + 2) * .83) * 0.12);
+      const phase = finished ? (0.82 + t * 0.25) : (1.0 + t * 0.10);
+      return Math.max(0.18, wave * phase);
+    });
+    const sumW = weights.reduce((a,b) => a+b, 0) || 1;
+    buckets.forEach((b,i) => { b[side] += Math.round((need * weights[i]) / sumW); });
+  };
+
+  spread("home", hTotal);
+  spread("away", aTotal);
+
+  if (!buckets.some(b => b.home || b.away)) return [];
+
+  // Normaliza para o gráfico sem perder a proporção real.
+  const max = Math.max(1, ...buckets.map(b => Math.max(b.home, b.away)));
+  return buckets.map(b => ({
+    minute: b.minute,
+    home: Math.max(1, Math.round((b.home / max) * 100)),
+    away: Math.max(1, Math.round((b.away / max) * 100))
+  }));
+}
+
+function buildMatchResultPayload(eventData, statsData = null){
   const home = teamFromEvent(eventData, "home") || "Time A";
   const away = teamFromEvent(eventData, "away") || "Time B";
 
@@ -5108,8 +5372,10 @@ function buildMatchResultPayload(eventData){
     eventData?.goals_away
   );
 
-  const homeCorners = pickResultCorners(eventData, "home");
-  const awayCorners = pickResultCorners(eventData, "away");
+  const mergedEventData = mcMergeStatsIntoEvent(eventData, statsData);
+
+  const homeCorners = pickResultCorners(mergedEventData, "home");
+  const awayCorners = pickResultCorners(mergedEventData, "away");
 
   const totalGoals =
     Number.isFinite(homeGoals) && Number.isFinite(awayGoals)
@@ -5121,34 +5387,54 @@ function buildMatchResultPayload(eventData){
       ? homeCorners + awayCorners
       : null;
 
-  const homeShots = pickResultStat(eventData, "home", ["shot", "shots", "finaliza", "finalizacoes", "finalizações"]);
-  const awayShots = pickResultStat(eventData, "away", ["shot", "shots", "finaliza", "finalizacoes", "finalizações"]);
+  const homeShots = mcStatFromAny(mergedEventData, statsData, "home", ["shots total", "total shots", "shot", "shots", "finaliza", "finalizacoes", "finalizações"]);
+  const awayShots = mcStatFromAny(mergedEventData, statsData, "away", ["shots total", "total shots", "shot", "shots", "finaliza", "finalizacoes", "finalizações"]);
   const totalShots = Number.isFinite(homeShots) && Number.isFinite(awayShots) ? homeShots + awayShots : null;
 
-  const homeShotsOn = pickResultStat(eventData, "home", ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizacoes no gol", "finalizações no gol"]);
-  const awayShotsOn = pickResultStat(eventData, "away", ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizacoes no gol", "finalizações no gol"]);
+  const homeShotsOn = mcStatFromAny(mergedEventData, statsData, "home", ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizacoes no gol", "finalizações no gol"]);
+  const awayShotsOn = mcStatFromAny(mergedEventData, statsData, "away", ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizacoes no gol", "finalizações no gol"]);
   const totalShotsOn = Number.isFinite(homeShotsOn) && Number.isFinite(awayShotsOn) ? homeShotsOn + awayShotsOn : null;
 
-  const homeDanger = pickResultStat(eventData, "home", ["dangerous", "ataques perigosos", "dangerous attacks"]);
-  const awayDanger = pickResultStat(eventData, "away", ["dangerous", "ataques perigosos", "dangerous attacks"]);
+  const homeDanger = mcStatFromAny(mergedEventData, statsData, "home", ["dangerous attacks", "dangerous", "ataques perigosos"]);
+  const awayDanger = mcStatFromAny(mergedEventData, statsData, "away", ["dangerous attacks", "dangerous", "ataques perigosos"]);
   const totalDanger = Number.isFinite(homeDanger) && Number.isFinite(awayDanger) ? homeDanger + awayDanger : null;
   const statusInfo = mcStatusInfo(eventData, totalGoals);
   const eventsInfo = mcNormalizeEvents(eventData);
-  const pressureTimeline = mcBuildPressureTimeline({ minute: eventData?.match_live ?? eventData?.match_status, homeDanger, awayDanger, finished: statusInfo.finished, events: eventsInfo });
+  const realTimeline = mcBuildRealPressureTimeline({ eventData: mergedEventData, statsData, statusInfo, eventsInfo, home, away });
+  const pressureTimeline = realTimeline.length
+    ? realTimeline
+    : mcBuildPressureTimeline({ minute: eventData?.match_live ?? eventData?.match_status, homeDanger, awayDanger, finished: statusInfo.finished, events: eventsInfo });
   const pressureLevel = mcPressureLevel(homeDanger, awayDanger, totalDanger);
 
   const statusRaw = statusInfo.raw;
   const finished = statusInfo.finished;
-  const possessionHome = mcPickPossession(eventData, "home");
-  const possessionAway = mcPickPossession(eventData, "away");
-  const cardsInfo = mcBuildCards(eventData);
+  const possessionHome = mcPickPossession(mergedEventData, "home");
+  const possessionAway = mcPickPossession(mergedEventData, "away");
+  const cardsInfo = mcBuildCards(mergedEventData);
+
+  const attacksHome = mcStatFromAny(mergedEventData, statsData, "home", ["attacks", "ataques"]);
+  const attacksAway = mcStatFromAny(mergedEventData, statsData, "away", ["attacks", "ataques"]);
+  const foulsHome = mcStatFromAny(mergedEventData, statsData, "home", ["fouls", "faltas"]);
+  const foulsAway = mcStatFromAny(mergedEventData, statsData, "away", ["fouls", "faltas"]);
+  const passesHome = mcStatFromAny(mergedEventData, statsData, "home", ["passes", "total passes"]);
+  const passesAway = mcStatFromAny(mergedEventData, statsData, "away", ["passes", "total passes"]);
+  const passAccHome = mcStatFromAny(mergedEventData, statsData, "home", ["pass accuracy", "accurate passes", "passes %", "precisão"]);
+  const passAccAway = mcStatFromAny(mergedEventData, statsData, "away", ["pass accuracy", "accurate passes", "passes %", "precisão"]);
+  const savesHome = mcStatFromAny(mergedEventData, statsData, "home", ["saves", "goalkeeper saves", "defesas"]);
+  const savesAway = mcStatFromAny(mergedEventData, statsData, "away", ["saves", "goalkeeper saves", "defesas"]);
+  const offsidesHome = mcStatFromAny(mergedEventData, statsData, "home", ["offsides", "impedimentos"]);
+  const offsidesAway = mcStatFromAny(mergedEventData, statsData, "away", ["offsides", "impedimentos"]);
+  const shotsOffHome = mcStatFromAny(mergedEventData, statsData, "home", ["shots off goal", "shots off target", "off target", "fora do gol"]);
+  const shotsOffAway = mcStatFromAny(mergedEventData, statsData, "away", ["shots off goal", "shots off target", "off target", "fora do gol"]);
+  const blockedHome = mcStatFromAny(mergedEventData, statsData, "home", ["blocked shots", "shots blocked", "bloqueadas"]);
+  const blockedAway = mcStatFromAny(mergedEventData, statsData, "away", ["blocked shots", "shots blocked", "bloqueadas"]);
 
   return {
     match_id: String(eventData?.match_id ?? eventData?.event_key ?? eventData?.id ?? ""),
     league_id: eventData?.league_id ?? eventData?.match_league_id ?? null,
     league: eventData?.league_name ?? eventData?.match_league_name ?? eventData?.country_name ?? "",
     date: eventData?.match_date ?? eventData?.event_date ?? "",
-    time: eventData?.match_time ?? eventData?.event_time ?? "",
+    time: horaFromEventAM(eventData),
     status: statusInfo.label,
     status_raw: statusRaw,
     finished,
@@ -5187,6 +5473,18 @@ function buildMatchResultPayload(eventData){
       total: totalDanger
     },
 
+    attacks: {
+      home: attacksHome,
+      away: attacksAway,
+      total: Number.isFinite(attacksHome) && Number.isFinite(attacksAway) ? attacksHome + attacksAway : null
+    },
+
+    dangerous_attacks: {
+      home: homeDanger,
+      away: awayDanger,
+      total: totalDanger
+    },
+
     pressure_timeline: pressureTimeline,
     pressure_level: pressureLevel,
 
@@ -5195,8 +5493,23 @@ function buildMatchResultPayload(eventData){
       away: possessionAway
     },
 
+    passes: { home: passesHome, away: passesAway },
+    pass_accuracy: { home: passAccHome, away: passAccAway },
+    fouls: { home: foulsHome, away: foulsAway },
+    saves: { home: savesHome, away: savesAway },
+    offsides: { home: offsidesHome, away: offsidesAway },
+
+    shots_off_target: { home: shotsOffHome, away: shotsOffAway },
+    blocked_shots: { home: blockedHome, away: blockedAway },
+
     cards: cardsInfo,
     events: eventsInfo,
+    periods: mcBuildPeriods(statsData),
+    data_quality: {
+      has_event_timeline: eventsInfo.length > 0,
+      has_statistics: mcRawStatsList(statsData).length > 0,
+      pressure_mode: realTimeline.length ? "events_and_statistics" : "fallback"
+    },
 
     markets: {
       btts:
@@ -5233,10 +5546,13 @@ function buildMatchResultPayload(eventData){
 }
 
 async function getMatchResultById(matchId){
-  const data = await apiGetAny({
-    action: "get_events",
-    match_id: matchId
-  });
+  const [eventsSettled, statsSettled] = await Promise.allSettled([
+    apiGetAny({ action: "get_events", match_id: matchId }),
+    apiGetAny({ action: "get_statistics", match_id: matchId })
+  ]);
+
+  const data = eventsSettled.status === "fulfilled" ? eventsSettled.value : null;
+  const statsData = statsSettled.status === "fulfilled" ? statsSettled.value : null;
 
   const eventData = Array.isArray(data) ? data[0] : data;
 
@@ -5244,7 +5560,7 @@ async function getMatchResultById(matchId){
     return null;
   }
 
-  return buildMatchResultPayload(eventData);
+  return buildMatchResultPayload(eventData, statsData);
 }
 
 
@@ -5580,7 +5896,7 @@ app.get("/admin/live-now", async (req, res) => {
           game.match_status || "",
 
         time:
-          game.match_time || "—"
+          normalizeKickoffTimeAM(game.match_time) || "—"
 
       }));
 

@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
-  <script src="script.js" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260706" />
+  <script src="script.js?v=20260706" defer></script>
 </head>
 <body class="dashboard">
   <aside class="sidebar">
@@ -61,7 +61,6 @@
       </nav>
       <div class="topUser">
         <button class="bell">♧</button>
-        <div class="avatar">CP</div>
         <div class="userText"><strong>Olá, Rodrigo</strong><small></small></div>
         <span class="chev">⌄</span>
       </div>
@@ -87,7 +86,6 @@
       </div>
     </div>
 
-
     <section class="content">
       <div class="dashboardGrid">
         <section class="dashboardMainColumn">
@@ -95,11 +93,7 @@
             <div class="heroCopy">
               <h1>ANÁLISE. ESTATÍSTICA.<br><span>VANTAGEM!</span></h1>
               <p>Pré-jogo completo, escanteios, gols e muito mais. Informação que gera lucro!</p>
-              <div class="heroStats">
-                <div><b>+96%</b><small>ASSERTIVIDADE</small></div>
-                <div><b>+12.500</b><small>USUÁRIOS PRO</small></div>
-                <div><b>+3 ANOS</b><small>DE MERCADO</small></div>
-              </div>
+              <div class="heroStats"></div>
             </div>
             <div class="heroPlayer" aria-hidden="true"></div>
           </section>
@@ -147,12 +141,18 @@
             </div>
             <button class="viewAll">VER TODOS OS JOGOS</button>
           </section>
-</section>
+        </section>
 
         <aside class="dashboardRightRail" id="desktopMatchRail">
           <section class="railCard matchRailCard railEmptyHero">
             <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-            <div class="railEmptyRadar" aria-hidden="true"><span class="radarRing ring1"></span><span class="radarRing ring2"></span><span class="radarRing ring3"></span><span class="radarSweep"></span><span class="radarBall">⚽</span></div>
+            <div class="railEmptyRadar" aria-hidden="true">
+              <span class="radarRing ring1"></span>
+              <span class="radarRing ring2"></span>
+              <span class="radarRing ring3"></span>
+              <span class="radarSweep"></span>
+              <span class="radarBall">⚽</span>
+            </div>
             <div class="railEmptyText"><strong>Aguardando partida</strong><span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span></div>
           </section>
           <section class="railCard railEmptyStatsCard">
@@ -167,7 +167,13 @@
           </section>
           <section class="railCard railEmptyEventsCard">
             <h3>EVENTOS / LEITURA</h3>
-            <div class="railEmptyEventIcons"><span><i>◎</i><b>Pressão</b><small>--</small></span><span><i>◔</i><b>Posse</b><small>--</small></span><span><i>▣</i><b>Cartões</b><small>--</small></span><span><i>⚑</i><b>Escanteios</b><small>--</small></span><span><i>⚽</i><b>Gols</b><small>--</small></span></div>
+            <div class="railEmptyEventIcons">
+              <span><i>◎</i><b>Pressão</b><small>--</small></span>
+              <span><i>◔</i><b>Posse</b><small>--</small></span>
+              <span><i>▣</i><b>Cartões</b><small>--</small></span>
+              <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+              <span><i>⚽</i><b>Gols</b><small>--</small></span>
+            </div>
             <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
             <div class="railEmptyReadBox"><b>📋</b><p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p></div>
           </section>
