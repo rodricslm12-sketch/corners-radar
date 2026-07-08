@@ -1596,6 +1596,161 @@ function estimateCornerMarkets(game){
   };
 }
 
+
+
+// =========================================================
+// RESULTADO PRÉ-JOGO — DADOS REAIS DA PARTIDA
+// Não usa odds. Usa posição, gols recentes via H2H, força casa/fora,
+// projeção ofensiva e dados reais já coletados pelo servidor.
+// =========================================================
+function positionPowerForResult(pos){
+  const p = Number(pos);
+  if (!Number.isFinite(p) || p <= 0) return 50;
+  // 1º colocado fica perto de 94; meio de tabela perto de 55; parte baixa menor.
+  return clamp(Math.round(98 - (p - 1) * 4.1), 18, 96);
+}
+
+function goalsExpectedFromProfilesForResult({ game, h2h = null, lastN = 5 } = {}){
+  const homeProfile = h2h
+    ? teamGoalsProfileFromH2H(game?.casa, h2h, "firstTeam_lastResults", lastN)
+    : null;
+
+  const awayProfile = h2h
+    ? teamGoalsProfileFromH2H(game?.fora, h2h, "secondTeam_lastResults", lastN)
+    : null;
+
+  if (homeProfile && awayProfile){
+    const homeExpected = ((homeProfile.goalsForAvg || 0) + (awayProfile.goalsAgainstAvg || 0)) / 2;
+    const awayExpected = ((awayProfile.goalsForAvg || 0) + (homeProfile.goalsAgainstAvg || 0)) / 2;
+    return {
+      homeProfile,
+      awayProfile,
+      homeExpected,
+      awayExpected,
+      totalExpected: homeExpected + awayExpected,
+      source: "h2h_goals"
+    };
+  }
+
+  // Fallback sem inventar odd: usa somente sinais reais/estruturais do próprio jogo.
+  const posHome = Number(game?.pos_home ?? NaN);
+  const posAway = Number(game?.pos_away ?? NaN);
+  const homePosPower = positionPowerForResult(posHome);
+  const awayPosPower = positionPowerForResult(posAway);
+  const posDiff = (homePosPower - awayPosPower) / 100;
+
+  const projCorners = Number(game?.proj_cantos ?? 9.6);
+  const attackTempo = clamp((projCorners - 9.2) * 0.12, -0.22, 0.45);
+
+  const totalExpected = clamp(2.12 + attackTempo + (isBigTeam(game?.casa) || isBigTeam(game?.fora) ? 0.12 : 0), 1.35, 3.75);
+  const homeShare = clamp(0.53 + posDiff * 0.18, 0.38, 0.68);
+
+  return {
+    homeProfile: null,
+    awayProfile: null,
+    homeExpected: totalExpected * homeShare,
+    awayExpected: totalExpected * (1 - homeShare),
+    totalExpected,
+    source: "position_projection"
+  };
+}
+
+function estimateResultMarkets(game, context = {}){
+  const g = goalsExpectedFromProfilesForResult({
+    game,
+    h2h: context.h2h || null,
+    lastN: context.lastN || 5
+  });
+
+  const posHome = Number(game?.pos_home ?? NaN);
+  const posAway = Number(game?.pos_away ?? NaN);
+  const homePosPower = positionPowerForResult(posHome);
+  const awayPosPower = positionPowerForResult(posAway);
+
+  const real = game?.real || {};
+  const homeRecent = real?.homeRecent || null;
+  const awayRecent = real?.awayRecent || null;
+
+  const homePressure = Number.isFinite(homeRecent?.shotsTotalAvg)
+    ? clamp(homeRecent.shotsTotalAvg * 3.2 + (homeRecent.cornersForAvg || 0) * 4.2, 15, 90)
+    : 50;
+
+  const awayPressure = Number.isFinite(awayRecent?.shotsTotalAvg)
+    ? clamp(awayRecent.shotsTotalAvg * 3.2 + (awayRecent.cornersForAvg || 0) * 4.2, 15, 90)
+    : 50;
+
+  const homeGoalsSignal = g.homeProfile
+    ? clamp((g.homeProfile.goalsForAvg * 22) + (g.awayProfile.goalsAgainstAvg * 15) + g.homeProfile.scoredRate * 0.35, 10, 95)
+    : 50;
+
+  const awayGoalsSignal = g.awayProfile
+    ? clamp((g.awayProfile.goalsForAvg * 22) + (g.homeProfile.goalsAgainstAvg * 15) + g.awayProfile.scoredRate * 0.35, 10, 95)
+    : 50;
+
+  // Mandante recebe vantagem tradicional de casa; visitante precisa sinal real mais forte.
+  let homePower = 0;
+  homePower += homePosPower * 0.30;
+  homePower += homeGoalsSignal * 0.34;
+  homePower += homePressure * 0.22;
+  homePower += 7; // mando de campo
+
+  let awayPower = 0;
+  awayPower += awayPosPower * 0.30;
+  awayPower += awayGoalsSignal * 0.34;
+  awayPower += awayPressure * 0.22;
+  awayPower += 1;
+
+  const expectedDiff = Number(g.homeExpected || 0) - Number(g.awayExpected || 0);
+  const powerDiff = homePower - awayPower;
+  const totalExpected = Number(g.totalExpected || 2.2);
+
+  const homeProb = clamp(Math.round(50 + expectedDiff * 23 + powerDiff * 0.30), 4, 91);
+  const awayProb = clamp(Math.round(50 - expectedDiff * 23 - powerDiff * 0.30), 4, 88);
+
+  const drawBalance = 100 - Math.min(90, Math.abs(powerDiff) * 1.15) - Math.min(26, Math.max(0, totalExpected - 2.35) * 18);
+  const drawProb = clamp(Math.round(drawBalance * 0.56), 8, 72);
+
+  const doubleHomeProb = clamp(Math.round(homeProb + drawProb * 0.62), 18, 97);
+  const doubleAwayProb = clamp(Math.round(awayProb + drawProb * 0.62), 18, 96);
+
+  return {
+    resultHome: homeProb >= 56 && homeProb >= awayProb + 6,
+    resultDraw: drawProb >= 34 && Math.abs(powerDiff) <= 18 && Math.abs(expectedDiff) <= 0.42,
+    resultAway: awayProb >= 56 && awayProb >= homeProb + 6,
+    doubleHome: doubleHomeProb >= 66,
+    doubleAway: doubleAwayProb >= 66,
+
+    // aliases para outros trechos do JS
+    homeWin: homeProb >= 56 && homeProb >= awayProb + 6,
+    draw: drawProb >= 34 && Math.abs(powerDiff) <= 18 && Math.abs(expectedDiff) <= 0.42,
+    awayWin: awayProb >= 56 && awayProb >= homeProb + 6,
+
+    prob: {
+      resultHome: homeProb,
+      resultDraw: drawProb,
+      resultAway: awayProb,
+      doubleHome: doubleHomeProb,
+      doubleAway: doubleAwayProb,
+      homeWin: homeProb,
+      draw: drawProb,
+      awayWin: awayProb
+    },
+
+    expected: {
+      resultHomeGoals: Number.isFinite(g.homeExpected) ? Number(g.homeExpected.toFixed(2)) : null,
+      resultAwayGoals: Number.isFinite(g.awayExpected) ? Number(g.awayExpected.toFixed(2)) : null,
+      resultTotalGoals: Number.isFinite(g.totalExpected) ? Number(g.totalExpected.toFixed(2)) : null,
+      resultPowerDiff: Number.isFinite(powerDiff) ? Number(powerDiff.toFixed(1)) : null
+    },
+
+    sources: {
+      result_real_data: true,
+      result_source: g.source,
+      result_uses_odds: false
+    }
+  };
+}
+
 function buildExtraMarkets(game, context = {}){
   const goals = estimateGoalMarkets({
     game,
@@ -1604,8 +1759,18 @@ function buildExtraMarkets(game, context = {}){
   });
 
   const corners = estimateCornerMarkets(game);
+  const result = estimateResultMarkets(game, context);
 
   return {
+    resultHome: result.resultHome,
+    resultDraw: result.resultDraw,
+    resultAway: result.resultAway,
+    doubleHome: result.doubleHome,
+    doubleAway: result.doubleAway,
+    homeWin: result.homeWin,
+    draw: result.draw,
+    awayWin: result.awayWin,
+
     btts: goals.btts,
     over15: goals.over15,
     over25: goals.over25,
@@ -1616,13 +1781,18 @@ function buildExtraMarkets(game, context = {}){
     corners115: corners.corners115,
 
     prob: {
+      ...result.prob,
       ...goals.prob,
       ...corners.prob,
     },
 
-    expected: goals.expected,
+    expected: {
+      ...result.expected,
+      ...goals.expected
+    },
 
     sources: {
+      ...result.sources,
       ...goals.sources,
       corners_projection: true
     }

@@ -1,133 +1,6 @@
-/* =========================================================
-   LOGIN / LOGOUT FIX DEFINITIVO — CORNERS RADAR
-   - Faz o botão Sair funcionar mesmo se outro script tentar interferir
-   - Oculta o painel enquanto não estiver logado
-   - Aceita login antigo e login novo
-   ========================================================= */
-   (function(){
-    const LOGIN_KEY = "cornersRadarLogged";
-    const VALID_LOGINS = [
-      { user: "RodrigoMartins", pass: "Rodrics789bl" },
-      { user: "admin", pass: "123456" }
-    ];
-  
-    function getLoginScreen(){
-      return document.getElementById("loginScreen");
-    }
-  
-    function lockDashboard(){
-      document.body.classList.add("locked");
-  
-      const loginScreen = getLoginScreen();
-      if (loginScreen){
-        loginScreen.style.display = "flex";
-        loginScreen.style.opacity = "1";
-        loginScreen.style.visibility = "visible";
-        loginScreen.style.pointerEvents = "auto";
-      }
-  
-      const main = document.querySelector(".main");
-      const sidebar = document.querySelector(".sidebar");
-  
-      if (main) main.style.display = "none";
-      if (sidebar) sidebar.style.display = "none";
-    }
-  
-    function unlockDashboard(){
-      document.body.classList.remove("locked");
-      localStorage.setItem(LOGIN_KEY, "true");
-  
-      const loginScreen = getLoginScreen();
-      if (loginScreen){
-        loginScreen.style.display = "none";
-        loginScreen.style.opacity = "0";
-        loginScreen.style.visibility = "hidden";
-        loginScreen.style.pointerEvents = "none";
-      }
-  
-      const main = document.querySelector(".main");
-      const sidebar = document.querySelector(".sidebar");
-  
-      if (main) main.style.display = "";
-      if (sidebar) sidebar.style.display = "";
-    }
-  
-    window.forceLogout = function(){
-      localStorage.removeItem(LOGIN_KEY);
-      localStorage.removeItem("isLogged");
-      localStorage.removeItem("loggedIn");
-      localStorage.removeItem("auth");
-      localStorage.removeItem("user");
-  
-      lockDashboard();
-  
-      setTimeout(function(){
-        window.location.reload();
-      }, 80);
-    };
-  
-    window.forceLoginCheck = function(){
-      if (localStorage.getItem(LOGIN_KEY) === "true"){
-        unlockDashboard();
-      } else {
-        lockDashboard();
-      }
-    };
-  
-    function bindLogin(){
-      const loginForm = document.getElementById("loginForm");
-      const loginUser = document.getElementById("loginUser");
-      const loginPass = document.getElementById("loginPass");
-      const loginError = document.getElementById("loginError");
-  
-      if (loginForm && !loginForm.dataset.loginBound){
-        loginForm.dataset.loginBound = "1";
-  
-        loginForm.addEventListener("submit", function(e){
-          e.preventDefault();
-  
-          const user = String(loginUser?.value || "").trim();
-          const pass = String(loginPass?.value || "").trim();
-  
-          const ok = VALID_LOGINS.some(item => item.user === user && item.pass === pass);
-  
-          if (!ok){
-            if (loginError) loginError.textContent = "Usuário ou senha inválidos.";
-            return;
-          }
-  
-          if (loginError) loginError.textContent = "";
-          unlockDashboard();
-        });
-      }
-  
-      const logoutBtn = document.getElementById("logoutBtn");
-      if (logoutBtn){
-        logoutBtn.setAttribute("type", "button");
-        logoutBtn.setAttribute("onclick", "forceLogout()");
-      }
-    }
-  
-    document.addEventListener("DOMContentLoaded", function(){
-      bindLogin();
-      window.forceLoginCheck();
-    });
-  
-    // Captura o clique antes de qualquer outro script.
-    document.addEventListener("click", function(e){
-      const btn = e.target?.closest?.("#logoutBtn, .btnLogout");
-      if (!btn) return;
-  
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-  
-      window.forceLogout();
-    }, true);
-  })();
-  
-  
-  // script.js (PRO / COMPLETO) — PRÉ-JOGO + H2H ESCANTEIOS
+/* LOGIN consolidado no final do arquivo para evitar eventos duplicados. */
+
+// script.js (PRO / COMPLETO) — PRÉ-JOGO + H2H ESCANTEIOS
   // ✅ Horário AMAZONAS (America/Manaus)
   // ✅ DEDUPE forte
   // ✅ FULL forte -> completa com SEMI forte
@@ -2943,149 +2816,10 @@
     updateIaBoxFromTop(lastTopGames);
     if (iaStatus) iaStatus.textContent = "Pronto";
   }
-  
-  
-  // ---------------- DASHBOARD LOADING BONITO ----------------
-  function ensureDashboardLoadingStyles(){
-    if (document.getElementById("dashboardLoadingInlineStyles")) return;
-  
-    const style = document.createElement("style");
-    style.id = "dashboardLoadingInlineStyles";
-    style.textContent = `
-      #top1 .dashboardLoading{
-        width:100%;
-        min-height:520px;
-        display:grid;
-        grid-template-rows:auto 1fr;
-        gap:14px;
-        padding:12px;
-        box-sizing:border-box;
-      }
-  
-      #top1 .dashboardLoadingHeader{
-        min-height:74px;
-        border-radius:18px;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:16px;
-        padding:0 18px;
-        background:linear-gradient(180deg, rgba(15,23,34,.96), rgba(8,13,20,.96));
-        border:1px solid rgba(30,215,96,.18);
-        box-shadow:0 18px 48px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.04);
-        overflow:hidden;
-        position:relative;
-      }
-  
-      #top1 .dashboardLoadingHeader::before,
-      #top1 .loadingCard::before{
-        content:"";
-        position:absolute;
-        inset:0;
-        transform:translateX(-100%);
-        background:linear-gradient(90deg, transparent, rgba(30,215,96,.14), transparent);
-        animation:dashLoadingSweep 1.25s linear infinite;
-      }
-  
-      #top1 .dashboardLoadingTitle{
-        position:relative;
-        z-index:1;
-        color:#eafff2;
-        font-size:14px;
-        font-weight:900;
-        letter-spacing:.02em;
-      }
-  
-      #top1 .dashboardLoadingSub{
-        position:relative;
-        z-index:1;
-        color:#8fa1b7;
-        font-size:12px;
-        font-weight:700;
-      }
-  
-      #top1 .loadingCards{
-        display:grid;
-        gap:12px;
-        align-content:start;
-      }
-  
-      #top1 .loadingCard{
-        height:78px;
-        border-radius:18px;
-        background:linear-gradient(180deg, rgba(13,20,29,.96), rgba(7,12,18,.96));
-        border:1px solid rgba(148,163,184,.12);
-        box-shadow:0 14px 34px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.035);
-        position:relative;
-        overflow:hidden;
-        display:grid;
-        grid-template-columns:110px 1fr 150px 170px;
-        align-items:center;
-        gap:18px;
-        padding:0 18px;
-      }
-  
-      #top1 .loadingLine{
-        position:relative;
-        z-index:1;
-        height:13px;
-        border-radius:999px;
-        background:rgba(148,163,184,.13);
-        overflow:hidden;
-      }
-  
-      #top1 .loadingLine.sm{ width:62%; }
-      #top1 .loadingLine.md{ width:78%; }
-      #top1 .loadingLine.lg{ width:92%; }
-  
-      #top1 .loadingPulse{
-        width:42px;
-        height:42px;
-        border-radius:999px;
-        border:5px solid rgba(30,215,96,.18);
-        border-top-color:#1ed760;
-        animation:dashLoadingSpin .85s linear infinite;
-        position:relative;
-        z-index:1;
-        justify-self:center;
-      }
-  
-      @keyframes dashLoadingSweep{
-        0%{ transform:translateX(-100%); }
-        100%{ transform:translateX(100%); }
-      }
-  
-      @keyframes dashLoadingSpin{
-        to{ transform:rotate(360deg); }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-  
-  function showDashboardLoading(label = "Carregando jogos e filtros..."){
-    if (!top1El) return;
-    ensureDashboardLoadingStyles();
-    top1El.closest(".panel")?.classList.add("is-market-scroll-panel");
-    top1El.classList.remove("is-weekend-top3", "is-weekday-top2");
-    top1El.innerHTML = `
-      <div class="dashboardLoading" aria-live="polite">
-        <div class="dashboardLoadingHeader">
-          <div>
-            <div class="dashboardLoadingTitle">${escapeHtmlLite(label)}</div>
-            <div class="dashboardLoadingSub">Buscando dados reais da API e montando o painel...</div>
-          </div>
-          <div class="loadingPulse"></div>
-        </div>
-        <div class="loadingCards">
-          <div class="loadingCard"><span class="loadingLine sm"></span><span class="loadingLine lg"></span><span class="loadingLine md"></span><span class="loadingLine sm"></span></div>
-          <div class="loadingCard"><span class="loadingLine sm"></span><span class="loadingLine md"></span><span class="loadingLine lg"></span><span class="loadingLine sm"></span></div>
-          <div class="loadingCard"><span class="loadingLine sm"></span><span class="loadingLine lg"></span><span class="loadingLine md"></span><span class="loadingLine sm"></span></div>
-          <div class="loadingCard"><span class="loadingLine sm"></span><span class="loadingLine md"></span><span class="loadingLine lg"></span><span class="loadingLine sm"></span></div>
-          <div class="loadingCard"><span class="loadingLine sm"></span><span class="loadingLine lg"></span><span class="loadingLine md"></span><span class="loadingLine sm"></span></div>
-        </div>
-      </div>
-    `;
-  }
+/* função duplicada removida: ensureDashboardLoadingStyles */
+
+/* função duplicada removida: showDashboardLoading */
+
   
   // ---------------- TOP Loading ----------------
   let loadingFxStartedAt = 0;
@@ -5420,66 +5154,9 @@
     }, 45000);
   })();
   
-  /* =========================================================
-     LOGIN TEMPORÁRIO — CORNERS RADAR
-     Usuário: admin | Senha: Rodrics789bl
-     ATENÇÃO: isso é apenas bloqueio visual/front-end para teste.
-     Para produção, use Firebase Auth / Google Login no servidor/app.
-     ========================================================= */
-  (function setupTemporaryLogin(){
-    const LOGIN_USER = "RodrigoMartins";
-    const LOGIN_PASS = "Rodrics789bl";
-    const SESSION_KEY = "cornersRadarLogged";
   
-    function unlockDashboard(){
-      document.body.classList.remove("locked");
-    }
-  
-    function lockDashboard(){
-      document.body.classList.add("locked");
-    }
-  
-    document.addEventListener("DOMContentLoaded", function(){
-      const loginForm = document.getElementById("loginForm");
-      const loginUser = document.getElementById("loginUser");
-      const loginPass = document.getElementById("loginPass");
-      const loginError = document.getElementById("loginError");
-      const logoutBtn = document.getElementById("logoutBtn");
-  
-      if (localStorage.getItem(SESSION_KEY) === "1"){
-        unlockDashboard();
-      } else {
-        lockDashboard();
-        setTimeout(() => loginUser?.focus(), 120);
-      }
-  
-      loginForm?.addEventListener("submit", function(e){
-        e.preventDefault();
-  
-        const user = String(loginUser?.value || "").trim();
-        const pass = String(loginPass?.value || "").trim();
-  
-        if (user === LOGIN_USER && pass === LOGIN_PASS){
-          localStorage.setItem(SESSION_KEY, "1");
-          if (loginError) loginError.textContent = "";
-          unlockDashboard();
-          return;
-        }
-  
-        if (loginError) loginError.textContent = "Usuário ou senha incorretos.";
-        loginPass?.select();
-      });
-  
-      logoutBtn?.addEventListener("click", function(){
-        localStorage.removeItem(SESSION_KEY);
-        lockDashboard();
-        if (loginUser) loginUser.value = "";
-        if (loginPass) loginPass.value = "";
-        if (loginError) loginError.textContent = "";
-        setTimeout(() => loginUser?.focus(), 120);
-      });
-    });
-  })();
+/* LOGIN TEMPORÁRIO removido: duplicava sessão e listeners. */
+
   
   /* =========================================================
      PATCH PREMIUM — MATCH CENTER FIXO COM GRÁFICO DE PRESSÃO
@@ -7193,7 +6870,6 @@
     }
   };
 })();
-
 
 
 /* =========================================================
@@ -12270,4 +11946,494 @@ function resetDesktopMatchRailToEmpty(){
   window.cornerProFilterInlineMarket = function(label){
     renderFiltered({ label: clean(label), section:"", panelTitle:"", text:norm(label), line:lineFromText(label) });
   };
+})();
+
+
+/* =========================================================
+   FILTRO REAL DOS MERCADOS PRÉ-JOGO — RESULTADO
+   - Corrige a lista repetir a mesma sequência em todos os mercados
+   - Usa os dados reais que já vieram do servidor em cada jogo:
+     positions, markets.prob, markets.expected, real.homeRecent/awayRecent,
+     gols recentes, pressão, projeção e forma.
+   - Não usa as odds fixas do painel para decidir o filtro.
+   - Não recarrega API ao clicar no mercado.
+   ========================================================= */
+(function installResultadoRealMercadoDefinitivo(){
+  if (window.__resultadoRealMercadoDefinitivoInstalled) return;
+  window.__resultadoRealMercadoDefinitivoInstalled = true;
+
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function clean(v, fallback=""){
+    const s = String(v ?? "").trim();
+    return s || fallback;
+  }
+
+  function norm(v){
+    return clean(v).toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function num(v, fallback=null){
+    if (v === undefined || v === null || v === "") return fallback;
+    if (typeof v === "string") v = v.replace(",", ".").replace(/[^0-9.\-]/g, "");
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function clamp(n, a, b){
+    n = Number(n);
+    if (!Number.isFinite(n)) n = 0;
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function getPath(obj, path){
+    const parts = String(path || "").split(".");
+    let cur = obj;
+    for (const p of parts){
+      if (cur == null) return null;
+      cur = cur[p];
+    }
+    return cur ?? null;
+  }
+
+  function first(obj, paths, fallback=null){
+    for (const p of paths){
+      const v = getPath(obj, p);
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return fallback;
+  }
+
+  function selectedDate(){
+    const input = document.getElementById("date");
+    if (input?.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) return input.value;
+    if (window.__cornerProAllGamesDate && /^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProAllGamesDate)) return window.__cornerProAllGamesDate;
+    return "";
+  }
+
+  function raw(g){ return g?.raw || g || {}; }
+
+  function gameInfo(g){
+    const r = raw(g);
+    return {
+      league: clean(g?.league ?? r.liga ?? r.league_name ?? r.league?.name ?? r.competition ?? r.competition_name ?? "Liga"),
+      time: clean(g?.time ?? r.hora ?? r.time ?? r.match_time ?? r.event_time ?? r.fixture?.time ?? "--:--").slice(0,5),
+      home: clean(g?.home ?? r.casa ?? r.home ?? r.home_name ?? r.team_home ?? r.mandante ?? r.teams?.home?.name ?? "Casa"),
+      away: clean(g?.away ?? r.fora ?? r.away ?? r.away_name ?? r.team_away ?? r.visitante ?? r.teams?.away?.name ?? "Visitante"),
+      id: clean(g?.matchId ?? r.match_id ?? r.id ?? r.fixture_id ?? r.event_id ?? "")
+    };
+  }
+
+  function stableKey(g){
+    const d = gameInfo(g);
+    return d.id ? `id:${d.id}` : `${norm(d.league)}|${norm(d.home)}|${norm(d.away)}|${d.time}`;
+  }
+
+  function readInlineRowsAsGames(panel){
+    return $$(".gameRow", panel).map(row => {
+      const b = row.querySelector(".gameMeta b");
+      const full = clean(b?.textContent || "");
+      const time = clean(row.querySelector(".gameMeta span")?.textContent || "--:--");
+      const away = clean(row.querySelector(".gameMeta em")?.textContent || "Visitante");
+      let home = full.replace(time, "").replace(away, "").trim();
+      if (!home) home = clean(full.split("\n")[0] || "Casa");
+      return {
+        liga: clean(row.querySelector(".gameMeta small, small")?.textContent || "Liga"),
+        hora: time,
+        casa: home,
+        fora: away
+      };
+    });
+  }
+
+  function currentGames(){
+    const panel = $(".gamesPanel");
+    const ymd = selectedDate();
+    const sources = [];
+
+    if (panel?.__cornerProAllGames?.length) sources.push(panel.__cornerProAllGames);
+    if (panel?.__cornerProGames?.length) sources.push(panel.__cornerProGames);
+    if (window.__cornerProAllGames?.length) sources.push(window.__cornerProAllGames);
+    if (ymd && window.__cornerProApiCache?.[ymd]?.length) sources.push(window.__cornerProApiCache[ymd]);
+    if (ymd && window.__cornerProMarketCache?.[ymd]?.length) sources.push(window.__cornerProMarketCache[ymd]);
+    if (ymd && window.__cornerProGamesCache?.[ymd]?.length) sources.push(window.__cornerProGamesCache[ymd]);
+
+    // Variáveis internas antigas não ficam no window, então este fallback pega as linhas renderizadas
+    // somente se nenhum cache real estiver disponível.
+    if (!sources.length && panel) sources.push(readInlineRowsAsGames(panel));
+
+    const out = [];
+    const seen = new Set();
+
+    for (const src of sources){
+      if (!Array.isArray(src)) continue;
+      for (const item of src){
+        const g = item?.raw ? item : raw(item);
+        const k = stableKey(g);
+        if (!k || seen.has(k)) continue;
+        seen.add(k);
+        out.push(g);
+      }
+    }
+
+    return out;
+  }
+
+  function marketKind(label){
+    const t = norm(label);
+    if (t.includes("dupla") && (t.includes("visit") || t.includes("fora"))) return "doubleAway";
+    if (t.includes("dupla") && (t.includes("casa") || t.includes("mandante"))) return "doubleHome";
+    if (t.includes("visitante vence") || t.includes("fora vence") || t.includes("vitoria visitante") || t.includes("vitoria do visitante")) return "away";
+    if (t.includes("casa vence") || t.includes("mandante vence") || t.includes("vitoria casa") || t.includes("vitoria da casa")) return "home";
+    if (t === "empate" || t.includes(" empate")) return "draw";
+    return "";
+  }
+
+  function kindLabel(kind){
+    if (kind === "home") return "Casa vence";
+    if (kind === "draw") return "Empate";
+    if (kind === "away") return "Visitante vence";
+    if (kind === "doubleHome") return "Dupla chance casa";
+    if (kind === "doubleAway") return "Dupla chance visitante";
+    return "Mercado";
+  }
+
+  function positionPower(pos){
+    const p = num(pos, null);
+    if (p === null || p <= 0) return null;
+    return clamp(98 - (p - 1) * 4.1, 18, 96);
+  }
+
+  function recentAttack(r, side){
+    const prefix = side === "home" ? "home" : "away";
+    const team = side === "home" ? r.real?.homeRecent : r.real?.awayRecent;
+
+    const goalsFor = num(first(r, [
+      `real.${prefix}Recent.goalsForAvg`,
+      `last5.summary.${prefix}GoalsFor`,
+      `${prefix}_goals_for_avg`,
+      `${prefix}_avg_goals_for`,
+      `${prefix}_xg`,
+      `${prefix}_expected_goals`
+    ]), null);
+
+    const goalsAgainstOpponent = num(first(r, [
+      side === "home" ? "real.awayRecent.goalsAgainstAvg" : "real.homeRecent.goalsAgainstAvg",
+      side === "home" ? "last5.summary.awayGoalsAgainst" : "last5.summary.homeGoalsAgainst"
+    ]), null);
+
+    const cornersFor = num(team?.cornersForAvg, null);
+    const shots = num(team?.shotsTotalAvg, null);
+    const scoredRate = num(team?.scoredRate, null);
+
+    let score = 50;
+    let used = 0;
+
+    if (goalsFor !== null){ score += (goalsFor - 1.15) * 18; used++; }
+    if (goalsAgainstOpponent !== null){ score += (goalsAgainstOpponent - 1.10) * 12; used++; }
+    if (cornersFor !== null){ score += (cornersFor - 4.4) * 4.2; used++; }
+    if (shots !== null){ score += (shots - 10.5) * 2.1; used++; }
+    if (scoredRate !== null){ score += (scoredRate - 55) * 0.18; used++; }
+
+    return { score: clamp(score, 15, 95), used };
+  }
+
+  function expectedTotalGoals(r){
+    const direct = num(first(r, [
+      "markets.expected.resultTotalGoals",
+      "markets.totalExpected",
+      "totalExpected",
+      "expected_goals_total",
+      "xg_total",
+      "total_goals_avg",
+      "media_gols_total",
+      "proj_gols",
+      "goals_projection"
+    ]), null);
+    if (direct !== null) return clamp(direct, 1.1, 5.2);
+
+    const projCorners = num(r.proj_cantos ?? r.corners_projection ?? r.projCorners, 9.5);
+    const pressure = num(r.real?.pressureHits, 2);
+    return clamp(2.05 + (projCorners - 9.3) * 0.16 + (pressure - 2) * 0.07, 1.25, 4.3);
+  }
+
+  function directMarketProb(r, kind){
+    const paths = {
+      home:["markets.prob.resultHome", "markets.prob.homeWin", "resultMarkets.home", "prob_result_home"],
+      draw:["markets.prob.resultDraw", "markets.prob.draw", "resultMarkets.draw", "prob_result_draw"],
+      away:["markets.prob.resultAway", "markets.prob.awayWin", "resultMarkets.away", "prob_result_away"],
+      doubleHome:["markets.prob.doubleHome", "markets.prob.double1x", "prob_double_home"],
+      doubleAway:["markets.prob.doubleAway", "markets.prob.doublex2", "prob_double_away"]
+    }[kind] || [];
+
+    const v = num(first(r, paths), null);
+    if (v === null) return null;
+    if (v >= 0 && v <= 1) return Math.round(v * 100);
+    return clamp(Math.round(v), 1, 99);
+  }
+
+  function boolMarket(r, kind){
+    const paths = {
+      home:["markets.resultHome", "markets.homeWin"],
+      draw:["markets.resultDraw", "markets.draw"],
+      away:["markets.resultAway", "markets.awayWin"],
+      doubleHome:["markets.doubleHome", "markets.double1x"],
+      doubleAway:["markets.doubleAway", "markets.doublex2"]
+    }[kind] || [];
+    for (const p of paths){
+      const v = getPath(r, p);
+      if (typeof v === "boolean") return v;
+    }
+    return null;
+  }
+
+  function resultProfile(g){
+    const r = raw(g);
+    const posHome = num(r.pos_home ?? r.home_position ?? r.standing_home, null);
+    const posAway = num(r.pos_away ?? r.away_position ?? r.standing_away, null);
+
+    const homePos = positionPower(posHome);
+    const awayPos = positionPower(posAway);
+    const hAtk = recentAttack(r, "home");
+    const aAtk = recentAttack(r, "away");
+
+    const hasTable = homePos !== null && awayPos !== null;
+    const hasRecent = hAtk.used > 0 || aAtk.used > 0;
+    const hasServer = !!r.markets?.prob && (
+      r.markets.prob.resultHome !== undefined ||
+      r.markets.prob.resultDraw !== undefined ||
+      r.markets.prob.resultAway !== undefined
+    );
+
+    let homePower = 50;
+    let awayPower = 50;
+
+    if (hasTable){
+      homePower += (homePos - 50) * 0.44;
+      awayPower += (awayPos - 50) * 0.44;
+    }
+
+    if (hAtk.used) homePower += (hAtk.score - 50) * 0.62;
+    if (aAtk.used) awayPower += (aAtk.score - 50) * 0.62;
+
+    // vantagem de mando; pequena, mas tradicional e estável
+    homePower += 6;
+
+    const totalGoals = expectedTotalGoals(r);
+    const diff = homePower - awayPower;
+
+    let home = clamp(Math.round(50 + diff * 0.55 + (totalGoals - 2.25) * 2.2), 3, 94);
+    let away = clamp(Math.round(50 - diff * 0.55 + (totalGoals - 2.25) * 1.5), 3, 92);
+    let draw = clamp(Math.round(58 - Math.abs(diff) * 0.58 - Math.max(0, totalGoals - 2.55) * 8), 7, 78);
+
+    // se o servidor já trouxe probabilidade real, ela manda
+    const dHome = directMarketProb(r, "home");
+    const dDraw = directMarketProb(r, "draw");
+    const dAway = directMarketProb(r, "away");
+    if (dHome !== null) home = dHome;
+    if (dDraw !== null) draw = dDraw;
+    if (dAway !== null) away = dAway;
+
+    const doubleHomeDirect = directMarketProb(r, "doubleHome");
+    const doubleAwayDirect = directMarketProb(r, "doubleAway");
+
+    const doubleHome = doubleHomeDirect !== null ? doubleHomeDirect : clamp(Math.round(home + draw * 0.62), 18, 98);
+    const doubleAway = doubleAwayDirect !== null ? doubleAwayDirect : clamp(Math.round(away + draw * 0.62), 18, 97);
+
+    return {
+      home, draw, away, doubleHome, doubleAway,
+      diff,
+      totalGoals,
+      hasUsefulData: hasServer || hasTable || hasRecent,
+      source: hasServer ? "Servidor" : hasRecent ? "Forma recente" : hasTable ? "Tabela" : "Poucos dados"
+    };
+  }
+
+  function scoreFor(g, kind){
+    const p = resultProfile(g);
+    if (kind === "home") return p.home;
+    if (kind === "draw") return p.draw;
+    if (kind === "away") return p.away;
+    if (kind === "doubleHome") return p.doubleHome;
+    if (kind === "doubleAway") return p.doubleAway;
+    return 0;
+  }
+
+  function passFor(g, kind){
+    const r = raw(g);
+    const bool = boolMarket(r, kind);
+    if (bool !== null) return bool;
+
+    const p = resultProfile(g);
+    if (kind === "home") return p.home >= 54 && p.home >= p.away + 4;
+    if (kind === "away") return p.away >= 54 && p.away >= p.home + 4;
+    if (kind === "draw") return p.draw >= 34 && Math.abs(p.diff) <= 24;
+    if (kind === "doubleHome") return p.doubleHome >= 64 && p.away <= 63;
+    if (kind === "doubleAway") return p.doubleAway >= 64 && p.home <= 66;
+    return true;
+  }
+
+  function tieValue(g, kind){
+    const d = gameInfo(g);
+    const n = norm(kind === "away" || kind === "doubleAway" ? d.away : d.home);
+    let total = 0;
+    for (let i = 0; i < n.length; i++) total += n.charCodeAt(i) * (i + 1);
+    // serve só como desempate final quando a API não traz dados suficientes
+    return total;
+  }
+
+  function selectedList(games, kind){
+    const prepared = games.map((g, index) => {
+      const profile = resultProfile(g);
+      return { g, index, profile, score: scoreFor(g, kind), pass: passFor(g, kind), tie: tieValue(g, kind) };
+    });
+
+    let filtered = prepared.filter(x => x.pass);
+
+    // Se o mercado for muito restrito em um dia com poucos dados, mostra os melhores daquele mercado,
+    // mas ordenados pelo score real. Assim não repete a mesma ordem do mercado anterior.
+    if (filtered.length < 3) filtered = prepared;
+
+    return filtered
+      .sort((a,b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (kind === "draw") return Math.abs(a.profile.diff) - Math.abs(b.profile.diff);
+        return a.tie - b.tie;
+      })
+      .slice(0, 18);
+  }
+
+  function rowHTML(item, kind){
+    const g = item.g;
+    const d = gameInfo(g);
+    const p = item.profile;
+    const pct = scoreFor(g, kind);
+    const label = kindLabel(kind);
+    const exp = Number.isFinite(p.totalGoals) ? `${p.totalGoals.toFixed(1)} gols` : "base real";
+
+    return `
+      <div class="gameRow compactGameRow" data-resultado-final-row="1" data-game-index="${item.index}">
+        <div class="gameMeta">
+          <small>${esc(d.league)}</small>
+          <b><span>${esc(d.time || "--:--")}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
+        </div>
+        <div class="oddBox"><small>MERCADO</small><b>${esc(label)}</b><span>${pct}%</span></div>
+        <div class="oddBox"><small>BASE</small><b>${esc(p.source)}</b><span>${esc(exp)}</span></div>
+        <button class="signal" type="button" title="Abrir Match Center">▮▮▮</button>
+      </div>
+    `;
+  }
+
+  function renderMarket(label){
+    const kind = marketKind(label);
+    if (!kind) return false;
+
+    const panel = $(".gamesPanel");
+    if (!panel) return true;
+
+    const games = currentGames();
+    const title = panel.querySelector(".sectionHead h2, h2");
+    if (title) title.textContent = `Jogos — ${kindLabel(kind)}`;
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+
+    if (!games.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para esta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+      return true;
+    }
+
+    const rows = selectedList(games, kind);
+
+    if (!rows.length){
+      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(kindLabel(kind))}</b> nesta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+      return true;
+    }
+
+    panel.insertAdjacentHTML("beforeend", rows.map(x => rowHTML(x, kind)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+
+    panel.querySelectorAll("[data-resultado-final-row]").forEach(row => {
+      row.addEventListener("click", () => {
+        const idx = Number(row.dataset.gameIndex);
+        const g = games[idx];
+        if (!g) return;
+        const d = gameInfo(g);
+        const r = raw(g);
+        const payload = { ...r, casa:d.home, fora:d.away, liga:d.league, hora:d.time, match_id:r.match_id || r.id || d.id };
+        if (typeof window.updateDesktopMatchRail === "function") window.updateDesktopMatchRail(payload, games.map(raw));
+      });
+    });
+
+    window.__cornerProActiveResultadoMarket = kind;
+    return true;
+  }
+
+  function restoreAll(){
+    const panel = $(".gamesPanel");
+    const games = currentGames();
+    if (!panel || !games.length) return;
+
+    const title = panel.querySelector(".sectionHead h2, h2");
+    if (title) title.textContent = "Jogos em Destaque";
+
+    if (typeof window.renderGames === "function"){
+      try { window.renderGames(games); return; } catch(e) {}
+    }
+
+    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
+    const rows = games.slice(0, 18).map((g, index) => {
+      const d = gameInfo(g);
+      return `
+        <div class="gameRow compactGameRow" data-game-index="${index}">
+          <div class="gameMeta"><small>${esc(d.league)}</small><b><span>${esc(d.time || "--:--")}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b></div>
+          <button class="signal" type="button">▮▮▮</button>
+        </div>`;
+    }).join("");
+    panel.insertAdjacentHTML("beforeend", rows + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
+  }
+
+  // Captura no DOCUMENT antes dos handlers antigos do painel de mercado.
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest?.(".marketInlineItem, [data-premium-market], [data-market-line], [data-market], .premiumMarket");
+    if (!btn) return;
+
+    const label = clean(btn.dataset.marketLine || btn.dataset.premiumMarket || btn.dataset.market || btn.textContent || "");
+    const kind = marketKind(label);
+    if (!kind) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    $$(".marketInlineItem.is-selected, [data-premium-market].is-selected, .premiumMarket.is-selected").forEach(el => el.classList.remove("is-selected"));
+    btn.classList.add("is-selected");
+
+    renderMarket(label);
+  }, true);
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest?.(".viewAll,.marketInlineAll,#premiumBackToGames");
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    $$(".marketInlineItem.is-selected, [data-premium-market].is-selected, .premiumMarket.is-selected").forEach(el => el.classList.remove("is-selected"));
+    restoreAll();
+  }, true);
+
+  window.cornerProResultadoPregameFilter = renderMarket;
 })();
