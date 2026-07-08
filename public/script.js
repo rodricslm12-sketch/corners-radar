@@ -12437,3 +12437,155 @@ function resetDesktopMatchRailToEmpty(){
 
   window.cornerProResultadoPregameFilter = renderMarket;
 })();
+
+
+/* =========================================================
+   FIX FINAL — MATCH CENTER EM JOGOS RECRIADOS PELOS MERCADOS
+   Foco único: quando a lista de jogos é redesenhada ao clicar em mercado,
+   o botão verde (signal) e a própria linha continuam abrindo o Match Center.
+   ========================================================= */
+(function cornerProFinalMatchCenterDelegado(){
+  if (window.__cornerProFinalMatchCenterDelegadoV1) return;
+  window.__cornerProFinalMatchCenterDelegadoV1 = true;
+
+  function text(el){ return String(el?.textContent || "").replace(/\s+/g," ").trim(); }
+  function clean(v, fb=""){
+    const s = String(v ?? "").trim();
+    return s || fb;
+  }
+  function selectedDate(){
+    return clean(document.getElementById("date")?.value || window.__cornerProSelectedDate || window.__cornerProCurrentDate || "");
+  }
+  function normalizeGame(g){
+    if (!g) return null;
+    const raw = g.raw && typeof g.raw === "object" ? g.raw : g;
+    const home = clean(raw.casa || raw.home || raw.home_name || raw.match_hometeam_name || g.home || g.casa, "Mandante");
+    const away = clean(raw.fora || raw.away || raw.away_name || raw.match_awayteam_name || g.away || g.fora, "Visitante");
+    const league = clean(raw.liga || raw.league || raw.league_name || raw.country_name || g.league || g.liga, "Liga");
+    const time = clean(raw.hora || raw.time || raw.match_time || g.time || g.hora, "—");
+    const matchId = clean(raw.match_id || raw.event_key || raw.id || raw.matchId || g.match_id || g.event_key || g.id || g.matchId, "");
+    return { ...raw, casa:home, fora:away, liga:league, hora:time, match_id:matchId };
+  }
+  function listFromPanel(panel){
+    const ymd = selectedDate();
+    const sources = [
+      panel?.__cornerProGames,
+      panel?.__cornerProAllGames,
+      window.__cornerProAllGames,
+      window.__premiumFilteredGames,
+      window.__lastRenderedTopGames,
+      window.__cornerProApiCache && ymd ? window.__cornerProApiCache[ymd] : null
+    ];
+    for (const src of sources){
+      if (Array.isArray(src) && src.length) return src;
+    }
+    return [];
+  }
+  function gameFromRow(row){
+    const panel = row?.closest?.(".gamesPanel") || document.querySelector(".gamesPanel");
+    const list = listFromPanel(panel);
+
+    const indexKeys = [
+      "gameIndex", "realGameIndex", "strictMarketIndex", "premiumGame", "openMatchCenter", "matchIndex"
+    ];
+    for (const key of indexKeys){
+      const rawIdx = row?.dataset?.[key];
+      if (rawIdx !== undefined && rawIdx !== ""){
+        const idx = Number(rawIdx);
+        if (Number.isInteger(idx) && idx >= 0){
+          const found = list[idx] || panel?.__cornerProGames?.[idx] || panel?.__cornerProAllGames?.[idx];
+          if (found) return { game: normalizeGame(found), list };
+        }
+      }
+    }
+
+    // Se o botão tiver dados próprios.
+    const btn = row?.querySelector?.("[data-match-id], [data-open-match-center], [data-open-match-center-table]");
+    if (btn){
+      const byBtn = normalizeGame({
+        match_id: btn.dataset.matchId || "",
+        casa: btn.dataset.home || "",
+        fora: btn.dataset.away || "",
+        liga: btn.dataset.league || "",
+        hora: btn.dataset.time || ""
+      });
+      if (byBtn && (byBtn.match_id || byBtn.casa !== "Mandante" || byBtn.fora !== "Visitante")) return { game: byBtn, list };
+    }
+
+    // Fallback pelo texto da linha.
+    const small = text(row?.querySelector?.(".gameMeta small"));
+    const span = text(row?.querySelector?.(".gameMeta b span"));
+    const em = text(row?.querySelector?.(".gameMeta em"));
+    let b = text(row?.querySelector?.(".gameMeta b"));
+    if (span) b = b.replace(span, "").trim();
+    if (em) b = b.replace(em, "").trim();
+    const home = clean(b.split("\n")[0] || b, "Mandante");
+    const away = clean(em, "Visitante");
+    return { game: normalizeGame({ casa:home, fora:away, liga:small, hora:span }), list };
+  }
+  function markSelected(row, btn){
+    document.querySelectorAll(".gameRow.match-center-selected,.compactGameRow.match-center-selected").forEach(el => {
+      if (el !== row) el.classList.remove("match-center-selected");
+    });
+    document.querySelectorAll(".signal.is-open").forEach(el => {
+      if (el !== btn) el.classList.remove("is-open");
+    });
+    row?.classList.add("match-center-selected");
+    btn?.classList.add("is-open");
+  }
+  function openFromRow(row, btn){
+    if (!row) return false;
+    const resolved = gameFromRow(row);
+    const game = resolved.game;
+    if (!game) return false;
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey = clean(game.match_id || `${game.casa}|${game.fora}|${game.liga}|${game.hora}`);
+
+    markSelected(row, btn || row.querySelector(".signal"));
+
+    const rail = document.getElementById("desktopMatchRail");
+    rail?.classList.add("rail-selected-pulse");
+    setTimeout(() => rail?.classList.remove("rail-selected-pulse"), 900);
+
+    if (typeof window.updateDesktopMatchRail === "function"){
+      const list = Array.isArray(resolved.list) ? resolved.list.map(x => (x && x.raw) ? x.raw : x) : [];
+      window.updateDesktopMatchRail(game, list);
+      return true;
+    }
+    return false;
+  }
+
+  // Captura o clique no botão verde e nas linhas recriadas pelos mercados.
+  document.addEventListener("click", function(ev){
+    const signal = ev.target.closest?.(".gamesPanel .signal");
+    if (signal){
+      const row = signal.closest(".gameRow,.compactGameRow,[data-real-game-index],[data-strict-market-row],[data-resultado-final-row]");
+      if (row){
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        openFromRow(row, signal);
+        return;
+      }
+    }
+
+    const row = ev.target.closest?.(".gamesPanel .gameRow,.gamesPanel .compactGameRow");
+    if (!row) return;
+    if (ev.target.closest("button:not(.signal),a,select,input,textarea,[data-market-filter],.marketInlineItem")) return;
+    openFromRow(row, row.querySelector(".signal"));
+  }, true);
+
+  // Quando o mercado recriar os jogos, garante que o cursor e o título do botão fiquem ativos.
+  const observer = new MutationObserver(function(){
+    document.querySelectorAll(".gamesPanel .signal").forEach(btn => {
+      btn.setAttribute("type", "button");
+      btn.setAttribute("title", "Abrir Match Center");
+      btn.style.pointerEvents = "auto";
+    });
+  });
+  document.addEventListener("DOMContentLoaded", function(){
+    const panel = document.querySelector(".gamesPanel");
+    if (panel) observer.observe(panel, { childList:true, subtree:true });
+  });
+})();
