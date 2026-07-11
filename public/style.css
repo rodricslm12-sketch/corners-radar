@@ -3439,3 +3439,131 @@ button.viewAllGames:hover,
   background:linear-gradient(180deg,rgba(155,185,160,.075),rgba(155,185,160,.028)) !important;
   border-color:rgba(155,185,160,.48) !important;
 }
+
+/* =========================================================
+   AJUSTE FINAL — NOTEBOOKS E MONITORES MENORES QUE 27"
+   Mantém o layout original em telas grandes.
+   Faz somente a região inferior caber inteira na tela.
+   ========================================================= */
+@media screen and (min-width:981px) and (max-width:1700px),
+       screen and (min-width:981px) and (max-height:950px){
+
+  html,
+  body,
+  .dashboard,
+  .main{
+    height:100vh !important;
+    min-height:100vh !important;
+    overflow:hidden !important;
+  }
+
+  .content{
+    height:calc(100vh - var(--top)) !important;
+    min-height:0 !important;
+    padding:18px 14px 10px !important;
+    overflow:hidden !important;
+  }
+
+  .dashboardGrid{
+    height:calc(100% - 48px) !important;
+    min-height:0 !important;
+    gap:12px !important;
+  }
+
+  .dashboardMainColumn{
+    min-height:0 !important;
+    gap:8px !important;
+  }
+
+  .heroPanel{
+    height:156px !important;
+    min-height:156px !important;
+    margin-top:0 !important;
+    padding-top:23px !important;
+    padding-bottom:20px !important;
+  }
+
+  .heroCopy h1{
+    font-size:28px !important;
+  }
+
+  .heroCopy p{
+    margin-top:16px !important;
+    margin-bottom:12px !important;
+  }
+
+  .marketTabs{
+    gap:7px !important;
+  }
+
+  .marketTab{
+    height:52px !important;
+    min-height:52px !important;
+  }
+
+  .marketWorkArea,
+  .gamesPanel{
+    min-height:0 !important;
+  }
+
+  .dashboardRightRail{
+    min-height:0 !important;
+    gap:9px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+
+  .railCard{
+    flex-shrink:0 !important;
+  }
+
+  .bottomStrip{
+    height:40px !important;
+    min-height:40px !important;
+    margin-top:8px !important;
+    border-radius:8px !important;
+    padding-left:18px !important;
+    padding-right:18px !important;
+  }
+}
+
+/* Ajuste extra apenas para notebooks com pouca altura */
+@media screen and (min-width:981px) and (max-height:820px){
+
+  .content{
+    padding-top:12px !important;
+    padding-bottom:8px !important;
+  }
+
+  .dashboardGrid{
+    height:calc(100% - 42px) !important;
+  }
+
+  .heroPanel{
+    height:138px !important;
+    min-height:138px !important;
+    padding-top:18px !important;
+    padding-bottom:16px !important;
+  }
+
+  .heroCopy h1{
+    font-size:25px !important;
+  }
+
+  .heroCopy p{
+    margin-top:12px !important;
+    margin-bottom:8px !important;
+    line-height:1.25 !important;
+  }
+
+  .marketTab{
+    height:48px !important;
+    min-height:48px !important;
+  }
+
+  .bottomStrip{
+    height:36px !important;
+    min-height:36px !important;
+    margin-top:6px !important;
+  }
+}
