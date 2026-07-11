@@ -4056,3 +4056,92 @@ button.viewAllGames:hover,
   .gameRow .oddBox:nth-of-type(5){display:none !important;}
   .gameRow{grid-template-columns:minmax(145px,1.35fr) repeat(3,minmax(54px,.7fr)) 25px !important;}
 }
+/* ======================================================================
+   CORREÇÃO FINAL — SAUDAÇÃO VISÍVEL + SEM ROLAGEM GERAL EM NOTEBOOKS
+   Mantém intacto o layout de monitores grandes (acima de 1600px).
+   ====================================================================== */
+@media (min-width:981px) and (max-width:1600px){
+  html,
+  body,
+  .dashboard,
+  .main{
+    width:100%;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    overflow:hidden !important;
+  }
+
+  .main{
+    width:calc(100% - var(--sidebar)) !important;
+  }
+
+  .content{
+    flex:1 1 auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    padding-top:8px !important;
+    padding-bottom:8px !important;
+    overflow:hidden !important;
+  }
+
+  /* O primeiro elemento da área de conteúdo é a saudação "Olá, Rodrigo". */
+  .content > :first-child:not(.dashboardGrid){
+    position:relative !important;
+    top:auto !important;
+    left:auto !important;
+    transform:none !important;
+    flex:0 0 32px !important;
+    width:100% !important;
+    min-height:32px !important;
+    height:32px !important;
+    margin:0 0 7px !important;
+    padding:0 12px !important;
+    display:flex !important;
+    align-items:center !important;
+    overflow:visible !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    z-index:20 !important;
+  }
+
+  .dashboardGrid{
+    flex:1 1 auto !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+    margin:0 !important;
+  }
+
+  .dashboardMainColumn{
+    height:100% !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .dashboardRightRail{
+    height:100% !important;
+    max-height:100% !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain;
+  }
+
+  .heroPanel{
+    margin-top:0 !important;
+  }
+
+  .bottomStrip{
+    margin-bottom:0 !important;
+  }
+}
+
+@media (min-width:981px) and (max-width:1600px) and (max-height:820px){
+  .content > :first-child:not(.dashboardGrid){
+    flex-basis:28px !important;
+    min-height:28px !important;
+    height:28px !important;
+    margin-bottom:5px !important;
+  }
+}
