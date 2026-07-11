@@ -3439,3 +3439,522 @@ button.viewAllGames:hover,
   background:linear-gradient(180deg,rgba(155,185,160,.075),rgba(155,185,160,.028)) !important;
   border-color:rgba(155,185,160,.48) !important;
 }
+/* ======================================================================
+   RESPONSIVIDADE FINAL — NOTEBOOKS, MACBOOKS E MONITORES MENORES
+   Mantém o layout original intacto em telas largas (1600px ou mais).
+   ====================================================================== */
+
+@media (max-width:1599px){
+  :root{
+    --sidebar:164px;
+    --top:56px;
+    --right:318px;
+  }
+
+  html,body{
+    width:100%;
+    min-height:100%;
+  }
+
+  body{
+    overflow:hidden !important;
+  }
+
+  .dashboard{
+    width:100%;
+    height:100dvh;
+    min-height:100dvh;
+    overflow:hidden;
+  }
+
+  .sidebar{
+    width:var(--sidebar) !important;
+    height:100dvh !important;
+    padding:14px 10px 10px !important;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  .brandLogo{
+    height:46px !important;
+  }
+
+  .brandLogo strong{
+    font-size:17px !important;
+  }
+
+  .sidebar-nav{
+    margin-top:8px !important;
+    gap:2px !important;
+  }
+
+  .side-item{
+    height:31px !important;
+    padding:0 9px !important;
+    font-size:10px !important;
+  }
+
+  .proBox{
+    padding:12px 12px !important;
+  }
+
+  .proBox h3{
+    font-size:16px !important;
+  }
+
+  .proBox p{
+    font-size:10px !important;
+  }
+
+  .crown{
+    font-size:46px !important;
+    margin:-4px 0 4px !important;
+  }
+
+  .main{
+    width:calc(100% - var(--sidebar)) !important;
+    height:100dvh !important;
+    min-width:0;
+    overflow:hidden;
+  }
+
+  .topbar{
+    height:var(--top) !important;
+    min-height:var(--top) !important;
+    padding:0 18px !important;
+  }
+
+  .nav{
+    gap:20px !important;
+    min-width:0;
+  }
+
+  .nav a{
+    font-size:9px !important;
+    white-space:nowrap;
+  }
+
+  .topUser{
+    gap:8px !important;
+    flex:0 0 auto;
+  }
+
+  .avatar{
+    width:34px !important;
+    height:34px !important;
+  }
+
+  .content{
+    height:calc(100dvh - var(--top)) !important;
+    min-height:0 !important;
+    padding:12px 14px 10px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    scrollbar-gutter:stable;
+  }
+
+  .dashboardGrid{
+    height:auto !important;
+    min-height:calc(100dvh - var(--top) - 78px) !important;
+    grid-template-columns:minmax(0,1fr) minmax(300px,var(--right)) !important;
+    gap:12px !important;
+    align-items:start;
+  }
+
+  .dashboardMainColumn{
+    gap:8px !important;
+  }
+
+  .heroPanel{
+    height:156px !important;
+    min-height:156px !important;
+    margin-top:0 !important;
+    padding:22px 34px !important;
+  }
+
+  .heroCopy h1{
+    font-size:27px !important;
+  }
+
+  .heroCopy p{
+    margin:14px 0 12px !important;
+    font-size:11px !important;
+  }
+
+  .heroStats{
+    gap:30px !important;
+  }
+
+  .heroPlayer{
+    right:40px !important;
+    transform:scale(.88) rotate(-8deg) !important;
+    transform-origin:bottom right;
+  }
+
+  .marketTabs{
+    gap:7px !important;
+  }
+
+  .marketTab{
+    height:50px !important;
+    padding:0 12px !important;
+    gap:8px !important;
+  }
+
+  .marketTab span{
+    font-size:21px !important;
+  }
+
+  .marketTab b{
+    font-size:9px !important;
+  }
+
+  .marketTab small{
+    font-size:6px !important;
+  }
+
+  .marketWorkArea{
+    gap:10px !important;
+  }
+
+  .gamesPanel{
+    padding:10px !important;
+  }
+
+  .gameRow{
+    min-height:58px !important;
+    height:auto !important;
+    gap:8px !important;
+  }
+
+  .dashboardRightRail{
+    gap:9px !important;
+    max-height:calc(100dvh - var(--top) - 24px);
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding-right:3px;
+  }
+
+  .railCard{
+    padding:11px !important;
+    border-radius:12px !important;
+  }
+
+  .railEmptyRadar{
+    height:104px !important;
+  }
+
+  .bottomStrip{
+    height:38px !important;
+    min-height:38px !important;
+    margin-top:7px !important;
+    padding:0 16px !important;
+    gap:10px !important;
+  }
+
+  .bottomStrip div:before{
+    font-size:19px !important;
+  }
+
+  .bottomStrip b{
+    font-size:9px !important;
+  }
+
+  .bottomStrip span{
+    font-size:8px !important;
+  }
+}
+
+@media (max-width:1366px){
+  :root{
+    --sidebar:148px;
+    --right:286px;
+  }
+
+  .sidebar{
+    padding-left:8px !important;
+    padding-right:8px !important;
+  }
+
+  .brandLogo{
+    padding:0 5px !important;
+  }
+
+  .brandLogo strong{
+    font-size:15px !important;
+  }
+
+  .brandLogo small{
+    font-size:6px !important;
+  }
+
+  .side-item{
+    gap:7px !important;
+    padding:0 7px !important;
+    font-size:9px !important;
+  }
+
+  .nav{
+    gap:13px !important;
+  }
+
+  .nav a{
+    font-size:8px !important;
+  }
+
+  .userText{
+    display:none !important;
+  }
+
+  .content{
+    padding:10px 10px 10px !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) minmax(270px,var(--right)) !important;
+    gap:9px !important;
+  }
+
+  .heroPanel{
+    height:142px !important;
+    min-height:142px !important;
+    padding:18px 26px !important;
+  }
+
+  .heroCopy h1{
+    font-size:24px !important;
+  }
+
+  .heroCopy p{
+    max-width:330px !important;
+    margin:11px 0 8px !important;
+    font-size:10px !important;
+  }
+
+  .heroStats{
+    display:none !important;
+  }
+
+  .heroPlayer{
+    right:12px !important;
+    transform:scale(.74) rotate(-8deg) !important;
+  }
+
+  .marketTab{
+    height:46px !important;
+    padding:0 8px !important;
+  }
+
+  .marketTab span{
+    font-size:18px !important;
+  }
+
+  .marketTab small{
+    display:none !important;
+  }
+
+  .sectionHead{
+    gap:10px !important;
+  }
+
+  .filterPills{
+    gap:4px !important;
+  }
+
+  .filterPills button{
+    padding:0 8px !important;
+    font-size:8px !important;
+  }
+
+  .gameRow{
+    grid-template-columns:minmax(150px,1.35fr) repeat(4,minmax(54px,.66fr)) 26px !important;
+    gap:5px !important;
+  }
+
+  .gameMeta b{
+    font-size:10px !important;
+  }
+
+  .gameMeta span{
+    font-size:9px !important;
+    margin-right:8px !important;
+  }
+
+  .oddBox span{
+    min-width:48px !important;
+    height:22px !important;
+    font-size:9px !important;
+  }
+
+  .railTitle span{
+    font-size:10px !important;
+  }
+
+  .railEmptyStatsGrid{
+    gap:6px !important;
+  }
+
+  .railEmptyStatBox{
+    padding:6px !important;
+  }
+
+  .railEmptyEventIcons{
+    gap:4px !important;
+  }
+
+  .railEmptyEventIcons span{
+    padding:5px 2px !important;
+  }
+}
+
+@media (max-width:1180px) and (min-width:981px){
+  :root{
+    --sidebar:132px;
+    --right:260px;
+  }
+
+  .brandMark,
+  .side-item span{
+    display:none !important;
+  }
+
+  .brandLogo{
+    justify-content:center;
+    text-align:center;
+  }
+
+  .side-item{
+    justify-content:center;
+    padding:0 5px !important;
+  }
+
+  .proBox p,
+  .crown{
+    display:none !important;
+  }
+
+  .proBox{
+    text-align:center;
+    padding:10px 7px !important;
+  }
+
+  .nav{
+    gap:9px !important;
+  }
+
+  .nav a{
+    font-size:7px !important;
+  }
+
+  .bell{
+    display:none !important;
+  }
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) 250px !important;
+  }
+
+  .heroPlayer{
+    display:none !important;
+  }
+
+  .heroCopy p{
+    max-width:440px !important;
+  }
+
+  .marketTabs{
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  }
+
+  .marketTab{
+    justify-content:center;
+    text-align:center;
+  }
+
+  .marketTab span{
+    display:none !important;
+  }
+
+  .gameRow{
+    grid-template-columns:minmax(140px,1.4fr) repeat(3,minmax(50px,.62fr)) 26px !important;
+  }
+
+  .gameRow .oddBox:nth-of-type(5){
+    display:none !important;
+  }
+}
+
+@media (max-height:820px) and (min-width:981px){
+  .content{
+    padding-top:8px !important;
+    padding-bottom:12px !important;
+  }
+
+  .heroPanel{
+    height:132px !important;
+    min-height:132px !important;
+    padding-top:16px !important;
+    padding-bottom:16px !important;
+  }
+
+  .heroCopy h1{
+    font-size:23px !important;
+  }
+
+  .heroCopy p{
+    margin:9px 0 7px !important;
+  }
+
+  .marketTab{
+    height:44px !important;
+  }
+
+  .dashboardMainColumn{
+    gap:7px !important;
+  }
+
+  .dashboardRightRail{
+    max-height:calc(100dvh - var(--top) - 18px) !important;
+  }
+}
+
+@media (max-width:980px){
+  body{
+    overflow:auto !important;
+  }
+
+  .dashboard{
+    display:block !important;
+    height:auto !important;
+    min-height:100dvh !important;
+    overflow:visible !important;
+  }
+
+  .sidebar{
+    position:relative !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+  }
+
+  .main{
+    width:100% !important;
+    height:auto !important;
+    overflow:visible !important;
+  }
+
+  .content{
+    height:auto !important;
+    overflow:visible !important;
+  }
+
+  .dashboardGrid{
+    min-height:0 !important;
+    grid-template-columns:1fr !important;
+  }
+
+  .dashboardRightRail{
+    max-height:none !important;
+    overflow:visible !important;
+  }
+}
