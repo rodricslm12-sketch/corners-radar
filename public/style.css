@@ -3635,3 +3635,40 @@ button.viewAllGames:hover,
     flex-shrink:0;
   }
 }
+
+
+
+/* =========================================================
+   AJUSTE SOMENTE PARA NOTEBOOKS / MACBOOK / 21-24"
+   NÃO ALTERA O LAYOUT DO MONITOR 27"
+   ========================================================= */
+@media screen and (max-width:1700px){
+
+  .dashboardGrid{
+    grid-template-columns:minmax(0,1fr) minmax(300px,340px)!important;
+    gap:12px!important;
+  }
+
+  .dashboardMainColumn{
+    min-width:0!important;
+  }
+
+  .dashboardRightRail{
+    min-width:300px!important;
+    width:100%!important;
+    overflow:auto!important;
+  }
+
+  .gamesPanel{
+    margin-bottom:8px!important;
+  }
+
+  .bottomStrip{
+    margin-top:6px!important;
+  }
+
+  .content{
+    padding-bottom:6px!important;
+  }
+
+}
