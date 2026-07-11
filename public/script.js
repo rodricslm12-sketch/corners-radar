@@ -2848,12 +2848,16 @@
   }
   
   // ---------------- Main Load ----------------
-  async function loadAll({ date, fresh = false }){
+  async function loadAll({ date, fresh = false } = {}){
     ensureDateVisible();
     setTopLoading(true);
-  
-    const d = dateInput?.value || date || "";
-    if (!d && dateInput) dateInput.value = todayAM_YMD();
+
+    const dateFromUrl = new URLSearchParams(window.location.search).get("date")
+      || new URLSearchParams(window.location.search).get("data")
+      || "";
+    const requestedDate = date || dateInput?.value || dateFromUrl || todayAM_YMD();
+
+    if (dateInput) dateInput.value = requestedDate;
   
     if (btn){
       btn.disabled = true;
@@ -2867,7 +2871,7 @@
   
     try{
       setIaLoading("Analisando…");
-      const dateYMD = dateInput?.value || todayAM_YMD();
+      const dateYMD = requestedDate;
       const list = enrichMarketsList(await fetchGamesFromApi(["/quentes", "/mercados"], dateYMD, fresh));
       lastRawGames = list.slice();
       lastDateYMD = dateYMD;
@@ -7913,7 +7917,14 @@ function resetDesktopMatchRailToEmpty(){
     const panel = $(".gamesPanel");
     if (!panel) return;
 
-    const date = selectedDate || document.getElementById("date")?.value || new URLSearchParams(window.location.search).get("date") || todayManaus();
+    const date = selectedDate
+      || document.getElementById("date")?.value
+      || new URLSearchParams(window.location.search).get("date")
+      || new URLSearchParams(window.location.search).get("data")
+      || todayManaus();
+
+    const hiddenDate = document.getElementById("date");
+    if (hiddenDate) hiddenDate.value = date;
 
     panel.querySelectorAll(".gameRow,.viewAll,.cornerProStatus").forEach(el => el.remove());
     panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Carregando jogos reais de ${date}...</div>`);
@@ -8440,9 +8451,10 @@ function resetDesktopMatchRailToEmpty(){
     const input = document.getElementById("date");
 
     const url = new URL(window.location.href);
-    url.searchParams.delete("date");
+    url.hash = "";
     url.searchParams.delete("data");
-    window.history.replaceState({}, "", url.toString());
+    url.searchParams.set("date", ymd);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
 
     if (input){
       input.value = ymd;
@@ -11095,15 +11107,16 @@ function resetDesktopMatchRailToEmpty(){
 })();
 
 /* =========================================================
-   FIX FINAL ABSOLUTO — DATA DE HOJE AO ATUALIZAR
-   - Vence localStorage, URL e inicializações antigas
-   - Roda várias vezes durante o carregamento
+   DATA INICIAL DO DASHBOARD
+   - Preserva ?date=YYYY-MM-DD ao atualizar a página
+   - Usa a data de hoje somente quando nenhuma data foi escolhida
+   - Evita sobrescrever a seleção do calendário
    ========================================================= */
-(function forceTodayOnPageRefreshFinal(){
-  if (window.__forceTodayOnPageRefreshFinalInstalled) return;
-  window.__forceTodayOnPageRefreshFinalInstalled = true;
+(function initializeDashboardDate(){
+  if (window.__cornerProDashboardDateInitialized) return;
+  window.__cornerProDashboardDateInitialized = true;
 
-  function todayAMFinal(){
+  function todayManausYMD(){
     try{
       return new Intl.DateTimeFormat("en-CA", {
         timeZone:"America/Manaus",
@@ -11116,63 +11129,25 @@ function resetDesktopMatchRailToEmpty(){
     }
   }
 
-  async function applyTodayFinal(){
-    const ymd = todayAMFinal();
-
-    try{
-      localStorage.removeItem("cornerProSelectedDate");
-      window.__cornerProSelectedDate = ymd;
-
-      if (typeof lastDateYMD !== "undefined") lastDateYMD = ymd;
-      if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = ymd;
-    }catch(e){}
-
-    try{
-      const url = new URL(window.location.href);
-      url.searchParams.delete("date");
-      url.searchParams.delete("data");
-      window.history.replaceState({}, "", url.toString());
-    }catch(e){}
-
+  function initialize(){
+    const params = new URLSearchParams(window.location.search);
+    const selected = params.get("date") || params.get("data") || todayManausYMD();
     const input = document.getElementById("date");
-    if (input && input.value !== ymd){
-      input.value = ymd;
-      input.dispatchEvent(new Event("input", { bubbles:true }));
-      input.dispatchEvent(new Event("change", { bubbles:true }));
-    }
+    if (input) input.value = selected;
+    window.__cornerProSelectedDate = selected;
 
-    try{
-      if (typeof window.cornerProSetDate === "function"){
-        window.cornerProSetDate(ymd);
-      }
-    }catch(e){}
-
-    try{
-      if (typeof window.CornerProReloadRealGames === "function"){
-        await window.CornerProReloadRealGames(ymd);
-        return;
-      }
-    }catch(e){}
-
-    try{
-      if (typeof loadAll === "function"){
-        await loadAll({ date: ymd, fresh: true });
-        return;
-      }
-    }catch(e){}
+    const url = new URL(window.location.href);
+    url.hash = "";
+    url.searchParams.delete("data");
+    url.searchParams.set("date", selected);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
   }
 
-  function scheduleTodayFinal(){
-    applyTodayFinal();
-    setTimeout(applyTodayFinal, 80);
-    setTimeout(applyTodayFinal, 350);
-    setTimeout(applyTodayFinal, 900);
-    setTimeout(applyTodayFinal, 1600);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialize, { once:true });
+  } else {
+    initialize();
   }
-
-  document.addEventListener("DOMContentLoaded", scheduleTodayFinal);
-  window.addEventListener("load", scheduleTodayFinal);
-  window.addEventListener("pageshow", scheduleTodayFinal);
 })();
 /* =========================================================
    FIX FINAL — FILTRO CONSISTENTE PARA TODOS OS MERCADOS

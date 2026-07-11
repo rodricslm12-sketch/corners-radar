@@ -7,10 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260706" />
-  <script src="script.js?v=20260706" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260710" />
+  <script src="script.js?v=20260710" defer></script>
 </head>
 <body class="dashboard">
+  <input type="hidden" id="date" name="date" value="">
+
   <aside class="sidebar">
     <div class="brandBlock">
       <div class="brandLogo">
@@ -57,10 +59,10 @@
         <a>PLAYER PROPS</a>
         <a>ESTATÍSTICAS</a>
         <a>BOTS</a>
-        <a href="#" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</a>
+        <button type="button" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</button>
       </nav>
       <div class="topUser">
-        <button class="bell">♧</button>
+        <button class="bell" type="button">♧</button>
         <div class="userText"><strong>Olá, Rodrigo</strong><small></small></div>
         <span class="chev">⌄</span>
       </div>
@@ -99,17 +101,21 @@
           </section>
 
           <section class="marketTabs">
-            <button class="marketTab active"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
-            <button class="marketTab"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
-            <button class="marketTab"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
-            <button class="marketTab"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
-            <button class="marketTab"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
+            <button class="marketTab active" type="button"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
+            <button class="marketTab" type="button"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
+            <button class="marketTab" type="button"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
+            <button class="marketTab" type="button"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
+            <button class="marketTab" type="button"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
           </section>
 
           <section class="gamesPanel">
             <div class="sectionHead">
               <h2>Jogos em Destaque</h2>
-              <div class="filterPills"><button>Todos</button><button class="active">Hoje</button><button>Amanhã</button></div>
+              <div class="filterPills">
+                <button type="button">Todos</button>
+                <button type="button" class="active">Hoje</button>
+                <button type="button">Amanhã</button>
+              </div>
               <a>Ver todos ›</a>
             </div>
 
@@ -119,7 +125,7 @@
               <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 2.5</b><span>1.90</span></div>
               <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.65</span></div>
               <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.75</span></div>
-              <button class="signal">▮▮▮</button>
+              <button class="signal" type="button">▮▮▮</button>
             </div>
 
             <div class="gameRow">
@@ -128,7 +134,7 @@
               <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.5</b><span>1.95</span></div>
               <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.60</span></div>
               <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.70</span></div>
-              <button class="signal">▮▮▮</button>
+              <button class="signal" type="button">▮▮▮</button>
             </div>
 
             <div class="gameRow">
@@ -137,9 +143,9 @@
               <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.0</b><span>1.88</span></div>
               <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.55</span></div>
               <div class="oddBox"><small>CARTÕES</small><b>OVER 5.5</b><span>1.85</span></div>
-              <button class="signal">▮▮▮</button>
+              <button class="signal" type="button">▮▮▮</button>
             </div>
-            <button class="viewAll">VER TODOS OS JOGOS</button>
+            <button class="viewAll" type="button">VER TODOS OS JOGOS</button>
           </section>
         </section>
 

@@ -2478,8 +2478,25 @@ async function mapLimit(items, limit, fn){
 
 // ---------------- API calls ----------------
 async function getEventsByLeagueDate(leagueId, date) {
-  const data = await apiGetV3({ action: "get_events", from: date, to: date, league_id: leagueId });
+  // Eventos devem funcionar mesmo quando a v3 estiver instável.
+  const data = await apiGetAny({ action: "get_events", from: date, to: date, league_id: leagueId });
   return Array.isArray(data) ? data : [];
+}
+
+// Busca todos os eventos da data sem depender de uma lista fixa de IDs de ligas.
+// Esse fallback é essencial porque os IDs/competições disponíveis podem mudar por temporada.
+async function getAllEventsByDate(date) {
+  const data = await apiGetAny({ action: "get_events", from: date, to: date });
+  return Array.isArray(data) ? data : [];
+}
+
+function leagueFromEventFallback(e = {}) {
+  const id = Number(e.league_id ?? e.leagueId ?? e.league?.id ?? 0);
+  const name = String(
+    e.league_name ?? e.leagueName ?? e.league?.name ?? e.country_name ?? "Liga"
+  ).trim() || "Liga";
+  const country = String(e.country_name ?? e.country ?? e.league?.country ?? "");
+  return guessLeagueMeta({ id: Number.isFinite(id) ? id : 0, name, country });
 }
 
 const standingsCache = new Map();
@@ -4193,10 +4210,10 @@ async function buildQuentesList({ date, fresh }) {
 
   if (!APIKEY) throw new Error("Falta APIFOOTBALL_KEY no .env");
 
-  const DAY_LEAGUES = await getLeaguesForDate(date);
+  let DAY_LEAGUES = await getLeaguesForDate(date);
 
   // 1) eventos + standings por liga
-  const leagueResults = await mapLimit(DAY_LEAGUES, CONCURRENCY, async (L) => {
+  let leagueResults = await mapLimit(DAY_LEAGUES, CONCURRENCY, async (L) => {
     let events = [];
     try { events = await getEventsByLeagueDate(L.id, date); } catch { events = []; }
 
@@ -4205,6 +4222,41 @@ async function buildQuentesList({ date, fresh }) {
 
     return { league: L, events, standings };
   });
+
+  // FALLBACK REAL: se a whitelist fixa/dinâmica não encontrou ligas,
+  // consulta todos os eventos da data e agrupa pela liga retornada pela própria API.
+  // Assim /quentes não fica vazio apenas porque um ID de liga mudou.
+  if (!leagueResults.some(pack => Array.isArray(pack.events) && pack.events.length)) {
+    let allEvents = [];
+    try { allEvents = await getAllEventsByDate(date); } catch (err) {
+      console.error(`[quentes] Falha ao buscar todos os eventos de ${date}:`, err?.message || err);
+    }
+
+    if (allEvents.length) {
+      const grouped = new Map();
+      for (const e of allEvents) {
+        const league = leagueFromEventFallback(e);
+        const key = `${league.id}|${league.name}`;
+        if (!grouped.has(key)) grouped.set(key, { league, events: [] });
+        grouped.get(key).events.push(e);
+      }
+
+      const fallbackPacks = Array.from(grouped.values())
+        .sort((a, b) => Number(b.league.importance || 0) - Number(a.league.importance || 0))
+        .slice(0, DYNAMIC_LEAGUES_MAX_PER_DAY);
+
+      leagueResults = await mapLimit(fallbackPacks, CONCURRENCY, async (pack) => {
+        let standings = null;
+        if (Number(pack.league.id) > 0) {
+          try { standings = await getStandings(pack.league.id); } catch { standings = null; }
+        }
+        return { ...pack, standings };
+      });
+
+      DAY_LEAGUES = fallbackPacks.map(x => x.league);
+      console.log(`[quentes] Fallback geral encontrou ${allEvents.length} jogos em ${leagueResults.length} ligas para ${date}.`);
+    }
+  }
 
   // 2) pré-seleção
   const candidatesByLeague = [];
@@ -4853,6 +4905,31 @@ if (isEuropeanClassic(casaN, foraN)) {
     // Garante que até cache antigo/fallback saia com os mercados extras.
     return withExtraMarkets(normalized);
   });
+
+  // ÚLTIMO FALLBACK: se as regras avançadas eliminaram todos os jogos,
+  // devolve partidas reais em modo LITE. O site precisa primeiro exibir os jogos;
+  // os filtros de qualidade continuam sendo usados quando houver candidatos aprovados.
+  if (!out.length && litePool.length) {
+    const seen = new Set();
+    out = litePool
+      .filter(Boolean)
+      .filter(x => {
+        const key = `${x.league_id}|${x.match_id}|${x.casa}|${x.fora}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => premiumCornerRankingScore(b) - premiumCornerRankingScore(a))
+      .slice(0, 30)
+      .map(x => withExtraMarkets(normalizeTeamsOnGame({
+        ...x,
+        mode: x.mode || "lite",
+        lite_reason: x.lite_reason || "display_fallback_all_filtered",
+        ai_score: Number.isFinite(x?.ai_score) ? x.ai_score : aiScoreFromMatch(x)
+      })));
+
+    console.warn(`[quentes] Todas as análises foram filtradas; enviando ${out.length} jogos reais em modo LITE para ${date}.`);
+  }
 
   if (!fresh) writePersist(date, out);
   return out;
