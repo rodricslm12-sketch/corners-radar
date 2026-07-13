@@ -3892,3 +3892,466 @@ button.viewAllGames:hover,
 .dashboardGrid{
     height:calc(100% - 46px) !important;
 }
+
+/* =========================================================
+   AJUSTE FINAL — VISUAL MAIS LIMPO, SEM EXCESSO DE BORDAS
+   Mantém layout, tamanhos, responsividade e identidade verde.
+   ========================================================= */
+
+/* Painéis principais: borda quase invisível e sombra mais natural */
+.heroPanel,
+.gamesPanel,
+.marketInlinePanel,
+.marketMenuPro,
+.railCard,
+.bottomStrip,
+.proBox{
+  border-color:rgba(255,255,255,.045) !important;
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.018) !important;
+}
+
+/* Banner mais natural */
+.heroPanel{
+  border-color:rgba(255,255,255,.035) !important;
+  box-shadow:0 16px 36px rgba(0,0,0,.20) !important;
+}
+
+.heroPanel:before{
+  opacity:.16 !important;
+}
+
+/* Abas superiores mais discretas */
+.marketTab{
+  border-color:rgba(255,255,255,.035) !important;
+  box-shadow:none !important;
+}
+
+.marketTab:hover{
+  border-color:rgba(255,255,255,.07) !important;
+  background:linear-gradient(180deg,#11191f,#0c1217) !important;
+}
+
+.marketTab.active{
+  border-color:rgba(99,241,39,.16) !important;
+  box-shadow:inset 0 1px 0 rgba(99,241,39,.08) !important;
+}
+
+/* Cards internos dos mercados */
+.marketInlineSection,
+.marketGroup,
+.marketCard,
+.marketMenuGroup,
+.marketMenuBlock,
+.marketColumn,
+.marketTablePanel,
+.marketFilterPanel{
+  border-color:rgba(255,255,255,.045) !important;
+  box-shadow:none !important;
+}
+
+/* Linhas de mercados e jogos com divisórias suaves */
+.marketInlineItem,
+.marketRow,
+.marketMenuItem,
+.gameRow,
+.compactGameRow{
+  border-color:rgba(255,255,255,.045) !important;
+}
+
+.marketInlineItem:hover,
+.marketRow:hover,
+.marketMenuItem:hover,
+.gameRow:hover,
+.compactGameRow:hover{
+  background:rgba(255,255,255,.025) !important;
+  border-color:rgba(255,255,255,.06) !important;
+  box-shadow:none !important;
+}
+
+/* Jogos laterais */
+.sideGamesCard,
+.sideGameItem,
+.sideGameCard,
+.sideGamesList article,
+.gamesPanel article{
+  border-color:rgba(255,255,255,.055) !important;
+  box-shadow:none !important;
+}
+
+.sideGameItem:hover,
+.sideGameCard:hover,
+.gamesPanel article:hover{
+  border-color:rgba(255,255,255,.09) !important;
+  box-shadow:none !important;
+}
+
+/* Rail direito: tira o efeito de moldura forte */
+.railCard{
+  border-color:rgba(255,255,255,.055) !important;
+  background:
+    linear-gradient(180deg,rgba(15,23,29,.97),rgba(7,11,15,.98)) !important;
+}
+
+.railCard:before{
+  opacity:.28 !important;
+}
+
+.railEmptyStatBox,
+.railEmptyEventIcons span,
+.railEmptyReadBox,
+.railLiveStat,
+.railPressureChartBox,
+.railCompareLabel i,
+.railEventRow span{
+  border-color:rgba(255,255,255,.05) !important;
+  box-shadow:none !important;
+}
+
+/* Match Center com menos verde nas molduras */
+.railTitle span:before{
+  box-shadow:0 0 8px rgba(99,241,39,.20) !important;
+}
+
+.railTitle b,
+.railDashScore span,
+.railPressureHead b{
+  border-color:rgba(99,241,39,.16) !important;
+  box-shadow:none !important;
+}
+
+.radarRing{
+  border-color:rgba(99,241,39,.16) !important;
+}
+
+/* Botões: verde só no destaque, sem contorno agressivo */
+.viewAll,
+.railFullBtn,
+.proBox button,
+.bottomStrip button,
+.marketActionBtn,
+.marketInlineAction{
+  border-color:rgba(99,241,39,.22) !important;
+  box-shadow:none !important;
+}
+
+.viewAll:hover,
+.railFullBtn:hover,
+.proBox button:hover,
+.marketActionBtn:hover,
+.marketInlineAction:hover{
+  border-color:rgba(99,241,39,.38) !important;
+  box-shadow:none !important;
+}
+
+/* Sidebar mais limpa */
+.sidebar{
+  border-right-color:rgba(255,255,255,.045) !important;
+  box-shadow:10px 0 28px rgba(0,0,0,.22) !important;
+}
+
+.side-item{
+  border-color:transparent !important;
+}
+
+.side-item.active{
+  border-color:rgba(99,241,39,.12) !important;
+  box-shadow:none !important;
+}
+
+/* Card PRO menos carregado */
+.proBox{
+  border-color:rgba(99,241,39,.12) !important;
+}
+
+.crown{
+  filter:drop-shadow(0 0 10px rgba(99,241,39,.28)) !important;
+}
+
+/* Rodapé inferior mais integrado ao fundo */
+.bottomStrip{
+  border-color:rgba(255,255,255,.04) !important;
+  box-shadow:none !important;
+}
+
+/* Scrollbars mais discretas */
+.dashboardRightRail,
+.gamesPanel,
+.sideGamesList{
+  scrollbar-color:rgba(99,241,39,.20) transparent !important;
+}
+
+.dashboardRightRail::-webkit-scrollbar-thumb,
+.gamesPanel::-webkit-scrollbar-thumb,
+.sideGamesList::-webkit-scrollbar-thumb{
+  background:rgba(99,241,39,.20) !important;
+}
+
+/* Calendário também segue o visual limpo */
+.navCalendar,
+.topCalendarBox,
+.topCalNav,
+.topCalendarDay,
+.topCalendarFooter button{
+  box-shadow:none !important;
+}
+
+.topCalendarBox{
+  border-color:rgba(255,255,255,.07) !important;
+}
+
+.topCalendarDay{
+  border-color:rgba(255,255,255,.05) !important;
+}
+
+.topCalendarDay:hover,
+.topCalendarDay.is-today,
+.topCalendarDay.is-selected{
+  border-color:rgba(99,241,39,.24) !important;
+  box-shadow:none !important;
+}
+
+/* =========================================================
+   CORREÇÃO FORTE — REMOVE DE VERDADE O EXCESSO DE BORDAS
+   Colocado no final para vencer regras duplicadas anteriores.
+   ========================================================= */
+
+/* Painéis externos */
+.heroPanel,
+.gamesPanel,
+.marketInlinePanel,
+.marketMenuPro,
+.dashboardRightRail .railCard,
+.bottomStrip,
+.proBox{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:0 10px 26px rgba(0,0,0,.18) !important;
+}
+
+/* Abas principais */
+.marketTab{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#0d1419 !important;
+}
+
+.marketTab.active{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:inset 0 -2px 0 rgba(99,241,39,.45) !important;
+  background:#0f171c !important;
+}
+
+/* Cards internos dos mercados */
+.marketInlineSection,
+.marketInlineGroup,
+.marketInlineCard,
+.marketGroup,
+.marketCard,
+.marketMenuGroup,
+.marketMenuBlock,
+.marketColumn,
+.marketTablePanel,
+.marketFilterPanel,
+.marketMiniCard,
+.marketBox{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#0c1318 !important;
+}
+
+/* Coluna de jogos */
+.sideGamesCard,
+.sideGameItem,
+.sideGameCard,
+.gamesPanel article,
+.gamesPanel .gameItem,
+.gamesPanel .gameCard{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#0c1318 !important;
+}
+
+/* Divisórias internas bem suaves */
+.gameRow,
+.compactGameRow,
+.marketInlineItem,
+.marketRow,
+.marketMenuItem{
+  border-color:rgba(255,255,255,.035) !important;
+  box-shadow:none !important;
+}
+
+/* Rail direito completamente limpo */
+.dashboardRightRail .railCard,
+.railCard{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.16) !important;
+  background:#0c1318 !important;
+}
+
+.railEmptyStatBox,
+.railEmptyEventIcons span,
+.railEmptyReadBox,
+.railLiveStat,
+.railPressureChartBox,
+.railCompareLabel i,
+.railEventRow span{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#091015 !important;
+}
+
+/* Botões verdes menos contornados */
+.viewAll,
+.railFullBtn,
+.proBox button,
+.marketActionBtn,
+.marketInlineAction{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:rgba(99,241,39,.08) !important;
+}
+
+/* Card PRO */
+.proBox{
+  background:
+    radial-gradient(circle at 65% 62%,rgba(99,241,39,.24),transparent 34%),
+    #07100d !important;
+}
+
+/* Sidebar e topo */
+.sidebar{
+  border-right:0 !important;
+  box-shadow:8px 0 22px rgba(0,0,0,.16) !important;
+}
+
+.topbar{
+  border-bottom:0 !important;
+}
+
+/* Rodapé */
+.bottomStrip{
+  border:0 !important;
+  box-shadow:none !important;
+  background:#0d1419 !important;
+}
+
+/* Remove molduras verdes residuais */
+[class*="border"],
+[class*="outline"]{
+  box-shadow:none;
+}
+
+/* Mantém verde só em texto, ícones e estados ativos */
+.side-item.active,
+.filterPills .active,
+.navCalendar.is-open,
+.topCalendarDay.is-selected{
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+/* =========================================================
+   AJUSTE CIRÚRGICO — RIGHT RAIL SEM EXCESSO DE LINHAS
+   Afeta somente Match Center, Estatísticas, Eventos e botão.
+   ========================================================= */
+
+/* Cards externos da coluna direita */
+.dashboardRightRail .railCard{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.16) !important;
+  background:#0c1318 !important;
+}
+
+/* Remove moldura e brilho do cabeçalho */
+.dashboardRightRail .railTitle b{
+  border:0 !important;
+  box-shadow:none !important;
+  background:rgba(99,241,39,.08) !important;
+}
+
+.dashboardRightRail .railTitle span:before{
+  box-shadow:none !important;
+}
+
+/* Caixas internas de estatísticas */
+.dashboardRightRail .railEmptyStatBox,
+.dashboardRightRail .railLiveStat{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#091015 !important;
+}
+
+/* Eventos / leitura */
+.dashboardRightRail .railEmptyEventIcons span,
+.dashboardRightRail .railEmptyReadBox,
+.dashboardRightRail .railEventRow span{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:#091015 !important;
+}
+
+/* Remove as barras/linhas horizontais sob os ícones */
+.dashboardRightRail .railEmptyTimeline{
+  display:none !important;
+}
+
+.dashboardRightRail .railEmptyTimeline i{
+  display:none !important;
+}
+
+/* Remove divisórias internas residuais */
+.dashboardRightRail .railEventRow{
+  border-bottom:0 !important;
+}
+
+/* Radar mais discreto */
+.dashboardRightRail .radarRing{
+  border-color:rgba(99,241,39,.10) !important;
+}
+
+.dashboardRightRail .radarSweep{
+  opacity:.65 !important;
+}
+
+/* Botão inferior sem contorno verde forte */
+.dashboardRightRail .railFullBtn{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:rgba(99,241,39,.07) !important;
+}
+
+.dashboardRightRail .railFullBtn:hover{
+  border:0 !important;
+  box-shadow:none !important;
+  background:rgba(99,241,39,.11) !important;
+}
+
+/* Remove linhas de separação criadas por pseudo-elementos */
+.dashboardRightRail .railCard:before,
+.dashboardRightRail .railCard:after,
+.dashboardRightRail .railEmptyStatBox:before,
+.dashboardRightRail .railEmptyStatBox:after,
+.dashboardRightRail .railEmptyReadBox:before,
+.dashboardRightRail .railEmptyReadBox:after{
+  box-shadow:none !important;
+}
+
+/* Mantém apenas diferenças de fundo entre blocos */
+.dashboardRightRail .railEmptyStatsGrid,
+.dashboardRightRail .railEmptyEventIcons{
+  gap:8px !important;
+}
