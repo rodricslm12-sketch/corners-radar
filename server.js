@@ -157,6 +157,14 @@ const AI_DEFAULT_ON = String(process.env.AI_DEFAULT_ON || "0") === "1";
 const AI_TIMEOUT_MS = 15000;
 const AI_MAX_CANDIDATES = 30;
 
+// ====== PRIORIDADE PELA LINHA PRINCIPAL DE ESCANTEIOS DA BET365 ======
+// Quando a API devolver um mercado de escanteios explicitamente identificado,
+// os jogos são agrupados da maior linha para a menor: 11.5, 11.0, 10.5, 10.0, 9.5...
+// Dentro da mesma linha, o motor Corner Pro continua decidindo a ordem.
+const BET365_CORNER_LINE_PRIORITY = String(process.env.BET365_CORNER_LINE_PRIORITY || "1") === "1";
+const BET365_CORNER_MIN_LINE = Number(process.env.BET365_CORNER_MIN_LINE || 8);
+const BET365_CORNER_MAX_LINE = Number(process.env.BET365_CORNER_MAX_LINE || 15);
+
 // ====== Seleção final do site ======
 // ✅ Dias úteis: 2 melhores jogos do dia pelo score/IA.
 // ✅ Fim de semana: 3 melhores jogos do dia pelo score/IA.
@@ -2580,19 +2588,244 @@ function findTeamPos(standMap, teamName) {
   return bestScore >= 0.66 ? best : null;
 }
 
+/* =========================================================
+   LINHA PRINCIPAL DE ESCANTEIOS — BET365
+   IMPORTANTE:
+   - Só aceita mercados que mencionem explicitamente corners/escanteios.
+   - Nunca confunde o O/U de gols (o+2.5, o+3.5 etc.) com cantos.
+   - Se a API não fornecer esse mercado, retorna null e mantém o ranking antigo.
+   ========================================================= */
+function oddsNumber(v){
+  const n = Number(String(v ?? "").replace(",", ".").replace(/[^0-9.\-+]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function isBet365Name(v){
+  const t = normLooseText(v);
+  return t === "bet365" || t.includes("bet 365") || t.includes("bet365");
+}
+
+function isCornerMarketText(v){
+  const t = normLooseText(v);
+  return t.includes("corner") || t.includes("corners") || t.includes("escanteio") || t.includes("escanteios");
+}
+
+function validCornerLine(v){
+  const n = oddsNumber(v);
+  if (!Number.isFinite(n)) return null;
+  if (n < BET365_CORNER_MIN_LINE || n > BET365_CORNER_MAX_LINE) return null;
+  // linhas normalmente vêm em inteiro ou meio ponto
+  const halfStep = Math.round(n * 2) / 2;
+  return Math.abs(n - halfStep) <= 0.06 ? halfStep : null;
+}
+
+function lineFromCornerText(v){
+  const txt = String(v ?? "");
+  if (!isCornerMarketText(txt)) return null;
+  const nums = txt.match(/\d+(?:[.,]\d+)?/g) || [];
+  for (const raw of nums){
+    const line = validCornerLine(raw);
+    if (line !== null) return line;
+  }
+  return null;
+}
+
+function collectBet365CornerCandidates(node, inherited = {}, out = [], depth = 0){
+  if (depth > 7 || node == null) return out;
+
+  if (Array.isArray(node)){
+    for (const item of node) collectBet365CornerCandidates(item, inherited, out, depth + 1);
+    return out;
+  }
+
+  if (typeof node !== "object") return out;
+
+  const bookmaker =
+    node.odd_bookmakers ?? node.bookmaker ?? node.bookmaker_name ??
+    node.sportsbook ?? node.provider ?? inherited.bookmaker ?? "";
+
+  const marketText = [
+    node.market, node.market_name, node.odd_name, node.bet_name,
+    node.odd_label, node.odd_type, node.odd_market,
+    node.name, node.label, node.type, node.description,
+    inherited.marketText
+  ].filter(Boolean).join(" ");
+
+  const explicitBet365 = isBet365Name(bookmaker) || inherited.isBet365 === true;
+  const explicitCornerMarket = isCornerMarketText(marketText) || inherited.isCornerMarket === true;
+
+  let line = null;
+  if (explicitCornerMarket){
+    const directFields = [
+      node.handicap, node.odd_handicap, node.line, node.odd_line,
+      node.total, node.odd_total, node.points, node.point,
+      node.threshold, node.market_line, node.bet_line
+    ];
+    for (const v of directFields){
+      line = validCornerLine(v);
+      if (line !== null) break;
+    }
+    if (line === null) line = lineFromCornerText(marketText);
+  }
+
+  const overOdd = oddsNumber(
+    node.over ?? node.odd_over ?? node.over_odds ?? node.price_over ??
+    (String(node.type || node.odd_type || node.odd_name || "").toLowerCase().includes("over")
+      ? (node.value ?? node.odd_value ?? node.price)
+      : null)
+  );
+  const underOdd = oddsNumber(
+    node.under ?? node.odd_under ?? node.under_odds ?? node.price_under ??
+    (String(node.type || node.odd_type || node.odd_name || "").toLowerCase().includes("under")
+      ? (node.value ?? node.odd_value ?? node.price)
+      : null)
+  );
+
+  if (explicitBet365 && explicitCornerMarket && line !== null){
+    const isMain = node.main === true || node.main === 1 || String(node.main).toLowerCase() === "true" ||
+      String(node.is_main).toLowerCase() === "true" || Number(node.is_main) === 1;
+
+    out.push({
+      line,
+      overOdd,
+      underOdd,
+      isMain,
+      bookmaker: String(bookmaker || "Bet365"),
+      market: marketText || "Total corners"
+    });
+  }
+
+  // Formato plano: chaves como corner_over_10.5 / total_corners_o+10.5
+  for (const [key, value] of Object.entries(node)){
+    if (!explicitBet365) continue;
+    if (!isCornerMarketText(key)) continue;
+    const keyLine = lineFromCornerText(key);
+    if (keyLine === null) continue;
+    const keyNorm = normLooseText(key);
+    const odd = oddsNumber(value);
+    out.push({
+      line: keyLine,
+      overOdd: keyNorm.includes("over") || keyNorm.includes(" o ") ? odd : null,
+      underOdd: keyNorm.includes("under") || keyNorm.includes(" u ") ? odd : null,
+      isMain: keyNorm.includes("main") || keyNorm.includes("principal"),
+      bookmaker: String(bookmaker || "Bet365"),
+      market: key
+    });
+  }
+
+  const nextInherited = {
+    bookmaker,
+    isBet365: explicitBet365,
+    marketText,
+    isCornerMarket: explicitCornerMarket
+  };
+
+  for (const value of Object.values(node)){
+    if (value && typeof value === "object"){
+      collectBet365CornerCandidates(value, nextInherited, out, depth + 1);
+    }
+  }
+
+  return out;
+}
+
+function extractBet365MainCornerLine(data){
+  const candidates = collectBet365CornerCandidates(data);
+  if (!candidates.length) return null;
+
+  // Junta Over e Under que chegaram em registros separados da mesma linha.
+  const grouped = new Map();
+  for (const c of candidates){
+    const key = Number(c.line).toFixed(1);
+    const prev = grouped.get(key) || { ...c, overOdd:null, underOdd:null, isMain:false };
+    if (Number.isFinite(c.overOdd)) prev.overOdd = c.overOdd;
+    if (Number.isFinite(c.underOdd)) prev.underOdd = c.underOdd;
+    prev.isMain = prev.isMain || c.isMain;
+    if (!prev.market && c.market) prev.market = c.market;
+    grouped.set(key, prev);
+  }
+
+  const list = [...grouped.values()];
+  list.sort((a,b) => {
+    if (a.isMain !== b.isMain) return a.isMain ? -1 : 1;
+
+    // Linha principal costuma ter Over e Under mais próximos entre si.
+    const balA = Number.isFinite(a.overOdd) && Number.isFinite(a.underOdd)
+      ? Math.abs(a.overOdd - a.underOdd) : 99;
+    const balB = Number.isFinite(b.overOdd) && Number.isFinite(b.underOdd)
+      ? Math.abs(b.overOdd - b.underOdd) : 99;
+    if (balA !== balB) return balA - balB;
+
+    // Em empate, prefere a linha mais alta, conforme a ordem desejada no site.
+    return b.line - a.line;
+  });
+
+  const best = list[0];
+  return {
+    line: best.line,
+    overOdd: Number.isFinite(best.overOdd) ? best.overOdd : null,
+    underOdd: Number.isFinite(best.underOdd) ? best.underOdd : null,
+    bookmaker: "Bet365",
+    market: best.market || "Total corners",
+    source: "api_odds"
+  };
+}
+
+function bet365CornerLineValue(x){
+  const line = Number(
+    x?.bet365_corner_line ??
+    x?.bet365CornerLine ??
+    x?.odds?.bet365_corners?.line ??
+    x?.odds?.bet365CornerLine ??
+    NaN
+  );
+  return Number.isFinite(line) ? line : null;
+}
+
 // ✅ ODDS: tenta v3 e cai pro v2
 async function getOdds1x2(matchId) {
   const data = await apiGetAny({ action: "get_odds", match_id: matchId });
   if (!Array.isArray(data) || !data.length) return null;
 
-  const o = data[0];
-  const odd1 = Number(String(o.odd_1 || "").replace(",", "."));
-  const odd2 = Number(String(o.odd_2 || "").replace(",", "."));
-  const oddX = Number(String(o.odd_x || "").replace(",", "."));
-  if (!Number.isFinite(odd1) || !Number.isFinite(odd2)) return null;
+  // Para 1X2, prefere Bet365; se não houver, mantém o primeiro bookmaker válido.
+  const rows = data.filter(x => x && typeof x === "object");
+  const bet365Row = rows.find(o => isBet365Name(o.odd_bookmakers ?? o.bookmaker ?? o.bookmaker_name));
+  const valid1x2 = rows.find(o => {
+    const a = oddsNumber(o.odd_1);
+    const b = oddsNumber(o.odd_2);
+    return Number.isFinite(a) && Number.isFinite(b);
+  });
+  const o = (bet365Row && Number.isFinite(oddsNumber(bet365Row.odd_1)) && Number.isFinite(oddsNumber(bet365Row.odd_2)))
+    ? bet365Row
+    : valid1x2;
 
+  const bet365Corners = extractBet365MainCornerLine(data);
+
+  if (!o) {
+    // Pode existir mercado de cantos mesmo sem 1X2 disponível.
+    return bet365Corners ? {
+      fav: null,
+      odd1: null,
+      oddX: null,
+      odd2: null,
+      bookmaker: null,
+      bet365_corners: bet365Corners
+    } : null;
+  }
+
+  const odd1 = oddsNumber(o.odd_1);
+  const odd2 = oddsNumber(o.odd_2);
+  const oddX = oddsNumber(o.odd_x);
   const fav = (odd1 <= odd2) ? { side: "HOME", odd: odd1 } : { side: "AWAY", odd: odd2 };
-  return { fav, odd1, oddX, odd2, bookmaker: o.odd_bookmakers || null };
+
+  return {
+    fav,
+    odd1,
+    oddX,
+    odd2,
+    bookmaker: o.odd_bookmakers || o.bookmaker || null,
+    bet365_corners: bet365Corners
+  };
 }
 
 // ✅ H2H: tenta v3 e cai pro v2
@@ -3651,6 +3884,20 @@ function isDangerousRedCardGame(x){
 
 function sortBestGamesForCards(base){
   base.sort((a,b) => {
+    // 1º critério: linha principal real de escanteios da Bet365.
+    // 11.5 vem antes de 11.0, depois 10.5, 10.0, 9.5...
+    // Jogos sem linha confirmada ficam depois dos jogos que possuem a linha.
+    if (BET365_CORNER_LINE_PRIORITY) {
+      const la = bet365CornerLineValue(a);
+      const lb = bet365CornerLineValue(b);
+      const hasA = Number.isFinite(la);
+      const hasB = Number.isFinite(lb);
+
+      if (hasA !== hasB) return hasB ? 1 : -1;
+      if (hasA && hasB && lb !== la) return lb - la;
+    }
+
+    // Dentro da mesma linha, preserva integralmente o ranking do Corner Pro.
     const pra = premiumCornerRankingScore(a);
     const prb = premiumCornerRankingScore(b);
     if (prb !== pra) return prb - pra;
@@ -4622,7 +4869,14 @@ if (isEuropeanClassic(casaN, foraN)) {
           oddX: oddsInfo.oddX,
           odd2: oddsInfo.odd2,
           bookmaker: oddsInfo.bookmaker,
+          bet365_corners: oddsInfo.bet365_corners ?? null,
         } : null,
+
+        bet365_corner_line: oddsInfo?.bet365_corners?.line ?? null,
+        bet365_corner_over_odd: oddsInfo?.bet365_corners?.overOdd ?? null,
+        bet365_corner_under_odd: oddsInfo?.bet365_corners?.underOdd ?? null,
+        bet365_corner_line_source: oddsInfo?.bet365_corners?.source ?? null,
+        bet365_corner_line_available: Number.isFinite(Number(oddsInfo?.bet365_corners?.line)),
 
         real: {
           recentCombinedAvg,
@@ -4754,7 +5008,14 @@ if (isEuropeanClassic(casaN, foraN)) {
         oddX: oddsInfo.oddX,
         odd2: oddsInfo.odd2,
         bookmaker: oddsInfo.bookmaker,
+        bet365_corners: oddsInfo.bet365_corners ?? null,
       } : null,
+
+      bet365_corner_line: oddsInfo?.bet365_corners?.line ?? null,
+      bet365_corner_over_odd: oddsInfo?.bet365_corners?.overOdd ?? null,
+      bet365_corner_under_odd: oddsInfo?.bet365_corners?.underOdd ?? null,
+      bet365_corner_line_source: oddsInfo?.bet365_corners?.source ?? null,
+      bet365_corner_line_available: Number.isFinite(Number(oddsInfo?.bet365_corners?.line)),
 
       real: null,
 

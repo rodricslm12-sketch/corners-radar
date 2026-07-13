@@ -12037,530 +12037,427 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function currentGames(){
-    const panel = $(".gamesPanel");
-    const ymd = selectedDate();
+    const panel = document.querySelector(".gamesPanel");
+    const wantedDate = selectedDate();
+
     const sources = [];
 
-    if (panel?.__cornerProAllGames?.length) sources.push(panel.__cornerProAllGames);
-    if (panel?.__cornerProGames?.length) sources.push(panel.__cornerProGames);
-    if (window.__cornerProAllGames?.length) sources.push(window.__cornerProAllGames);
-    if (ymd && window.__cornerProApiCache?.[ymd]?.length) sources.push(window.__cornerProApiCache[ymd]);
-    if (ymd && window.__cornerProMarketCache?.[ymd]?.length) sources.push(window.__cornerProMarketCache[ymd]);
-    if (ymd && window.__cornerProGamesCache?.[ymd]?.length) sources.push(window.__cornerProGamesCache[ymd]);
+    // Primeiro usa /mercados, pois é a lista mais ampla e já traz
+    // bet365_corner_line para o filtro sincronizado.
+    try {
+      if (
+        typeof lastMarketGames !== "undefined" &&
+        Array.isArray(lastMarketGames) &&
+        lastMarketGames.length &&
+        (!wantedDate || !lastMarketDateYMD || lastMarketDateYMD === wantedDate)
+      ){
+        sources.push(lastMarketGames);
+      }
+    } catch (_) {}
 
-    // Variáveis internas antigas não ficam no window, então este fallback pega as linhas renderizadas
-    // somente se nenhum cache real estiver disponível.
-    if (!sources.length && panel) sources.push(readInlineRowsAsGames(panel));
+    if (wantedDate && window.__cornerProMarketCache?.[wantedDate]?.length){
+      sources.push(window.__cornerProMarketCache[wantedDate]);
+    }
 
-    const out = [];
-    const seen = new Set();
+    sources.push(
+      panel?.__cornerProAllGames,
+      window.__cornerProAllGames,
+      panel?.__cornerProGames,
+      window.__cornerProGames
+    );
 
-    for (const src of sources){
-      if (!Array.isArray(src)) continue;
-      for (const item of src){
-        const g = item?.raw ? item : raw(item);
-        const k = stableKey(g);
-        if (!k || seen.has(k)) continue;
-        seen.add(k);
-        out.push(g);
+    try {
+      if (typeof lastRawGames !== "undefined" && Array.isArray(lastRawGames) && lastRawGames.length){
+        sources.push(lastRawGames);
+      }
+    } catch (_) {}
+
+    let firstValidList = [];
+
+    for (const source of sources){
+      if (!Array.isArray(source) || !source.length) continue;
+
+      const unique = [];
+      const used = new Set();
+
+      for (const game of source){
+        if (!game) continue;
+        const key = stableKey(game);
+        if (!key || used.has(key)) continue;
+        used.add(key);
+        unique.push(game);
+      }
+
+      if (!firstValidList.length) firstValidList = unique;
+
+      // Para sincronização real, prefere uma fonte que tenha pelo menos
+      // uma linha principal Bet365 disponível.
+      if (unique.some(game => Number.isFinite(bet365Line(game)))){
+        return unique;
       }
     }
 
-    return out;
+    return firstValidList;
   }
 
-  function marketKind(label){
-    const t = norm(label);
-    if (t.includes("dupla") && (t.includes("visit") || t.includes("fora"))) return "doubleAway";
-    if (t.includes("dupla") && (t.includes("casa") || t.includes("mandante"))) return "doubleHome";
-    if (t.includes("visitante vence") || t.includes("fora vence") || t.includes("vitoria visitante") || t.includes("vitoria do visitante")) return "away";
-    if (t.includes("casa vence") || t.includes("mandante vence") || t.includes("vitoria casa") || t.includes("vitoria da casa")) return "home";
-    if (t === "empate" || t.includes(" empate")) return "draw";
-    return "";
+  function projection(game){
+    const raw = rawGame(game);
+    return number(
+      raw?.proj_cantos ??
+      raw?.projected_corners ??
+      raw?.corners_projection ??
+      raw?.markets?.expected?.corners ??
+      raw?.markets?.expectedCorners,
+      0
+    );
   }
 
-  function kindLabel(kind){
-    if (kind === "home") return "Casa vence";
-    if (kind === "draw") return "Empate";
-    if (kind === "away") return "Visitante vence";
-    if (kind === "doubleHome") return "Dupla chance casa";
-    if (kind === "doubleAway") return "Dupla chance visitante";
-    return "Mercado";
+  function bet365Line(game){
+    const raw = rawGame(game);
+    return number(
+      raw?.bet365_corner_line ??
+      raw?.bet365CornerLine ??
+      raw?.odds?.bet365_corner_line ??
+      raw?.odds?.bet365_corners?.line ??
+      raw?.markets?.bet365_corner_line ??
+      raw?.markets?.main_corner_line ??
+      raw?.main_corner_line,
+      null
+    );
   }
 
-  function positionPower(pos){
-    const p = num(pos, null);
-    if (p === null || p <= 0) return null;
-    return clamp(98 - (p - 1) * 4.1, 18, 96);
-  }
+  function serverProbability(game, line){
+    const raw = rawGame(game);
+    const key = line === 8.5 ? "corners85"
+      : line === 9.5 ? "corners95"
+      : line === 10.5 ? "corners105"
+      : line === 11.5 ? "corners115"
+      : "corners125";
 
-  function recentAttack(r, side){
-    const prefix = side === "home" ? "home" : "away";
-    const team = side === "home" ? r.real?.homeRecent : r.real?.awayRecent;
+    const direct = number(
+      raw?.markets?.prob?.[key] ??
+      raw?.markets?.filterProb?.[key] ??
+      raw?.[`${key}_prob`] ??
+      raw?.[`${key}_filter_prob`],
+      null
+    );
 
-    const goalsFor = num(first(r, [
-      `real.${prefix}Recent.goalsForAvg`,
-      `last5.summary.${prefix}GoalsFor`,
-      `${prefix}_goals_for_avg`,
-      `${prefix}_avg_goals_for`,
-      `${prefix}_xg`,
-      `${prefix}_expected_goals`
-    ]), null);
-
-    const goalsAgainstOpponent = num(first(r, [
-      side === "home" ? "real.awayRecent.goalsAgainstAvg" : "real.homeRecent.goalsAgainstAvg",
-      side === "home" ? "last5.summary.awayGoalsAgainst" : "last5.summary.homeGoalsAgainst"
-    ]), null);
-
-    const cornersFor = num(team?.cornersForAvg, null);
-    const shots = num(team?.shotsTotalAvg, null);
-    const scoredRate = num(team?.scoredRate, null);
-
-    let score = 50;
-    let used = 0;
-
-    if (goalsFor !== null){ score += (goalsFor - 1.15) * 18; used++; }
-    if (goalsAgainstOpponent !== null){ score += (goalsAgainstOpponent - 1.10) * 12; used++; }
-    if (cornersFor !== null){ score += (cornersFor - 4.4) * 4.2; used++; }
-    if (shots !== null){ score += (shots - 10.5) * 2.1; used++; }
-    if (scoredRate !== null){ score += (scoredRate - 55) * 0.18; used++; }
-
-    return { score: clamp(score, 15, 95), used };
-  }
-
-  function expectedTotalGoals(r){
-    const direct = num(first(r, [
-      "markets.expected.resultTotalGoals",
-      "markets.totalExpected",
-      "totalExpected",
-      "expected_goals_total",
-      "xg_total",
-      "total_goals_avg",
-      "media_gols_total",
-      "proj_gols",
-      "goals_projection"
-    ]), null);
-    if (direct !== null) return clamp(direct, 1.1, 5.2);
-
-    const projCorners = num(r.proj_cantos ?? r.corners_projection ?? r.projCorners, 9.5);
-    const pressure = num(r.real?.pressureHits, 2);
-    return clamp(2.05 + (projCorners - 9.3) * 0.16 + (pressure - 2) * 0.07, 1.25, 4.3);
-  }
-
-  function directMarketProb(r, kind){
-    const paths = {
-      home:["markets.prob.resultHome", "markets.prob.homeWin", "resultMarkets.home", "prob_result_home"],
-      draw:["markets.prob.resultDraw", "markets.prob.draw", "resultMarkets.draw", "prob_result_draw"],
-      away:["markets.prob.resultAway", "markets.prob.awayWin", "resultMarkets.away", "prob_result_away"],
-      doubleHome:["markets.prob.doubleHome", "markets.prob.double1x", "prob_double_home"],
-      doubleAway:["markets.prob.doubleAway", "markets.prob.doublex2", "prob_double_away"]
-    }[kind] || [];
-
-    const v = num(first(r, paths), null);
-    if (v === null) return null;
-    if (v >= 0 && v <= 1) return Math.round(v * 100);
-    return clamp(Math.round(v), 1, 99);
-  }
-
-  function boolMarket(r, kind){
-    const paths = {
-      home:["markets.resultHome", "markets.homeWin"],
-      draw:["markets.resultDraw", "markets.draw"],
-      away:["markets.resultAway", "markets.awayWin"],
-      doubleHome:["markets.doubleHome", "markets.double1x"],
-      doubleAway:["markets.doubleAway", "markets.doublex2"]
-    }[kind] || [];
-    for (const p of paths){
-      const v = getPath(r, p);
-      if (typeof v === "boolean") return v;
+    if (Number.isFinite(direct)){
+      return direct > 0 && direct <= 1 ? direct * 100 : direct;
     }
+
+    if (line === 9.5){
+      const p95 = number(raw?.over95_prob_adj ?? raw?.over95_prob, null);
+      if (Number.isFinite(p95)) return p95;
+    }
+
     return null;
   }
 
-  function resultProfile(g){
-    const r = raw(g);
-    const posHome = num(r.pos_home ?? r.home_position ?? r.standing_home, null);
-    const posAway = num(r.pos_away ?? r.away_position ?? r.standing_away, null);
+  function estimatedProbability(game, line){
+    const direct = serverProbability(game, line);
+    if (Number.isFinite(direct)) return clamp(Math.round(direct), 3, 96);
 
-    const homePos = positionPower(posHome);
-    const awayPos = positionPower(posAway);
-    const hAtk = recentAttack(r, "home");
-    const aAtk = recentAttack(r, "away");
+    const proj = projection(game);
+    if (!Number.isFinite(proj) || proj <= 0) return 0;
 
-    const hasTable = homePos !== null && awayPos !== null;
-    const hasRecent = hAtk.used > 0 || aAtk.used > 0;
-    const hasServer = !!r.markets?.prob && (
-      r.markets.prob.resultHome !== undefined ||
-      r.markets.prob.resultDraw !== undefined ||
-      r.markets.prob.resultAway !== undefined
+    // Curva conservadora: a projeção precisa ficar acima da linha
+    // para ganhar confiança. Linhas maiores exigem mais folga.
+    let probability = 50 + (proj - line) * 11;
+
+    if (line >= 12.5) probability -= 7;
+    else if (line >= 11.5) probability -= 4;
+    else if (line <= 8.5) probability += 5;
+
+    const raw = rawGame(game);
+    const pressure = number(raw?.real?.pressureHits ?? raw?.pressureHits, 0);
+    const profile = clean(raw?.perfil_laterais);
+
+    if (pressure >= 4) probability += 4;
+    else if (pressure >= 3) probability += 2;
+
+    if (profile === "LATERAIS_FORTES") probability += 4;
+    if (profile === "TENDENCIA_CENTRAL") probability -= 6;
+
+    return clamp(Math.round(probability), 3, 94);
+  }
+
+  function lineFitScore(game, line){
+    const proj = projection(game);
+    const marketLine = bet365Line(game);
+    const probability = estimatedProbability(game, line);
+    const raw = rawGame(game);
+    const engineScore = number(
+      raw?.ai_score ??
+      raw?.local_score ??
+      raw?.score_adj ??
+      raw?.score,
+      0
     );
 
-    let homePower = 50;
-    let awayPower = 50;
+    let score = probability * 1.15;
 
-    if (hasTable){
-      homePower += (homePos - 50) * 0.44;
-      awayPower += (awayPos - 50) * 0.44;
+    // A linha real/principal da Bet365 é o primeiro sinal.
+    if (Number.isFinite(marketLine)){
+      if (marketLine === line) score += 48;
+      else if (marketLine > line) score += Math.max(12, 38 - (marketLine - line) * 12);
+      else score -= (line - marketLine) * 28;
     }
 
-    if (hAtk.used) homePower += (hAtk.score - 50) * 0.62;
-    if (aAtk.used) awayPower += (aAtk.score - 50) * 0.62;
+    // Proximidade entre projeção e linha escolhida.
+    if (Number.isFinite(proj) && proj > 0){
+      const ideal = line + 0.65;
+      score += Math.max(0, 22 - Math.abs(proj - ideal) * 9);
 
-    // vantagem de mando; pequena, mas tradicional e estável
-    homePower += 6;
+      if (proj < line + 0.15) score -= (line + 0.15 - proj) * 24;
+    }
 
-    const totalGoals = expectedTotalGoals(r);
-    const diff = homePower - awayPower;
-
-    let home = clamp(Math.round(50 + diff * 0.55 + (totalGoals - 2.25) * 2.2), 3, 94);
-    let away = clamp(Math.round(50 - diff * 0.55 + (totalGoals - 2.25) * 1.5), 3, 92);
-    let draw = clamp(Math.round(58 - Math.abs(diff) * 0.58 - Math.max(0, totalGoals - 2.55) * 8), 7, 78);
-
-    // se o servidor já trouxe probabilidade real, ela manda
-    const dHome = directMarketProb(r, "home");
-    const dDraw = directMarketProb(r, "draw");
-    const dAway = directMarketProb(r, "away");
-    if (dHome !== null) home = dHome;
-    if (dDraw !== null) draw = dDraw;
-    if (dAway !== null) away = dAway;
-
-    const doubleHomeDirect = directMarketProb(r, "doubleHome");
-    const doubleAwayDirect = directMarketProb(r, "doubleAway");
-
-    const doubleHome = doubleHomeDirect !== null ? doubleHomeDirect : clamp(Math.round(home + draw * 0.62), 18, 98);
-    const doubleAway = doubleAwayDirect !== null ? doubleAwayDirect : clamp(Math.round(away + draw * 0.62), 18, 97);
-
-    return {
-      home, draw, away, doubleHome, doubleAway,
-      diff,
-      totalGoals,
-      hasUsefulData: hasServer || hasTable || hasRecent,
-      source: hasServer ? "Servidor" : hasRecent ? "Forma recente" : hasTable ? "Tabela" : "Poucos dados"
-    };
+    score += clamp(engineScore, 0, 100) * 0.12;
+    return score;
   }
 
-  function scoreFor(g, kind){
-    const p = resultProfile(g);
-    if (kind === "home") return p.home;
-    if (kind === "draw") return p.draw;
-    if (kind === "away") return p.away;
-    if (kind === "doubleHome") return p.doubleHome;
-    if (kind === "doubleAway") return p.doubleAway;
-    return 0;
+  function passesLine(game, line){
+    const marketLine = bet365Line(game);
+
+    // SINCRONIZAÇÃO EXATA:
+    // clicou em 9.5  -> somente linha principal Bet365 9.5;
+    // clicou em 10.5 -> somente linha principal Bet365 10.5;
+    // jogos sem linha real Bet365 não entram.
+    if (!Number.isFinite(marketLine)) return false;
+
+    return Math.abs(marketLine - line) < 0.01;
   }
 
-  function passFor(g, kind){
-    const r = raw(g);
-    const bool = boolMarket(r, kind);
-    if (bool !== null) return bool;
+  function selectedGames(games, line){
+    const prepared = games.map((game, index) => ({
+      game,
+      index,
+      probability: estimatedProbability(game, line),
+      projection: projection(game),
+      bet365: bet365Line(game),
+      score: lineFitScore(game, line),
+      pass: passesLine(game, line)
+    }));
 
-    const p = resultProfile(g);
-    if (kind === "home") return p.home >= 54 && p.home >= p.away + 4;
-    if (kind === "away") return p.away >= 54 && p.away >= p.home + 4;
-    if (kind === "draw") return p.draw >= 34 && Math.abs(p.diff) <= 24;
-    if (kind === "doubleHome") return p.doubleHome >= 64 && p.away <= 63;
-    if (kind === "doubleAway") return p.doubleAway >= 64 && p.home <= 66;
-    return true;
-  }
+    let filtered = prepared.filter(item => item.pass);
 
-  function tieValue(g, kind){
-    const d = gameInfo(g);
-    const n = norm(kind === "away" || kind === "doubleAway" ? d.away : d.home);
-    let total = 0;
-    for (let i = 0; i < n.length; i++) total += n.charCodeAt(i) * (i + 1);
-    // serve só como desempate final quando a API não traz dados suficientes
-    return total;
-  }
-
-  function selectedList(games, kind){
-    const prepared = games.map((g, index) => {
-      const profile = resultProfile(g);
-      return { g, index, profile, score: scoreFor(g, kind), pass: passFor(g, kind), tie: tieValue(g, kind) };
-    });
-
-    let filtered = prepared.filter(x => x.pass);
-
-    // Se o mercado for muito restrito em um dia com poucos dados, mostra os melhores daquele mercado,
-    // mas ordenados pelo score real. Assim não repete a mesma ordem do mercado anterior.
-    if (filtered.length < 3) filtered = prepared;
-
+    // Não força jogos fracos. Se nenhum passar, a lista ficará vazia
+    // e o usuário verá a mensagem de ausência de opção consistente.
     return filtered
-      .sort((a,b) => {
+      .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        if (kind === "draw") return Math.abs(a.profile.diff) - Math.abs(b.profile.diff);
-        return a.tie - b.tie;
+        if ((b.bet365 ?? -1) !== (a.bet365 ?? -1)) return (b.bet365 ?? -1) - (a.bet365 ?? -1);
+        if (b.probability !== a.probability) return b.probability - a.probability;
+        return b.projection - a.projection;
       })
       .slice(0, 18);
   }
 
-  function rowHTML(item, kind){
-    const g = item.g;
-    const d = gameInfo(g);
-    const p = item.profile;
-    const pct = scoreFor(g, kind);
-    const label = kindLabel(kind);
-    const exp = Number.isFinite(p.totalGoals) ? `${p.totalGoals.toFixed(1)} gols` : "base real";
+  function rowHTML(item, line){
+    const info = gameInfo(item.game);
+    const betText = Number.isFinite(item.bet365)
+      ? `BET365 ${item.bet365.toFixed(1)}`
+      : `PROJ. ${item.projection.toFixed(1)}`;
 
     return `
-      <div class="gameRow compactGameRow" data-resultado-final-row="1" data-game-index="${item.index}">
+      <div class="gameRow compactGameRow"
+           data-corner-line-row="1"
+           data-game-index="${item.index}"
+           data-corner-line="${line}">
         <div class="gameMeta">
-          <small>${esc(d.league)}</small>
-          <b><span>${esc(d.time || "--:--")}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b>
+          <small>${escapeHTML(info.league)}</small>
+          <b>
+            <span>${escapeHTML(info.time || "--:--")}</span>
+            ${escapeHTML(info.home)}
+            <br>
+            <em>${escapeHTML(info.away)}</em>
+          </b>
         </div>
-        <div class="oddBox"><small>MERCADO</small><b>${esc(label)}</b><span>${pct}%</span></div>
-        <div class="oddBox"><small>BASE</small><b>${esc(p.source)}</b><span>${esc(exp)}</span></div>
+
+        <div class="oddBox">
+          <small>LINHA</small>
+          <b>OVER ${line.toFixed(1)}</b>
+          <span>${item.probability}%</span>
+        </div>
+
+        <div class="oddBox">
+          <small>REFERÊNCIA</small>
+          <b>${escapeHTML(betText)}</b>
+          <span>${item.projection.toFixed(1)}</span>
+        </div>
+
         <button class="signal" type="button" title="Abrir Match Center">▮▮▮</button>
       </div>
     `;
   }
 
-  function renderMarket(label){
-    const kind = marketKind(label);
-    if (!kind) return false;
+  function updateMatchCenter(game, allGames){
+    if (!game) return;
 
-    const panel = $(".gamesPanel");
-    if (!panel) return true;
-
-    const games = currentGames();
-    const title = panel.querySelector(".sectionHead h2, h2");
-    if (title) title.textContent = `Jogos — ${kindLabel(kind)}`;
-
-    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-
-    if (!games.length){
-      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para esta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
-      return true;
-    }
-
-    const rows = selectedList(games, kind);
-
-    if (!rows.length){
-      panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(kindLabel(kind))}</b> nesta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
-      return true;
-    }
-
-    panel.insertAdjacentHTML("beforeend", rows.map(x => rowHTML(x, kind)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
-
-    panel.querySelectorAll("[data-resultado-final-row]").forEach(row => {
-      row.addEventListener("click", () => {
-        const idx = Number(row.dataset.gameIndex);
-        const g = games[idx];
-        if (!g) return;
-        const d = gameInfo(g);
-        const r = raw(g);
-        const payload = { ...r, casa:d.home, fora:d.away, liga:d.league, hora:d.time, match_id:r.match_id || r.id || d.id };
-        if (typeof window.updateDesktopMatchRail === "function") window.updateDesktopMatchRail(payload, games.map(raw));
-      });
-    });
-
-    window.__cornerProActiveResultadoMarket = kind;
-    return true;
-  }
-
-  function restoreAll(){
-    const panel = $(".gamesPanel");
-    const games = currentGames();
-    if (!panel || !games.length) return;
-
-    const title = panel.querySelector(".sectionHead h2, h2");
-    if (title) title.textContent = "Jogos em Destaque";
-
-    if (typeof window.renderGames === "function"){
-      try { window.renderGames(games); return; } catch(e) {}
-    }
-
-    panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-    const rows = games.slice(0, 18).map((g, index) => {
-      const d = gameInfo(g);
-      return `
-        <div class="gameRow compactGameRow" data-game-index="${index}">
-          <div class="gameMeta"><small>${esc(d.league)}</small><b><span>${esc(d.time || "--:--")}</span> ${esc(d.home)}<br><em>${esc(d.away)}</em></b></div>
-          <button class="signal" type="button">▮▮▮</button>
-        </div>`;
-    }).join("");
-    panel.insertAdjacentHTML("beforeend", rows + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
-  }
-
-  // Captura no DOCUMENT antes dos handlers antigos do painel de mercado.
-  document.addEventListener("click", function(ev){
-    const btn = ev.target.closest?.(".marketInlineItem, [data-premium-market], [data-market-line], [data-market], .premiumMarket");
-    if (!btn) return;
-
-    const label = clean(btn.dataset.marketLine || btn.dataset.premiumMarket || btn.dataset.market || btn.textContent || "");
-    const kind = marketKind(label);
-    if (!kind) return;
-
-    ev.preventDefault();
-    ev.stopPropagation();
-    ev.stopImmediatePropagation();
-
-    $$(".marketInlineItem.is-selected, [data-premium-market].is-selected, .premiumMarket.is-selected").forEach(el => el.classList.remove("is-selected"));
-    btn.classList.add("is-selected");
-
-    renderMarket(label);
-  }, true);
-
-  document.addEventListener("click", function(ev){
-    const btn = ev.target.closest?.(".viewAll,.marketInlineAll,#premiumBackToGames");
-    if (!btn) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    ev.stopImmediatePropagation();
-    $$(".marketInlineItem.is-selected, [data-premium-market].is-selected, .premiumMarket.is-selected").forEach(el => el.classList.remove("is-selected"));
-    restoreAll();
-  }, true);
-
-  window.cornerProResultadoPregameFilter = renderMarket;
-})();
-
-
-/* =========================================================
-   FIX FINAL — MATCH CENTER EM JOGOS RECRIADOS PELOS MERCADOS
-   Foco único: quando a lista de jogos é redesenhada ao clicar em mercado,
-   o botão verde (signal) e a própria linha continuam abrindo o Match Center.
-   ========================================================= */
-(function cornerProFinalMatchCenterDelegado(){
-  if (window.__cornerProFinalMatchCenterDelegadoV1) return;
-  window.__cornerProFinalMatchCenterDelegadoV1 = true;
-
-  function text(el){ return String(el?.textContent || "").replace(/\s+/g," ").trim(); }
-  function clean(v, fb=""){
-    const s = String(v ?? "").trim();
-    return s || fb;
-  }
-  function selectedDate(){
-    return clean(document.getElementById("date")?.value || window.__cornerProSelectedDate || window.__cornerProCurrentDate || "");
-  }
-  function normalizeGame(g){
-    if (!g) return null;
-    const raw = g.raw && typeof g.raw === "object" ? g.raw : g;
-    const home = clean(raw.casa || raw.home || raw.home_name || raw.match_hometeam_name || g.home || g.casa, "Mandante");
-    const away = clean(raw.fora || raw.away || raw.away_name || raw.match_awayteam_name || g.away || g.fora, "Visitante");
-    const league = clean(raw.liga || raw.league || raw.league_name || raw.country_name || g.league || g.liga, "Liga");
-    const time = clean(raw.hora || raw.time || raw.match_time || g.time || g.hora, "—");
-    const matchId = clean(raw.match_id || raw.event_key || raw.id || raw.matchId || g.match_id || g.event_key || g.id || g.matchId, "");
-    return { ...raw, casa:home, fora:away, liga:league, hora:time, match_id:matchId };
-  }
-  function listFromPanel(panel){
-    const ymd = selectedDate();
-    const sources = [
-      panel?.__cornerProGames,
-      panel?.__cornerProAllGames,
-      window.__cornerProAllGames,
-      window.__premiumFilteredGames,
-      window.__lastRenderedTopGames,
-      window.__cornerProApiCache && ymd ? window.__cornerProApiCache[ymd] : null
-    ];
-    for (const src of sources){
-      if (Array.isArray(src) && src.length) return src;
-    }
-    return [];
-  }
-  function gameFromRow(row){
-    const panel = row?.closest?.(".gamesPanel") || document.querySelector(".gamesPanel");
-    const list = listFromPanel(panel);
-
-    const indexKeys = [
-      "gameIndex", "realGameIndex", "strictMarketIndex", "premiumGame", "openMatchCenter", "matchIndex"
-    ];
-    for (const key of indexKeys){
-      const rawIdx = row?.dataset?.[key];
-      if (rawIdx !== undefined && rawIdx !== ""){
-        const idx = Number(rawIdx);
-        if (Number.isInteger(idx) && idx >= 0){
-          const found = list[idx] || panel?.__cornerProGames?.[idx] || panel?.__cornerProAllGames?.[idx];
-          if (found) return { game: normalizeGame(found), list };
-        }
-      }
-    }
-
-    // Se o botão tiver dados próprios.
-    const btn = row?.querySelector?.("[data-match-id], [data-open-match-center], [data-open-match-center-table]");
-    if (btn){
-      const byBtn = normalizeGame({
-        match_id: btn.dataset.matchId || "",
-        casa: btn.dataset.home || "",
-        fora: btn.dataset.away || "",
-        liga: btn.dataset.league || "",
-        hora: btn.dataset.time || ""
-      });
-      if (byBtn && (byBtn.match_id || byBtn.casa !== "Mandante" || byBtn.fora !== "Visitante")) return { game: byBtn, list };
-    }
-
-    // Fallback pelo texto da linha.
-    const small = text(row?.querySelector?.(".gameMeta small"));
-    const span = text(row?.querySelector?.(".gameMeta b span"));
-    const em = text(row?.querySelector?.(".gameMeta em"));
-    let b = text(row?.querySelector?.(".gameMeta b"));
-    if (span) b = b.replace(span, "").trim();
-    if (em) b = b.replace(em, "").trim();
-    const home = clean(b.split("\n")[0] || b, "Mandante");
-    const away = clean(em, "Visitante");
-    return { game: normalizeGame({ casa:home, fora:away, liga:small, hora:span }), list };
-  }
-  function markSelected(row, btn){
-    document.querySelectorAll(".gameRow.match-center-selected,.compactGameRow.match-center-selected").forEach(el => {
-      if (el !== row) el.classList.remove("match-center-selected");
-    });
-    document.querySelectorAll(".signal.is-open").forEach(el => {
-      if (el !== btn) el.classList.remove("is-open");
-    });
-    row?.classList.add("match-center-selected");
-    btn?.classList.add("is-open");
-  }
-  function openFromRow(row, btn){
-    if (!row) return false;
-    const resolved = gameFromRow(row);
-    const game = resolved.game;
-    if (!game) return false;
-
-    window.__selectedMatchCenterGame = game;
-    window.__selectedMatchCenterKey = clean(game.match_id || `${game.casa}|${game.fora}|${game.liga}|${game.hora}`);
-
-    markSelected(row, btn || row.querySelector(".signal"));
-
-    const rail = document.getElementById("desktopMatchRail");
-    rail?.classList.add("rail-selected-pulse");
-    setTimeout(() => rail?.classList.remove("rail-selected-pulse"), 900);
+    const info = gameInfo(game);
+    const raw = rawGame(game);
+    const payload = {
+      ...raw,
+      casa: info.home,
+      fora: info.away,
+      liga: info.league,
+      hora: info.time,
+      match_id: raw?.match_id || raw?.id || info.id
+    };
 
     if (typeof window.updateDesktopMatchRail === "function"){
-      const list = Array.isArray(resolved.list) ? resolved.list.map(x => (x && x.raw) ? x.raw : x) : [];
-      window.updateDesktopMatchRail(game, list);
-      return true;
+      window.updateDesktopMatchRail(payload, allGames.map(rawGame));
+      return;
     }
-    return false;
+
+    if (typeof window.openMatchCenter === "function"){
+      window.openMatchCenter(payload);
+    }
   }
 
-  // Captura o clique no botão verde e nas linhas recriadas pelos mercados.
-  document.addEventListener("click", function(ev){
-    const signal = ev.target.closest?.(".gamesPanel .signal");
-    if (signal){
-      const row = signal.closest(".gameRow,.compactGameRow,[data-real-game-index],[data-strict-market-row],[data-resultado-final-row]");
-      if (row){
-        ev.preventDefault();
-        ev.stopPropagation();
-        ev.stopImmediatePropagation();
-        openFromRow(row, signal);
-        return;
-      }
+  function render(line){
+    const panel = document.querySelector(".gamesPanel");
+    if (!panel) return;
+
+    const games = currentGames();
+    const heading = panel.querySelector(".sectionHead h2, .sectionHead h3, h2");
+    if (heading) heading.textContent = `Jogos — Bet365 ${line.toFixed(1)}`;
+
+    panel.querySelectorAll(
+      ".gameRow,.compactGameRow,.cornerProStatus,.marketStrictEmpty,.viewAll"
+    ).forEach(element => element.remove());
+
+    if (!games.length){
+      panel.insertAdjacentHTML(
+        "beforeend",
+        `<div class="marketStrictEmpty">Nenhum jogo carregado para esta data.</div>
+         <button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
+      );
+      return;
     }
 
-    const row = ev.target.closest?.(".gamesPanel .gameRow,.gamesPanel .compactGameRow");
-    if (!row) return;
-    if (ev.target.closest("button:not(.signal),a,select,input,textarea,[data-market-filter],.marketInlineItem")) return;
-    openFromRow(row, row.querySelector(".signal"));
+    const selected = selectedGames(games, line);
+
+    if (!selected.length){
+      panel.insertAdjacentHTML(
+        "beforeend",
+        `<div class="marketStrictEmpty">
+           Nenhum jogo com linha principal Bet365 em <b>${line.toFixed(1)}</b> nesta data.
+         </div>
+         <button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
+      );
+      return;
+    }
+
+    panel.insertAdjacentHTML(
+      "beforeend",
+      selected.map(item => rowHTML(item, line)).join("") +
+      `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
+    );
+
+    panel.querySelectorAll("[data-corner-line-row]").forEach(row => {
+      row.addEventListener("click", event => {
+        if (event.target.closest(".viewAll")) return;
+        const originalIndex = Number(row.dataset.gameIndex);
+        updateMatchCenter(games[originalIndex], games);
+      });
+    });
+
+    window.__cornerProSelectedCornerLine = line;
+  }
+
+  function restoreGames(){
+    const games = currentGames();
+    const panel = document.querySelector(".gamesPanel");
+    if (!panel || !games.length) return;
+
+    if (typeof window.renderGames === "function"){
+      try {
+        window.renderGames(games);
+        return;
+      } catch (_) {}
+    }
+
+    location.reload();
+  }
+
+  function getClickedCornerLine(button){
+    if (!button) return null;
+
+    const label = clean(
+      button.dataset.marketLine ||
+      button.dataset.premiumMarket ||
+      button.dataset.market ||
+      button.textContent
+    );
+
+    const match = label.match(/\bover\s*(8\.5|9\.5|10\.5|11\.5|12\.5)\b/i);
+    if (!match) return null;
+
+    const line = Number(match[1]);
+    if (!CORNER_LINES.has(line)) return null;
+
+    const sectionText = norm(
+      button.closest(".marketInlineSection,article,.marketCard")
+        ?.querySelector("h4,h3,strong,b")
+        ?.textContent
+    );
+
+    const panelText = norm(
+      button.closest(".marketInlinePanel,.marketMenuPro,.gamesPanel,.dashboardMainColumn")
+        ?.querySelector(".marketInlineTitle strong,.marketMenuTitle,h2,h3")
+        ?.textContent
+    );
+
+    // Só captura a primeira seção "Totais de Escanteios".
+    // Não interfere em Over 9.5 FT, Over 4.5 HT ou mercados de gols.
+    const isCornerPanel = panelText.includes("escante");
+    const isTotalsSection = sectionText.includes("totais") && sectionText.includes("escante");
+
+    return isCornerPanel && isTotalsSection ? line : null;
+  }
+
+  // Usa WINDOW em captura para executar antes dos handlers antigos do documento.
+  window.addEventListener("click", event => {
+    const button = event.target.closest?.(
+      ".marketInlineItem,[data-market-line],[data-premium-market],[data-market],.premiumMarket"
+    );
+    if (!button) return;
+
+    const line = getClickedCornerLine(button);
+    if (!Number.isFinite(line)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    document.querySelectorAll(
+      ".marketInlineItem.is-selected,[data-market-line].is-selected,[data-premium-market].is-selected,.premiumMarket.is-selected"
+    ).forEach(element => element.classList.remove("is-selected"));
+
+    button.classList.add("is-selected");
+    render(line);
   }, true);
 
-  // Quando o mercado recriar os jogos, garante que o cursor e o título do botão fiquem ativos.
-  const observer = new MutationObserver(function(){
-    document.querySelectorAll(".gamesPanel .signal").forEach(btn => {
-      btn.setAttribute("type", "button");
-      btn.setAttribute("title", "Abrir Match Center");
-      btn.style.pointerEvents = "auto";
-    });
-  });
-  document.addEventListener("DOMContentLoaded", function(){
-    const panel = document.querySelector(".gamesPanel");
-    if (panel) observer.observe(panel, { childList:true, subtree:true });
-  });
+  window.addEventListener("click", event => {
+    const button = event.target.closest?.(".gamesPanel .viewAll");
+    if (!button || !window.__cornerProSelectedCornerLine) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    window.__cornerProSelectedCornerLine = null;
+    document.querySelectorAll(".marketInlineItem.is-selected").forEach(
+      element => element.classList.remove("is-selected")
+    );
+    restoreGames();
+  }, true);
+
+  window.cornerProShowGamesForCornerLine = function(line){
+    const parsed = Number(line);
+    if (!CORNER_LINES.has(parsed)) return false;
+    render(parsed);
+    return true;
+  };
 })();
