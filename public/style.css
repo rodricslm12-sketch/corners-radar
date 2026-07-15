@@ -4629,3 +4629,133 @@ body.dashboard .dashboardRightRail .railEmptyReadBox{background:#091015 !importa
   box-shadow: none !important;
   background: #0b1a0c !important;
 }
+
+/* =========================================================
+   RESPONSIVIDADE FINAL — NOTEBOOKS E PCs MENORES
+   Mantém o layout original em monitores grandes (27" e similares).
+   Corrige corte e sobreposição da faixa inferior em 1366x768/1440x900.
+   ========================================================= */
+@media (max-width: 1600px), (max-height: 850px){
+  html, body{
+    height:100%;
+  }
+
+  body{
+    overflow:hidden !important;
+  }
+
+  .main{
+    height:100vh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  .content{
+    height:calc(100vh - var(--top)) !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:12px 14px 14px !important;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(99,241,39,.30) transparent;
+  }
+
+  .content::-webkit-scrollbar{width:5px}
+  .content::-webkit-scrollbar-track{background:transparent}
+  .content::-webkit-scrollbar-thumb{
+    background:rgba(99,241,39,.30);
+    border-radius:20px;
+  }
+
+  .dashboardGrid{
+    height:auto !important;
+    min-height:0 !important;
+    align-items:start !important;
+    grid-template-columns:minmax(0,1fr) minmax(285px,var(--right)) !important;
+    gap:12px !important;
+  }
+
+  .dashboardMainColumn,
+  .dashboardRightRail{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .dashboardMainColumn{gap:8px !important}
+  .dashboardRightRail{gap:8px !important}
+
+  .heroPanel{
+    height:150px !important;
+    min-height:150px !important;
+    padding:20px 34px !important;
+  }
+
+  .heroCopy h1{font-size:27px !important}
+  .heroCopy p{
+    margin:14px 0 10px !important;
+    line-height:1.25 !important;
+  }
+
+  .marketTabs{gap:7px !important}
+  .marketTab{
+    height:50px !important;
+    min-width:0 !important;
+    padding:0 12px !important;
+  }
+
+  .marketTab span{font-size:21px !important}
+  .marketTab b{font-size:9px !important}
+  .marketTab small{font-size:6px !important}
+
+  .gamesPanel{
+    min-height:0 !important;
+    padding:10px !important;
+  }
+
+  .railCard{padding:11px !important}
+  .railEmptyRadar{height:105px !important}
+  .railFullBtn{height:42px !important}
+
+  .bottomStrip{
+    position:relative !important;
+    inset:auto !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:42px !important;
+    margin:10px 0 0 !important;
+    padding:8px 16px !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:10px !important;
+    z-index:1 !important;
+  }
+
+  .bottomStrip div{
+    min-width:0 !important;
+    gap:7px !important;
+  }
+
+  .bottomStrip div:before{font-size:19px !important}
+  .bottomStrip b{font-size:9px !important;line-height:1.05 !important}
+  .bottomStrip span{
+    font-size:8px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+  }
+}
+
+/* Alturas bem baixas: compacta um pouco mais sem desmontar as colunas */
+@media (min-width: 981px) and (max-height: 760px){
+  :root{--top:56px}
+
+  .topbar{height:56px !important;min-height:56px !important}
+  .content{height:calc(100vh - 56px) !important;padding-top:9px !important}
+  .heroPanel{height:132px !important;min-height:132px !important;padding:16px 30px !important}
+  .heroCopy h1{font-size:25px !important}
+  .heroCopy p{margin:10px 0 7px !important;font-size:11px !important}
+  .marketTab{height:46px !important}
+  .railEmptyRadar{height:88px !important}
+  .railEmptyText span,.railEmptyHint,.railEmptyReadBox p{font-size:9px !important}
+  .bottomStrip{min-height:38px !important;padding-top:6px !important;padding-bottom:6px !important}
+}
