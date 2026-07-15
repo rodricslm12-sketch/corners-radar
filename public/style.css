@@ -4355,3 +4355,277 @@ button.viewAllGames:hover,
 .dashboardRightRail .railEmptyEventIcons{
   gap:8px !important;
 }
+
+/* =========================================================
+   CORNER PRO — REMOÇÃO TOTAL E DEFINITIVA DAS BORDAS
+   Regra final absoluta. Não colocar nenhum CSS depois dela.
+   ========================================================= */
+body.dashboard *,
+body.dashboard *::before,
+body.dashboard *::after{
+  border-color:transparent !important;
+  outline:0 !important;
+}
+
+/* Remove molduras produzidas por sombra interna/externa nos blocos */
+body.dashboard :is(
+  .sidebar,.topbar,.heroPanel,.marketTab,.gamesPanel,
+  .marketInlinePanel,.marketInlineSection,.marketInlineGroup,
+  .marketInlineCard,.marketGroup,.marketCard,.marketMenuPro,
+  .marketMenuGroup,.marketMenuBlock,.marketColumn,.marketTablePanel,
+  .marketFilterPanel,.marketMiniCard,.marketBox,.sideGamesCard,
+  .sideGameItem,.sideGameCard,.gameRow,.compactGameRow,
+  .dashboardRightRail,.railCard,.railEmptyStatBox,
+  .railEmptyEventIcons span,.railEmptyReadBox,.railLiveStat,
+  .railPressureChartBox,.railCompareLabel i,.railEventRow span,
+  .bottomStrip,.proBox,.viewAll,.railFullBtn,.marketActionBtn,
+  .marketInlineAction,.btnStats
+){
+  box-shadow:none !important;
+}
+
+/* Blocos separados apenas por diferença de fundo */
+body.dashboard .heroPanel{background-color:#0a1310 !important;}
+body.dashboard .marketTab{background:#0d1419 !important;}
+body.dashboard .marketTab.active{background:#101a16 !important;}
+body.dashboard .gamesPanel,
+body.dashboard .marketInlinePanel,
+body.dashboard .dashboardRightRail .railCard{background:#0c1318 !important;}
+body.dashboard .marketInlineSection,
+body.dashboard .marketGroup,
+body.dashboard .marketCard,
+body.dashboard .marketColumn,
+body.dashboard .railEmptyStatBox,
+body.dashboard .railEmptyEventIcons span,
+body.dashboard .railEmptyReadBox{background:#091015 !important;}
+
+/* Também elimina as linhas separadoras internas */
+body.dashboard :is(
+  .gameRow,.compactGameRow,.marketInlineItem,.marketRow,
+  .marketMenuItem,.railEventRow,.cornerProStatus
+){
+  border:0 !important;
+}
+
+/* Sem círculos de contorno no radar */
+body.dashboard .radarRing{border:0 !important;opacity:.22 !important;}
+
+/* =========================================================
+   CORNER PRO — LIMPEZA VISUAL V3
+   Remove de fato a espessura das molduras, não apenas a cor.
+   ========================================================= */
+body.dashboard *,
+body.dashboard *::before,
+body.dashboard *::after{
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+body.dashboard :is(
+  .sidebar,
+  .topbar,
+  .heroPanel,
+  .marketTabs,
+  .marketTab,
+  .gamesPanel,
+  .gamesList,
+  .gameRow,
+  .compactGameRow,
+  .sideGamesCard,
+  .sideGameItem,
+  .sideGameCard,
+  .marketInlinePanel,
+  .marketInlineSection,
+  .marketInlineGroup,
+  .marketInlineCard,
+  .marketGroup,
+  .marketCard,
+  .marketColumn,
+  .marketTablePanel,
+  .marketFilterPanel,
+  .marketMiniCard,
+  .marketBox,
+  .marketMenuPro,
+  .marketMenuGroup,
+  .marketMenuBlock,
+  .marketMenuItem,
+  .dashboardRightRail,
+  .dashboardRightRail .railCard,
+  .dashboardRightRail .railEmptyStatBox,
+  .dashboardRightRail .railEmptyEventIcons span,
+  .dashboardRightRail .railEmptyReadBox,
+  .dashboardRightRail .railLiveStat,
+  .dashboardRightRail .railPressureChartBox,
+  .dashboardRightRail .railCompareLabel i,
+  .dashboardRightRail .railEventRow,
+  .dashboardRightRail .railEventRow span,
+  .bottomStrip,
+  .proBox,
+  .viewAll,
+  .railFullBtn,
+  .marketActionBtn,
+  .marketInlineAction,
+  .btnStats,
+  .oddBox span,
+  .filterPills button,
+  .navCalendar,
+  .topCalendarBox,
+  .calendarBox
+){
+  border:none !important;
+  border-width:0 !important;
+  border-style:none !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+/* Remove linhas internas desenhadas como divisórias */
+body.dashboard :is(
+  .gameRow,
+  .compactGameRow,
+  .marketInlineItem,
+  .marketRow,
+  .marketMenuItem,
+  .railEventRow,
+  .cornerProStatus,
+  .sectionHead,
+  .marketInlineFooter,
+  .marketFooter,
+  .railEmptyHint
+){
+  border-top:0 !important;
+  border-right:0 !important;
+  border-bottom:0 !important;
+  border-left:0 !important;
+}
+
+/* Neutraliza pseudo-elementos usados como filetes decorativos */
+body.dashboard :is(
+  .gamesPanel,
+  .marketInlinePanel,
+  .marketInlineSection,
+  .marketInlineGroup,
+  .marketInlineCard,
+  .marketGroup,
+  .marketCard,
+  .marketColumn,
+  .dashboardRightRail .railCard,
+  .dashboardRightRail .railEmptyStatBox,
+  .dashboardRightRail .railEmptyReadBox,
+  .bottomStrip
+)::before,
+body.dashboard :is(
+  .gamesPanel,
+  .marketInlinePanel,
+  .marketInlineSection,
+  .marketInlineGroup,
+  .marketInlineCard,
+  .marketGroup,
+  .marketCard,
+  .marketColumn,
+  .dashboardRightRail .railCard,
+  .dashboardRightRail .railEmptyStatBox,
+  .dashboardRightRail .railEmptyReadBox,
+  .bottomStrip
+)::after{
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+/* Radar sem aros */
+body.dashboard .radarRing{
+  display:none !important;
+}
+
+/* Separação profissional apenas por tons de fundo */
+body.dashboard .heroPanel{background:#0a1410 !important;}
+body.dashboard .marketTab{background:#0d1419 !important;}
+body.dashboard .marketTab.active{background:#111b17 !important;}
+body.dashboard .gamesPanel,
+body.dashboard .marketInlinePanel,
+body.dashboard .dashboardRightRail .railCard{background:#0c1318 !important;}
+body.dashboard .marketInlineSection,
+body.dashboard .marketInlineGroup,
+body.dashboard .marketInlineCard,
+body.dashboard .marketGroup,
+body.dashboard .marketCard,
+body.dashboard .marketColumn,
+body.dashboard .dashboardRightRail .railEmptyStatBox,
+body.dashboard .dashboardRightRail .railEmptyEventIcons span,
+body.dashboard .dashboardRightRail .railEmptyReadBox{background:#091015 !important;}
+
+/* =========================================================
+   CORREÇÃO DEFINITIVA — PAINÉIS DA COLUNA DIREITA SEM BORDAS
+   ========================================================= */
+#desktopMatchRail,
+#desktopMatchRail .railCard,
+#desktopMatchRail .matchCenterCard,
+#desktopMatchRail .railEmptyStatBox,
+#desktopMatchRail .railEmptyEventIcons,
+#desktopMatchRail .railEmptyEventIcons > span,
+#desktopMatchRail .railEmptyReadBox,
+#desktopMatchRail .railFullBtn,
+.dashboardRightRail,
+.dashboardRightRail .railCard,
+.dashboardRightRail .matchCenterCard,
+.dashboardRightRail .railEmptyStatBox,
+.dashboardRightRail .railEmptyEventIcons,
+.dashboardRightRail .railEmptyEventIcons > span,
+.dashboardRightRail .railEmptyReadBox,
+.dashboardRightRail .railFullBtn {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#desktopMatchRail .railCard::before,
+#desktopMatchRail .railCard::after,
+#desktopMatchRail .matchCenterCard::before,
+#desktopMatchRail .matchCenterCard::after,
+#desktopMatchRail .railEmptyStatBox::before,
+#desktopMatchRail .railEmptyStatBox::after,
+#desktopMatchRail .railEmptyReadBox::before,
+#desktopMatchRail .railEmptyReadBox::after,
+.dashboardRightRail .railCard::before,
+.dashboardRightRail .railCard::after,
+.dashboardRightRail .matchCenterCard::before,
+.dashboardRightRail .matchCenterCard::after,
+.dashboardRightRail .railEmptyStatBox::before,
+.dashboardRightRail .railEmptyStatBox::after,
+.dashboardRightRail .railEmptyReadBox::before,
+.dashboardRightRail .railEmptyReadBox::after {
+  content: none !important;
+  display: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#desktopMatchRail .railCard,
+#desktopMatchRail .matchCenterCard,
+.dashboardRightRail .railCard,
+.dashboardRightRail .matchCenterCard {
+  background: #0c1318 !important;
+}
+
+#desktopMatchRail .railEmptyStatBox,
+#desktopMatchRail .railEmptyEventIcons > span,
+#desktopMatchRail .railEmptyReadBox,
+.dashboardRightRail .railEmptyStatBox,
+.dashboardRightRail .railEmptyEventIcons > span,
+.dashboardRightRail .railEmptyReadBox {
+  background: #081015 !important;
+}
+
+#desktopMatchRail .railFullBtn,
+.dashboardRightRail .railFullBtn {
+  background: #071108 !important;
+}
+
+#desktopMatchRail .railFullBtn:hover,
+.dashboardRightRail .railFullBtn:hover {
+  border: none !important;
+  box-shadow: none !important;
+  background: #0b1a0c !important;
+}

@@ -12461,3 +12461,45 @@ function resetDesktopMatchRailToEmpty(){
     return true;
   };
 })();
+
+/* REMOÇÃO TOTAL DE BORDAS — proteção contra estilos criados dinamicamente */
+(function enforceBorderlessCornerPro(){
+  if (document.getElementById('cornerProBorderlessFinal')) return;
+  const style = document.createElement('style');
+  style.id = 'cornerProBorderlessFinal';
+  style.textContent = `
+    body.dashboard *,body.dashboard *::before,body.dashboard *::after{
+      border-color:transparent!important;
+      outline:0!important;
+    }
+    body.dashboard .gameRow,
+    body.dashboard .compactGameRow,
+    body.dashboard .marketInlineItem,
+    body.dashboard .marketRow,
+    body.dashboard .marketMenuItem,
+    body.dashboard .railEventRow,
+    body.dashboard .cornerProStatus{
+      border:0!important;
+    }
+    body.dashboard .heroPanel,
+    body.dashboard .marketTab,
+    body.dashboard .gamesPanel,
+    body.dashboard .marketInlinePanel,
+    body.dashboard .marketInlineSection,
+    body.dashboard .marketGroup,
+    body.dashboard .marketCard,
+    body.dashboard .sideGamesCard,
+    body.dashboard .sideGameItem,
+    body.dashboard .sideGameCard,
+    body.dashboard .dashboardRightRail .railCard,
+    body.dashboard .railEmptyStatBox,
+    body.dashboard .railEmptyEventIcons span,
+    body.dashboard .railEmptyReadBox,
+    body.dashboard .bottomStrip,
+    body.dashboard .proBox{
+      box-shadow:none!important;
+    }
+    body.dashboard .radarRing{border:0!important;opacity:.22!important;}
+  `;
+  document.head.appendChild(style);
+})();
