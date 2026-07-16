@@ -7101,3 +7101,40 @@ button.railFullBtn {
     bottom:0 !important;
   }
 }
+
+/* =========================================================
+   MOBILE — REMOVE SOMENTE O ESPAÇO VAZIO NO FIM
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  .main,
+  .content,
+  .dashboardGrid,
+  .dashboardMainColumn,
+  .marketWorkArea,
+  .gamesPanel,
+  .marketInlinePanel,
+  .marketInlineShell,
+  .inlineMarketsPanel,
+  .dashboardRightRail,
+  #desktopMatchRail,
+  .bottomStrip{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    margin-bottom:0 !important;
+  }
+
+  .bottomStrip{
+    display:none !important;
+  }
+
+  .content{
+    padding-bottom:calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body,
+  body.dashboard{
+    padding-bottom:0 !important;
+  }
+}

@@ -13300,3 +13300,81 @@ function resetDesktopMatchRailToEmpty(){
     setTimeout(clampScroll, 400);
   }, { once:true });
 })();
+
+/* =========================================================
+   MOBILE — LIMPA ALTURAS INLINE QUE CRIAM ESPAÇO VAZIO
+   ========================================================= */
+(function removeMobileGhostHeight(){
+  "use strict";
+
+  if (window.__removeMobileGhostHeightInstalled) return;
+  window.__removeMobileGhostHeightInstalled = true;
+
+  const isMobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  const selectors = [
+    ".main",
+    ".content",
+    ".dashboardGrid",
+    ".dashboardMainColumn",
+    ".marketWorkArea",
+    ".gamesPanel",
+    ".marketInlinePanel",
+    ".marketInlineShell",
+    ".inlineMarketsPanel",
+    ".dashboardRightRail",
+    "#desktopMatchRail",
+    ".bottomStrip"
+  ].join(",");
+
+  function clearGhostHeights(){
+    if (!isMobile()) return;
+
+    document.querySelectorAll(selectors).forEach(element => {
+      element.style.removeProperty("height");
+      element.style.removeProperty("min-height");
+      element.style.removeProperty("max-height");
+      element.style.removeProperty("margin-bottom");
+      element.style.removeProperty("padding-bottom");
+    });
+
+    const bottomStrip = document.querySelector(".bottomStrip");
+    if (bottomStrip) bottomStrip.style.display = "none";
+  }
+
+  let scheduled = false;
+
+  function scheduleClear(){
+    if (scheduled) return;
+    scheduled = true;
+
+    requestAnimationFrame(() => {
+      scheduled = false;
+      clearGhostHeights();
+    });
+  }
+
+  const observer = new MutationObserver(scheduleClear);
+
+  function start(){
+    clearGhostHeights();
+
+    observer.observe(document.body, {
+      childList:true,
+      subtree:true,
+      attributes:true,
+      attributeFilter:["style","class"]
+    });
+
+    window.addEventListener("resize", scheduleClear, { passive:true });
+    window.addEventListener("orientationchange", scheduleClear, { passive:true });
+    window.addEventListener("pageshow", scheduleClear);
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start, { once:true });
+  }else{
+    start();
+  }
+})();
