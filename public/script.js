@@ -5592,12 +5592,14 @@
 
 /* =========================================================
    FIX FINAL DE CARREGAMENTO / LOGIN — CORNERS RADAR
-   Colocado no fim para vencer scripts antigos duplicados.
-   - Corrige tela preta no localhost
-   - Padroniza a sessão em localStorage
-   - Mantém Sair funcionando
+   CORREÇÃO SAFARI / IPHONE:
+   - Nunca esconde o dashboard quando #loginScreen não existe.
+   - Protege localStorage, que pode falhar no Safari/modo privado.
+   - Preserva login e logout quando a tela de login realmente existe.
    ========================================================= */
 (function finalLoginLoadFix(){
+  "use strict";
+
   const LOGIN_KEY = "cornersRadarLogged";
   const LEGACY_KEYS = ["isLogged", "loggedIn", "auth", "user"];
   const VALID_LOGINS = [
@@ -5605,14 +5607,43 @@
     { user: "admin", pass: "123456" }
   ];
 
-  function $(id){ return document.getElementById(id); }
+  function $(id){
+    return document.getElementById(id);
+  }
+
+  function storageGet(key){
+    try{
+      return window.localStorage ? localStorage.getItem(key) : null;
+    }catch(error){
+      console.warn("LocalStorage indisponível:", error);
+      return null;
+    }
+  }
+
+  function storageSet(key, value){
+    try{
+      if (window.localStorage) localStorage.setItem(key, value);
+      return true;
+    }catch(error){
+      console.warn("Não foi possível gravar no LocalStorage:", error);
+      return false;
+    }
+  }
+
+  function storageRemove(key){
+    try{
+      if (window.localStorage) localStorage.removeItem(key);
+    }catch(error){
+      console.warn("Não foi possível remover do LocalStorage:", error);
+    }
+  }
 
   function show(el, display){
     if (!el) return;
-    el.style.display = display;
-    el.style.visibility = "visible";
-    el.style.opacity = "1";
-    el.style.pointerEvents = "auto";
+    el.style.removeProperty("visibility");
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("pointer-events");
+    el.style.display = display || "";
   }
 
   function hide(el){
@@ -5623,38 +5654,63 @@
     el.style.pointerEvents = "none";
   }
 
-  function normalizeSession(){
-    const value = localStorage.getItem(LOGIN_KEY);
-    if (value === "1" || value === "true") {
-      localStorage.setItem(LOGIN_KEY, "true");
-      return true;
-    }
-    return false;
-  }
-
-  function unlockDashboard(){
-    localStorage.setItem(LOGIN_KEY, "true");
+  function revealDashboard(){
     document.body.classList.remove("locked");
     document.body.classList.add("dashboard");
 
-    hide($("loginScreen"));
+    const loginScreen = $("loginScreen");
+    if (loginScreen) hide(loginScreen);
 
     const sidebar = document.querySelector(".sidebar");
     const main = document.querySelector(".main");
     const topbar = document.querySelector(".topbar");
     const content = document.querySelector(".content");
 
-    if (sidebar) show(sidebar, "flex");
-    if (main) show(main, "flex");
-    if (topbar) show(topbar, "block");
-    if (content) show(content, "block");
+    /*
+      Não usamos display:block à força na .content, pois isso quebrava
+      o flex/grid original. Removemos apenas estilos inline aplicados
+      por versões antigas do login.
+    */
+    [sidebar, main, topbar, content].forEach(el => {
+      if (!el) return;
+      el.style.removeProperty("display");
+      el.style.removeProperty("visibility");
+      el.style.removeProperty("opacity");
+      el.style.removeProperty("pointer-events");
+    });
+  }
+
+  function normalizeSession(){
+    const value = storageGet(LOGIN_KEY);
+    if (value === "1" || value === "true"){
+      storageSet(LOGIN_KEY, "true");
+      return true;
+    }
+    return false;
+  }
+
+  function unlockDashboard(){
+    storageSet(LOGIN_KEY, "true");
+    revealDashboard();
   }
 
   function lockDashboard(){
-    document.body.classList.add("locked");
-    document.body.classList.add("dashboard");
+    const loginScreen = $("loginScreen");
 
-    show($("loginScreen"), "flex");
+    /*
+      CORREÇÃO PRINCIPAL:
+      o HTML mobile atual não possui #loginScreen. O código antigo
+      escondia .main/.content mesmo assim, deixando apenas cabeçalho
+      e navegação mobile visíveis. Sem tela de login, o dashboard
+      deve permanecer aberto.
+    */
+    if (!loginScreen){
+      revealDashboard();
+      return;
+    }
+
+    document.body.classList.add("locked", "dashboard");
+    show(loginScreen, "flex");
 
     const sidebar = document.querySelector(".sidebar");
     const main = document.querySelector(".main");
@@ -5668,14 +5724,17 @@
   }
 
   function doLogout(){
-    localStorage.removeItem(LOGIN_KEY);
-    LEGACY_KEYS.forEach(k => localStorage.removeItem(k));
+    storageRemove(LOGIN_KEY);
+    LEGACY_KEYS.forEach(storageRemove);
+
     const user = $("loginUser");
     const pass = $("loginPass");
     const error = $("loginError");
+
     if (user) user.value = "";
     if (pass) pass.value = "";
     if (error) error.textContent = "";
+
     lockDashboard();
     setTimeout(() => user?.focus?.(), 100);
   }
@@ -5687,17 +5746,21 @@
     const error = $("loginError");
     const logout = $("logoutBtn");
 
-    if (form && !form.dataset.finalLoginBound) {
+    if (form && !form.dataset.finalLoginBound){
       form.dataset.finalLoginBound = "1";
-      form.addEventListener("submit", function(e){
-        e.preventDefault();
-        e.stopPropagation();
 
-        const u = String(user?.value || "").trim();
-        const p = String(pass?.value || "").trim();
-        const ok = VALID_LOGINS.some(item => item.user === u && item.pass === p);
+      form.addEventListener("submit", function(event){
+        event.preventDefault();
+        event.stopPropagation();
 
-        if (!ok) {
+        const enteredUser = String(user?.value || "").trim();
+        const enteredPass = String(pass?.value || "").trim();
+
+        const valid = VALID_LOGINS.some(item =>
+          item.user === enteredUser && item.pass === enteredPass
+        );
+
+        if (!valid){
           if (error) error.textContent = "Usuário ou senha inválidos.";
           pass?.select?.();
           return;
@@ -5705,37 +5768,66 @@
 
         if (error) error.textContent = "";
         unlockDashboard();
-        try { if (typeof renderPregame === "function") renderPregame(); } catch(e) {}
+
+        try{
+          if (typeof renderPregame === "function") renderPregame();
+        }catch(renderError){
+          console.warn("Falha ao atualizar o pré-jogo após login:", renderError);
+        }
       }, true);
     }
 
-    if (logout) {
+    if (logout){
       logout.type = "button";
       logout.onclick = doLogout;
     }
   }
 
   window.forceLogout = doLogout;
+
   window.forceLoginCheck = function(){
+    const loginScreenExists = Boolean($("loginScreen"));
+
+    /*
+      Sem tela de login no documento, não existe interface para o
+      usuário autenticar. Portanto, nunca escondemos o conteúdo.
+    */
+    if (!loginScreenExists){
+      revealDashboard();
+      return;
+    }
+
     if (normalizeSession()) unlockDashboard();
     else lockDashboard();
   };
 
-  document.addEventListener("click", function(e){
-    const btn = e.target?.closest?.("#logoutBtn, .btnLogout");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+  document.addEventListener("click", function(event){
+    const logoutButton = event.target?.closest?.("#logoutBtn, .btnLogout");
+    if (!logoutButton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     doLogout();
   }, true);
 
-  document.addEventListener("DOMContentLoaded", function(){
+  function initializeLogin(){
     bindLogin();
     window.forceLoginCheck();
+
+    /*
+      Mantém uma verificação curta para páginas que montam o DOM
+      dinamicamente, mas sem esconder o dashboard no iPhone.
+    */
     setTimeout(window.forceLoginCheck, 80);
     setTimeout(window.forceLoginCheck, 250);
-  });
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", initializeLogin, { once:true });
+  }else{
+    initializeLogin();
+  }
 })();
 
 /* =========================================================
