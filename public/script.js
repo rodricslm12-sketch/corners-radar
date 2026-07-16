@@ -12752,3 +12752,149 @@ function resetDesktopMatchRailToEmpty(){
     start();
   }
 })();
+
+/* =========================================================
+   AJUSTE DEFINITIVO — RESTAURA TOPO + MERCADO DE ESCANTEIOS
+   ========================================================= */
+(function mobileTopAndCornersFix(){
+  "use strict";
+
+  if (window.__mobileTopAndCornersFixInstalled) return;
+  window.__mobileTopAndCornersFixInstalled = true;
+
+  const mobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  function resetEveryScroll(){
+    if (!mobile()) return;
+
+    try{
+      history.scrollRestoration = "manual";
+    }catch(_){}
+
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    [
+      ".main",
+      ".content",
+      ".dashboardGrid",
+      ".dashboardMainColumn",
+      ".marketWorkArea",
+      ".gamesPanel"
+    ].forEach(selector => {
+      document.querySelectorAll(selector).forEach(element => {
+        try{
+          element.scrollTop = 0;
+          element.scrollLeft = 0;
+        }catch(_){}
+      });
+    });
+  }
+
+  function findCornersTab(){
+    return Array.from(document.querySelectorAll(".marketTab")).find(tab =>
+      /ESCANTEIOS/i.test(String(tab.textContent || ""))
+    ) || null;
+  }
+
+  function revealMarketPanel(){
+    if (!mobile()) return;
+
+    const panel = document.querySelector(
+      ".marketInlinePanel,.marketInlineShell,.inlineMarketsPanel"
+    );
+
+    if (panel){
+      panel.style.removeProperty("display");
+      panel.style.removeProperty("visibility");
+      panel.style.removeProperty("opacity");
+    }
+
+    return panel;
+  }
+
+  function activateCornersMarket(scrollToPanel = false){
+    if (!mobile()) return;
+
+    const tab = findCornersTab();
+    if (tab && !tab.classList.contains("is-active-market")){
+      tab.dispatchEvent(new MouseEvent("click", {
+        bubbles:true,
+        cancelable:true,
+        view:window
+      }));
+    }
+
+    const panel = revealMarketPanel();
+
+    if (scrollToPanel && panel){
+      setTimeout(() => {
+        panel.scrollIntoView({
+          behavior:"smooth",
+          block:"start"
+        });
+      }, 80);
+    }
+  }
+
+  function bindBottomCorners(){
+    document.querySelectorAll(".mobileBottomNav button,.mobileBottomNav a")
+      .forEach(item => {
+        if (!/ESCANTEIOS/i.test(String(item.textContent || ""))) return;
+        if (item.dataset.cornersMobileBound === "1") return;
+
+        item.dataset.cornersMobileBound = "1";
+        item.addEventListener("click", () => {
+          activateCornersMarket(true);
+        });
+      });
+  }
+
+  function stabilize(){
+    resetEveryScroll();
+    revealMarketPanel();
+    bindBottomCorners();
+  }
+
+  window.addEventListener("pageshow", () => {
+    stabilize();
+    setTimeout(stabilize, 80);
+    setTimeout(stabilize, 300);
+    setTimeout(stabilize, 900);
+  });
+
+  window.addEventListener("load", () => {
+    stabilize();
+    setTimeout(stabilize, 120);
+    setTimeout(stabilize, 500);
+  }, { once:true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible"){
+      setTimeout(resetEveryScroll, 50);
+    }
+  });
+
+  const observer = new MutationObserver(() => {
+    if (!mobile()) return;
+    revealMarketPanel();
+    bindBottomCorners();
+  });
+
+  function start(){
+    stabilize();
+
+    observer.observe(document.body, {
+      childList:true,
+      subtree:true
+    });
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start, { once:true });
+  }else{
+    start();
+  }
+})();
