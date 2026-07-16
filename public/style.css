@@ -5687,3 +5687,338 @@ button.railFullBtn {
     max-width:90% !important;
   }
 }
+
+/* =========================================================
+   MOBILE — TELA ÚNICA / SEM CORTE HORIZONTAL
+   Mantém as 5 abas visíveis, inclusive ESCANTEIOS.
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  body,
+  body.dashboard{
+    overflow-x:hidden !important;
+  }
+
+  .content,
+  .dashboardGrid,
+  .dashboardMainColumn,
+  .gamesPanel,
+  .marketInlinePanel,
+  .marketInlineShell,
+  .inlineMarketsPanel,
+  .dashboardRightRail{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow-x:hidden !important;
+  }
+
+  /* Cabeçalho mais compacto */
+  :root{
+    --mobile-header-h:68px;
+    --mobile-nav-h:72px;
+  }
+
+  .mobileHeader{
+    height:var(--mobile-header-h) !important;
+    min-height:var(--mobile-header-h) !important;
+    padding:0 14px !important;
+  }
+
+  .mobileBrand strong{
+    font-size:21px !important;
+  }
+
+  .mobileGreeting{
+    min-height:58px !important;
+    padding:0 18px !important;
+  }
+
+  .mobileGreeting strong{
+    font-size:18px !important;
+  }
+
+  .content{
+    padding:10px 10px 16px !important;
+  }
+
+  .dashboardMainColumn{
+    gap:9px !important;
+  }
+
+  /* Hero mais baixo para caber melhor na primeira tela */
+  .heroPanel{
+    height:176px !important;
+    min-height:176px !important;
+    max-height:176px !important;
+    padding:22px 18px !important;
+    border-radius:16px !important;
+  }
+
+  .heroCopy{
+    width:68% !important;
+    max-width:68% !important;
+  }
+
+  .heroCopy h1{
+    font-size:25px !important;
+    line-height:.96 !important;
+  }
+
+  .heroCopy p{
+    margin-top:15px !important;
+    max-width:235px !important;
+    font-size:11px !important;
+    line-height:1.32 !important;
+  }
+
+  .heroPlayer{
+    width:145px !important;
+    height:150px !important;
+    right:-18px !important;
+    bottom:-12px !important;
+  }
+
+  /* CINCO ABAS NA MESMA LINHA — nenhuma some */
+  .marketTabs{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    gap:5px !important;
+    overflow:visible !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+
+  .marketTab{
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:78px !important;
+    min-height:78px !important;
+    flex:none !important;
+    padding:7px 3px !important;
+    border-radius:12px !important;
+    gap:3px !important;
+  }
+
+  .marketTab span{
+    font-size:21px !important;
+  }
+
+  .marketTab b{
+    width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:8px !important;
+    line-height:1.05 !important;
+  }
+
+  .marketTab small{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:5.8px !important;
+    line-height:1 !important;
+  }
+
+  /* Jogos menores e sem elementos escapando */
+  .gamesPanel{
+    padding:10px !important;
+    border-radius:14px !important;
+  }
+
+  .gamesPanel .sectionHead{
+    min-height:28px !important;
+    margin-bottom:4px !important;
+  }
+
+  .gamesPanel .sectionHead h2{
+    font-size:14px !important;
+  }
+
+  .gamesPanel .sectionHead a{
+    font-size:8px !important;
+  }
+
+  .gameRow,
+  .marketWorkArea > .gamesPanel .gameRow{
+    min-height:84px !important;
+    grid-template-columns:minmax(0,1fr) 68px !important;
+    gap:6px !important;
+    padding:9px 3px !important;
+  }
+
+  .gameRow .gameMeta small{
+    font-size:7.5px !important;
+    margin-bottom:3px !important;
+  }
+
+  .gameRow .gameMeta b{
+    font-size:13px !important;
+    line-height:1.32 !important;
+  }
+
+  .gameRow .gameMeta b > span{
+    font-size:9px !important;
+    margin-bottom:1px !important;
+  }
+
+  .gameRow .oddBox:first-of-type small{
+    font-size:6.5px !important;
+  }
+
+  .gameRow .oddBox:first-of-type b{
+    font-size:10px !important;
+  }
+
+  .gameRow .oddBox:first-of-type span{
+    min-width:58px !important;
+    height:31px !important;
+    margin-top:4px !important;
+    font-size:14px !important;
+  }
+
+  /* Mercados: todos dentro da largura da tela, 3 colunas compactas */
+  .marketInlinePanel,
+  .marketInlineShell,
+  .inlineMarketsPanel{
+    padding:10px !important;
+    border-radius:14px !important;
+  }
+
+  .marketInlineHeader{
+    margin-bottom:8px !important;
+  }
+
+  .marketInlineHeader h2{
+    font-size:17px !important;
+  }
+
+  .marketInlineHeader p{
+    font-size:9px !important;
+  }
+
+  .marketInlineCount{
+    font-size:9px !important;
+  }
+
+  .marketInlineGrid,
+  .marketInlineSections{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:6px !important;
+    overflow:visible !important;
+    padding:0 !important;
+  }
+
+  .marketInlineSection{
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    min-height:0 !important;
+    height:auto !important;
+    flex:none !important;
+    padding:9px 7px !important;
+    border-radius:11px !important;
+    overflow:hidden !important;
+  }
+
+  .marketInlineSection h3{
+    font-size:8px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .marketInlineItem{
+    min-height:30px !important;
+    padding:0 2px !important;
+    gap:4px !important;
+    font-size:8px !important;
+  }
+
+  .marketInlineItem span:first-child{
+    min-width:0 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  .marketInlineItem b{
+    font-size:8px !important;
+  }
+
+  .marketInlineMore{
+    font-size:8px !important;
+  }
+
+  .marketInlineTip{
+    margin:6px 0 7px !important;
+    font-size:8px !important;
+  }
+
+  .marketInlineAll{
+    min-height:34px !important;
+    font-size:9px !important;
+  }
+
+  /* Match Center mais compacto */
+  #desktopMatchRail .matchRailCard{
+    min-height:128px !important;
+    padding:11px !important;
+  }
+
+  #desktopMatchRail .railEmptyRadar{
+    height:68px !important;
+  }
+
+  #desktopMatchRail .railEmptyText strong{
+    font-size:13px !important;
+  }
+
+  #desktopMatchRail .railEmptyText span{
+    font-size:8px !important;
+  }
+
+  .mobileBottomNav{
+    height:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)) !important;
+    min-height:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)) !important;
+    padding-top:7px !important;
+  }
+
+  .mobileBottomNav a,
+  .mobileBottomNav button{
+    height:54px !important;
+    font-size:9px !important;
+  }
+
+  .mobileBottomNav span,
+  .mobileBottomNav i{
+    font-size:20px !important;
+  }
+}
+
+@media screen and (max-width:390px){
+  .heroCopy h1{
+    font-size:23px !important;
+  }
+
+  .marketTab b{
+    font-size:7.3px !important;
+  }
+
+  .marketTab small{
+    font-size:5px !important;
+  }
+
+  .marketInlineSection{
+    padding-left:5px !important;
+    padding-right:5px !important;
+  }
+}
