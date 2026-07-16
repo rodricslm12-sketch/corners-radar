@@ -12814,3 +12814,141 @@ function resetDesktopMatchRailToEmpty(){
     activateMatchCenter(target);
   }, false);
 })();
+
+/* =========================================================
+   MOBILE FINAL — ORGANIZA LISTA EM 3 JOGOS COM SCROLL
+   ========================================================= */
+(function setupMobileThreeGameViewport(){
+  "use strict";
+
+  if (window.__mobileThreeGameViewportInstalled) return;
+  window.__mobileThreeGameViewportInstalled = true;
+
+  const MOBILE_QUERY = "(max-width: 700px)";
+
+  function isMobile(){
+    return window.matchMedia && window.matchMedia(MOBILE_QUERY).matches;
+  }
+
+  function isGameRow(el){
+    return el?.matches?.(
+      ".gameRow, .marketGameRow, .premiumGameRow, .cleanDashRow, [data-match-center-row]"
+    );
+  }
+
+  function getDirectRows(panel){
+    return Array.from(panel.children).filter(isGameRow);
+  }
+
+  function ensureWrapper(panel){
+    if (!panel || !isMobile()) return;
+
+    panel.classList.add("mobileCompactGamesPanel");
+
+    let scroll = panel.querySelector(":scope > .mobileGamesScroll");
+    const directRows = getDirectRows(panel);
+
+    if (!scroll){
+      scroll = document.createElement("div");
+      scroll.className = "mobileGamesScroll";
+      scroll.setAttribute("role", "region");
+      scroll.setAttribute("aria-label", "Jogos em destaque");
+
+      const head = panel.querySelector(":scope > .sectionHead");
+      if (head?.nextSibling){
+        panel.insertBefore(scroll, head.nextSibling);
+      }else{
+        panel.insertBefore(scroll, panel.firstChild);
+      }
+    }
+
+    directRows.forEach(row => scroll.appendChild(row));
+
+    /*
+      Alguns renders recriam os jogos dentro de outro contêiner.
+      Copiamos apenas linhas diretas desse contêiner para o wrapper.
+    */
+    Array.from(panel.querySelectorAll(
+      ":scope > .gamesList > .gameRow, " +
+      ":scope > .gamesList > .marketGameRow, " +
+      ":scope > .gameRows > .gameRow, " +
+      ":scope > .gameRows > .marketGameRow"
+    )).forEach(row => scroll.appendChild(row));
+
+    /*
+      Mantém o botão "ver todos" fora da rolagem.
+    */
+    const viewAll = panel.querySelector(":scope .viewAll");
+    if (viewAll && viewAll.parentElement !== panel){
+      panel.appendChild(viewAll);
+    }
+
+    /*
+      Garante que todo jogo possua um botão Match Center visível.
+      Reaproveita o evento delegado já instalado no script.
+    */
+    Array.from(scroll.children).filter(isGameRow).forEach(row => {
+      let button = row.querySelector(
+        ".matchCenterMiniBtn, .signal, [data-open-match-center]"
+      );
+
+      if (!button){
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "matchCenterMiniBtn";
+        button.setAttribute("data-open-match-center", "1");
+        button.setAttribute("aria-label", "Abrir Match Center");
+
+        const matchId =
+          row.dataset.matchId ||
+          row.getAttribute("data-match-id") ||
+          "";
+
+        if (matchId) button.dataset.matchId = matchId;
+        row.appendChild(button);
+      }else{
+        button.classList.add("matchCenterMiniBtn");
+        button.setAttribute("data-open-match-center", "1");
+        button.setAttribute("aria-label", "Abrir Match Center");
+      }
+    });
+  }
+
+  function organizeAll(){
+    if (!isMobile()) return;
+
+    document.querySelectorAll(
+      ".gamesPanel, .marketWorkArea > .gamesPanel"
+    ).forEach(ensureWrapper);
+  }
+
+  let queued = false;
+  function queueOrganize(){
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      organizeAll();
+    });
+  }
+
+  const observer = new MutationObserver(queueOrganize);
+
+  function start(){
+    organizeAll();
+
+    observer.observe(document.body, {
+      childList:true,
+      subtree:true
+    });
+
+    window.addEventListener("resize", queueOrganize, { passive:true });
+    window.addEventListener("orientationchange", queueOrganize, { passive:true });
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start, { once:true });
+  }else{
+    start();
+  }
+})();
