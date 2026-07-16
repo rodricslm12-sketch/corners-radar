@@ -6022,3 +6022,206 @@ button.railFullBtn {
     padding-right:5px !important;
   }
 }
+
+/* =========================================================
+   AJUSTE FINAL MOBILE — CARDS COMPACTOS + MATCH CENTER VISÍVEL
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  /* Lista gerada pelo filtro/mercado: compacta de verdade */
+  .marketWorkArea > .gamesPanel{
+    padding:9px !important;
+  }
+
+  .marketGameRow,
+  [data-match-center-row].marketGameRow,
+  .premiumGameRow,
+  .cleanDashRow{
+    position:relative !important;
+    width:100% !important;
+    min-width:0 !important;
+    min-height:72px !important;
+    height:72px !important;
+    max-height:72px !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) 58px 34px !important;
+    grid-template-rows:1fr !important;
+    align-items:center !important;
+    gap:6px !important;
+    margin:0 0 5px !important;
+    padding:8px 7px !important;
+    overflow:hidden !important;
+    border-radius:10px !important;
+  }
+
+  .marketGameTime,
+  .marketGameMeta,
+  .marketGameCircleCell,
+  .marketGameFilterInfo,
+  .marketRealStats,
+  .marketGameTrendCell{
+    display:none !important;
+  }
+
+  .marketGameTeams{
+    grid-column:1 !important;
+    min-width:0 !important;
+    padding:0 !important;
+    font-size:0 !important;
+    line-height:1 !important;
+  }
+
+  .marketGameTeams .teamName,
+  .marketGameTeams .marketTeamName{
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:13px !important;
+    line-height:1.25 !important;
+    font-weight:850 !important;
+  }
+
+  .marketGameLeague{
+    position:absolute !important;
+    left:7px !important;
+    top:5px !important;
+    max-width:58% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    color:#8fa09d !important;
+    font-size:6.8px !important;
+    line-height:1 !important;
+    font-weight:900 !important;
+    text-transform:uppercase !important;
+  }
+
+  .marketGameTeams{
+    padding-top:11px !important;
+  }
+
+  .marketGameFinalCell{
+    grid-column:2 / 4 !important;
+    display:grid !important;
+    grid-template-columns:58px 34px !important;
+    align-items:center !important;
+    gap:4px !important;
+    min-width:0 !important;
+  }
+
+  .marketGamePercent{
+    width:58px !important;
+    min-width:58px !important;
+    height:31px !important;
+    display:grid !important;
+    place-items:center !important;
+    margin:0 !important;
+    border-radius:8px !important;
+    font-size:14px !important;
+    font-weight:900 !important;
+  }
+
+  .marketGameActions{
+    width:34px !important;
+    display:grid !important;
+    place-items:center !important;
+  }
+
+  .matchCenterMiniBtn,
+  .marketGameRow .signal{
+    width:32px !important;
+    min-width:32px !important;
+    height:32px !important;
+    min-height:32px !important;
+    display:grid !important;
+    place-items:center !important;
+    margin:0 !important;
+    padding:0 !important;
+    border-radius:9px !important;
+    font-size:0 !important;
+    color:#b9d5c0 !important;
+    border:1px solid rgba(99,241,39,.20) !important;
+    background:#0c1714 !important;
+    pointer-events:auto !important;
+    z-index:5 !important;
+  }
+
+  .matchCenterMiniBtn::before,
+  .marketGameRow .signal::before{
+    content:"▮▮▮" !important;
+    display:block !important;
+    font-size:12px !important;
+    letter-spacing:1px !important;
+    color:#a7c9ad !important;
+  }
+
+  .matchCenterMiniBtn.is-open{
+    border-color:rgba(99,241,39,.72) !important;
+    background:rgba(99,241,39,.13) !important;
+  }
+
+  .matchCenterMiniBtn.is-open::before{
+    content:"✓" !important;
+    color:var(--green) !important;
+    font-size:15px !important;
+  }
+
+  /* Card principal antigo também menor */
+  .gameRow,
+  .marketWorkArea > .gamesPanel .gameRow{
+    min-height:72px !important;
+    height:72px !important;
+    max-height:72px !important;
+    padding:7px 4px !important;
+  }
+
+  /* Quando selecionar, Match Center mostra TODOS os blocos */
+  #desktopMatchRail{
+    display:flex !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    scroll-margin-top:12px !important;
+  }
+
+  #desktopMatchRail .railCard,
+  #desktopMatchRail .mcRailScoreCard,
+  #desktopMatchRail .mcRailCompareCard,
+  #desktopMatchRail .mcRailPressureCard,
+  #desktopMatchRail .mcRailMini,
+  #desktopMatchRail .mcRailBottomGrid,
+  #desktopMatchRail .railEmptyStatsCard,
+  #desktopMatchRail .railEmptyEventsCard{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+
+  #desktopMatchRail .mcRailBottomGrid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:7px !important;
+  }
+
+  #desktopMatchRail .railCard{
+    padding:10px !important;
+    border-radius:12px !important;
+  }
+
+  #desktopMatchRail .mcRailScoreCard{
+    min-height:116px !important;
+  }
+
+  #desktopMatchRail .mcRailPressureCard{
+    min-height:145px !important;
+  }
+
+  #desktopMatchRail .railFullBtn{
+    min-height:38px !important;
+    font-size:9px !important;
+  }
+}

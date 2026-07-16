@@ -12636,3 +12636,181 @@ function resetDesktopMatchRailToEmpty(){
     if (window.innerWidth > 767) closeMenu();
   });
 })();
+
+/* =========================================================
+   FIX MOBILE FINAL — CLIQUE NO MATCH CENTER
+   - Funciona ao tocar no botão ou no card.
+   - Busca o jogo pelo match_id, sem depender apenas do índice.
+   - Atualiza o painel e leva o usuário até as estatísticas.
+   ========================================================= */
+(function installMobileMatchCenterFix(){
+  "use strict";
+
+  if (window.__mobileMatchCenterFixInstalled) return;
+  window.__mobileMatchCenterFixInstalled = true;
+
+  function isMobile(){
+    return window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  function allKnownGames(){
+    const pools = [
+      window.__premiumFilteredGames,
+      window.__premiumMarketGames,
+      window.__lastMarketGames,
+      window.__lastRawGames
+    ];
+
+    try{
+      if (typeof lastMarketGames !== "undefined") pools.push(lastMarketGames);
+    }catch(_){}
+    try{
+      if (typeof lastRawGames !== "undefined") pools.push(lastRawGames);
+    }catch(_){}
+
+    const out = [];
+    const seen = new Set();
+
+    pools.forEach(pool => {
+      if (!Array.isArray(pool)) return;
+      pool.forEach(game => {
+        if (!game || typeof game !== "object") return;
+        const id = String(game.match_id ?? game.id ?? game.event_key ?? "");
+        const key = id || `${game.casa || game.home || ""}|${game.fora || game.away || ""}|${game.hora || game.time || ""}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(game);
+      });
+    });
+
+    return out;
+  }
+
+  function valueFrom(el, name, fallback = ""){
+    return String(el?.dataset?.[name] ?? fallback).trim();
+  }
+
+  function gameFromRow(row, button){
+    const matchId =
+      valueFrom(button, "matchId") ||
+      valueFrom(row, "matchId");
+
+    const games = allKnownGames();
+    const found = games.find(game =>
+      String(game?.match_id ?? game?.id ?? game?.event_key ?? "") === matchId
+    );
+
+    if (found) return { game:found, list:games };
+
+    const game = {
+      match_id: matchId,
+      id: matchId,
+      event_key: matchId,
+      casa: valueFrom(button, "home") || valueFrom(row, "home") || "Mandante",
+      fora: valueFrom(button, "away") || valueFrom(row, "away") || "Visitante",
+      liga: valueFrom(button, "league") || valueFrom(row, "league") || "Liga",
+      hora: valueFrom(button, "time") || valueFrom(row, "time") || "—"
+    };
+
+    return { game, list:games.length ? games : [game] };
+  }
+
+  async function activateMatchCenter(target){
+    const button = target.closest(
+      "[data-open-match-center], .matchCenterMiniBtn, .signal"
+    );
+    const row = target.closest(
+      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
+    );
+
+    if (!button && !row) return false;
+
+    const source = button || row;
+    const { game, list } = gameFromRow(row, button);
+
+    const matchId = String(game?.match_id ?? game?.id ?? game?.event_key ?? "");
+    if (!matchId) return false;
+
+    document.querySelectorAll(
+      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
+    ).forEach(item => item.classList.remove("match-center-selected"));
+
+    document.querySelectorAll(".matchCenterMiniBtn, [data-open-match-center]")
+      .forEach(item => item.classList.remove("is-open"));
+
+    row?.classList.add("match-center-selected");
+    button?.classList.add("is-open");
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey =
+      String(row?.dataset?.matchKey || matchId);
+
+    const rail = document.getElementById("desktopMatchRail") ||
+                 document.querySelector(".dashboardRightRail");
+
+    if (rail){
+      rail.style.removeProperty("display");
+      rail.style.removeProperty("visibility");
+      rail.style.removeProperty("opacity");
+    }
+
+    try{
+      if (typeof window.updateDesktopMatchRail === "function"){
+        await window.updateDesktopMatchRail(game, list);
+      }else if (typeof window.openMatchCenter === "function"){
+        window.openMatchCenter(source);
+      }
+    }catch(error){
+      console.warn("Falha ao abrir Match Center no mobile:", error);
+    }
+
+    if (isMobile() && rail){
+      setTimeout(() => {
+        rail.scrollIntoView({ behavior:"smooth", block:"start" });
+      }, 180);
+    }
+
+    return true;
+  }
+
+  /*
+    Usa pointerup para responder melhor no Safari. O preventDefault é
+    aplicado somente nos controles do Match Center, sem bloquear a rolagem.
+  */
+  document.addEventListener("pointerup", function(event){
+    if (!isMobile()) return;
+
+    const target = event.target;
+    const button = target?.closest?.(
+      "[data-open-match-center], .matchCenterMiniBtn, .signal"
+    );
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    activateMatchCenter(target);
+  }, true);
+
+  /*
+    Também permite tocar no card inteiro. Ignora links e outros botões
+    para não interferir em filtros ou navegação.
+  */
+  document.addEventListener("click", function(event){
+    if (!isMobile()) return;
+
+    const target = event.target;
+    if (target?.closest?.("a, select, input, textarea")) return;
+
+    const row = target?.closest?.(
+      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
+    );
+    if (!row) return;
+
+    const otherButton = target.closest("button:not(.matchCenterMiniBtn):not(.signal):not([data-open-match-center])");
+    if (otherButton) return;
+
+    event.preventDefault();
+    activateMatchCenter(target);
+  }, false);
+})();
