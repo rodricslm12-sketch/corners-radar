@@ -13378,3 +13378,39 @@ function resetDesktopMatchRailToEmpty(){
     start();
   }
 })();
+
+/* =========================================================
+   MOBILE — RESETA SOMENTE A ROLAGEM DO CONTEÚDO
+   ========================================================= */
+(function mobileMainScrollFix(){
+  "use strict";
+
+  if (window.__mobileMainScrollFixInstalled) return;
+  window.__mobileMainScrollFixInstalled = true;
+
+  const isMobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  function resetMainScroll(){
+    if (!isMobile()) return;
+
+    const main = document.querySelector(".main");
+    if (main){
+      main.scrollTop = 0;
+      main.scrollLeft = 0;
+    }
+
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
+  window.addEventListener("pageshow", () => {
+    resetMainScroll();
+    setTimeout(resetMainScroll, 80);
+  });
+
+  window.addEventListener("load", () => {
+    setTimeout(resetMainScroll, 60);
+  }, { once:true });
+})();

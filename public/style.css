@@ -7138,3 +7138,105 @@ button.railFullBtn {
     padding-bottom:0 !important;
   }
 }
+
+/* =========================================================
+   MOBILE — ROLAGEM CORRETA, SEM PASSAR DO MENU FINAL
+   A página vira uma estrutura fixa:
+   cabeçalho | conteúdo rolável | menu inferior.
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  html{
+    width:100% !important;
+    height:100% !important;
+    min-height:100% !important;
+    overflow:hidden !important;
+  }
+
+  body,
+  body.dashboard{
+    width:100% !important;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    max-height:100dvh !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:grid !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+    overflow:hidden !important;
+    background:#020405 !important;
+  }
+
+  body > input[type="hidden"]{
+    display:none !important;
+  }
+
+  .sidebar,
+  .mobileOverlay{
+    position:fixed !important;
+  }
+
+  .mobileHeader{
+    grid-row:1 !important;
+    position:relative !important;
+    inset:auto !important;
+    width:100% !important;
+    flex:none !important;
+    z-index:2000 !important;
+  }
+
+  .main{
+    grid-row:2 !important;
+    position:relative !important;
+    inset:auto !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior-y:contain !important;
+    -webkit-overflow-scrolling:touch !important;
+    transform:none !important;
+  }
+
+  .content,
+  .dashboardGrid,
+  .dashboardMainColumn{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    margin-bottom:0 !important;
+  }
+
+  .content{
+    padding-bottom:14px !important;
+  }
+
+  .mobileBottomNav{
+    grid-row:3 !important;
+    position:relative !important;
+    left:auto !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:auto !important;
+    width:100% !important;
+    height:72px !important;
+    min-height:72px !important;
+    margin:0 !important;
+    padding:7px 8px calc(7px + env(safe-area-inset-bottom)) !important;
+    transform:none !important;
+    z-index:3000 !important;
+    display:grid !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+
+  .bottomStrip{
+    display:none !important;
+  }
+}
