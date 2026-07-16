@@ -7058,3 +7058,46 @@ button.railFullBtn {
     top:auto !important;
   }
 }
+
+/* =========================================================
+   MOBILE — REMOVE A ROLAGEM EXCESSIVA NO FINAL
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  html,
+  body,
+  body.dashboard{
+    min-height:100% !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow-y:auto !important;
+  }
+
+  .main,
+  .content,
+  .dashboardGrid,
+  .dashboardMainColumn,
+  .dashboardRightRail,
+  #desktopMatchRail,
+  .marketWorkArea{
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+  }
+
+  .content{
+    padding-bottom:calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .dashboardRightRail,
+  #desktopMatchRail{
+    padding-bottom:0 !important;
+  }
+
+  .mobileBottomNav{
+    position:fixed !important;
+    bottom:0 !important;
+  }
+}

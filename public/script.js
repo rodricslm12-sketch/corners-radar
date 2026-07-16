@@ -13255,3 +13255,48 @@ function resetDesktopMatchRailToEmpty(){
     }
   }, true);
 })();
+
+/* =========================================================
+   MOBILE — LIMITA O FIM REAL DA PÁGINA
+   ========================================================= */
+(function mobileClampPageEnd(){
+  "use strict";
+
+  if (window.__mobileClampPageEndInstalled) return;
+  window.__mobileClampPageEndInstalled = true;
+
+  const mobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  function clampScroll(){
+    if (!mobile()) return;
+
+    const maxScroll = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight
+    );
+
+    if (window.scrollY > maxScroll){
+      window.scrollTo(0, maxScroll);
+    }
+  }
+
+  window.addEventListener("scroll", clampScroll, { passive:true });
+  window.addEventListener("resize", clampScroll, { passive:true });
+  window.addEventListener("orientationchange", clampScroll, { passive:true });
+
+  const observer = new MutationObserver(() => {
+    requestAnimationFrame(clampScroll);
+  });
+
+  observer.observe(document.body, {
+    childList:true,
+    subtree:true,
+    attributes:true
+  });
+
+  window.addEventListener("load", () => {
+    setTimeout(clampScroll, 100);
+    setTimeout(clampScroll, 400);
+  }, { once:true });
+})();
