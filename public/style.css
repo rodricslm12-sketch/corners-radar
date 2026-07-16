@@ -7240,3 +7240,47 @@ button.railFullBtn {
     display:none !important;
   }
 }
+
+/* =========================================================
+   MOBILE — EFEITO DE DISPARO DO MATCH CENTER
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  #desktopMatchRail,
+  .dashboardRightRail{
+    scroll-margin-top:8px !important;
+  }
+
+  #desktopMatchRail.match-center-shot,
+  .dashboardRightRail.match-center-shot{
+    animation:matchCenterShotMobile .42s ease-out !important;
+  }
+
+  .match-center-selected{
+    border-color:rgba(99,241,39,.62) !important;
+    box-shadow:
+      inset 3px 0 0 rgba(99,241,39,.92),
+      0 0 18px rgba(99,241,39,.08) !important;
+  }
+
+  .matchCenterMiniBtn.is-open,
+  .gamesPanel .signal.is-open,
+  [data-open-match-center].is-open{
+    border-color:var(--green) !important;
+    background:rgba(99,241,39,.16) !important;
+    box-shadow:0 0 16px rgba(99,241,39,.22) !important;
+  }
+}
+
+@keyframes matchCenterShotMobile{
+  0%{
+    transform:translateY(12px);
+    opacity:.72;
+    filter:brightness(.9);
+  }
+  100%{
+    transform:translateY(0);
+    opacity:1;
+    filter:brightness(1);
+  }
+}

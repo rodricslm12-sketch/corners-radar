@@ -13414,3 +13414,305 @@ function resetDesktopMatchRailToEmpty(){
     setTimeout(resetMainScroll, 60);
   }, { once:true });
 })();
+
+/* =========================================================
+   MOBILE — MATCH CENTER FUNCIONA SEM ATUALIZAR + DISPARO
+   - Delegação de eventos para cards criados pela API.
+   - Carrega o jogo real pelo índice ou match_id.
+   - Após renderizar, leva diretamente à área dos gráficos.
+   ========================================================= */
+(function installMobileMatchCenterShot(){
+  "use strict";
+
+  if (window.__mobileMatchCenterShotInstalled) return;
+  window.__mobileMatchCenterShotInstalled = true;
+
+  const MOBILE_QUERY = "(max-width:700px)";
+
+  function isMobile(){
+    return Boolean(
+      window.matchMedia &&
+      window.matchMedia(MOBILE_QUERY).matches
+    );
+  }
+
+  function collectGames(){
+    const pools = [];
+
+    try{
+      if (Array.isArray(window.__premiumFilteredGames)){
+        pools.push(window.__premiumFilteredGames);
+      }
+    }catch(_){}
+
+    try{
+      if (Array.isArray(window.__premiumMarketGames)){
+        pools.push(window.__premiumMarketGames);
+      }
+    }catch(_){}
+
+    try{
+      if (Array.isArray(window.__lastMarketGames)){
+        pools.push(window.__lastMarketGames);
+      }
+    }catch(_){}
+
+    try{
+      if (Array.isArray(window.__lastRawGames)){
+        pools.push(window.__lastRawGames);
+      }
+    }catch(_){}
+
+    try{
+      if (typeof lastMarketGames !== "undefined" &&
+          Array.isArray(lastMarketGames)){
+        pools.push(lastMarketGames);
+      }
+    }catch(_){}
+
+    try{
+      if (typeof lastRawGames !== "undefined" &&
+          Array.isArray(lastRawGames)){
+        pools.push(lastRawGames);
+      }
+    }catch(_){}
+
+    const result = [];
+    const seen = new Set();
+
+    for (const pool of pools){
+      for (const game of pool){
+        if (!game || typeof game !== "object") continue;
+
+        const id = String(
+          game.match_id ??
+          game.id ??
+          game.event_key ??
+          ""
+        );
+
+        const fallbackKey = [
+          game.casa ?? game.home ?? "",
+          game.fora ?? game.away ?? "",
+          game.hora ?? game.time ?? ""
+        ].join("|");
+
+        const key = id || fallbackKey;
+        if (seen.has(key)) continue;
+
+        seen.add(key);
+        result.push(game);
+      }
+    }
+
+    return result;
+  }
+
+  function getMatchId(element){
+    const row = element.closest(
+      ".gameRow,.compactGameRow,.marketGameRow," +
+      ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
+    );
+
+    return String(
+      element.dataset.matchId ||
+      element.getAttribute("data-match-id") ||
+      row?.dataset.matchId ||
+      row?.getAttribute("data-match-id") ||
+      ""
+    ).trim();
+  }
+
+  function resolveGame(button){
+    const games = collectGames();
+
+    const indexRaw = button.dataset.openMatchCenter;
+    const index = Number(indexRaw);
+    let game = null;
+
+    if (Number.isInteger(index) && index >= 0){
+      try{
+        if (Array.isArray(window.__premiumFilteredGames)){
+          game = window.__premiumFilteredGames[index] || null;
+        }
+      }catch(_){}
+    }
+
+    const matchId = getMatchId(button);
+
+    if (!game && matchId){
+      game = games.find(item =>
+        String(
+          item?.match_id ??
+          item?.id ??
+          item?.event_key ??
+          ""
+        ) === matchId
+      ) || null;
+    }
+
+    const row = button.closest(
+      ".gameRow,.compactGameRow,.marketGameRow," +
+      ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
+    );
+
+    if (!game && row){
+      const home =
+        row.dataset.home ||
+        row.querySelector("[data-home]")?.dataset.home ||
+        row.querySelector(".team-home,.homeTeam,.home")?.textContent ||
+        "";
+
+      const away =
+        row.dataset.away ||
+        row.querySelector("[data-away]")?.dataset.away ||
+        row.querySelector(".team-away,.awayTeam,.away")?.textContent ||
+        "";
+
+      game = {
+        match_id: matchId,
+        id: matchId,
+        event_key: matchId,
+        casa: String(home).trim() || "Mandante",
+        fora: String(away).trim() || "Visitante",
+        liga: row.dataset.league || "Liga",
+        hora: row.dataset.time || "—"
+      };
+    }
+
+    return {
+      game,
+      games: games.length ? games : (game ? [game] : []),
+      row
+    };
+  }
+
+  function showRail(){
+    const rail =
+      document.getElementById("desktopMatchRail") ||
+      document.querySelector(".dashboardRightRail");
+
+    if (!rail) return null;
+
+    rail.style.removeProperty("display");
+    rail.style.removeProperty("visibility");
+    rail.style.removeProperty("opacity");
+    rail.classList.add("match-center-shot-target");
+
+    return rail;
+  }
+
+  function shootToGraphs(){
+    const rail =
+      document.getElementById("desktopMatchRail") ||
+      document.querySelector(".dashboardRightRail");
+
+    if (!rail) return;
+
+    const main = document.querySelector(".main");
+
+    if (main && main.scrollHeight > main.clientHeight){
+      const mainRect = main.getBoundingClientRect();
+      const railRect = rail.getBoundingClientRect();
+
+      const targetTop =
+        main.scrollTop +
+        (railRect.top - mainRect.top) -
+        8;
+
+      main.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth"
+      });
+    }else{
+      const top =
+        window.scrollY +
+        rail.getBoundingClientRect().top -
+        8;
+
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: "smooth"
+      });
+    }
+
+    rail.classList.remove("match-center-shot");
+    requestAnimationFrame(() => {
+      rail.classList.add("match-center-shot");
+    });
+  }
+
+  async function openRealMatchCenter(button){
+    const { game, games, row } = resolveGame(button);
+
+    if (!game) return;
+
+    document.querySelectorAll(
+      ".gameRow,.compactGameRow,.marketGameRow," +
+      ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
+    ).forEach(item =>
+      item.classList.remove("match-center-selected")
+    );
+
+    document.querySelectorAll(
+      ".matchCenterMiniBtn,.signal,[data-open-match-center]"
+    ).forEach(item =>
+      item.classList.remove("is-open")
+    );
+
+    row?.classList.add("match-center-selected");
+    button.classList.add("is-open");
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey = String(
+      game.match_id ??
+      game.id ??
+      game.event_key ??
+      ""
+    );
+
+    showRail();
+
+    try{
+      if (typeof window.updateDesktopMatchRail === "function"){
+        await window.updateDesktopMatchRail(game, games);
+      }else if (typeof window.openMatchCenter === "function"){
+        await window.openMatchCenter(game);
+      }
+    }catch(error){
+      console.error(
+        "Falha ao carregar o Match Center:",
+        error
+      );
+    }
+
+    /*
+      Dois disparos: o primeiro após o HTML aparecer e o segundo
+      depois de gráficos/SVGs terminarem a renderização.
+    */
+    setTimeout(shootToGraphs, 100);
+    setTimeout(shootToGraphs, 420);
+  }
+
+  /*
+    Delegação de eventos: funciona também nos botões criados
+    depois que a API atualiza a lista de partidas.
+  */
+  document.addEventListener("click", function(event){
+    if (!isMobile()) return;
+
+    const button = event.target?.closest?.(
+      ".matchCenterMiniBtn," +
+      ".gamesPanel .signal," +
+      "[data-open-match-center]"
+    );
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    openRealMatchCenter(button);
+  }, true);
+})();
