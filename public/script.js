@@ -12638,312 +12638,112 @@ function resetDesktopMatchRailToEmpty(){
 })();
 
 /* =========================================================
-   FIX MOBILE FINAL — CLIQUE NO MATCH CENTER
-   - Funciona ao tocar no botão ou no card.
-   - Busca o jogo pelo match_id, sem depender apenas do índice.
-   - Atualiza o painel e leva o usuário até as estatísticas.
+   CORREÇÃO MOBILE FINAL
+   - volta ao início após recarregar;
+   - usa o clique original das linhas para carregar dados reais;
+   - não reorganiza nem remove o Mercado de Escanteios.
    ========================================================= */
-(function installMobileMatchCenterFix(){
+(function mobileFinalStabilityFix(){
   "use strict";
 
-  if (window.__mobileMatchCenterFixInstalled) return;
-  window.__mobileMatchCenterFixInstalled = true;
+  if (window.__mobileFinalStabilityFixInstalled) return;
+  window.__mobileFinalStabilityFixInstalled = true;
 
-  function isMobile(){
-    return window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
+  const isMobile = () =>
+    window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
+
+  try{
+    if ("scrollRestoration" in history){
+      history.scrollRestoration = "manual";
+    }
+  }catch(_){}
+
+  function goToTop(){
+    if (!isMobile()) return;
+    window.scrollTo({ top:0, left:0, behavior:"auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }
 
-  function allKnownGames(){
-    const pools = [
-      window.__premiumFilteredGames,
-      window.__premiumMarketGames,
-      window.__lastMarketGames,
-      window.__lastRawGames
-    ];
+  window.addEventListener("pageshow", function(event){
+    if (!isMobile()) return;
+    if (event.persisted || window.scrollY > 600){
+      requestAnimationFrame(goToTop);
+      setTimeout(goToTop, 80);
+    }
+  });
 
-    try{
-      if (typeof lastMarketGames !== "undefined") pools.push(lastMarketGames);
-    }catch(_){}
-    try{
-      if (typeof lastRawGames !== "undefined") pools.push(lastRawGames);
-    }catch(_){}
+  window.addEventListener("load", function(){
+    if (!isMobile()) return;
+    setTimeout(goToTop, 60);
+  }, { once:true });
 
-    const out = [];
-    const seen = new Set();
+  /*
+    Os cards originais já possuem listeners que conhecem o índice e o
+    match_id reais. O botão visual apenas aciona o clique da própria linha,
+    sem fabricar um jogo incompleto e sem substituir updateDesktopMatchRail.
+  */
+  document.addEventListener("pointerup", function(event){
+    if (!isMobile()) return;
 
-    pools.forEach(pool => {
-      if (!Array.isArray(pool)) return;
-      pool.forEach(game => {
-        if (!game || typeof game !== "object") return;
-        const id = String(game.match_id ?? game.id ?? game.event_key ?? "");
-        const key = id || `${game.casa || game.home || ""}|${game.fora || game.away || ""}|${game.hora || game.time || ""}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        out.push(game);
-      });
-    });
-
-    return out;
-  }
-
-  function valueFrom(el, name, fallback = ""){
-    return String(el?.dataset?.[name] ?? fallback).trim();
-  }
-
-  function gameFromRow(row, button){
-    const matchId =
-      valueFrom(button, "matchId") ||
-      valueFrom(row, "matchId");
-
-    const games = allKnownGames();
-    const found = games.find(game =>
-      String(game?.match_id ?? game?.id ?? game?.event_key ?? "") === matchId
+    const button = event.target?.closest?.(
+      ".gamesPanel .signal:not([data-open-match-center]), " +
+      ".gamesPanel .matchCenterMiniBtn:not([data-open-match-center])"
     );
 
-    if (found) return { game:found, list:games };
+    if (!button) return;
 
-    const game = {
-      match_id: matchId,
-      id: matchId,
-      event_key: matchId,
-      casa: valueFrom(button, "home") || valueFrom(row, "home") || "Mandante",
-      fora: valueFrom(button, "away") || valueFrom(row, "away") || "Visitante",
-      liga: valueFrom(button, "league") || valueFrom(row, "league") || "Liga",
-      hora: valueFrom(button, "time") || valueFrom(row, "time") || "—"
-    };
-
-    return { game, list:games.length ? games : [game] };
-  }
-
-  async function activateMatchCenter(target){
-    const button = target.closest(
-      "[data-open-match-center], .matchCenterMiniBtn, .signal"
-    );
-    const row = target.closest(
-      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
+    const row = button.closest(
+      ".gameRow,.compactGameRow,.marketGameRow,.premiumGameRow,.cleanDashRow,[data-match-center-row]"
     );
 
-    if (!button && !row) return false;
+    if (!row) return;
 
-    const source = button || row;
-    const { game, list } = gameFromRow(row, button);
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
 
-    const matchId = String(game?.match_id ?? game?.id ?? game?.event_key ?? "");
-    if (!matchId) return false;
-
-    document.querySelectorAll(
-      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
-    ).forEach(item => item.classList.remove("match-center-selected"));
-
-    document.querySelectorAll(".matchCenterMiniBtn, [data-open-match-center]")
-      .forEach(item => item.classList.remove("is-open"));
-
-    row?.classList.add("match-center-selected");
-    button?.classList.add("is-open");
-
-    window.__selectedMatchCenterGame = game;
-    window.__selectedMatchCenterKey =
-      String(row?.dataset?.matchKey || matchId);
+    row.dispatchEvent(new MouseEvent("click", {
+      bubbles:false,
+      cancelable:true,
+      view:window
+    }));
 
     const rail = document.getElementById("desktopMatchRail") ||
                  document.querySelector(".dashboardRightRail");
 
     if (rail){
-      rail.style.removeProperty("display");
-      rail.style.removeProperty("visibility");
-      rail.style.removeProperty("opacity");
-    }
-
-    try{
-      if (typeof window.updateDesktopMatchRail === "function"){
-        await window.updateDesktopMatchRail(game, list);
-      }else if (typeof window.openMatchCenter === "function"){
-        window.openMatchCenter(source);
-      }
-    }catch(error){
-      console.warn("Falha ao abrir Match Center no mobile:", error);
-    }
-
-    if (isMobile() && rail){
       setTimeout(() => {
         rail.scrollIntoView({ behavior:"smooth", block:"start" });
-      }, 180);
+      }, 220);
     }
-
-    return true;
-  }
-
-  /*
-    Usa pointerup para responder melhor no Safari. O preventDefault é
-    aplicado somente nos controles do Match Center, sem bloquear a rolagem.
-  */
-  document.addEventListener("pointerup", function(event){
-    if (!isMobile()) return;
-
-    const target = event.target;
-    const button = target?.closest?.(
-      "[data-open-match-center], .matchCenterMiniBtn, .signal"
-    );
-
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    activateMatchCenter(target);
   }, true);
 
   /*
-    Também permite tocar no card inteiro. Ignora links e outros botões
-    para não interferir em filtros ou navegação.
+    Garante que o painel de mercados permaneça no DOM e visível depois
+    de qualquer renderização dinâmica.
   */
-  document.addEventListener("click", function(event){
-    if (!isMobile()) return;
-
-    const target = event.target;
-    if (target?.closest?.("a, select, input, textarea")) return;
-
-    const row = target?.closest?.(
-      "[data-match-center-row], .marketGameRow, .premiumGameRow, .cleanDashRow, .gameRow"
-    );
-    if (!row) return;
-
-    const otherButton = target.closest("button:not(.matchCenterMiniBtn):not(.signal):not([data-open-match-center])");
-    if (otherButton) return;
-
-    event.preventDefault();
-    activateMatchCenter(target);
-  }, false);
-})();
-
-/* =========================================================
-   MOBILE FINAL — ORGANIZA LISTA EM 3 JOGOS COM SCROLL
-   ========================================================= */
-(function setupMobileThreeGameViewport(){
-  "use strict";
-
-  if (window.__mobileThreeGameViewportInstalled) return;
-  window.__mobileThreeGameViewportInstalled = true;
-
-  const MOBILE_QUERY = "(max-width: 700px)";
-
-  function isMobile(){
-    return window.matchMedia && window.matchMedia(MOBILE_QUERY).matches;
-  }
-
-  function isGameRow(el){
-    return el?.matches?.(
-      ".gameRow, .marketGameRow, .premiumGameRow, .cleanDashRow, [data-match-center-row]"
-    );
-  }
-
-  function getDirectRows(panel){
-    return Array.from(panel.children).filter(isGameRow);
-  }
-
-  function ensureWrapper(panel){
-    if (!panel || !isMobile()) return;
-
-    panel.classList.add("mobileCompactGamesPanel");
-
-    let scroll = panel.querySelector(":scope > .mobileGamesScroll");
-    const directRows = getDirectRows(panel);
-
-    if (!scroll){
-      scroll = document.createElement("div");
-      scroll.className = "mobileGamesScroll";
-      scroll.setAttribute("role", "region");
-      scroll.setAttribute("aria-label", "Jogos em destaque");
-
-      const head = panel.querySelector(":scope > .sectionHead");
-      if (head?.nextSibling){
-        panel.insertBefore(scroll, head.nextSibling);
-      }else{
-        panel.insertBefore(scroll, panel.firstChild);
-      }
-    }
-
-    directRows.forEach(row => scroll.appendChild(row));
-
-    /*
-      Alguns renders recriam os jogos dentro de outro contêiner.
-      Copiamos apenas linhas diretas desse contêiner para o wrapper.
-    */
-    Array.from(panel.querySelectorAll(
-      ":scope > .gamesList > .gameRow, " +
-      ":scope > .gamesList > .marketGameRow, " +
-      ":scope > .gameRows > .gameRow, " +
-      ":scope > .gameRows > .marketGameRow"
-    )).forEach(row => scroll.appendChild(row));
-
-    /*
-      Mantém o botão "ver todos" fora da rolagem.
-    */
-    const viewAll = panel.querySelector(":scope .viewAll");
-    if (viewAll && viewAll.parentElement !== panel){
-      panel.appendChild(viewAll);
-    }
-
-    /*
-      Garante que todo jogo possua um botão Match Center visível.
-      Reaproveita o evento delegado já instalado no script.
-    */
-    Array.from(scroll.children).filter(isGameRow).forEach(row => {
-      let button = row.querySelector(
-        ".matchCenterMiniBtn, .signal, [data-open-match-center]"
-      );
-
-      if (!button){
-        button = document.createElement("button");
-        button.type = "button";
-        button.className = "matchCenterMiniBtn";
-        button.setAttribute("data-open-match-center", "1");
-        button.setAttribute("aria-label", "Abrir Match Center");
-
-        const matchId =
-          row.dataset.matchId ||
-          row.getAttribute("data-match-id") ||
-          "";
-
-        if (matchId) button.dataset.matchId = matchId;
-        row.appendChild(button);
-      }else{
-        button.classList.add("matchCenterMiniBtn");
-        button.setAttribute("data-open-match-center", "1");
-        button.setAttribute("aria-label", "Abrir Match Center");
-      }
-    });
-  }
-
-  function organizeAll(){
-    if (!isMobile()) return;
-
+  function revealMarkets(){
     document.querySelectorAll(
-      ".gamesPanel, .marketWorkArea > .gamesPanel"
-    ).forEach(ensureWrapper);
-  }
-
-  let queued = false;
-  function queueOrganize(){
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(() => {
-      queued = false;
-      organizeAll();
+      ".marketInlinePanel,.marketInlineShell,.inlineMarketsPanel"
+    ).forEach(panel => {
+      panel.style.removeProperty("display");
+      panel.style.removeProperty("visibility");
+      panel.style.removeProperty("opacity");
     });
   }
 
-  const observer = new MutationObserver(queueOrganize);
+  const observer = new MutationObserver(() => {
+    if (!isMobile()) return;
+    revealMarkets();
+  });
 
   function start(){
-    organizeAll();
-
+    revealMarkets();
     observer.observe(document.body, {
       childList:true,
       subtree:true
     });
-
-    window.addEventListener("resize", queueOrganize, { passive:true });
-    window.addEventListener("orientationchange", queueOrganize, { passive:true });
   }
 
   if (document.readyState === "loading"){
