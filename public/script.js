@@ -12898,3 +12898,168 @@ function resetDesktopMatchRailToEmpty(){
     start();
   }
 })();
+
+/* =========================================================
+   MOBILE — MANTÉM TODOS OS MERCADOS E RESTAURA ESCANTEIOS
+   O painel principal continua trocando entre Pré-Jogo, Gols,
+   Cartões e Player Props. Além disso, o painel de Escanteios
+   permanece visível abaixo, como antes.
+   ========================================================= */
+(function restorePermanentCornersMarketMobile(){
+  "use strict";
+
+  if (window.__permanentCornersMarketMobileInstalled) return;
+  window.__permanentCornersMarketMobileInstalled = true;
+
+  const isMobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  function esc(value){
+    return String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  const CORNERS = {
+    count:"18 MERCADOS",
+    title:"Mercados de Escanteios",
+    subtitle:"totais, tempos, equipes e linhas especiais",
+    tip:"Dica Corner Pro: jogos acima de 9.5 escanteios entram como prioridade no radar.",
+    all:"VER TODOS OS ESCANTEIOS",
+    sections:[
+      {
+        title:"Totais de Escanteios",
+        icon:"⚑",
+        items:[
+          ["Over 8.5","1.35"],
+          ["Over 9.5","1.55","POPULAR"],
+          ["Over 10.5","1.80"],
+          ["Over 11.5","2.10"],
+          ["Over 12.5","2.45"]
+        ]
+      },
+      {
+        title:"Escanteios por Tempo",
+        icon:"◷",
+        items:[
+          ["Over 4.5 HT","1.85"],
+          ["Over 5.5 HT","2.20"],
+          ["Under 4.5 HT","1.70"],
+          ["Over 9.5 FT","1.45"],
+          ["Over 10.5 FT","1.70"]
+        ]
+      },
+      {
+        title:"Por Equipe / Especiais",
+        icon:"▤",
+        items:[
+          ["Casa Over 4.5","1.60"],
+          ["Casa Over 5.5","2.05"],
+          ["Visitante Over 4.5","1.75"],
+          ["Visitante Over 5.5","2.20"],
+          ["Escanteios exatos","6.00"]
+        ]
+      }
+    ]
+  };
+
+  function panelHTML(){
+    const sections = CORNERS.sections.map(section => `
+      <section class="marketInlineSection">
+        <h4><i>${esc(section.icon)}</i>${esc(section.title)}</h4>
+        <div class="marketInlineList">
+          ${section.items.map(item => `
+            <button
+              class="marketInlineItem"
+              type="button"
+              data-market-line="${esc(item[0])}"
+            >
+              <span>
+                ${esc(item[0])}
+                ${item[2] ? `<em class="marketInlineHot">${esc(item[2])}</em>` : ""}
+              </span>
+              <b>${esc(item[1])}</b>
+            </button>
+          `).join("")}
+        </div>
+        <button class="marketInlineMore" type="button">Ver mais⌄</button>
+      </section>
+    `).join("");
+
+    return `
+      <div class="marketInlineHead">
+        <div class="marketInlineTitle">
+          <strong>${esc(CORNERS.title)}</strong>
+          <small>${esc(CORNERS.subtitle)}</small>
+        </div>
+        <div class="marketInlineCount">${esc(CORNERS.count)}</div>
+      </div>
+
+      <div class="marketInlineGrid">${sections}</div>
+
+      <div class="marketInlineFooter">
+        <div class="marketInlineTip">
+          <i>i</i>
+          <span>${esc(CORNERS.tip)}</span>
+        </div>
+        <button class="marketInlineAll" type="button">
+          ${esc(CORNERS.all)} →
+        </button>
+      </div>
+    `;
+  }
+
+  function buildPermanentCorners(){
+    if (!isMobile()) return;
+
+    const mainPanel = document.querySelector(
+      ".marketInlinePanel:not(.marketInlineCornersPermanent)"
+    );
+
+    if (!mainPanel) return;
+
+    let cornersPanel = document.querySelector(".marketInlineCornersPermanent");
+
+    if (!cornersPanel){
+      cornersPanel = document.createElement("section");
+      cornersPanel.className =
+        "marketInlinePanel marketInlineCornersPermanent";
+      cornersPanel.setAttribute("aria-label", "Mercados de Escanteios");
+      cornersPanel.innerHTML = panelHTML();
+
+      mainPanel.insertAdjacentElement("afterend", cornersPanel);
+    }
+
+    cornersPanel.style.removeProperty("display");
+    cornersPanel.style.removeProperty("visibility");
+    cornersPanel.style.removeProperty("opacity");
+  }
+
+  function schedule(){
+    requestAnimationFrame(buildPermanentCorners);
+    setTimeout(buildPermanentCorners, 80);
+    setTimeout(buildPermanentCorners, 250);
+    setTimeout(buildPermanentCorners, 700);
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", schedule, { once:true });
+  }else{
+    schedule();
+  }
+
+  window.addEventListener("pageshow", schedule);
+
+  const observer = new MutationObserver(() => {
+    if (!isMobile()) return;
+    buildPermanentCorners();
+  });
+
+  observer.observe(document.body, {
+    childList:true,
+    subtree:true
+  });
+})();

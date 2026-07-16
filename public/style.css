@@ -6926,3 +6926,67 @@ button.railFullBtn {
     height:auto !important;
   }
 }
+
+/* =========================================================
+   MOBILE — PAINEL PERMANENTE DE ESCANTEIOS
+   Mantém os demais mercados no painel principal.
+   ========================================================= */
+@media screen and (max-width:700px){
+
+  .marketInlineCornersPermanent{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:relative !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    margin-top:12px !important;
+    order:5 !important;
+  }
+
+  .marketInlineCornersPermanent .marketInlineHead{
+    display:flex !important;
+    align-items:flex-start !important;
+    gap:10px !important;
+  }
+
+  .marketInlineCornersPermanent .marketInlineGrid{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:6px !important;
+    width:100% !important;
+    overflow:visible !important;
+  }
+
+  .marketInlineCornersPermanent .marketInlineSection{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:auto !important;
+  }
+
+  .marketInlineCornersPermanent .marketInlineItem{
+    min-width:0 !important;
+  }
+
+  .marketInlineCornersPermanent .marketInlineItem span{
+    min-width:0 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  /* O Match Center vem depois dos dois painéis de mercados. */
+  #desktopMatchRail,
+  .dashboardRightRail{
+    order:6 !important;
+  }
+}
