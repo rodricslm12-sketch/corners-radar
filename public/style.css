@@ -7284,3 +7284,24 @@ button.railFullBtn {
     filter:brightness(1);
   }
 }
+
+
+/* ======================================================
+   ESPAÇAMENTO ENTRE JOGOS E MERCADOS
+   ====================================================== */
+
+   .gamesPanel{
+    margin-bottom:18px !important;
+}
+
+.gamesPanel + .marketsPanel,
+.gamesPanel + .preGameMarkets,
+.gamesPanel + section,
+.gamesPanel + div{
+    margin-top:18px !important;
+}
+
+/* Caso ambos estejam dentro da coluna principal */
+.dashboardMainColumn{
+    gap:18px !important;
+}
