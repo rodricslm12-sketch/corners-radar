@@ -13063,3 +13063,195 @@ function resetDesktopMatchRailToEmpty(){
     subtree:true
   });
 })();
+
+/* =========================================================
+   MOBILE ESTÁVEL — SEM PULO DE PÁGINA + MATCH CENTER REAL
+   ========================================================= */
+(function mobileStableRealMatchCenter(){
+  "use strict";
+
+  if (window.__mobileStableRealMatchCenterInstalled) return;
+  window.__mobileStableRealMatchCenterInstalled = true;
+
+  const isMobile = () =>
+    window.matchMedia && window.matchMedia("(max-width:700px)").matches;
+
+  function hardTop(){
+    if (!isMobile()) return;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
+  /*
+    Bloqueia os scrollIntoView automáticos antigos somente no mobile.
+    Eles eram os responsáveis por jogar a página para uma região vazia.
+  */
+  if (isMobile() && !Element.prototype.__cornerOriginalScrollIntoView){
+    Element.prototype.__cornerOriginalScrollIntoView =
+      Element.prototype.scrollIntoView;
+
+    Element.prototype.scrollIntoView = function(){
+      return;
+    };
+  }
+
+  try{
+    history.scrollRestoration = "manual";
+  }catch(_){}
+
+  window.addEventListener("pageshow", () => {
+    hardTop();
+    setTimeout(hardTop, 50);
+    setTimeout(hardTop, 180);
+  });
+
+  window.addEventListener("load", () => {
+    hardTop();
+    setTimeout(hardTop, 100);
+  }, { once:true });
+
+  function allGames(){
+    const pools = [];
+
+    try{
+      if (Array.isArray(window.__premiumFilteredGames))
+        pools.push(window.__premiumFilteredGames);
+    }catch(_){}
+
+    try{
+      if (Array.isArray(window.__premiumMarketGames))
+        pools.push(window.__premiumMarketGames);
+    }catch(_){}
+
+    try{
+      if (typeof lastMarketGames !== "undefined" && Array.isArray(lastMarketGames))
+        pools.push(lastMarketGames);
+    }catch(_){}
+
+    try{
+      if (typeof lastRawGames !== "undefined" && Array.isArray(lastRawGames))
+        pools.push(lastRawGames);
+    }catch(_){}
+
+    const result = [];
+    const seen = new Set();
+
+    pools.forEach(pool => {
+      pool.forEach(game => {
+        if (!game) return;
+
+        const id = String(
+          game.match_id ??
+          game.id ??
+          game.event_key ??
+          ""
+        );
+
+        const key = id || [
+          game.casa || game.home || "",
+          game.fora || game.away || "",
+          game.hora || game.time || ""
+        ].join("|");
+
+        if (seen.has(key)) return;
+        seen.add(key);
+        result.push(game);
+      });
+    });
+
+    return result;
+  }
+
+  function resolveGame(button){
+    const list = allGames();
+    const matchId = String(button.dataset.matchId || "");
+    const index = Number(button.dataset.openMatchCenter);
+
+    let game = null;
+
+    if (Number.isFinite(index) && index >= 0){
+      try{
+        game = window.__premiumFilteredGames?.[index] || null;
+      }catch(_){}
+    }
+
+    if (!game && matchId){
+      game = list.find(item =>
+        String(item?.match_id ?? item?.id ?? item?.event_key ?? "") === matchId
+      ) || null;
+    }
+
+    if (!game){
+      game = {
+        match_id: matchId,
+        id: matchId,
+        event_key: matchId,
+        casa: button.dataset.home || "Mandante",
+        fora: button.dataset.away || "Visitante",
+        liga: button.dataset.league || "Liga",
+        hora: button.dataset.time || "—"
+      };
+    }
+
+    return { game, list:list.length ? list : [game] };
+  }
+
+  /*
+    Captura somente o botão pequeno da linha.
+    Usa updateDesktopMatchRail com o match_id real e não permite que
+    listeners antigos executem scroll ou reconstruam o estado.
+  */
+  document.addEventListener("click", async function(event){
+    if (!isMobile()) return;
+
+    const button = event.target?.closest?.(
+      "[data-open-match-center]:not([data-open-match-center-table])," +
+      ".matchCenterMiniBtn"
+    );
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    const { game, list } = resolveGame(button);
+    const row = button.closest(
+      ".premiumGameRow,.cleanDashRow,.gameRow,.marketGameRow,[data-match-center-row]"
+    );
+
+    document.querySelectorAll(
+      ".premiumGameRow,.cleanDashRow,.gameRow,.marketGameRow,[data-match-center-row]"
+    ).forEach(item => item.classList.remove("match-center-selected"));
+
+    document.querySelectorAll(
+      ".matchCenterBtn,.matchCenterMiniBtn,[data-open-match-center]"
+    ).forEach(item => item.classList.remove("is-open"));
+
+    row?.classList.add("match-center-selected");
+    button.classList.add("is-open");
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey = String(
+      game.match_id ?? game.id ?? game.event_key ?? ""
+    );
+
+    const rail = document.getElementById("desktopMatchRail") ||
+                 document.querySelector(".dashboardRightRail");
+
+    if (rail){
+      rail.style.display = "flex";
+      rail.style.visibility = "visible";
+      rail.style.opacity = "1";
+    }
+
+    try{
+      if (typeof window.updateDesktopMatchRail === "function"){
+        await window.updateDesktopMatchRail(game, list);
+      }
+    }catch(error){
+      console.error("Erro ao carregar Match Center real:", error);
+    }
+  }, true);
+})();
