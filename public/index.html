@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260710" />
-  <script src="script.js?v=20260710" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260715b" />
+  <script src="script.js?v=20260715b" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -48,7 +48,24 @@
     </div>
   </aside>
 
+  <div class="mobileOverlay" id="mobileOverlay" aria-hidden="true"></div>
+
+  <header class="mobileHeader">
+    <button class="mobileMenuBtn" id="mobileMenuBtn" type="button" aria-label="Abrir menu">☰</button>
+    <div class="mobileBrand">
+      <strong>CORNER<span>PRO</span></strong>
+      <small>ANÁLISES ESPORTIVAS</small>
+    </div>
+    <button type="button" class="mobileCalendarBtn" id="mobileCalendarBtn" aria-label="Calendário">📅</button>
+  </header>
+
   <main class="main">
+    <div class="mobileGreeting">
+      <span class="mobileGreetingIcon">♧</span>
+      <strong>Olá, Rodrigo</strong>
+      <span class="mobileGreetingChev">⌄</span>
+    </div>
+
     <header class="topbar">
       <nav class="nav">
         <a>PRÉ-JOGO</a>
@@ -195,5 +212,13 @@
       </footer>
     </section>
   </main>
+
+  <nav class="mobileBottomNav" aria-label="Navegação mobile">
+    <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+    <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
+    <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+    <button type="button"><span>⚑</span><b>Escanteios</b></button>
+    <button type="button"><span>•••</span><b>Mais</b></button>
+  </nav>
 </body>
 </html>

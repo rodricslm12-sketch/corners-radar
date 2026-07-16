@@ -4761,186 +4761,242 @@ body.dashboard .dashboardRightRail .railEmptyReadBox{background:#091015 !importa
 }
 
 /* =========================================================
-   AJUSTE FINAL — COLUNA DIREITA EM PCs MENORES
-   - remove o botão "Iniciar Match Center"
-   - faz Eventos / Leitura ocupar o espaço restante
-   - alinha o final da coluna direita ao card principal de jogos
+   AJUSTE FINAL — EVENTOS/LEITURA ALINHADO AO PAINEL DE MERCADOS
+   Mantém o trilho direito dentro da mesma linha visual do painel central
+   em PCs com menor altura útil.
    ========================================================= */
-#desktopMatchRail .railFullBtn,
-.dashboardRightRail .railFullBtn{
-  display:none !important;
-  visibility:hidden !important;
-  opacity:0 !important;
-  height:0 !important;
-  min-height:0 !important;
-  margin:0 !important;
-  padding:0 !important;
-  overflow:hidden !important;
-  pointer-events:none !important;
-}
-
-@media (min-width:981px) and (max-width:1600px),
-       (min-width:981px) and (max-height:850px){
-  .dashboardGrid{
-    align-items:stretch !important;
+@media (min-width:981px) and (max-height:900px){
+  .dashboardRightRail .railCard:last-of-type,
+  #desktopMatchRail .railCard:last-of-type{
+    padding-top:9px !important;
+    padding-bottom:9px !important;
   }
 
-  .dashboardRightRail,
-  #desktopMatchRail{
-    align-self:stretch !important;
-    height:100% !important;
-    min-height:100% !important;
-    display:grid !important;
-    grid-template-rows:auto auto minmax(0,1fr) !important;
-    gap:10px !important;
-    overflow:hidden !important;
+  .dashboardRightRail .railCard:last-of-type h3,
+  #desktopMatchRail .railCard:last-of-type h3{
+    margin-bottom:7px !important;
+    line-height:1.1 !important;
   }
 
-  .dashboardRightRail > .railCard,
-  #desktopMatchRail > .railCard{
-    min-height:0 !important;
+  .dashboardRightRail .railEmptyEventIcons,
+  #desktopMatchRail .railEmptyEventIcons{
+    gap:4px !important;
+  }
+
+  .dashboardRightRail .railEmptyEventIcons > span,
+  #desktopMatchRail .railEmptyEventIcons > span{
+    min-height:44px !important;
+    padding:5px 2px !important;
+  }
+
+  .dashboardRightRail .railEmptyReadBox,
+  #desktopMatchRail .railEmptyReadBox{
+    margin-top:6px !important;
+    padding:6px 7px !important;
+    gap:6px !important;
+  }
+
+  .dashboardRightRail .railEmptyReadBox p,
+  #desktopMatchRail .railEmptyReadBox p{
     margin:0 !important;
-  }
-
-  .dashboardRightRail > .railCard:nth-of-type(3),
-  #desktopMatchRail > .railCard:nth-of-type(3){
-    height:100% !important;
-    min-height:0 !important;
-    display:flex !important;
-    flex-direction:column !important;
-  }
-
-  .dashboardRightRail > .railCard:nth-of-type(3) .railEmptyReadBox,
-  #desktopMatchRail > .railCard:nth-of-type(3) .railEmptyReadBox{
-    flex:1 1 auto !important;
-    min-height:74px !important;
-    display:flex !important;
-    align-items:center !important;
+    font-size:8px !important;
+    line-height:1.18 !important;
   }
 }
 
-/* Em telas muito baixas, mantém os três cards compactos e alinhados */
 @media (min-width:981px) and (max-height:760px){
-  .dashboardRightRail,
-  #desktopMatchRail{
-    gap:8px !important;
+  .dashboardRightRail .railEmptyEventIcons > span,
+  #desktopMatchRail .railEmptyEventIcons > span{
+    min-height:40px !important;
+    padding:4px 2px !important;
   }
 
-  .dashboardRightRail > .railCard:nth-of-type(3) .railEmptyReadBox,
-  #desktopMatchRail > .railCard:nth-of-type(3) .railEmptyReadBox{
-    min-height:58px !important;
+  .dashboardRightRail .railEmptyReadBox,
+  #desktopMatchRail .railEmptyReadBox{
+    margin-top:4px !important;
+    padding:5px 6px !important;
   }
+}
+
+/* CORREÇÃO FINAL — manter o botão INICIAR MATCH CENTER oculto */
+#desktopMatchRail .railFullBtn,
+.dashboardRightRail .railFullBtn,
+.railFullBtn,
+button.railFullBtn {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
 }
 
 /* =========================================================
-   CORREÇÃO V8 — RESTAURA A COLUNA DIREITA
-   Remove o grid fixo da V7 que escondia Estatísticas e Eventos.
-   Mantém os três cards visíveis e na ordem original.
+   V8 — ALINHAMENTO REAL DO CARD EVENTOS / LEITURA
+   Faz o trilho direito terminar exatamente na mesma linha
+   do painel central, sem reexibir o botão do Match Center.
    ========================================================= */
 @media (min-width:981px){
-  .dashboardGrid{
-    align-items:start !important;
-  }
-
-  .dashboardRightRail,
-  #desktopMatchRail{
-    display:flex !important;
-    flex-direction:column !important;
-    justify-content:flex-start !important;
-    align-items:stretch !important;
-    height:auto !important;
-    min-height:0 !important;
-    max-height:none !important;
-    overflow:visible !important;
-    gap:10px !important;
-  }
-
-  .dashboardRightRail > .railCard,
-  #desktopMatchRail > .railCard{
-    display:block !important;
-    flex:0 0 auto !important;
-    width:100% !important;
-    height:auto !important;
-    min-height:0 !important;
-    max-height:none !important;
-    margin:0 !important;
-    overflow:hidden !important;
-  }
-
-  .dashboardRightRail > .railCard:nth-of-type(1),
-  #desktopMatchRail > .railCard:nth-of-type(1){
-    min-height:210px !important;
-  }
-
-  .dashboardRightRail > .railCard:nth-of-type(2),
-  #desktopMatchRail > .railCard:nth-of-type(2){
-    min-height:180px !important;
-  }
-
-  .dashboardRightRail > .railCard:nth-of-type(3),
-  #desktopMatchRail > .railCard:nth-of-type(3){
-    min-height:140px !important;
-  }
-
-  .dashboardRightRail .railFullBtn,
-  #desktopMatchRail .railFullBtn{
-    display:none !important;
-  }
-}
-
-/* =========================================================
-   CORREÇÃO V9 — COLUNA DIREITA NÃO MUDA DE POSIÇÃO AO CLICAR
-   Mantém Match Center, Estatísticas e Eventos com a mesma
-   altura total do bloco principal, sem esconder nenhum card.
-   ========================================================= */
-@media (min-width:1601px) and (min-height:780px){
   .dashboardGrid{
     align-items:stretch !important;
   }
 
   #desktopMatchRail.dashboardRightRail,
-  .dashboardRightRail#desktopMatchRail{
+  .dashboardRightRail#desktopMatchRail,
+  .dashboardRightRail{
     align-self:stretch !important;
     height:100% !important;
-    min-height:0 !important;
-    max-height:none !important;
+    min-height:100% !important;
     display:flex !important;
     flex-direction:column !important;
-    justify-content:flex-start !important;
-    gap:10px !important;
-    overflow:visible !important;
   }
 
-  #desktopMatchRail > .railCard{
-    width:100% !important;
+  #desktopMatchRail .railCard:last-of-type,
+  .dashboardRightRail .railCard:last-of-type{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  #desktopMatchRail .railCard:last-of-type .railEmptyReadBox,
+  .dashboardRightRail .railCard:last-of-type .railEmptyReadBox{
+    margin-top:auto !important;
+  }
+
+  #desktopMatchRail .railFullBtn,
+  .dashboardRightRail .railFullBtn,
+  .railFullBtn,
+  button.railFullBtn{
+    display:none !important;
+    visibility:hidden !important;
+    height:0 !important;
+    min-height:0 !important;
     margin:0 !important;
-    height:auto !important;
-    max-height:none !important;
+    padding:0 !important;
+  }
+}
+
+/* =========================================================
+   AJUSTE PONTUAL — CONTEÚDO INTERNO DE EVENTOS / LEITURA
+   Sobe somente a mensagem interna, sem mover ou redimensionar cards.
+   ========================================================= */
+@media (min-width: 981px) {
+  #desktopMatchRail .railCard:last-of-type .railEmptyReadBox,
+  .dashboardRightRail .railCard:last-of-type .railEmptyReadBox {
+    margin-top: 12px !important;
+    margin-bottom: 0 !important;
+    align-self: stretch !important;
   }
 
-  /* As duas primeiras áreas não encolhem quando o JS redesenha o conteúdo. */
-  #desktopMatchRail > .railCard:nth-of-type(1){
-    flex:0 0 210px !important;
-    min-height:210px !important;
+  #desktopMatchRail .railCard:last-of-type,
+  .dashboardRightRail .railCard:last-of-type {
+    justify-content: flex-start !important;
   }
+}
 
-  #desktopMatchRail > .railCard:nth-of-type(2){
-    flex:0 0 180px !important;
-    min-height:180px !important;
-  }
 
-  /* Eventos ocupa somente o espaço restante e mantém o rodapé alinhado. */
-  #desktopMatchRail > .railCard:nth-of-type(3){
-    flex:1 1 auto !important;
-    min-height:140px !important;
-    display:flex !important;
-    flex-direction:column !important;
-  }
+/* =========================================================
+   MOBILE IPHONE — layout exclusivo até 767px
+   Não altera o desktop.
+   ========================================================= */
+.mobileHeader,.mobileGreeting,.mobileBottomNav,.mobileOverlay{display:none}
 
-  #desktopMatchRail > .railCard:nth-of-type(3) .railEmptyReadBox{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    display:flex !important;
-    align-items:center !important;
-  }
+@media (max-width:767px){
+  :root{--mobile-x:14px}
+  html,body{height:auto;min-height:100%;overflow-x:hidden}
+  body{font-size:12px;overflow-y:auto;padding-bottom:78px;background:#020405}
+  .dashboard{display:block;min-height:100vh;background:radial-gradient(circle at 50% 0,rgba(70,255,40,.08),transparent 25%),#020405}
+
+  .mobileHeader{position:sticky;top:0;z-index:900;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;height:72px;padding:0 var(--mobile-x);background:rgba(3,7,9,.96);backdrop-filter:blur(18px);border-bottom:1px solid #162126}
+  .mobileMenuBtn{width:40px;height:40px;display:grid;place-items:center;color:#fff;font-size:28px;border-radius:10px}
+  .mobileBrand{justify-self:start;line-height:.9;margin-left:8px}
+  .mobileBrand strong{display:block;font-size:22px;font-weight:950;font-style:italic;letter-spacing:-1.1px}
+  .mobileBrand strong span{font-size:12px;color:var(--green);margin-left:3px}
+  .mobileBrand small{display:block;margin-top:5px;font-size:7px;font-weight:900;letter-spacing:1.2px;color:#d5ddda}
+  .mobileCalendarBtn{width:40px;height:40px;border-radius:12px;background:#0b1710;border:1px solid rgba(99,241,39,.18);box-shadow:0 0 18px rgba(99,241,39,.10);font-size:20px}
+
+  .mobileGreeting{display:flex;align-items:center;height:56px;padding:0 18px;gap:12px;background:linear-gradient(90deg,#040809,#06150d 55%,#030707);border-bottom:1px solid rgba(255,255,255,.04)}
+  .mobileGreetingIcon{font-size:22px;color:var(--green)}
+  .mobileGreeting strong{font-size:16px}
+  .mobileGreetingChev{color:#9fa9a7}
+
+  .sidebar{position:fixed;left:-280px;top:0;z-index:1200;width:272px;height:100dvh;padding-top:18px;transition:left .24s ease;box-shadow:25px 0 70px rgba(0,0,0,.75)}
+  .sidebar.mobile-open{left:0}
+  .sidebar .brandLogo{height:58px}
+  .sidebar-nav{overflow-y:auto;padding-bottom:18px}
+  .proBox{margin-top:10px}
+  .mobileOverlay{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.68);backdrop-filter:blur(4px)}
+  .mobileOverlay.active{display:block}
+
+  .main{width:100%;height:auto;display:block}
+  .topbar{display:none!important}
+  .content{height:auto;padding:12px var(--mobile-x) 16px;display:block;overflow:visible}
+  .dashboardGrid{height:auto;display:flex;flex-direction:column;gap:12px}
+  .dashboardMainColumn{display:flex;gap:12px}
+
+  .heroPanel{height:212px;padding:30px 28px;border-radius:16px;background:radial-gradient(circle at 82% 44%,rgba(99,241,39,.14),transparent 31%),linear-gradient(110deg,#07110e,#0b1713 52%,#08100e);box-shadow:0 18px 42px rgba(0,0,0,.38)}
+  .heroPanel:after{content:"";position:absolute;right:-7px;top:30px;width:190px;height:150px;background:linear-gradient(138deg,transparent 45%,#61f322 46% 49%,transparent 50%),radial-gradient(circle at 62% 72%,#080a09 0 38px,transparent 39px),radial-gradient(circle at 35% 25%,#1a211e 0 12px,transparent 13px);opacity:.95;transform:rotate(-2deg)}
+  .heroCopy{max-width:72%}
+  .heroCopy h1{font-size:29px;line-height:.98;letter-spacing:-1.15px}
+  .heroCopy p{font-size:13px;line-height:1.45;margin:22px 0 0;max-width:260px}
+  .heroPlayer{display:none!important}
+
+  .marketTabs{display:flex;gap:8px;overflow-x:auto;padding:0 1px 3px;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .marketTabs::-webkit-scrollbar{display:none}
+  .marketTab{flex:0 0 126px;height:126px;padding:14px 8px;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:8px;border-radius:14px;scroll-snap-align:start}
+  .marketTab span{font-size:28px}
+  .marketTab b{font-size:11px}
+  .marketTab small{font-size:8px;line-height:1.35}
+  .marketTab.active{background:linear-gradient(180deg,#102016,#0b1511);border-color:rgba(99,241,39,.28)}
+
+  .gamesPanel{order:3;padding:14px 12px;border-radius:15px;overflow:hidden}
+  .sectionHead{height:auto;min-height:32px;gap:8px;margin-bottom:6px}
+  .sectionHead h2{font-size:16px}
+  .sectionHead a{font-size:10px;color:var(--green);font-weight:850;text-transform:uppercase}
+  .filterPills{display:none}
+  .gameRow{height:auto;min-height:88px;grid-template-columns:minmax(0,1fr) 48px;gap:10px;padding:12px 4px;border-top:1px solid #17242a;background:linear-gradient(90deg,rgba(255,255,255,.008),rgba(99,241,39,.018));border-radius:10px}
+  .gameRow:hover{padding-left:4px;padding-right:4px}
+  .gameMeta small{font-size:8px;letter-spacing:.7px;margin-bottom:7px;color:#8f9fa3}
+  .gameMeta b{display:block;font-size:13px;line-height:1.5}
+  .gameMeta span{display:block;color:var(--green);font-size:12px;margin:0 0 2px}
+  .gameMeta em{display:block;margin-left:0;font-size:13px;font-style:normal}
+  .oddBox{display:none!important}
+  .signal{justify-self:end;width:46px!important;height:46px!important;margin:0!important;border:1px solid rgba(99,241,39,.28)!important;border-radius:12px!important;background:#0b1711!important;color:var(--green)!important;font-size:0!important}
+  .signal:after{content:"▮▮▮"!important;display:block!important;font-size:16px!important;letter-spacing:1px}
+  .viewAll{margin-top:8px;height:42px;border-radius:9px;background:linear-gradient(90deg,#0d3513,#123f16);border-color:rgba(99,241,39,.28)}
+
+  .quickCards{display:none!important}
+
+  .dashboardRightRail{order:4;display:flex;overflow:visible;gap:10px}
+  .railCard{border-radius:14px;padding:14px;background:linear-gradient(180deg,#0e171d,#091015)}
+  .matchRailCard{min-height:170px}
+  .railTitle{font-size:12px}
+  .railEmptyRadar{height:78px}
+  .ring3{width:90px;height:90px}.ring2{width:62px;height:62px}.ring1{width:38px;height:38px}
+  .radarSweep{width:58px;height:58px}
+  .railEmptyText strong{text-transform:uppercase;font-size:13px;margin-bottom:4px}
+  .railEmptyText span{font-size:10px}
+  .railEmptyStatsCard,.railEmptyEventsCard,.railFullBtn{display:none!important}
+
+  .bottomStrip{display:none!important}
+
+  .mobileBottomNav{position:fixed;left:0;right:0;bottom:0;z-index:1000;height:72px;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);background:rgba(5,11,15,.97);backdrop-filter:blur(18px);border-top:1px solid #1b2a31;box-shadow:0 -12px 30px rgba(0,0,0,.45)}
+  .mobileBottomNav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#899497;font-size:9px}
+  .mobileBottomNav span{font-size:21px;line-height:1}
+  .mobileBottomNav b{font-weight:800}
+  .mobileBottomNav button.active{color:var(--green)}
+
+  .topCalendarDropdown{position:fixed!important;top:72px!important;right:10px!important;left:10px!important;width:auto!important;z-index:1300!important}
+  .topCalendarBox{width:100%!important;max-width:390px!important;margin-left:auto!important}
+}
+
+@media (max-width:390px){
+  .heroPanel{height:202px;padding:26px 22px}
+  .heroCopy h1{font-size:26px}
+  .heroCopy p{font-size:12px}
+  .marketTab{flex-basis:116px;height:118px}
 }

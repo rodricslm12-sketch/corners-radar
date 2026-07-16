@@ -12503,3 +12503,44 @@ function resetDesktopMatchRailToEmpty(){
   `;
   document.head.appendChild(style);
 })();
+
+/* =========================================================
+   MENU MOBILE — exclusivo para celular
+   ========================================================= */
+(function setupMobileNavigation(){
+  const menuBtn = document.getElementById('mobileMenuBtn');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobileOverlay');
+  const mobileCalendarBtn = document.getElementById('mobileCalendarBtn');
+  const desktopCalendarBtn = document.getElementById('btnCalendario');
+
+  if (!menuBtn || !sidebar || !overlay) return;
+
+  const closeMenu = () => {
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden','true');
+    document.body.classList.remove('mobile-menu-lock');
+  };
+
+  const openMenu = () => {
+    sidebar.classList.add('mobile-open');
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden','false');
+    document.body.classList.add('mobile-menu-lock');
+  };
+
+  menuBtn.addEventListener('click', () => {
+    sidebar.classList.contains('mobile-open') ? closeMenu() : openMenu();
+  });
+  overlay.addEventListener('click', closeMenu);
+  sidebar.querySelectorAll('.side-item').forEach(item => item.addEventListener('click', closeMenu));
+
+  if (mobileCalendarBtn && desktopCalendarBtn){
+    mobileCalendarBtn.addEventListener('click', () => desktopCalendarBtn.click());
+  }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 767) closeMenu();
+  });
+})();
