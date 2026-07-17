@@ -7440,3 +7440,55 @@ button.railFullBtn {
   .cpMobileCalendarActions button{height:44px;border-radius:12px;font-size:10px;font-weight:950}.cpMobileCalendarToday{background:#0b171d;border:1px solid #203139;color:#d8e1de}.cpMobileCalendarApply{background:linear-gradient(90deg,#4ad51f,#70fa32);color:#061007}
   body.cp-mobile-calendar-lock{overflow:hidden!important}
 }
+/* =========================================================
+   MATCH CENTER PREMIUM MOBILE V4 — SOMENTE CELULAR
+   Não altera o desktop.
+   ========================================================= */
+@media (max-width:700px){
+  .cpMobileMatchLayer{background:radial-gradient(circle at 50% -8%,rgba(98,245,43,.08),transparent 26%),#020607!important}
+  .cpMobileMatchLayer .cpMobileLayerHeader{height:92px!important;min-height:92px!important;padding:14px 16px!important;background:rgba(2,7,9,.97)!important;border-bottom:1px solid rgba(255,255,255,.045)!important}
+  .cpMobileMatchLayer .cpMobileLayerHeader strong{font-size:24px!important;letter-spacing:-.7px!important}
+  .cpMobileMatchLayer .cpMobileLayerHeader small{font-size:11px!important;color:#8d999d!important}
+  .cpMobileMatchLayer .cpMobileBack,.cpMobileMatchLayer .cpMobileFavorite{width:44px!important;height:44px!important;border-radius:14px!important;background:#091217!important;border:1px solid rgba(255,255,255,.04)!important}
+  .cpMobileMatchContent{padding:12px 12px 110px!important;scrollbar-width:none!important}
+  .cpMobileMatchContent::-webkit-scrollbar{display:none!important}
+  .cpMobileMatchContent .cpMobileRailClone{display:block!important;width:100%!important;padding:0!important;gap:0!important;background:transparent!important}
+  .cpMobileMatchContent .cpMobileRailClone>.railCard,
+  .cpMobileMatchContent .cpMobileRailClone>.mcRailBottomGrid,
+  .cpMobileMatchContent .cpMobileRailClone>.railFullBtn{display:none!important}
+
+  .mcPremiumMobile{display:block;width:100%;color:#f5f8f6}
+  .mcPremiumHero{position:relative;overflow:hidden;border-radius:22px;padding:16px 16px 18px;background:radial-gradient(circle at 50% 15%,rgba(98,245,43,.13),transparent 38%),linear-gradient(165deg,#0d1820,#071015);border:1px solid #1b2d34;box-shadow:0 18px 40px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.035)}
+  .mcPremiumHero:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.015),transparent),repeating-linear-gradient(90deg,transparent 0 42px,rgba(255,255,255,.012) 43px);pointer-events:none}
+  .mcPremiumLeague{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px;color:#d8dfdc;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.35px}
+  .mcPremiumStatus{position:absolute;right:14px;top:13px;padding:7px 11px;border-radius:999px;background:rgba(98,245,43,.1);border:1px solid rgba(98,245,43,.18);color:#71f33d;font-size:9px;font-weight:950}
+  .mcPremiumScoreGrid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr);align-items:center;gap:8px;margin-top:20px;text-align:center}
+  .mcPremiumTeam{min-width:0}.mcPremiumBadge{width:64px;height:64px;margin:0 auto 10px;border-radius:20px;display:grid;place-items:center;background:radial-gradient(circle at 40% 25%,rgba(255,255,255,.14),transparent 36%),#111d24;border:1px solid #263740;color:#fff;font-size:23px;font-weight:950;box-shadow:0 10px 24px rgba(0,0,0,.28)}
+  .mcPremiumTeam.away .mcPremiumBadge{background:radial-gradient(circle at 40% 25%,rgba(255,255,255,.12),transparent 36%),#281711;border-color:#55301d}
+  .mcPremiumTeam b{display:block;font-size:14px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mcPremiumScore strong{display:block;font-size:45px;line-height:1;color:#fff;letter-spacing:-2px;text-shadow:0 0 22px rgba(98,245,43,.14)}
+  .mcPremiumScore small{display:block;margin-top:9px;color:#a5afb1;font-size:9px;font-weight:900;text-transform:uppercase}
+  .mcPremiumCorners{position:relative;z-index:1;margin-top:17px;padding-top:14px;border-top:1px solid rgba(255,255,255,.055);display:flex;align-items:center;justify-content:center;gap:16px;font-weight:900}
+  .mcPremiumCorners strong{color:#63f127;font-size:23px}.mcPremiumCorners span{color:#dce4e1;font-size:11px;text-transform:uppercase}.mcPremiumCorners i{font-style:normal;color:#647176}
+
+  .mcPremiumTabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);margin:12px 0;border-radius:17px;background:rgba(8,16,21,.97);border:1px solid #18282f;backdrop-filter:blur(14px);overflow:hidden}
+  .mcPremiumTab{height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#8e999d;font-size:9px;font-weight:900;text-transform:uppercase;position:relative}
+  .mcPremiumTab span{font-size:20px}.mcPremiumTab.active{color:#69f234;background:linear-gradient(180deg,rgba(98,245,43,.09),transparent)}.mcPremiumTab.active:after{content:"";position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:99px;background:#63f127;box-shadow:0 0 12px rgba(99,241,39,.65)}
+  .mcPremiumPane{display:none}.mcPremiumPane.active{display:block;animation:mcPaneIn .18s ease}@keyframes mcPaneIn{from{opacity:.25;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  .mcPremiumStatsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .mcPremiumStat{min-height:126px;padding:15px 14px;border-radius:18px;background:linear-gradient(150deg,#0e1920,#081116);border:1px solid #1a2a31;box-shadow:inset 0 1px rgba(255,255,255,.025)}
+  .mcPremiumStatHead{display:flex;align-items:center;gap:8px;color:#9ca7aa;font-size:10px;font-weight:900;text-transform:uppercase}.mcPremiumStatHead span{font-size:17px}
+  .mcPremiumStatValues{display:grid;grid-template-columns:1fr 18px 1fr;align-items:center;margin:16px 0 12px;text-align:center}.mcPremiumStatValues b{font-size:29px}.mcPremiumStatValues b:first-child{color:#69f234}.mcPremiumStatValues i{font-style:normal;color:#5e6b70;font-size:17px}
+  .mcPremiumBar{height:5px;border-radius:99px;background:#4a5357;overflow:hidden;position:relative}.mcPremiumBar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:linear-gradient(90deg,#43cc1e,#75ff39);box-shadow:0 0 12px rgba(98,245,43,.26)}
+
+  .mcPremiumCard{margin-top:10px;padding:16px;border-radius:19px;background:linear-gradient(155deg,#0d181e,#081116);border:1px solid #192a31}
+  .mcPremiumCardHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.mcPremiumCardHead h3{margin:0;font-size:14px;text-transform:uppercase}.mcPremiumPill{padding:7px 10px;border-radius:999px;background:rgba(98,245,43,.1);color:#6ef239;font-size:9px;font-weight:950}
+  .mcPremiumPressureNames{display:flex;align-items:center;justify-content:space-between;color:#d8dfdc;font-size:11px;font-weight:850}.mcPremiumPressureNames b:first-child{color:#67ef33}
+  .mcPremiumPressureBar{display:flex;height:8px;margin:10px 0 16px;border-radius:99px;overflow:hidden;background:#384247}.mcPremiumPressureBar i:first-child{background:linear-gradient(90deg,#3dbb1c,#6ef339)}.mcPremiumPressureBar i:last-child{background:#748087}
+  .mcPremiumChartWrap{border-radius:15px;overflow:hidden;background:#04090b;border:1px solid #142228;padding:4px}.mcPremiumChartWrap svg{display:block!important;width:100%!important;height:auto!important;min-height:180px!important}.mcPremiumChartWrap text{fill:#839095!important}.mcPremiumChartWrap .pressureChartGrid{opacity:.35}
+  .mcPremiumReading{display:flex;gap:11px;align-items:flex-start;margin-top:12px;padding:13px;border-radius:14px;background:#081217;border:1px solid #18292f}.mcPremiumReading span{font-size:22px;color:#66ef32}.mcPremiumReading p{margin:0;color:#c7d0cd;font-size:12px;line-height:1.5}
+
+  .mcPremiumTimeline{display:grid;gap:8px}.mcPremiumEvent{display:grid;grid-template-columns:47px 28px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:58px;padding:10px;border-radius:13px;background:#091318;border:1px solid #18272e}.mcPremiumEvent time{height:32px;border-radius:9px;display:grid;place-items:center;background:#102619;color:#71f33c;font-size:11px;font-weight:950}.mcPremiumEvent>span{font-size:20px;text-align:center}.mcPremiumEvent div{min-width:0}.mcPremiumEvent b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mcPremiumEvent small{display:block;margin-top:3px;color:#899598;font-size:9px}.mcPremiumEvent em{font-style:normal;color:#70f33a;font-size:12px;font-weight:950}
+  .mcPremiumEmpty{padding:28px 14px;text-align:center;color:#8f9a9d;background:#091217;border:1px solid #18272e;border-radius:16px}
+}

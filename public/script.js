@@ -14081,3 +14081,120 @@ function resetDesktopMatchRailToEmpty(){
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&layer.classList.contains('is-open'))close();});
   updateTrigger();
 })();
+/* =========================================================
+   MATCH CENTER PREMIUM MOBILE V4 — SOMENTE CELULAR
+   Reorganiza apenas a cópia mobile; desktop permanece intacto.
+   ========================================================= */
+(function installPremiumMobileMatchCenter(){
+  "use strict";
+  if(window.__premiumMobileMatchCenterV4) return;
+  window.__premiumMobileMatchCenterV4 = true;
+
+  const mobile=()=>window.matchMedia&&window.matchMedia("(max-width:700px)").matches;
+  const esc=v=>String(v??"—").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+  const text=(root,sel,fallback="—")=>String(root.querySelector(sel)?.textContent||fallback).trim();
+  const num=v=>{const n=parseFloat(String(v??"").replace(",","."));return Number.isFinite(n)?n:null};
+  const initials=name=>String(name||"FC").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+
+  function metricRows(clone){
+    const rows=[];
+    clone.querySelectorAll(".mcRailCompare .mcMetricRow,.mcRailCompare [class*='metric'],.mcRailCompare>div").forEach(el=>{
+      const raw=String(el.textContent||"").replace(/\s+/g," ").trim();
+      if(!raw||/comparativo|real/i.test(raw)) return;
+      const numbers=raw.match(/\d+(?:[.,]\d+)?%?|—/g)||[];
+      if(numbers.length<2) return;
+      let label=raw;
+      numbers.forEach(n=>{label=label.replace(n,"")});
+      label=label.replace(/\s+/g," ").trim();
+      if(label&&rows.length<8) rows.push({label,home:numbers[0],away:numbers[numbers.length-1]});
+    });
+    const unique=[]; const seen=new Set();
+    rows.forEach(r=>{const k=r.label.toLowerCase();if(!seen.has(k)){seen.add(k);unique.push(r)}});
+    return unique;
+  }
+
+  function parseScore(clone){
+    const s=text(clone,".mcRailScore strong","0 - 0");
+    const m=s.match(/(\d+)\s*[-x×]\s*(\d+)/i); return m?[m[1],m[2]]:["0","0"];
+  }
+
+  function parseEvents(clone){
+    const out=[];
+    clone.querySelectorAll(".mcRailMini:last-child li,.mcRailMini:last-child [class*='event'],.mcRailMini:last-child p").forEach((el,i)=>{
+      const t=String(el.textContent||"").replace(/\s+/g," ").trim(); if(!t) return;
+      const minute=(t.match(/\b\d{1,3}'?/)||[])[0]||`${(i+1)*12}'`;
+      let icon="•",kind="Momento importante";
+      if(/gol/i.test(t)){icon="⚽";kind="Gol"}else if(/escante|canto/i.test(t)){icon="⚑";kind="Escanteio"}else if(/cart/i.test(t)){icon="🟨";kind="Cartão"}
+      out.push({minute,icon,kind,text:t});
+    });
+    return out.slice(0,10);
+  }
+
+  function statIcon(label){
+    const s=label.toLowerCase();
+    if(s.includes("escante"))return"⚑";if(s.includes("final"))return"◎";if(s.includes("posse"))return"◔";if(s.includes("cart"))return"▯";if(s.includes("alvo"))return"🎯";if(s.includes("passe"))return"↗";if(s.includes("falta"))return"!";return"●";
+  }
+
+  function build(clone){
+    if(!mobile()||clone.dataset.premiumBuilt==="1") return;
+    clone.dataset.premiumBuilt="1";
+    const home=text(clone,".mcRailTeam:first-child strong","Mandante");
+    const away=text(clone,".mcRailTeam:last-child strong","Visitante");
+    const league=text(clone,".mcRailMeta","Liga • —");
+    const status=text(clone,".railTitle b","ENCERRADO");
+    const [gh,ga]=parseScore(clone);
+    const metrics=metricRows(clone);
+    const corners=metrics.find(r=>/escante/i.test(r.label))||{home:"—",away:"—"};
+    const pressureHome=(text(clone,".mcRailPressureSplit>div:first-child strong","50%").match(/\d+/)||[50])[0];
+    const pressureAway=(text(clone,".mcRailPressureSplit>div:last-child strong","50%").match(/\d+/)||[50])[0];
+    const pressureLevel=text(clone,".mcRailPressureHead b","PRESSÃO ALTA");
+    const reading=text(clone,".mcRailMini:first-child p",`${home} aparece com maior pressão ofensiva no recorte atual.`);
+    const svg=clone.querySelector(".mcRailPressureCard svg")?.outerHTML||'<div class="mcPremiumEmpty">Gráfico ainda não disponível para esta partida.</div>';
+    const events=parseEvents(clone);
+
+    const preferred=["Escanteios","Finalizações","Posse de bola","Cartões"];
+    const stats=[...preferred.map(p=>metrics.find(r=>r.label.toLowerCase().includes(p.toLowerCase().split(" ")[0]))).filter(Boolean),...metrics].filter((r,i,a)=>a.indexOf(r)===i).slice(0,4);
+    while(stats.length<4) stats.push({label:["Escanteios","Finalizações","Posse de bola","Cartões"][stats.length],home:"—",away:"—"});
+
+    clone.innerHTML=`<div class="mcPremiumMobile">
+      <section class="mcPremiumHero">
+        <div class="mcPremiumLeague">${esc(league)}</div><span class="mcPremiumStatus">${esc(status)}</span>
+        <div class="mcPremiumScoreGrid">
+          <div class="mcPremiumTeam"><div class="mcPremiumBadge">${esc(initials(home))}</div><b>${esc(home)}</b></div>
+          <div class="mcPremiumScore"><strong>${esc(gh)} - ${esc(ga)}</strong><small>${esc(status)}</small></div>
+          <div class="mcPremiumTeam away"><div class="mcPremiumBadge">${esc(initials(away))}</div><b>${esc(away)}</b></div>
+        </div>
+        <div class="mcPremiumCorners"><strong>${esc(corners.home)}</strong><i>|</i><span>⚑ Escanteios</span><i>|</i><strong>${esc(corners.away)}</strong></div>
+      </section>
+      <nav class="mcPremiumTabs">
+        <button class="mcPremiumTab active" data-mc-pane="summary"><span>▥</span>Resumo</button>
+        <button class="mcPremiumTab" data-mc-pane="stats"><span>◔</span>Estatísticas</button>
+        <button class="mcPremiumTab" data-mc-pane="pressure"><span>⌁</span>Pressão</button>
+        <button class="mcPremiumTab" data-mc-pane="moments"><span>◷</span>Momentos</button>
+      </nav>
+      <section class="mcPremiumPane active" data-mc-content="summary">
+        <div class="mcPremiumStatsGrid">${stats.map(r=>{const h=num(r.home),a=num(r.away),pct=(h!==null&&a!==null&&h+a>0)?Math.round(h/(h+a)*100):50;return `<article class="mcPremiumStat"><div class="mcPremiumStatHead"><span>${statIcon(r.label)}</span>${esc(r.label)}</div><div class="mcPremiumStatValues"><b>${esc(r.home)}</b><i>×</i><b>${esc(r.away)}</b></div><div class="mcPremiumBar"><i style="width:${pct}%"></i></div></article>`}).join("")}</div>
+        <article class="mcPremiumCard"><div class="mcPremiumCardHead"><h3>Leitura do jogo</h3><span class="mcPremiumPill">CORNER IA</span></div><div class="mcPremiumReading"><span>✦</span><p>${esc(reading)}</p></div></article>
+      </section>
+      <section class="mcPremiumPane" data-mc-content="stats"><div class="mcPremiumStatsGrid">${metrics.map(r=>{const h=num(r.home),a=num(r.away),pct=(h!==null&&a!==null&&h+a>0)?Math.round(h/(h+a)*100):50;return `<article class="mcPremiumStat"><div class="mcPremiumStatHead"><span>${statIcon(r.label)}</span>${esc(r.label)}</div><div class="mcPremiumStatValues"><b>${esc(r.home)}</b><i>×</i><b>${esc(r.away)}</b></div><div class="mcPremiumBar"><i style="width:${pct}%"></i></div></article>`}).join("")||'<div class="mcPremiumEmpty">Estatísticas ainda não disponíveis.</div>'}</div></section>
+      <section class="mcPremiumPane" data-mc-content="pressure"><article class="mcPremiumCard"><div class="mcPremiumCardHead"><h3>Gráfico de pressão</h3><span class="mcPremiumPill">${esc(pressureLevel)}</span></div><div class="mcPremiumPressureNames"><b>${esc(home)} ${esc(pressureHome)}%</b><b>${esc(away)} ${esc(pressureAway)}%</b></div><div class="mcPremiumPressureBar"><i style="width:${pressureHome}%"></i><i style="width:${pressureAway}%"></i></div><div class="mcPremiumChartWrap">${svg}</div><div class="mcPremiumReading"><span>⌁</span><p>${esc(reading)}</p></div></article></section>
+      <section class="mcPremiumPane" data-mc-content="moments"><article class="mcPremiumCard"><div class="mcPremiumCardHead"><h3>Momentos importantes</h3></div><div class="mcPremiumTimeline">${events.length?events.map((e,i)=>`<div class="mcPremiumEvent"><time>${esc(e.minute)}</time><span>${e.icon}</span><div><b>${esc(e.kind)}</b><small>${esc(e.text)}</small></div><em>${i%2?esc(ga):esc(gh)}</em></div>`).join(""):'<div class="mcPremiumEmpty">Nenhum momento detalhado disponível para esta partida.</div>'}</div></article></section>
+    </div>`;
+  }
+
+  document.addEventListener("click",e=>{
+    if(!mobile())return;
+    const tab=e.target.closest(".mcPremiumTab");if(!tab)return;
+    const root=tab.closest(".mcPremiumMobile");if(!root)return;
+    root.querySelectorAll(".mcPremiumTab").forEach(x=>x.classList.toggle("active",x===tab));
+    root.querySelectorAll(".mcPremiumPane").forEach(x=>x.classList.toggle("active",x.dataset.mcContent===tab.dataset.mcPane));
+  });
+
+  const target=document.getElementById("cpMobileMatchContent");
+  if(!target)return;
+  const observer=new MutationObserver(()=>{
+    const clone=target.querySelector(".cpMobileRailClone");
+    if(clone&&!clone.dataset.premiumBuilt) setTimeout(()=>build(clone),20);
+  });
+  observer.observe(target,{childList:true,subtree:true});
+})();
