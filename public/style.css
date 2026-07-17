@@ -7410,3 +7410,33 @@ button.railFullBtn {
   .cpHomeBottom{position:absolute;left:0;right:0;bottom:0;height:82px;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(2,7,9,.98);border-top:1px solid #15242a;backdrop-filter:blur(18px);padding-bottom:max(7px,env(safe-area-inset-bottom))}.cpHomeBottom button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#879397}.cpHomeBottom button span{font-size:22px}.cpHomeBottom button b{font-size:9px}.cpHomeBottom button.active,.cpHomeBottom button:active{color:var(--mh-green)}
   .cpMobileLayer{z-index:16000!important}
 }
+
+
+/* =========================================================
+   CALENDÁRIO MOBILE V4 — SOMENTE CELULAR
+   Não altera qualquer elemento do desktop.
+   ========================================================= */
+.cpMobileCalendarLayer{display:none!important}
+@media screen and (max-width:700px){
+  .cpHomeCalendar{font-size:0!important;line-height:1!important;position:relative;overflow:hidden}
+  .cpHomeCalendar .cpCalMonth{display:block;color:#ff8b8b;font-size:7px;font-weight:950;line-height:1;text-transform:uppercase}
+  .cpHomeCalendar .cpCalDay{display:block;color:#fff;font-size:18px;font-weight:950;line-height:1.15}
+  .cpMobileCalendarLayer{position:fixed;inset:0;z-index:19000;display:flex!important;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease}
+  .cpMobileCalendarLayer.is-open{opacity:1;visibility:visible;pointer-events:auto}
+  .cpMobileCalendarSheet{width:100%;max-height:88dvh;padding:10px 16px calc(18px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;background:radial-gradient(circle at 80% 0,rgba(97,241,43,.12),transparent 30%),linear-gradient(180deg,#0d171c,#050a0d);border:1px solid #1b2b31;box-shadow:0 -30px 70px rgba(0,0,0,.6);transform:translateY(28px);transition:transform .22s ease}
+  .cpMobileCalendarLayer.is-open .cpMobileCalendarSheet{transform:translateY(0)}
+  .cpMobileCalendarGrab{width:42px;height:4px;margin:0 auto 14px;border-radius:999px;background:#425058}
+  .cpMobileCalendarHead{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;margin-bottom:14px}
+  .cpMobileCalendarHead button{width:40px;height:40px;border-radius:12px;background:#0a1318;border:1px solid #1b2c33;color:#dce5e2;font-size:24px}
+  .cpMobileCalendarHead div{text-align:center}.cpMobileCalendarHead strong{display:block;font-size:17px}.cpMobileCalendarHead small{display:block;margin-top:3px;color:#849196;font-size:9px}
+  .cpMobileCalendarNav{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:8px;border:1px solid #192a31;border-radius:14px;background:#081116}
+  .cpMobileCalendarNav button{height:38px;border-radius:10px;background:#0b1812;border:1px solid rgba(97,241,43,.3);color:#61f12b;font-size:23px;font-weight:900}
+  .cpMobileCalendarNav strong{text-align:center;font-size:13px;letter-spacing:.4px}
+  .cpMobileCalendarWeek,.cpMobileCalendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+  .cpMobileCalendarWeek{margin:15px 0 8px}.cpMobileCalendarWeek span{text-align:center;color:#748287;font-size:9px;font-weight:950}
+  .cpMobileCalendarDay{height:43px;border-radius:11px;background:#0a1318;border:1px solid #17272e;color:#dce4e1;font-size:12px;font-weight:800;position:relative}
+  .cpMobileCalendarDay.is-muted{opacity:.28}.cpMobileCalendarDay.is-today{border-color:rgba(97,241,43,.5);color:#61f12b}.cpMobileCalendarDay.is-selected{background:#61f12b;color:#061007;border-color:#61f12b;box-shadow:0 0 18px rgba(97,241,43,.2)}
+  .cpMobileCalendarActions{display:grid;grid-template-columns:1fr 1.6fr;gap:9px;margin-top:16px}
+  .cpMobileCalendarActions button{height:44px;border-radius:12px;font-size:10px;font-weight:950}.cpMobileCalendarToday{background:#0b171d;border:1px solid #203139;color:#d8e1de}.cpMobileCalendarApply{background:linear-gradient(90deg,#4ad51f,#70fa32);color:#061007}
+  body.cp-mobile-calendar-lock{overflow:hidden!important}
+}

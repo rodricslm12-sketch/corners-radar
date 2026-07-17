@@ -14010,3 +14010,74 @@ function resetDesktopMatchRailToEmpty(){
   const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
   setInterval(render,1800);
 })();
+
+
+/* =========================================================
+   CALENDÁRIO MOBILE V4 — funciona diretamente na nova Home.
+   Exclusivo até 700px; desktop permanece intacto.
+   ========================================================= */
+(function setupCornerProMobileCalendar(){
+  const mq=window.matchMedia('(max-width:700px)');
+  if(!mq.matches) return;
+  const trigger=document.querySelector('.cpHomeCalendar');
+  if(!trigger || window.__cpMobileCalendarV4) return;
+  window.__cpMobileCalendarV4=true;
+
+  const MONTHS=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+  const SHORT=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const pad=n=>String(n).padStart(2,'0');
+  const toYMD=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const parseYMD=v=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(String(v||'')))return new Date();const [y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d,12)};
+  const same=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  const input=document.getElementById('date');
+  let selected=parseYMD(input?.value||new URL(location.href).searchParams.get('date')||toYMD(new Date()));
+  let view=new Date(selected);
+
+  const layer=document.createElement('section');
+  layer.className='cpMobileCalendarLayer';
+  layer.setAttribute('aria-hidden','true');
+  layer.innerHTML=`<div class="cpMobileCalendarSheet" role="dialog" aria-modal="true" aria-label="Escolher data">
+    <div class="cpMobileCalendarGrab"></div>
+    <header class="cpMobileCalendarHead"><button type="button" data-cpm-cal-close aria-label="Fechar">×</button><div><strong>Escolha a data</strong><small>Veja os jogos disponíveis no dia</small></div><span></span></header>
+    <div class="cpMobileCalendarNav"><button type="button" data-cpm-cal-prev>‹</button><strong data-cpm-cal-title></strong><button type="button" data-cpm-cal-next>›</button></div>
+    <div class="cpMobileCalendarWeek"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+    <div class="cpMobileCalendarGrid" data-cpm-cal-grid></div>
+    <div class="cpMobileCalendarActions"><button class="cpMobileCalendarToday" type="button" data-cpm-cal-today>HOJE</button><button class="cpMobileCalendarApply" type="button" data-cpm-cal-apply>CARREGAR JOGOS</button></div>
+  </div>`;
+  document.body.appendChild(layer);
+  const title=layer.querySelector('[data-cpm-cal-title]');
+  const grid=layer.querySelector('[data-cpm-cal-grid]');
+
+  function updateTrigger(){trigger.innerHTML=`<span class="cpCalMonth">${SHORT[selected.getMonth()]}</span><span class="cpCalDay">${pad(selected.getDate())}</span>`;}
+  function render(){
+    title.textContent=`${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
+    const first=new Date(view.getFullYear(),view.getMonth(),1,12);const start=new Date(first);start.setDate(first.getDate()-first.getDay());
+    let out='';const today=new Date();
+    for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const cls=['cpMobileCalendarDay'];if(d.getMonth()!==view.getMonth())cls.push('is-muted');if(same(d,today))cls.push('is-today');if(same(d,selected))cls.push('is-selected');out+=`<button type="button" class="${cls.join(' ')}" data-cpm-date="${toYMD(d)}">${d.getDate()}</button>`;}
+    grid.innerHTML=out;
+  }
+  function open(){view=new Date(selected);render();layer.classList.add('is-open');layer.setAttribute('aria-hidden','false');document.body.classList.add('cp-mobile-calendar-lock');}
+  function close(){layer.classList.remove('is-open');layer.setAttribute('aria-hidden','true');document.body.classList.remove('cp-mobile-calendar-lock');}
+  async function apply(){
+    const ymd=toYMD(selected);if(input){input.value=ymd;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
+    const url=new URL(location.href);url.searchParams.set('date',ymd);url.hash='';history.replaceState({},'',url.pathname+url.search);updateTrigger();close();
+    try{
+      if(typeof window.CornerProReloadRealGames==='function'){await window.CornerProReloadRealGames(ymd);return;}
+      if(typeof window.loadAll==='function'){await window.loadAll({date:ymd,fresh:true});return;}
+      if(typeof loadAll==='function'){await loadAll({date:ymd,fresh:true});return;}
+      location.reload();
+    }catch(err){console.error('Calendário mobile:',err);location.reload();}
+  }
+
+  trigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();open();});
+  layer.addEventListener('click',e=>{
+    if(e.target===layer||e.target.closest('[data-cpm-cal-close]')){close();return;}
+    if(e.target.closest('[data-cpm-cal-prev]')){view=new Date(view.getFullYear(),view.getMonth()-1,1,12);render();return;}
+    if(e.target.closest('[data-cpm-cal-next]')){view=new Date(view.getFullYear(),view.getMonth()+1,1,12);render();return;}
+    if(e.target.closest('[data-cpm-cal-today]')){selected=new Date();view=new Date(selected);render();return;}
+    const day=e.target.closest('[data-cpm-date]');if(day){selected=parseYMD(day.dataset.cpmDate);view=new Date(selected);render();return;}
+    if(e.target.closest('[data-cpm-cal-apply]')) apply();
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&layer.classList.contains('is-open'))close();});
+  updateTrigger();
+})();
