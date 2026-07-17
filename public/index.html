@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260715b" />
-  <script src="script.js?v=20260715b" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260717-mobile3" />
+  <script src="script.js?v=20260717-mobile3" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -221,6 +221,64 @@
     <button type="button"><span>•••</span><b>Mais</b></button>
   </nav>
 
+
+  <!-- DASHBOARD MOBILE NOVO — não interfere no desktop -->
+  <section class="cpMobileHome" id="cpMobileHome" aria-label="Dashboard mobile">
+    <header class="cpHomeHeader">
+      <button class="cpHomeMenu" type="button" aria-label="Menu">☰</button>
+      <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
+      <button class="cpHomeCalendar" type="button" aria-label="Calendário">📅</button>
+    </header>
+
+    <main class="cpHomeScroll">
+      <section class="cpHomeGreeting"><div><span>♧</span><strong>Olá, Rodrigo</strong></div><button type="button">Alertas <i></i></button></section>
+
+      <section class="cpHomeBest" id="cpHomeBest">
+        <div class="cpHomeBestTop"><b>🔥 MELHOR APOSTA DO DIA</b><span id="cpHomeBestMarket">OVER 10.5 ESCANTEIOS</span></div>
+        <div class="cpHomeBestBody">
+          <time id="cpHomeBestTime">--:--</time>
+          <div class="cpHomeBestTeams"><strong id="cpHomeBestHome">Carregando</strong><i>×</i><strong id="cpHomeBestAway">partidas...</strong></div>
+          <div class="cpHomeBestConfidence"><b id="cpHomeBestConfidence">--%</b><small>CONFIANÇA</small></div>
+        </div>
+        <button type="button" id="cpHomeBestOpen">VER ANÁLISE COMPLETA →</button>
+      </section>
+
+      <section class="cpHomeSection">
+        <div class="cpHomeSectionHead"><h2>Jogos em destaque</h2><button type="button">VER TODOS ›</button></div>
+        <div class="cpHomeGames" id="cpHomeGames"><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div></div>
+      </section>
+
+      <section class="cpHomeSection">
+        <div class="cpHomeSectionHead"><h2>Mercados</h2><span>TOQUE PARA ABRIR</span></div>
+        <div class="cpHomeMarkets">
+          <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b><small>12 mercados</small></button>
+          <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b><small>18 mercados</small></button>
+          <button type="button" data-home-market="goals"><span>◎</span><b>Gols</b><small>14 mercados</small></button>
+          <button type="button" data-home-market="cards"><span>▯</span><b>Cartões</b><small>10 mercados</small></button>
+          <button type="button" data-home-market="combined"><span>▦</span><b>Combinadas</b><small>6 mercados</small></button>
+          <button type="button" data-home-market="props"><span>♞</span><b>Player Props</b><small>6 mercados</small></button>
+        </div>
+      </section>
+
+      <section class="cpHomeMatchMini" id="cpHomeMatchMini">
+        <div class="cpHomeSectionHead"><h2>Match Center</h2><span>TOQUE PARA ABRIR</span></div>
+        <button type="button" id="cpHomeMatchOpen"><div><small>PARTIDA EM DESTAQUE</small><strong id="cpHomeMatchTeams">Selecione um jogo</strong></div><b>›</b></button>
+      </section>
+
+      <section class="cpHomeSection cpHomeLast">
+        <div class="cpHomeSectionHead"><h2>Últimos jogos analisados</h2><button type="button">VER TODOS ›</button></div>
+        <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
+      </section>
+    </main>
+
+    <nav class="cpHomeBottom">
+      <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+      <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+      <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button"><span>•••</span><b>Mais</b></button>
+    </nav>
+  </section>
 
   <!-- CORNER PRO MOBILE APP SHELL — exclusivo para telas pequenas -->
   <section class="cpMobileLayer" id="cpMobileMarketsLayer" aria-hidden="true">

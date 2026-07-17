@@ -13921,3 +13921,92 @@ function resetDesktopMatchRailToEmpty(){
 
   renderMarket("corners");
 })();
+
+
+/* =========================================================
+   DASHBOARD MOBILE V3 — apenas monta a nova home no celular.
+   ========================================================= */
+(function setupCornerProMobileHome(){
+  const mq=window.matchMedia('(max-width:700px)');
+  if(!mq.matches) return;
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const home=$('#cpMobileHome');
+  if(!home) return;
+
+  function rows(){
+    return $$('.gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .marketGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]')
+      .filter(el=>!el.closest('.cpMobileHome'));
+  }
+  function clean(s){return String(s||'').replace(/\s+/g,' ').trim()}
+  function rowData(row,index){
+    const meta=row?.querySelector('.gameMeta');
+    const txt=clean(meta?.innerText||row?.innerText||'');
+    const time=(txt.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/)||[])[0]||'--:--';
+    let names=[];
+    if(meta){
+      const em=clean(meta.querySelector('em')?.textContent);
+      const b=meta.querySelector('b');
+      if(b){
+        const clone=b.cloneNode(true); clone.querySelectorAll('span,small').forEach(x=>x.remove());
+        const parts=clone.innerHTML.split(/<br\s*\/?>(?:\s*)/i).map(x=>clean(x.replace(/<[^>]+>/g,' '))).filter(Boolean);
+        names=parts;
+      }
+      if(em && !names.includes(em)) names.push(em);
+    }
+    if(names.length<2){
+      const lines=(meta?.innerText||'').split('\n').map(clean).filter(Boolean).filter(x=>!x.includes(':')&&!/liga|league|serie|premier|la liga/i.test(x));
+      names=lines.slice(-2);
+    }
+    const odds=row?.querySelector('.oddBox');
+    const market=clean(odds?.querySelector('b')?.textContent)||'OVER 9.5';
+    let conf=Number((row?.dataset?.confidence||'').replace(/[^0-9.]/g,''));
+    if(!Number.isFinite(conf)||!conf) conf=[83,72,68,64][index]||61;
+    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf:Math.round(conf)};
+  }
+  function getData(){return rows().slice(0,6).map(rowData)}
+
+  function openOriginalRow(index){
+    const list=rows(); const row=list[index]||list[0];
+    if(row) row.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+  }
+  function openMarket(type){
+    const map={pregame:0,corners:1,goals:2,cards:3,props:4};
+    if(type==='combined'){
+      const kind=$('[data-cp-market="combined"]');
+      const original=$$('.marketTabs .marketTab')[1];
+      original?.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+      setTimeout(()=>kind?.click(),40); return;
+    }
+    const original=$$('.marketTabs .marketTab')[map[type]??1];
+    if(original) original.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+  }
+
+  function render(){
+    const data=getData();
+    if(!data.length) return;
+    const best=data[0];
+    $('#cpHomeBestTime').textContent=best.time;
+    $('#cpHomeBestHome').textContent=best.home;
+    $('#cpHomeBestAway').textContent=best.away;
+    $('#cpHomeBestConfidence').textContent=best.conf+'%';
+    $('#cpHomeBestMarket').textContent=best.market;
+    $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
+    $('#cpHomeGames').innerHTML=data.slice(0,5).map((g,i)=>`<button type="button" class="cpHomeGame${i===0?' is-first':''}" data-home-game="${i}"><time>${g.time}</time><div class="teams"><b>${g.home}</b><i>×</i><b>${g.away}</b></div><small>${g.market}</small><strong>${g.conf}%</strong></button>`).join('');
+    $('#cpHomeLastGames').innerHTML=data.slice(1,4).map((g,i)=>`<button type="button" class="cpHomeLastGame" data-home-game="${i+1}"><time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i></button>`).join('');
+  }
+
+  home.addEventListener('click',e=>{
+    const market=e.target.closest('[data-home-market]');
+    if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return}
+    const game=e.target.closest('[data-home-game]');
+    if(game){e.preventDefault();openOriginalRow(Number(game.dataset.homeGame));return}
+    if(e.target.closest('#cpHomeBestOpen,#cpHomeBest')){e.preventDefault();openOriginalRow(0);return}
+    if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openOriginalRow(0)}
+  });
+
+  render();
+  const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,120)});
+  const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
+  setInterval(render,1800);
+})();
