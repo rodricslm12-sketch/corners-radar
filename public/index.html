@@ -220,5 +220,62 @@
     <button type="button"><span>⚑</span><b>Escanteios</b></button>
     <button type="button"><span>•••</span><b>Mais</b></button>
   </nav>
+
+
+  <!-- CORNER PRO MOBILE APP SHELL — exclusivo para telas pequenas -->
+  <section class="cpMobileLayer" id="cpMobileMarketsLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="markets" aria-label="Voltar">‹</button>
+      <div>
+        <strong id="cpMobileMarketsTitle">MERCADOS</strong>
+        <small>Escolha uma linha para ver os melhores jogos</small>
+      </div>
+      <button class="cpMobileFavorite" type="button" aria-label="Favoritar">☆</button>
+    </header>
+
+    <div class="cpMobileMarketKinds" id="cpMobileMarketKinds">
+      <button type="button" data-cp-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button" data-cp-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button" data-cp-market="goals"><span>◎</span><b>Gols</b></button>
+      <button type="button" data-cp-market="cards"><span>▯</span><b>Cartões</b></button>
+      <button type="button" data-cp-market="combined"><span>▦</span><b>Combinadas</b></button>
+      <button type="button" data-cp-market="props"><span>♞</span><b>Props</b></button>
+    </div>
+
+    <div class="cpMobileSubTabs" id="cpMobileSubTabs">
+      <button type="button" class="active">Totais</button>
+      <button type="button">1º tempo</button>
+      <button type="button">2º tempo</button>
+      <button type="button">Por equipe</button>
+    </div>
+
+    <main class="cpMobileMarketsBody">
+      <div class="cpMobileMarketHeading">
+        <div><span id="cpMobileMarketIcon">⚑</span><strong id="cpMobileMarketHeading">Totais de escanteios</strong></div>
+        <small>Toque em uma opção</small>
+      </div>
+      <div class="cpMobileOddsGrid" id="cpMobileOddsGrid"></div>
+
+      <section class="cpMobileRecommended" id="cpMobileRecommended" hidden>
+        <div class="cpMobileRecommendedHead">
+          <div><small>MELHORES JOGOS PARA</small><strong id="cpMobileSelectedLine">OVER 10.5</strong></div>
+          <span>POR CONFIANÇA</span>
+        </div>
+        <div class="cpMobileGameCarousel" id="cpMobileGameCarousel"></div>
+      </section>
+    </main>
+  </section>
+
+  <section class="cpMobileLayer cpMobileMatchLayer" id="cpMobileMatchLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="match" aria-label="Voltar">‹</button>
+      <div><strong>MATCH CENTER</strong><small>Central de inteligência da partida</small></div>
+      <button class="cpMobileFavorite" type="button" aria-label="Compartilhar">↗</button>
+    </header>
+    <div class="cpMobileMatchContent" id="cpMobileMatchContent">
+      <div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>
+    </div>
+  </section>
+
 </body>
 </html>

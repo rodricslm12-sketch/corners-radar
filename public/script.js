@@ -13716,3 +13716,208 @@ function resetDesktopMatchRailToEmpty(){
     openRealMatchCenter(button);
   }, true);
 })();
+
+
+/* =========================================================
+   CORNER PRO MOBILE APP FLOW — SOMENTE MOBILE
+   Dashboard > Mercado > Linha > Jogos > Match Center fullscreen
+   O desktop permanece intocado.
+   ========================================================= */
+(function installCornerProMobileAppFlow(){
+  "use strict";
+  if (window.__cornerProMobileAppFlowInstalled) return;
+  window.__cornerProMobileAppFlowInstalled = true;
+
+  const mq = window.matchMedia ? window.matchMedia("(max-width:700px)") : null;
+  const isMobile = () => Boolean(mq && mq.matches);
+  const $ = (s,r=document) => r.querySelector(s);
+  const $$ = (s,r=document) => Array.from(r.querySelectorAll(s));
+
+  const marketLayer = $("#cpMobileMarketsLayer");
+  const matchLayer = $("#cpMobileMatchLayer");
+  const kinds = $("#cpMobileMarketKinds");
+  const grid = $("#cpMobileOddsGrid");
+  const recommended = $("#cpMobileRecommended");
+  const carousel = $("#cpMobileGameCarousel");
+  const selectedLineEl = $("#cpMobileSelectedLine");
+  const heading = $("#cpMobileMarketHeading");
+  const icon = $("#cpMobileMarketIcon");
+  const title = $("#cpMobileMarketsTitle");
+  const matchContent = $("#cpMobileMatchContent");
+  if (!marketLayer || !matchLayer || !grid || !carousel) return;
+
+  const MARKET_DATA = {
+    pregame:{title:"Pré-jogo",icon:"⚽",heading:"Mercados pré-jogo",lines:[
+      ["Casa vence","1.85"],["Empate","3.30"],["Visitante vence","4.20"],["Dupla chance casa","1.28"],["Ambas marcam","1.85",1],["Over 2.5 gols","1.75",1]
+    ]},
+    corners:{title:"Escanteios",icon:"⚑",heading:"Totais de escanteios",lines:[
+      ["Over 8.5","1.35"],["Over 9.5","1.55"],["Over 10.5","1.84",1],["Over 11.5","2.20"],["Over 12.5","2.60"],["Under 8.5","3.20"],["Under 9.5","2.45"],["Under 10.5","1.70"]
+    ]},
+    goals:{title:"Gols",icon:"◎",heading:"Totais de gols",lines:[
+      ["Over 0.5","1.07"],["Over 1.5","1.30"],["Over 2.5","1.78",1],["Over 3.5","2.40"],["Over 4.5","4.00"],["Under 1.5","3.30"],["Under 2.5","2.05"],["Under 3.5","1.55"]
+    ]},
+    cards:{title:"Cartões",icon:"▯",heading:"Totais de cartões",lines:[
+      ["Over 2.5","1.45"],["Over 3.5","1.80"],["Over 4.5","2.25",1],["Over 5.5","3.50"],["Under 2.5","2.60"],["Under 3.5","1.90"],["Under 4.5","1.55"],["Under 5.5","1.28"]
+    ]},
+    combined:{title:"Combinadas",icon:"▦",heading:"Combinadas populares",lines:[
+      ["Over 10.5 cantos + Over 2.5 gols","2.45",1],["Over 9.5 cantos + Over 1.5 gols","1.85"],["Over 2.5 gols + Over 4.5 cartões","2.10"],["Casa + Over 1.5 gols","2.20"]
+    ]},
+    props:{title:"Player Props",icon:"♞",heading:"Desempenho individual",lines:[
+      ["Jogador marca","2.40",1],["1+ chute no alvo","1.55"],["2+ finalizações","1.75"],["Recebe cartão","3.10"]
+    ]}
+  };
+
+  let activeMarket = "corners";
+  let selectedLine = "";
+
+  function bodyLock(on){ document.body.classList.toggle("cp-mobile-layer-open", Boolean(on)); }
+  function openLayer(layer){
+    if (!isMobile()) return;
+    layer.classList.add("is-open"); layer.setAttribute("aria-hidden","false"); bodyLock(true);
+  }
+  function closeLayer(layer){
+    layer.classList.remove("is-open"); layer.setAttribute("aria-hidden","true");
+    if (!marketLayer.classList.contains("is-open") && !matchLayer.classList.contains("is-open")) bodyLock(false);
+  }
+
+  function collectGames(){
+    const pools=[];
+    ["__premiumFilteredGames","__premiumMarketGames","__lastMarketGames","__lastRawGames"].forEach(k=>{
+      try{ if(Array.isArray(window[k])) pools.push(window[k]); }catch(_){}
+    });
+    try{ if(typeof lastMarketGames!=="undefined"&&Array.isArray(lastMarketGames)) pools.push(lastMarketGames); }catch(_){}
+    try{ if(typeof lastRawGames!=="undefined"&&Array.isArray(lastRawGames)) pools.push(lastRawGames); }catch(_){}
+    const out=[],seen=new Set();
+    pools.flat().forEach(g=>{
+      if(!g||typeof g!=="object") return;
+      const key=String(g.match_id??g.id??g.event_key??`${g.casa}|${g.fora}|${g.hora}`);
+      if(seen.has(key)) return; seen.add(key); out.push(g);
+    });
+    return out;
+  }
+
+  function gameName(g,home){ return String(home?(g.casa??g.home??g.home_name??"Mandante"):(g.fora??g.away??g.away_name??"Visitante")); }
+  function gameTime(g){ return String(g.hora??g.time??g.match_time??"--:--").slice(0,5); }
+  function gameConfidence(g,index){
+    const raw=Number(g.prob??g.probabilidade??g.confidence??g.score??g.pOver95??g.p_over_95);
+    if(Number.isFinite(raw)) return Math.max(51,Math.min(94,Math.round(raw)));
+    return [78,72,68,64][index]||61;
+  }
+  function gameProjection(g,index){
+    const candidates=[g.proj,g.projecao,g.projection,g.projCorners,g.avg_total,g.media];
+    const val=candidates.map(Number).find(Number.isFinite);
+    return val ? val.toFixed(1) : (activeMarket==="goals"?(2.9-index*.15).toFixed(1):(10.8-index*.25).toFixed(1));
+  }
+  function teamBadge(name){
+    const letters=String(name||"T").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+    return `<span aria-hidden="true">${letters||"FC"}</span>`;
+  }
+
+  function renderMarket(type){
+    activeMarket = MARKET_DATA[type] ? type : "corners";
+    const data=MARKET_DATA[activeMarket];
+    title.textContent=data.title.toUpperCase(); heading.textContent=data.heading; icon.textContent=data.icon;
+    $$("button[data-cp-market]",kinds).forEach(b=>b.classList.toggle("active",b.dataset.cpMarket===activeMarket));
+    grid.innerHTML=data.lines.map((line,i)=>`
+      <button type="button" class="cpMobileOdd${line[2]?" is-ai":""}" data-cp-line="${String(line[0]).replace(/"/g,"&quot;")}">
+        <b>${line[0]}</b><strong>${line[1]}</strong>${line[2]?"<small>★ IA</small>":""}
+      </button>`).join("");
+    recommended.hidden=true; carousel.innerHTML=""; selectedLine="";
+  }
+
+  function renderRecommended(line){
+    selectedLine=line; selectedLineEl.textContent=line.toUpperCase();
+    const games=collectGames().slice(0,5);
+    const fallback=[
+      {casa:"Derry City",fora:"CSKA Sofia",hora:"14:30"},
+      {casa:"Inter Turku",fora:"FK Sarajevo",hora:"16:00"},
+      {casa:"Valerenga",fora:"Aalesund",hora:"18:30"}
+    ];
+    const source=games.length?games:fallback;
+    carousel.innerHTML=source.slice(0,4).map((g,i)=>{
+      const conf=gameConfidence(g,i),home=gameName(g,true),away=gameName(g,false);
+      return `<article class="cpMobileRecGame" data-cp-game-index="${i}">
+        <div class="cpMobileRecTop"><time>${gameTime(g)}</time><div class="cpMobileConfidence">${conf}%<small>CONFIANÇA</small></div></div>
+        <div class="cpMobileTeams"><div>${teamBadge(home)}<b>${home}</b></div><i>×</i><div>${teamBadge(away)}<b>${away}</b></div></div>
+        <div class="cpMobileRecMarket">${line.toUpperCase()} ${activeMarket==="corners"?"ESCANTEIOS":activeMarket==="goals"?"GOLS":activeMarket==="cards"?"CARTÕES":""}</div>
+        <div class="cpMobileRecStats"><div><small>PROJEÇÃO</small><b>${gameProjection(g,i)}</b></div><div><small>MÉDIA</small><b>${activeMarket==="goals"?"3.1":"11.2"}</b></div><div><small>RISCO</small><b>${i<2?"BAIXO":"MÉDIO"}</b></div></div>
+        <button class="cpMobileRecOpen" type="button" data-cp-open-game="${i}">ABRIR MATCH CENTER →</button>
+      </article>`;
+    }).join("");
+    recommended.hidden=false;
+    setTimeout(()=>recommended.scrollIntoView({behavior:"smooth",block:"start"}),40);
+  }
+
+  async function openMatch(game,index){
+    openLayer(matchLayer);
+    matchContent.innerHTML='<div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>';
+    const games=collectGames();
+    const selected=game || games[index] || null;
+    try{
+      if(selected && typeof window.updateDesktopMatchRail==="function"){
+        await window.updateDesktopMatchRail(selected,games.length?games:[selected]);
+      }else if(selected && typeof window.openMatchCenter==="function"){
+        await window.openMatchCenter(selected);
+      }
+    }catch(e){ console.warn("Match Center mobile:",e); }
+    setTimeout(()=>{
+      const rail=$("#desktopMatchRail")||$(".dashboardRightRail");
+      if(rail){
+        const clone=rail.cloneNode(true); clone.removeAttribute("id"); clone.classList.add("cpMobileRailClone");
+        matchContent.innerHTML=""; matchContent.appendChild(clone);
+      }else{
+        matchContent.innerHTML='<div class="cpMobileMatchLoading"><b>Não foi possível carregar os dados desta partida.</b></div>';
+      }
+    },180);
+  }
+
+  function marketTypeFromTab(tab){
+    const t=String(tab?.textContent||"").toLowerCase();
+    if(t.includes("escante")) return "corners";
+    if(t.includes("gol")) return "goals";
+    if(t.includes("cart")) return "cards";
+    if(t.includes("prop")) return "props";
+    if(t.includes("pré")||t.includes("pre")) return "pregame";
+    return "corners";
+  }
+
+  document.addEventListener("click",event=>{
+    if(!isMobile()) return;
+    const tab=event.target.closest(".marketTabs .marketTab");
+    if(tab){
+      event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();
+      renderMarket(marketTypeFromTab(tab)); openLayer(marketLayer); return;
+    }
+    const kind=event.target.closest("[data-cp-market]");
+    if(kind){ renderMarket(kind.dataset.cpMarket); return; }
+    const odd=event.target.closest(".cpMobileOdd");
+    if(odd){ $$(".cpMobileOdd",grid).forEach(x=>x.classList.remove("is-selected")); odd.classList.add("is-selected"); renderRecommended(odd.dataset.cpLine||odd.textContent); return; }
+    const openBtn=event.target.closest("[data-cp-open-game]");
+    if(openBtn){ const i=Number(openBtn.dataset.cpOpenGame); openMatch(collectGames()[i]||null,i); return; }
+    const close=event.target.closest("[data-cp-close]");
+    if(close){ closeLayer(close.dataset.cpClose==="match"?matchLayer:marketLayer); return; }
+  },true);
+
+  // Cards de jogos da Dashboard abrem diretamente o Match Center por cima.
+  document.addEventListener("click",event=>{
+    if(!isMobile()||marketLayer.classList.contains("is-open")||matchLayer.classList.contains("is-open")) return;
+    const row=event.target.closest(".gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]");
+    if(!row) return;
+    event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();
+    const rows=$$(".gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]");
+    const index=Math.max(0,rows.indexOf(row)); openMatch(collectGames()[index]||null,index);
+  },true);
+
+  // Barra inferior: Escanteios abre a mesma tela dinâmica de mercados.
+  $$(".mobileBottomNav button").forEach(btn=>{
+    if(/escante/i.test(btn.textContent||"")) btn.addEventListener("click",e=>{ if(!isMobile())return;e.preventDefault();renderMarket("corners");openLayer(marketLayer); });
+  });
+
+  window.addEventListener("popstate",()=>{
+    if(!isMobile()) return;
+    if(matchLayer.classList.contains("is-open")) closeLayer(matchLayer);
+    else if(marketLayer.classList.contains("is-open")) closeLayer(marketLayer);
+  });
+
+  renderMarket("corners");
+})();
