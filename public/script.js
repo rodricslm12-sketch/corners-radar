@@ -2848,15 +2848,9 @@
   }
   
   // ---------------- Main Load ----------------
-  let cpInitialGamesLoadFinished = false;
-
   async function loadAll({ date, fresh = false } = {}){
     ensureDateVisible();
     setTopLoading(true);
-
-    if(typeof window.CornerProMobileHomeLoading === 'function'){
-      window.CornerProMobileHomeLoading(cpInitialGamesLoadFinished ? 'selected' : 'initial');
-    }
 
     const dateFromUrl = new URLSearchParams(window.location.search).get("date")
       || new URLSearchParams(window.location.search).get("data")
@@ -2967,11 +2961,6 @@
         btn.classList.remove("is-loading");
       }
       setTopLoading(false);
-      cpInitialGamesLoadFinished = true;
-      window.CornerProGamesReady = true;
-      if(typeof window.CornerProMobileHomeLoading === 'function'){
-        window.CornerProMobileHomeLoading('done');
-      }
     }
   }
   
@@ -8001,6 +7990,15 @@ function resetDesktopMatchRailToEmpty(){
 
     panel.insertAdjacentHTML("beforeend", html + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
     panel.__cornerProGames = rows;
+
+    // Sincroniza imediatamente o dashboard mobile após os jogos reais entrarem.
+    setTimeout(() => {
+      try{
+        if(typeof window.CornerProMobileHomeLoading === 'function'){
+          window.CornerProMobileHomeLoading('done');
+        }
+      }catch(e){}
+    }, 0);
 
     panel.querySelectorAll("[data-real-game-index]").forEach(row => {
       row.addEventListener("click", () => {
@@ -13945,45 +13943,43 @@ function resetDesktopMatchRailToEmpty(){
   const home=$('#cpMobileHome');
   if(!home) return;
 
-  let mobileLoadingMode='initial';
-
-  function setMobileHomeLoading(mode='initial'){
+  function setMobileLoading(mode='initial'){
     const card=$('#cpHomeBest');
     const button=$('#cpHomeBestOpen');
-    const buttonText=$('.cpHomeBestOpenText');
+    const text=$('.cpHomeBestOpenText');
     const games=$('#cpHomeGames');
+
     if(!card || !button) return;
 
     card.classList.remove('is-loading-initial','is-loading-date');
-    games?.classList.remove('is-loading');
 
-    if(mode==='done'){
-      mobileLoadingMode='';
-      card.setAttribute('aria-busy','false');
-      button.disabled=false;
-      if(buttonText) buttonText.textContent='VER ANÁLISE COMPLETA →';
-      render();
+    if(mode==='initial'){
+      card.classList.add('is-loading-initial');
+      card.setAttribute('aria-busy','true');
+      button.disabled=true;
+      if(text) text.textContent='CARREGANDO JOGOS DO DIA...';
+      if(games){
+        games.classList.add('is-loading');
+        games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
+      }
       return;
     }
 
-    mobileLoadingMode=mode==='selected'?'selected':'initial';
-    card.setAttribute('aria-busy','true');
-    button.disabled=true;
-    games?.classList.add('is-loading');
-
-    if(mobileLoadingMode==='selected'){
+    if(mode==='selected'){
       card.classList.add('is-loading-date');
-      if(buttonText) buttonText.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
-    }else{
-      card.classList.add('is-loading-initial');
-      if(buttonText) buttonText.textContent='CARREGANDO JOGOS DO DIA...';
-      if(games){
-        games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
-      }
+      card.setAttribute('aria-busy','true');
+      button.disabled=true;
+      if(text) text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
+      return;
     }
+
+    card.setAttribute('aria-busy','false');
+    button.disabled=false;
+    games?.classList.remove('is-loading');
+    if(text) text.textContent='VER ANÁLISE COMPLETA →';
   }
 
-  window.CornerProMobileHomeLoading=setMobileHomeLoading;
+  window.CornerProMobileHomeLoading=setMobileLoading;
 
   function rows(){
     return $$('.gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .marketGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]')
@@ -14034,9 +14030,11 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function render(){
-    if(mobileLoadingMode) return;
     const data=getData();
     if(!data.length) return;
+
+    setMobileLoading('done');
+
     const best=data[0];
     $('#cpHomeBestTime').textContent=best.time;
     $('#cpHomeBestHome').textContent=best.home;
@@ -14049,10 +14047,6 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   home.addEventListener('click',e=>{
-    if(mobileLoadingMode && e.target.closest('#cpHomeBestOpen,#cpHomeBest')){
-      e.preventDefault();
-      return;
-    }
     const market=e.target.closest('[data-home-market]');
     if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return}
     const game=e.target.closest('[data-home-game]');
@@ -14061,11 +14055,19 @@ function resetDesktopMatchRailToEmpty(){
     if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openOriginalRow(0)}
   });
 
-  if(window.CornerProGamesReady){
-    setMobileHomeLoading('done');
-  }else{
-    setMobileHomeLoading('initial');
-  }
+  setMobileLoading('initial');
+
+  // A tela mobile lê os jogos reais renderizados no painel desktop.
+  // Esta verificação resolve casos em que a API termina antes/depois do observer.
+  let cpMobileReadyChecks=0;
+  const cpMobileReadyTimer=setInterval(()=>{
+    cpMobileReadyChecks+=1;
+    render();
+    if(getData().length || cpMobileReadyChecks>=120){
+      clearInterval(cpMobileReadyTimer);
+    }
+  },250);
+
   const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,120)});
   const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
   setInterval(render,1800);
