@@ -2968,6 +2968,7 @@
       }
       setTopLoading(false);
       cpInitialGamesLoadFinished = true;
+      window.CornerProGamesReady = true;
       if(typeof window.CornerProMobileHomeLoading === 'function'){
         window.CornerProMobileHomeLoading('done');
       }
@@ -14060,7 +14061,11 @@ function resetDesktopMatchRailToEmpty(){
     if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openOriginalRow(0)}
   });
 
-  setMobileHomeLoading('initial');
+  if(window.CornerProGamesReady){
+    setMobileHomeLoading('done');
+  }else{
+    setMobileHomeLoading('initial');
+  }
   const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,120)});
   const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
   setInterval(render,1800);
