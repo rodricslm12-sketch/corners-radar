@@ -2848,9 +2848,15 @@
   }
   
   // ---------------- Main Load ----------------
+  let cpInitialGamesLoadFinished = false;
+
   async function loadAll({ date, fresh = false } = {}){
     ensureDateVisible();
     setTopLoading(true);
+
+    if(typeof window.CornerProMobileHomeLoading === 'function'){
+      window.CornerProMobileHomeLoading(cpInitialGamesLoadFinished ? 'selected' : 'initial');
+    }
 
     const dateFromUrl = new URLSearchParams(window.location.search).get("date")
       || new URLSearchParams(window.location.search).get("data")
@@ -2961,6 +2967,10 @@
         btn.classList.remove("is-loading");
       }
       setTopLoading(false);
+      cpInitialGamesLoadFinished = true;
+      if(typeof window.CornerProMobileHomeLoading === 'function'){
+        window.CornerProMobileHomeLoading('done');
+      }
     }
   }
   
@@ -13934,6 +13944,46 @@ function resetDesktopMatchRailToEmpty(){
   const home=$('#cpMobileHome');
   if(!home) return;
 
+  let mobileLoadingMode='initial';
+
+  function setMobileHomeLoading(mode='initial'){
+    const card=$('#cpHomeBest');
+    const button=$('#cpHomeBestOpen');
+    const buttonText=$('.cpHomeBestOpenText');
+    const games=$('#cpHomeGames');
+    if(!card || !button) return;
+
+    card.classList.remove('is-loading-initial','is-loading-date');
+    games?.classList.remove('is-loading');
+
+    if(mode==='done'){
+      mobileLoadingMode='';
+      card.setAttribute('aria-busy','false');
+      button.disabled=false;
+      if(buttonText) buttonText.textContent='VER ANÁLISE COMPLETA →';
+      render();
+      return;
+    }
+
+    mobileLoadingMode=mode==='selected'?'selected':'initial';
+    card.setAttribute('aria-busy','true');
+    button.disabled=true;
+    games?.classList.add('is-loading');
+
+    if(mobileLoadingMode==='selected'){
+      card.classList.add('is-loading-date');
+      if(buttonText) buttonText.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
+    }else{
+      card.classList.add('is-loading-initial');
+      if(buttonText) buttonText.textContent='CARREGANDO JOGOS DO DIA...';
+      if(games){
+        games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
+      }
+    }
+  }
+
+  window.CornerProMobileHomeLoading=setMobileHomeLoading;
+
   function rows(){
     return $$('.gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .marketGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]')
       .filter(el=>!el.closest('.cpMobileHome'));
@@ -13983,6 +14033,7 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function render(){
+    if(mobileLoadingMode) return;
     const data=getData();
     if(!data.length) return;
     const best=data[0];
@@ -13997,6 +14048,10 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   home.addEventListener('click',e=>{
+    if(mobileLoadingMode && e.target.closest('#cpHomeBestOpen,#cpHomeBest')){
+      e.preventDefault();
+      return;
+    }
     const market=e.target.closest('[data-home-market]');
     if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return}
     const game=e.target.closest('[data-home-game]');
@@ -14005,7 +14060,7 @@ function resetDesktopMatchRailToEmpty(){
     if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openOriginalRow(0)}
   });
 
-  render();
+  setMobileHomeLoading('initial');
   const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,120)});
   const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
   setInterval(render,1800);
@@ -14059,7 +14114,10 @@ function resetDesktopMatchRailToEmpty(){
   function open(){view=new Date(selected);render();layer.classList.add('is-open');layer.setAttribute('aria-hidden','false');document.body.classList.add('cp-mobile-calendar-lock');}
   function close(){layer.classList.remove('is-open');layer.setAttribute('aria-hidden','true');document.body.classList.remove('cp-mobile-calendar-lock');}
   async function apply(){
-    const ymd=toYMD(selected);if(input){input.value=ymd;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
+    const ymd=toYMD(selected);
+    if(typeof window.CornerProMobileHomeLoading==='function'){
+      window.CornerProMobileHomeLoading('selected');
+    }if(input){input.value=ymd;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
     const url=new URL(location.href);url.searchParams.set('date',ymd);url.hash='';history.replaceState({},'',url.pathname+url.search);updateTrigger();close();
     try{
       if(typeof window.CornerProReloadRealGames==='function'){await window.CornerProReloadRealGames(ymd);return;}

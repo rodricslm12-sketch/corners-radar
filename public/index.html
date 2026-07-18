@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260717-matchcenter4" />
-  <script src="script.js?v=20260717-matchcenter4" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260718-loading-games" />
+  <script src="script.js?v=20260718-loading-games" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -135,34 +135,7 @@
               </div>
               <a>Ver todos ›</a>
             </div>
-
-            <div class="gameRow">
-              <div class="gameMeta"><small>🇧🇷 BRASIL - SÉRIE A</small><b><span>19:00</span> Flamengo<br><em>Palmeiras</em></b></div>
-              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 8.5</b><span>1.85</span></div>
-              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 2.5</b><span>1.90</span></div>
-              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.65</span></div>
-              <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.75</span></div>
-              <button class="signal" type="button">▮▮▮</button>
-            </div>
-
-            <div class="gameRow">
-              <div class="gameMeta"><small>🏴 INGLATERRA - PREMIER LEAGUE ★</small><b><span>16:00</span> Manchester City<br><em>Arsenal</em></b></div>
-              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 9.5</b><span>1.80</span></div>
-              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.5</b><span>1.95</span></div>
-              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.60</span></div>
-              <div class="oddBox"><small>CARTÕES</small><b>OVER 4.5</b><span>1.70</span></div>
-              <button class="signal" type="button">▮▮▮</button>
-            </div>
-
-            <div class="gameRow">
-              <div class="gameMeta"><small>🇪🇸 ESPANHA - LA LIGA ★</small><b><span>17:15</span> Real Madrid<br><em>Barcelona</em></b></div>
-              <div class="oddBox"><small>ESCANTEIOS</small><b>OVER 9.5</b><span>1.78</span></div>
-              <div class="oddBox"><small>TOTAL GOLS</small><b>OVER 3.0</b><span>1.88</span></div>
-              <div class="oddBox"><small>AMBOS MARCAM</small><b>SIM</b><span>1.55</span></div>
-              <div class="oddBox"><small>CARTÕES</small><b>OVER 5.5</b><span>1.85</span></div>
-              <button class="signal" type="button">▮▮▮</button>
-            </div>
-            <button class="viewAll" type="button">VER TODOS OS JOGOS</button>
+            <div class="cornerProStatus" id="initialGamesLoading" role="status" aria-live="polite">Carregando jogos reais do dia...</div>
           </section>
         </section>
 
@@ -233,14 +206,24 @@
     <main class="cpHomeScroll">
       <section class="cpHomeGreeting"><div><span>♧</span><strong>Olá, Rodrigo</strong></div><button type="button">Alertas <i></i></button></section>
 
-      <section class="cpHomeBest" id="cpHomeBest">
-        <div class="cpHomeBestTop"><b>🔥 MELHOR APOSTA DO DIA</b><span id="cpHomeBestMarket">OVER 10.5 ESCANTEIOS</span></div>
+      <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
+        <div class="cpHomeBestTop"><b>🔥 MELHOR APOSTA DO DIA</b><span id="cpHomeBestMarket">ANALISANDO</span></div>
+
+        <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
+          <span class="cpHomeLoadingSpinner" aria-hidden="true"></span>
+          <strong>CARREGANDO JOGOS DO DIA</strong>
+          <small>Buscando as melhores oportunidades para você...</small>
+        </div>
+
         <div class="cpHomeBestBody">
           <time id="cpHomeBestTime">--:--</time>
-          <div class="cpHomeBestTeams"><strong id="cpHomeBestHome">Carregando</strong><i>×</i><strong id="cpHomeBestAway">partidas...</strong></div>
+          <div class="cpHomeBestTeams"><strong id="cpHomeBestHome">Aguardando</strong><i>×</i><strong id="cpHomeBestAway">partidas</strong></div>
           <div class="cpHomeBestConfidence"><b id="cpHomeBestConfidence">--%</b><small>CONFIANÇA</small></div>
         </div>
-        <button type="button" id="cpHomeBestOpen">VER ANÁLISE COMPLETA →</button>
+        <button type="button" id="cpHomeBestOpen" disabled>
+          <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
+          <span class="cpHomeBestOpenText">CARREGANDO JOGOS DO DIA...</span>
+        </button>
       </section>
 
       <section class="cpHomeSection">

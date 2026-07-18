@@ -7492,3 +7492,84 @@ button.railFullBtn {
   .mcPremiumTimeline{display:grid;gap:8px}.mcPremiumEvent{display:grid;grid-template-columns:47px 28px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:58px;padding:10px;border-radius:13px;background:#091318;border:1px solid #18272e}.mcPremiumEvent time{height:32px;border-radius:9px;display:grid;place-items:center;background:#102619;color:#71f33c;font-size:11px;font-weight:950}.mcPremiumEvent>span{font-size:20px;text-align:center}.mcPremiumEvent div{min-width:0}.mcPremiumEvent b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mcPremiumEvent small{display:block;margin-top:3px;color:#899598;font-size:9px}.mcPremiumEvent em{font-style:normal;color:#70f33a;font-size:12px;font-weight:950}
   .mcPremiumEmpty{padding:28px 14px;text-align:center;color:#8f9a9d;background:#091217;border:1px solid #18272e;border-radius:16px}
 }
+
+/* =========================================================
+   CORNER PRO — LOADING ELEGANTE DOS JOGOS (SOMENTE MOBILE)
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeBest{position:relative}
+
+  .cpHomeInitialLoading{
+    display:none;
+    min-height:176px;
+    padding:25px 18px 18px;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    text-align:center;
+  }
+
+  .cpHomeInitialLoading strong{
+    margin-top:16px;
+    color:#f4f7f5;
+    font-size:15px;
+    font-weight:950;
+    letter-spacing:.15px;
+  }
+
+  .cpHomeInitialLoading small{
+    margin-top:7px;
+    color:#8f9b9d;
+    font-size:11px;
+    font-weight:650;
+    line-height:1.45;
+  }
+
+  .cpHomeLoadingSpinner{
+    width:43px;
+    height:43px;
+    display:block;
+    border-radius:50%;
+    border:5px solid rgba(93,241,36,.14);
+    border-top-color:#63f127;
+    border-right-color:rgba(99,241,39,.55);
+    box-shadow:0 0 22px rgba(99,241,39,.12);
+    animation:cpHomeLoadingSpin .82s linear infinite;
+  }
+
+  .cpHomeButtonSpinner{
+    width:16px;
+    height:16px;
+    display:none;
+    flex:0 0 auto;
+    border-radius:50%;
+    border:2px solid rgba(0,0,0,.22);
+    border-top-color:#071006;
+    animation:cpHomeLoadingSpin .75s linear infinite;
+  }
+
+  #cpHomeBestOpen{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+  }
+
+  #cpHomeBestOpen:disabled{
+    cursor:default;
+    opacity:1;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading{display:flex}
+  .cpHomeBest.is-loading-initial .cpHomeBestBody{display:none}
+
+  .cpHomeBest.is-loading-initial .cpHomeButtonSpinner,
+  .cpHomeBest.is-loading-date .cpHomeButtonSpinner{display:inline-block}
+
+  .cpHomeBest.is-loading-initial #cpHomeBestOpen,
+  .cpHomeBest.is-loading-date #cpHomeBestOpen{pointer-events:none}
+
+  .cpHomeGames.is-loading{min-height:175px}
+
+  @keyframes cpHomeLoadingSpin{to{transform:rotate(360deg)}}
+}
