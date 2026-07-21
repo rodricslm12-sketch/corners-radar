@@ -1,4 +1,5 @@
 // server.js (COMPLETO / ATUALIZADO — IA + FAVORITO FORA BLOQUEADO 100%)
+// ✅ NOVO: LINHA ALTA REAL/ESTIMADA (10.5/11.5) + ATAQUE BILATERAL PARA MOBILE E PC
 // ✅ Mantém suas regras e bloqueios
 // ✅ FAVORITO FORA: permitido SOMENTE quando MUITO forte em cantos
 // ✅ IA opcional: escolhe Top 6 entre candidatos já filtrados (OPÇÃO A = base completa)
@@ -164,6 +165,39 @@ const AI_MAX_CANDIDATES = 30;
 const BET365_CORNER_LINE_PRIORITY = String(process.env.BET365_CORNER_LINE_PRIORITY || "1") === "1";
 const BET365_CORNER_MIN_LINE = Number(process.env.BET365_CORNER_MIN_LINE || 8);
 const BET365_CORNER_MAX_LINE = Number(process.env.BET365_CORNER_MAX_LINE || 15);
+
+// ====== VALIDAÇÃO PREMIUM — LINHA ALTA + ATAQUE DOS DOIS TIMES ======
+// Esta camada vale para qualquer cliente que consuma o server: mobile e PC.
+// A linha da casa confirma a leitura, mas não substitui as estatísticas do Corner Pro.
+const HIGH_CORNER_MARKET = {
+  ENABLE: String(process.env.HIGH_CORNER_MARKET_ENABLE || "1") === "1",
+
+  // Linha real mínima desejada nos cards principais.
+  PREFERRED_REAL_LINE: Number(process.env.PREFERRED_REAL_CORNER_LINE || 10.5),
+
+  // 8.5 e 9.0 nunca entram no Top do Dia.
+  HARD_BLOCK_REAL_LINE_BELOW: Number(process.env.HARD_BLOCK_REAL_CORNER_LINE_BELOW || 9.5),
+
+  // 9.5 só passa em caso excepcional.
+  ALLOW_95_EXCEPTION: String(process.env.ALLOW_95_EXCEPTION || "1") === "1",
+  EXCEPTION_95_MIN_PROJ: Number(process.env.EXCEPTION_95_MIN_PROJ || 11.7),
+  EXCEPTION_95_MIN_PROB: Number(process.env.EXCEPTION_95_MIN_PROB || 75),
+  EXCEPTION_95_MIN_BILATERAL: Number(process.env.EXCEPTION_95_MIN_BILATERAL || 74),
+
+  // Quando a Bet365 não envia cantos, o motor exige perfil estatístico de 10.5+.
+  NO_LINE_MIN_PROJ: Number(process.env.NO_LINE_MIN_PROJ || 11.1),
+  NO_LINE_MIN_PROB: Number(process.env.NO_LINE_MIN_PROB || 70),
+
+  // Participação ofensiva mínima dos dois times.
+  MIN_HOME_CREATES: Number(process.env.MIN_HOME_CORNER_CREATION || 4.5),
+  MIN_AWAY_CREATES: Number(process.env.MIN_AWAY_CORNER_CREATION || 4.3),
+  MIN_COMBINED_CREATES: Number(process.env.MIN_COMBINED_CORNER_CREATION || 9.2),
+  MIN_HOME_CONCEDES: Number(process.env.MIN_HOME_CORNER_CONCEDES || 3.8),
+  MIN_AWAY_CONCEDES: Number(process.env.MIN_AWAY_CORNER_CONCEDES || 3.8),
+
+  // Perfil bilateral mínimo para entrar nos destaques.
+  MIN_BILATERAL_SCORE: Number(process.env.MIN_BILATERAL_CORNER_SCORE || 66),
+};
 
 // ====== Seleção final do site ======
 // ✅ Dias úteis: 2 melhores jogos do dia pelo score/IA.
@@ -873,6 +907,7 @@ function premiumCornerRankingScore(x){
     leaguePriorityBonus(x) +
     aggressiveCornerTeamsBonus(x) +
     widePressureBonus(x) +
+    cornerMarketPriorityScore(x) +
     (Number.isFinite(p) ? Math.max(0, p - 60) * 0.12 : 0) +
     (Number.isFinite(proj) ? Math.max(0, proj - 10) * 1.8 : 0) +
     (Number.isFinite(scoreBase) ? Math.max(0, scoreBase - 90) * 0.03 : 0)
@@ -2782,6 +2817,200 @@ function bet365CornerLineValue(x){
   return Number.isFinite(line) ? line : null;
 }
 
+
+function getCornerRecentBlocks(x){
+  return {
+    home: x?.real?.homeRecent ?? x?.homeRecent ?? null,
+    away: x?.real?.awayRecent ?? x?.awayRecent ?? null
+  };
+}
+
+function bilateralCornerProfile(x){
+  const { home, away } = getCornerRecentBlocks(x);
+
+  const homeFor = Number(home?.cornersForAvg ?? NaN);
+  const awayFor = Number(away?.cornersForAvg ?? NaN);
+  const homeAgainst = Number(home?.cornersAgainstAvg ?? NaN);
+  const awayAgainst = Number(away?.cornersAgainstAvg ?? NaN);
+
+  const values = [homeFor, awayFor, homeAgainst, awayAgainst];
+  const known = values.filter(Number.isFinite).length;
+
+  // Sem dados suficientes: não inventa um perfil bilateral.
+  if (known < 3){
+    return {
+      known,
+      score: null,
+      pass: false,
+      homeFor: Number.isFinite(homeFor) ? homeFor : null,
+      awayFor: Number.isFinite(awayFor) ? awayFor : null,
+      homeAgainst: Number.isFinite(homeAgainst) ? homeAgainst : null,
+      awayAgainst: Number.isFinite(awayAgainst) ? awayAgainst : null,
+      combinedCreates: Number.isFinite(homeFor) && Number.isFinite(awayFor) ? homeFor + awayFor : null,
+      flags: ["bilateral_data_incomplete"]
+    };
+  }
+
+  const hf = Number.isFinite(homeFor) ? homeFor : 0;
+  const af = Number.isFinite(awayFor) ? awayFor : 0;
+  const ha = Number.isFinite(homeAgainst) ? homeAgainst : 0;
+  const aa = Number.isFinite(awayAgainst) ? awayAgainst : 0;
+  const combinedCreates = hf + af;
+
+  // Escala conservadora: produção pesa mais do que concessão.
+  let score = 35;
+  score += clamp((hf - 3.5) * 9, -18, 24);
+  score += clamp((af - 3.5) * 10, -20, 26);
+  score += clamp((ha - 3.2) * 4, -8, 14);
+  score += clamp((aa - 3.2) * 4, -8, 14);
+
+  const weakCreator = Math.min(hf, af);
+  if (weakCreator < 3.5) score -= 24;
+  else if (weakCreator < 4.0) score -= 12;
+  else if (weakCreator >= 4.8) score += 8;
+
+  if (combinedCreates >= 10.5) score += 10;
+  else if (combinedCreates >= 9.2) score += 5;
+  else score -= 12;
+
+  const flags = [];
+  if (hf < HIGH_CORNER_MARKET.MIN_HOME_CREATES) flags.push("bilateral_home_low_creation");
+  if (af < HIGH_CORNER_MARKET.MIN_AWAY_CREATES) flags.push("bilateral_away_low_creation");
+  if (combinedCreates < HIGH_CORNER_MARKET.MIN_COMBINED_CREATES) flags.push("bilateral_low_combined_creation");
+  if (ha < HIGH_CORNER_MARKET.MIN_HOME_CONCEDES) flags.push("bilateral_home_low_concedes");
+  if (aa < HIGH_CORNER_MARKET.MIN_AWAY_CONCEDES) flags.push("bilateral_away_low_concedes");
+
+  score = clamp(Math.round(score), 0, 100);
+
+  const pass =
+    hf >= HIGH_CORNER_MARKET.MIN_HOME_CREATES &&
+    af >= HIGH_CORNER_MARKET.MIN_AWAY_CREATES &&
+    combinedCreates >= HIGH_CORNER_MARKET.MIN_COMBINED_CREATES &&
+    ha >= HIGH_CORNER_MARKET.MIN_HOME_CONCEDES &&
+    aa >= HIGH_CORNER_MARKET.MIN_AWAY_CONCEDES &&
+    score >= HIGH_CORNER_MARKET.MIN_BILATERAL_SCORE;
+
+  return {
+    known,
+    score,
+    pass,
+    homeFor: hf,
+    awayFor: af,
+    homeAgainst: ha,
+    awayAgainst: aa,
+    combinedCreates,
+    flags
+  };
+}
+
+function estimatedHighCornerLine(x){
+  const proj = Number(x?.proj_cantos ?? 0);
+  const p = Number(x?.over95_prob_adj ?? x?.over95_prob ?? 0);
+  const bilateral = bilateralCornerProfile(x);
+
+  if (proj >= 12.0 && p >= 72 && bilateral.score >= 72) return 11.5;
+  if (proj >= 11.1 && p >= 70 && bilateral.score >= 66) return 10.5;
+  if (proj >= 10.6 && p >= 68 && bilateral.score >= 62) return 10.0;
+  return 9.5;
+}
+
+function highCornerMarketValidation(x){
+  if (!HIGH_CORNER_MARKET.ENABLE){
+    return { pass:true, realLine:bet365CornerLineValue(x), effectiveLine:null, bilateral:bilateralCornerProfile(x), flags:[] };
+  }
+
+  const realLine = bet365CornerLineValue(x);
+  const bilateral = bilateralCornerProfile(x);
+  const proj = Number(x?.proj_cantos ?? 0);
+  const prob = Number(x?.over95_prob_adj ?? x?.over95_prob ?? 0);
+  const effectiveLine = Number.isFinite(realLine) ? realLine : estimatedHighCornerLine(x);
+  const flags = [];
+
+  if (Number.isFinite(realLine) && realLine < HIGH_CORNER_MARKET.HARD_BLOCK_REAL_LINE_BELOW){
+    flags.push("market_line_85_90_block");
+  }
+
+  if (Number.isFinite(realLine) && realLine === 9.5){
+    const exceptional95 =
+      HIGH_CORNER_MARKET.ALLOW_95_EXCEPTION &&
+      proj >= HIGH_CORNER_MARKET.EXCEPTION_95_MIN_PROJ &&
+      prob >= HIGH_CORNER_MARKET.EXCEPTION_95_MIN_PROB &&
+      Number(bilateral.score) >= HIGH_CORNER_MARKET.EXCEPTION_95_MIN_BILATERAL &&
+      bilateral.pass;
+
+    if (!exceptional95) flags.push("market_line_95_not_exceptional");
+    else flags.push("market_line_95_exceptional_release");
+  }
+
+  if (!Number.isFinite(realLine)){
+    if (proj < HIGH_CORNER_MARKET.NO_LINE_MIN_PROJ) flags.push("no_market_line_low_projection");
+    if (prob < HIGH_CORNER_MARKET.NO_LINE_MIN_PROB) flags.push("no_market_line_low_probability");
+  }
+
+  if (!bilateral.pass){
+    flags.push(...bilateral.flags);
+    flags.push("bilateral_attack_not_confirmed");
+  }
+
+  if (effectiveLine < HIGH_CORNER_MARKET.PREFERRED_REAL_LINE){
+    flags.push("effective_line_below_105");
+  }
+
+  const blockingFlags = new Set([
+    "market_line_85_90_block",
+    "market_line_95_not_exceptional",
+    "no_market_line_low_projection",
+    "no_market_line_low_probability",
+    "bilateral_attack_not_confirmed",
+    "effective_line_below_105"
+  ]);
+
+  return {
+    pass: !flags.some(f => blockingFlags.has(f)),
+    realLine,
+    effectiveLine,
+    bilateral,
+    flags
+  };
+}
+
+function cornerMarketPriorityScore(x){
+  const check = highCornerMarketValidation(x);
+  const line = Number(check.realLine ?? check.effectiveLine ?? 0);
+
+  let score = 0;
+  if (line >= 11.5) score += 34;
+  else if (line >= 10.5) score += 24;
+  else if (line >= 10.0) score += 8;
+  else if (line >= 9.5) score -= 18;
+  else score -= 38;
+
+  if (Number.isFinite(check.bilateral?.score)){
+    score += (check.bilateral.score - 60) * 0.55;
+  } else {
+    score -= 12;
+  }
+
+  if (!check.pass) score -= 45;
+  return score;
+}
+
+function attachHighCornerMarketProfile(x){
+  const check = highCornerMarketValidation(x);
+  return {
+    ...x,
+    market_corner_validation: {
+      pass: check.pass,
+      real_line: check.realLine,
+      effective_line: check.effectiveLine,
+      preferred_line: HIGH_CORNER_MARKET.PREFERRED_REAL_LINE,
+      flags: check.flags
+    },
+    bilateral_corner_profile: check.bilateral,
+    corner_market_priority_score: Math.round(cornerMarketPriorityScore(x))
+  };
+}
+
 // ✅ ODDS: tenta v3 e cai pro v2
 async function getOdds1x2(matchId) {
   const data = await apiGetAny({ action: "get_odds", match_id: matchId });
@@ -3791,9 +4020,18 @@ function pickBestFromTop6(top6){
   const arr = (top6 || [])
     .slice()
     .filter(Boolean)
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ garante
+    .filter(x => !isBlockedAwayFavoriteForSelection(x))
+    .filter(x => highCornerMarketValidation(x).pass);
 
+  sortBestGamesForCards(arr);
+  /*
+   * O bloco abaixo permanece como desempate histórico,
+   * mas a lista já chega ordenada por linha alta e ataque bilateral.
+   */
   arr.sort((a,b) => {
+    const ma = cornerMarketPriorityScore(a);
+    const mb = cornerMarketPriorityScore(b);
+    if (mb !== ma) return mb - ma;
     const ar = Number.isFinite(a?.ai_rank) ? a.ai_rank : null;
     const br = Number.isFinite(b?.ai_rank) ? b.ai_rank : null;
     if (ar && br) return ar - br;
@@ -3831,6 +4069,11 @@ function isDangerousRedCardGame(x){
   const mode = String(x?.mode ?? "").toLowerCase();
   const risk = String(x?.ai_human?.risk ?? "").toLowerCase();
   const flags = Array.isArray(x?.flags) ? x.flags.map(f => String(f).toLowerCase()) : [];
+  const marketValidation = highCornerMarketValidation(x);
+
+  // Linha baixa da casa, projeção incompatível com 10.5 ou ataque unilateral:
+  // nunca entram nos cards principais.
+  if (!marketValidation.pass) return true;
 
   // Textos que normalmente fazem o front pintar o card de vermelho/perigoso.
   const txt = [
@@ -3897,7 +4140,16 @@ function sortBestGamesForCards(base){
       if (hasA && hasB && lb !== la) return lb - la;
     }
 
-    // Dentro da mesma linha, preserva integralmente o ranking do Corner Pro.
+    const marketA = cornerMarketPriorityScore(a);
+    const marketB = cornerMarketPriorityScore(b);
+    if (marketB !== marketA) return marketB - marketA;
+
+    const bilateralA = Number(bilateralCornerProfile(a)?.score ?? -1);
+    const bilateralB = Number(bilateralCornerProfile(b)?.score ?? -1);
+    if (bilateralB !== bilateralA) return bilateralB - bilateralA;
+
+    // Depois da confirmação do mercado e do ataque bilateral,
+    // preserva o ranking tradicional do Corner Pro.
     const pra = premiumCornerRankingScore(a);
     const prb = premiumCornerRankingScore(b);
     if (prb !== pra) return prb - pra;
@@ -4008,7 +4260,7 @@ function pickDailyTopGames(top6, allList, limit = DAILY_TOP_GAMES_LIMIT){
   }
 
   return chosen.slice(0, max).map((x, i) => ({
-    ...x,
+    ...attachHighCornerMarketProfile(x),
     ai_pick: true,
     ai_rank: i + 1,
     daily_rank: i + 1,
@@ -4029,6 +4281,9 @@ function explainBestDeterministic(best, top6){
   const press = Number(best?.real?.pressureHits ?? 0);
   const recent = Number(best?.real?.recentCombinedAvg ?? 0);
   const perfil = String(best.perfil_laterais ?? "");
+  const marketCheck = highCornerMarketValidation(best);
+  const line = marketCheck.realLine ?? marketCheck.effectiveLine;
+  const bilateralScore = marketCheck.bilateral?.score;
 
   const parts = [];
   parts.push(`Ele lidera o Top 6 por consistência (ai_score mais alto).`);
@@ -4036,6 +4291,8 @@ function explainBestDeterministic(best, top6){
   if (Number.isFinite(proj)) parts.push(`Projeção ${fmt(proj,1)} cantos.`);
   if (Number.isFinite(press) && press>0) parts.push(`Pressão ${press}/6.`);
   if (Number.isFinite(recent) && recent>0) parts.push(`Histórico recente ${fmt(recent,1)} cantos combinados.`);
+  if (Number.isFinite(Number(line))) parts.push(`Linha de mercado/perfil ${fmt(Number(line),1)}.`);
+  if (Number.isFinite(Number(bilateralScore))) parts.push(`Índice bilateral ${Math.round(Number(bilateralScore))}/100.`);
   parts.push(`Perfil ${perfil === "LATERAIS_FORTES" ? "mais favorável (laterais fortes)" : perfil === "EQUILIBRADO" ? "ok (equilibrado)" : "mais arriscado (central)"}.`);
   parts.push(`Regra conservadora respeitada: não é favorito visitante.`);
   return parts.join(" ");
