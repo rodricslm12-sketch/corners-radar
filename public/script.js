@@ -720,6 +720,12 @@
     const perfil = String(j?.perfil_laterais || "");
     const full = hasFullBase(j);
     const semi = isSemi(j);
+    const urgency = j?.knockout_second_leg_exception === true && j?.home_urgency?.active === true;
+
+    // Exceção validada no servidor: volta de mata-mata com mandante obrigado a buscar resultado.
+    if (urgency && full && p >= 70 && proj >= 10.8 && perfil === "LATERAIS_FORTES"){
+      return { text: "URGÊNCIA CASA", cls: "chip-ia-safe chip-home-urgency", level: "green" };
+    }
   
     if (perfil === "TENDENCIA_CENTRAL" || (p < 67 && proj < 10.8) || (!full && !semi)){
       return { text: "RISCO IA", cls: "is-atencao chip-ia-danger", level: "red" };
@@ -2671,8 +2677,12 @@
   
     const raw = dedupeList(Array.isArray(list) ? list.slice() : []);
     const arr = filterBlockedHomePositions(raw);
+
+    // 🔒 NUNCA envia card vermelho para o Top do Dia.
+    // Se não houver jogos seguros suficientes, mostra menos cards em vez de completar com RED.
+    const safeForTop = arr.filter(j => getAlertInfo(j).level !== "red");
   
-    const pool = arr.slice().sort((a, b) => {
+    const pool = safeForTop.slice().sort((a, b) => {
       const m = modeRank(b?.mode) - modeRank(a?.mode);
       if (m !== 0) return m;
       const s = Number(b?.ai_score ?? b?.local_score ?? 0) - Number(a?.ai_score ?? a?.local_score ?? 0);
@@ -3150,6 +3160,10 @@
   
     getAlertInfo = function(j){
       const base = oldGetAlertInfo(j);
+      if (j?.knockout_second_leg_exception === true && j?.home_urgency?.active === true){
+        return { ...base, text: "▲ URGÊNCIA CASA", cls: "chip-ia-safe chip-home-urgency", level: "green" };
+      }
+
       let text = "● SEGURO IA";
       let cls = "chip-ia-safe";
   

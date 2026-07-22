@@ -1135,11 +1135,16 @@ function lowRhythmPlayoffBlock({
   perfil_laterais,
   recentCombinedAvg,
   proj_cantos,
-  mode = "full"
+  mode = "full",
+  knockoutException = false
 }){
   const isPlayoff = isPlayoffOrKnockoutContext(eventData, leagueName);
   if (!isPlayoff) {
     return { block: false, reason: null, lowSignals: 0, isPlayoff: false };
+  }
+
+  if (knockoutException) {
+    return { block: false, reason: null, lowSignals: 0, isPlayoff: true, exception: "second_leg_home_urgency" };
   }
 
   let lowSignals = 0;
@@ -2182,6 +2187,121 @@ function favoriteLostFirstLeg(firstLegMatch, favoriteTeamName){
   return false;
 }
 
+
+// =========================================================
+// ✅ EXCEÇÃO PREMIUM — MATA-MATA DE VOLTA COM URGÊNCIA DO MANDANTE
+// Só libera quando o mandante não venceu a ida e os números confirmam
+// pressão real para cantos. Sem confirmação, o mata-mata continua bloqueado.
+// =========================================================
+const SECOND_LEG_HOME_URGENCY = {
+  ENABLE: String(process.env.SECOND_LEG_HOME_URGENCY_ENABLE || "1") === "1",
+  MIN_PROJ: Number(process.env.SECOND_LEG_HOME_URGENCY_MIN_PROJ || 10.8),
+  MIN_PROB: Number(process.env.SECOND_LEG_HOME_URGENCY_MIN_PROB || 70),
+  MIN_PRESSURE_HITS: Number(process.env.SECOND_LEG_HOME_URGENCY_MIN_PRESSURE || 3),
+  MIN_HOME_CREATES: Number(process.env.SECOND_LEG_HOME_URGENCY_MIN_HOME_CREATES || 5.2),
+  MIN_AWAY_CONCEDES: Number(process.env.SECOND_LEG_HOME_URGENCY_MIN_AWAY_CONCEDES || 4.4),
+  REQUIRE_WIDE_PROFILE: String(process.env.SECOND_LEG_HOME_URGENCY_REQUIRE_WIDE || "1") === "1"
+};
+
+function sameTeamLoose(a, b){
+  const x = normTeamKey(a);
+  const y = normTeamKey(b);
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+}
+
+function firstLegSituationForCurrentHome(firstLegMatch, currentHome, currentAway){
+  if (!firstLegMatch) return null;
+
+  const legHome = firstLegMatch.match_hometeam_name || firstLegMatch.home_team_name || firstLegMatch.home || "";
+  const legAway = firstLegMatch.match_awayteam_name || firstLegMatch.away_team_name || firstLegMatch.away || "";
+  const hs = intScore(firstLegMatch.match_hometeam_score ?? firstLegMatch.home_score);
+  const as = intScore(firstLegMatch.match_awayteam_score ?? firstLegMatch.away_score);
+  if (hs === null || as === null) return null;
+
+  let currentHomeGoals = null;
+  let opponentGoals = null;
+
+  if (sameTeamLoose(currentHome, legHome) && sameTeamLoose(currentAway, legAway)) {
+    currentHomeGoals = hs;
+    opponentGoals = as;
+  } else if (sameTeamLoose(currentHome, legAway) && sameTeamLoose(currentAway, legHome)) {
+    currentHomeGoals = as;
+    opponentGoals = hs;
+  } else {
+    return null;
+  }
+
+  const deficit = opponentGoals - currentHomeGoals;
+  return {
+    currentHomeGoals,
+    opponentGoals,
+    deficit,
+    // Empate na ida também exige vitória para classificar sem prorrogação/pênaltis.
+    homeNeedsResult: deficit >= 0,
+    homeLostFirstLeg: deficit > 0,
+    firstLegDraw: deficit === 0
+  };
+}
+
+function secondLegHomeUrgencyCheck({
+  eventData,
+  leagueName = "",
+  leagueId,
+  h2hBlock,
+  casa,
+  fora,
+  proj_cantos,
+  over95_prob_adj,
+  pressureHits,
+  perfil_laterais,
+  homeRecent,
+  awayRecent
+}){
+  if (!SECOND_LEG_HOME_URGENCY.ENABLE) {
+    return { allow:false, isKnockout:false, reason:"urgency_disabled", flags:[] };
+  }
+
+  const isKnockout = isPlayoffOrKnockoutContext(eventData, leagueName) || looksLikeKnockout(eventData);
+  if (!isKnockout) return { allow:false, isKnockout:false, reason:null, flags:[] };
+  if (!looksLikeSecondLeg(eventData)) return { allow:false, isKnockout:true, reason:"not_confirmed_second_leg", flags:["knockout_not_second_leg"] };
+  if (isEuropeanClassic(casa, fora)) return { allow:false, isKnockout:true, reason:"second_leg_classic_block", flags:["second_leg_classic_block"] };
+
+  const firstLeg = findFirstLegInH2H(h2hBlock, Number(leagueId));
+  if (!firstLeg) return { allow:false, isKnockout:true, reason:"first_leg_not_found", flags:["first_leg_not_found"] };
+
+  const situation = firstLegSituationForCurrentHome(firstLeg, casa, fora);
+  if (!situation?.homeNeedsResult) {
+    return { allow:false, isKnockout:true, reason:"home_has_aggregate_advantage", flags:["home_can_manage_aggregate"] };
+  }
+
+  const checks = {
+    projection: Number(proj_cantos) >= SECOND_LEG_HOME_URGENCY.MIN_PROJ,
+    probability: Number(over95_prob_adj) >= SECOND_LEG_HOME_URGENCY.MIN_PROB,
+    pressure: Number(pressureHits) >= SECOND_LEG_HOME_URGENCY.MIN_PRESSURE_HITS,
+    homeCreates: Number(homeRecent?.cornersForAvg) >= SECOND_LEG_HOME_URGENCY.MIN_HOME_CREATES,
+    awayConcedes: Number(awayRecent?.cornersAgainstAvg) >= SECOND_LEG_HOME_URGENCY.MIN_AWAY_CONCEDES,
+    wideProfile: !SECOND_LEG_HOME_URGENCY.REQUIRE_WIDE_PROFILE || perfil_laterais === "LATERAIS_FORTES"
+  };
+
+  const allow = Object.values(checks).every(Boolean);
+  const flags = [
+    "knockout_second_leg",
+    situation.homeLostFirstLeg ? "home_chasing_aggregate" : "home_needs_win_after_draw"
+  ];
+  if (allow) flags.push("second_leg_home_urgency_ok");
+  else flags.push("second_leg_home_urgency_failed");
+
+  return {
+    allow,
+    isKnockout:true,
+    reason: allow ? null : "second_leg_home_urgency_metrics_failed",
+    flags,
+    situation,
+    checks,
+    firstLegScore: `${situation.currentHomeGoals}-${situation.opponentGoals}`
+  };
+}
+
 // Champions only (liga_id 3)
 async function shouldBlockUCLKnockoutPreGame({ leagueId, e, oddsInfo, posHome, posAway, casa, fora, getH2HFn }){
   if (leagueId !== 3) return { block: false, reason: null };
@@ -2194,12 +2314,6 @@ async function shouldBlockUCLKnockoutPreGame({ leagueId, e, oddsInfo, posHome, p
   // se não dá pra afirmar que é volta: bloqueia
   if (!looksLikeSecondLeg(e)) return { block: true, reason: "ucl_unknown_leg_blocked" };
 
-  // precisa favorito
-  const favSide = getFavSideSimple(oddsInfo, posHome, posAway);
-  if (!favSide) return { block: true, reason: "ucl_no_favorite" };
-
-  const favoriteTeam = favSide === "HOME" ? casa : fora;
-
   let h2h = null;
   try { h2h = await getH2HFn(casa, fora); } catch { h2h = null; }
   if (!h2h) return { block: true, reason: "ucl_no_h2h" };
@@ -2207,11 +2321,14 @@ async function shouldBlockUCLKnockoutPreGame({ leagueId, e, oddsInfo, posHome, p
   const firstLeg = findFirstLegInH2H(h2h, leagueId);
   if (!firstLeg) return { block: true, reason: "ucl_no_first_leg_found" };
 
-  // se favorito não está atrás, anula
-  const favLost = favoriteLostFirstLeg(firstLeg, favoriteTeam);
-  if (!favLost) return { block: true, reason: "ucl_fav_not_behind" };
+  // Exceção correta: quem precisa do resultado é o MANDANTE da volta.
+  const situation = firstLegSituationForCurrentHome(firstLeg, casa, fora);
+  if (!situation?.homeNeedsResult) {
+    return { block: true, reason: "ucl_home_can_manage_aggregate" };
+  }
 
-  return { block: false, reason: null, h2hReuse: h2h };
+  // A liberação definitiva ainda depende das métricas de cantos no funil FULL.
+  return { block: false, reason: null, h2hReuse: h2h, secondLegSituation: situation };
 }
 
 /* =========================================================
@@ -4940,6 +5057,29 @@ if (isEuropeanClassic(casaN, foraN)) {
       const baseCheck = baseStatsPass({ leagueAvg: league.baseCorners, home: homeRecent, away: awayRecent, projCombined: proj_cantos });
       const pressureCheck = pressurePass({ home: homeRecent, away: awayRecent, oddsInfo });
 
+      // ✅ Mata-mata: só permite a volta quando o mandante precisa do resultado
+      // e TODAS as métricas premium de pressão/cantos estiverem confirmadas.
+      const secondLegUrgency = secondLegHomeUrgencyCheck({
+        eventData: e,
+        leagueName: league.name,
+        leagueId: league.id,
+        h2hBlock: h2h,
+        casa: casaN,
+        fora: foraN,
+        proj_cantos,
+        over95_prob_adj,
+        pressureHits: pressureCheck.hits,
+        perfil_laterais,
+        homeRecent,
+        awayRecent
+      });
+
+      if (secondLegUrgency.isKnockout && !secondLegUrgency.allow) {
+        console.log("BLOQUEADO MATA-MATA SEM URGÊNCIA PREMIUM:", casaN, "vs", foraN, secondLegUrgency.reason);
+        return null;
+      }
+      for (const f of (secondLegUrgency.flags || [])) flags.push(f);
+
       // 🔥 POWER PRE-GAME +9.5 baseado em 20 times
       const power95 = powerPreGame95Guard({
         posHome,
@@ -5035,7 +5175,8 @@ if (isEuropeanClassic(casaN, foraN)) {
         perfil_laterais,
         recentCombinedAvg,
         proj_cantos,
-        mode: "full"
+        mode: "full",
+        knockoutException: !!secondLegUrgency.allow
       });
 
       // 🔒 BLOQUEIO DURO: não deixa cair para LITE/FALLBACK
@@ -5116,6 +5257,13 @@ if (isEuropeanClassic(casaN, foraN)) {
         perfil_laterais,
 
         flags,
+        knockout_second_leg_exception: !!secondLegUrgency.allow,
+        home_urgency: secondLegUrgency.allow ? {
+          active: true,
+          first_leg_score_home_view: secondLegUrgency.firstLegScore,
+          situation: secondLegUrgency.situation,
+          checks: secondLegUrgency.checks
+        } : null,
         power95_class: classifyPower95(score_adj, aiScoreFromMatch({
           over95_prob_adj, over95_prob, proj_cantos, score_adj, perfil_laterais, real: { recentCombinedAvg, pressureHits: pressureCheck.hits }, odds: oddsInfo, flags, sources: { odds: !!oddsInfo, h2h: true, stats: true }
         }), proj_cantos, flags),
@@ -5180,6 +5328,8 @@ if (isEuropeanClassic(casaN, foraN)) {
           ? " • Mandante vem de derrota fora e tende a pressionar em casa."
           : "") + (allowEliteAwayReplacement && eliteAway?.ok
           ? " • Substituto elite: visitante forte em pressão e escanteios mesmo fora."
+          : "") + (secondLegUrgency.allow
+          ? " • MATA-MATA DE VOLTA: mandante precisa do resultado e tem pressão premium confirmada."
           : ""),
       };
 
@@ -5203,6 +5353,12 @@ if (isEuropeanClassic(casaN, foraN)) {
     if (power95Semi.block) return null;
     for (const f of power95Semi.flags) flags.push(f);
     score_adj = clamp(score_adj - (power95Semi.scorePenalty || 0) + (power95Semi.scoreBonus || 0), 40, 150);
+
+    // 🔒 MATA-MATA SEM BASE FULL NUNCA RECEBE A EXCEÇÃO DE URGÊNCIA.
+    if (isPlayoffOrKnockoutContext(e, league.name) || looksLikeKnockout(e)) {
+      console.log("BLOQUEADO SEMI MATA-MATA: base completa obrigatória", casaN, "vs", foraN);
+      return null;
+    }
 
     // 🔒 BLOQUEIO DURO NO MODO SEMI: playoff/mata-mata sem base completa não entra
     const playoffLowRhythmSemi = lowRhythmPlayoffBlock({
@@ -5387,7 +5543,8 @@ if (isEuropeanClassic(casaN, foraN)) {
       perfil_laterais: x?.perfil_laterais,
       recentCombinedAvg: x?.real?.recentCombinedAvg ?? null,
       proj_cantos: x?.proj_cantos,
-      mode: x?.mode || "lite"
+      mode: x?.mode || "lite",
+      knockoutException: x?.knockout_second_leg_exception === true
     });
     return !check.block;
   });
