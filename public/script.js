@@ -13883,11 +13883,44 @@ function resetDesktopMatchRailToEmpty(){
   function cpEscape(value){
     return String(value??"—").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   }
+  function cpNormalizeStatus(value){
+    return String(value??"").trim().toUpperCase();
+  }
   function cpGameStatusFromRail(rail){
-    const raw=String(rail?.textContent||"").toUpperCase();
-    if(/ENCERRADO|FINALIZADO|FULL TIME|FT\b/.test(raw)) return "finished";
-    if(/AO VIVO|INTERVALO|1º TEMPO|2º TEMPO|LIVE|\b\d{1,3}'\b/.test(raw)) return "live";
+    // IMPORTANTE: lê somente o selo principal de status.
+    // Não usa todo o texto do painel, porque palavras como "finalizados"
+    // em blocos auxiliares faziam um jogo futuro abrir como pós-jogo.
+    const badge = rail?.querySelector?.(
+      ".railTitle b,.mcRailStatus,.railProStatus,.mcProTop b,.mcPremiumStatus"
+    );
+    const raw=cpNormalizeStatus(badge?.textContent||"");
+    if(/^(FT|AET|PEN)$|ENCERRADO|FINALIZADO|FULL TIME|APÓS JOGO|POS-JOGO|PÓS-JOGO/.test(raw)) return "finished";
+    if(/AO VIVO|LIVE|INTERVALO|HALF.?TIME|1º TEMPO|2º TEMPO|PRIMEIRO TEMPO|SEGUNDO TEMPO|\b\d{1,3}'/.test(raw)) return "live";
     return "pregame";
+  }
+  function cpGameStatusFromData(game,rail){
+    const raw=cpNormalizeStatus(
+      game?.match_status ?? game?.status ?? game?.status_raw ??
+      game?.status_name ?? game?.state ?? game?.timer?.status ?? ""
+    );
+
+    // Estados explícitos da API têm prioridade absoluta.
+    if(/^(NS|TBD|SCHEDULED|NOT STARTED|PRE.?GAME|PRÉ.?JOGO|PRE.?JOGO|UPCOMING)$/.test(raw)) return "pregame";
+    if(/^(1H|2H|HT|ET|BT|P|LIVE|IN PLAY|INPLAY)$|AO VIVO|INTERVALO|1º TEMPO|2º TEMPO/.test(raw)) return "live";
+    if(/^(FT|AET|PEN|CANC|ABD|AWD|WO)$|ENCERRADO|FINALIZADO|FULL TIME/.test(raw)) return "finished";
+
+    // Se a partida possui data futura, ela sempre é pré-jogo, mesmo que o
+    // painel lateral ainda esteja mostrando dados antigos ou zerados.
+    const dateRaw=String(game?.match_date ?? game?.date ?? game?.event_date ?? "").trim();
+    const timeRaw=String(game?.match_time ?? game?.hora ?? game?.time ?? "00:00").slice(0,5);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)){
+      const kickoff=new Date(`${dateRaw}T${/^\d{2}:\d{2}$/.test(timeRaw)?timeRaw:"00:00"}:00-04:00`);
+      if(Number.isFinite(kickoff.getTime())){
+        const now=Date.now();
+        if(kickoff.getTime()>now-5*60*1000) return "pregame";
+      }
+    }
+    return cpGameStatusFromRail(rail);
   }
   function cpH2H(game){
     const h=game?.h2h_corners||game?.h2hCorners||{};
@@ -13981,7 +14014,7 @@ function resetDesktopMatchRailToEmpty(){
     }catch(e){ console.warn("Match Center mobile:",e); }
     setTimeout(()=>{
       const rail=$("#desktopMatchRail")||$(".dashboardRightRail");
-      const state=cpGameStatusFromRail(rail);
+      const state=cpGameStatusFromData(selected,rail);
       if(state==="pregame" && selected){
         renderMobilePregame(selected);
         return;
