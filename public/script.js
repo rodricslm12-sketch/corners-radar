@@ -13871,6 +13871,102 @@ function resetDesktopMatchRailToEmpty(){
     setTimeout(()=>recommended.scrollIntoView({behavior:"smooth",block:"start"}),40);
   }
 
+
+  function cpNum(value, fallback=null){
+    const n=Number(value);
+    return Number.isFinite(n)?n:fallback;
+  }
+  function cpPct(value){
+    const n=cpNum(value,null);
+    return n===null?"—":`${Math.round(n)}%`;
+  }
+  function cpEscape(value){
+    return String(value??"—").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+  }
+  function cpGameStatusFromRail(rail){
+    const raw=String(rail?.textContent||"").toUpperCase();
+    if(/ENCERRADO|FINALIZADO|FULL TIME|FT\b/.test(raw)) return "finished";
+    if(/AO VIVO|INTERVALO|1º TEMPO|2º TEMPO|LIVE|\b\d{1,3}'\b/.test(raw)) return "live";
+    return "pregame";
+  }
+  function cpH2H(game){
+    const h=game?.h2h_corners||game?.h2hCorners||{};
+    return {
+      games:cpNum(h.games,0),
+      avg:cpNum(h.average??h.avgCorners,null),
+      o95:cpNum(h.over95_rate??h.over95Rate,null),
+      o105:cpNum(h.over105_rate??h.over105Rate,null),
+      o115:cpNum(h.over115_rate??h.over115Rate,null),
+      totals:Array.isArray(h.recent_totals)?h.recent_totals:[]
+    };
+  }
+  function cpCompetitionContext(game){
+    const urgent=game?.home_urgency?.active===true||game?.knockout_second_leg_exception===true;
+    const stage=String(game?.stage_raw??game?.type_raw??game?.round_raw??"").toLowerCase();
+    const knockout=urgent||/knock|playoff|mata|final|semi|quarter|round of|oitavas|quartas|elimin/.test(stage);
+    if(knockout){
+      const first=game?.home_urgency?.first_leg_score_home_view;
+      return {
+        type:"knockout",
+        label:urgent?"VOLTA DO MATA-MATA":"MATA-MATA",
+        main:first?`IDA: ${first}`:"CONFRONTO ELIMINATÓRIO",
+        sub:urgent?`${gameName(game,true)} PRECISA DO RESULTADO`:"CENÁRIO ELIMINATÓRIO"
+      };
+    }
+    const ph=cpNum(game?.pos_home,null),pa=cpNum(game?.pos_away,null);
+    return {
+      type:"league",
+      label:"POSIÇÃO NA TABELA",
+      main:(ph!==null&&pa!==null)?`${ph}º  ×  ${pa}º`:(game?.posicao||"POSIÇÕES INDISPONÍVEIS"),
+      sub:(ph!==null&&pa!==null)?(Math.abs(ph-pa)>=7?"DIFERENÇA FORTE NA CLASSIFICAÇÃO":"CONFRONTO EQUILIBRADO NA TABELA"):"CAMPEONATO DE LIGA"
+    };
+  }
+  function cpPressureLabel(game){
+    const hits=cpNum(game?.real?.pressureHits,null),proj=cpNum(game?.proj_cantos,null),prob=cpNum(game?.over95_prob_adj??game?.over95_prob,null);
+    if((hits!==null&&hits>=4)||(proj!==null&&proj>=11.5)||(prob!==null&&prob>=75)) return "ALTA";
+    if((hits!==null&&hits>=3)||(proj!==null&&proj>=10.7)) return "MÉDIA";
+    return "CONTROLADA";
+  }
+  function renderMobilePregame(game){
+    const home=gameName(game,true),away=gameName(game,false),time=gameTime(game);
+    const league=String(game?.liga??game?.league??"Competição");
+    const ctx=cpCompetitionContext(game),h=cpH2H(game);
+    const prob=cpNum(game?.over95_prob_adj??game?.over95_prob??game?.ai_score,0);
+    const proj=cpNum(game?.proj_cantos,null);
+    const line=cpNum(game?.bet365_corner_line??game?.odds?.bet365_corners?.line,null);
+    const profile=String(game?.perfil_laterais||"");
+    const pressure=cpPressureLabel(game);
+    const h2hStrong=h.games>=2&&h.o95!==null&&h.o95>=60;
+    const verdict=game?.comentario||`${home} e ${away} apresentam cenário compatível com pressão e volume de escanteios. Projeção Corner Pro: ${proj!==null?proj.toFixed(1):"—"}.`;
+    const shortVerdict=String(verdict).split(".").filter(Boolean).slice(0,3).join(". ")+".";
+    const recent=h.totals.slice(0,5).map(x=>`<span>${cpEscape(x.total)} cantos</span>`).join("");
+    const title=document.getElementById("cpMobileMatchTitle"),sub=document.getElementById("cpMobileMatchSubtitle");
+    if(title) title.textContent="ANÁLISE PRÉ-JOGO";
+    if(sub) sub.textContent="Informações essenciais antes da partida";
+    matchContent.innerHTML=`<div class="cpPregameCompact">
+      <section class="cpPgHero">
+        <div class="cpPgMeta"><span>${cpEscape(league)}</span><b>PRÉ-JOGO</b></div>
+        <div class="cpPgTeams"><div><strong>${cpEscape(home)}</strong><small>CASA</small></div><time>${cpEscape(time)}</time><div><strong>${cpEscape(away)}</strong><small>FORA</small></div></div>
+      </section>
+      <section class="cpPgContext ${ctx.type}"><small>${cpEscape(ctx.label)}</small><strong>${cpEscape(ctx.main)}</strong><span>${cpEscape(ctx.sub)}</span></section>
+      <section class="cpPgQuick">
+        <article><small>H2H MÉDIA</small><strong>${h.avg!==null?h.avg.toFixed(1):"—"}</strong></article>
+        <article><small>OVER 9.5</small><strong>${cpPct(h.o95)}</strong></article>
+        <article><small>OVER 10.5</small><strong>${cpPct(h.o105)}</strong></article>
+        <article><small>PROJEÇÃO</small><strong>${proj!==null?proj.toFixed(1):"—"}</strong></article>
+      </section>
+      ${recent?`<div class="cpPgRecent"><small>ÚLTIMOS H2H</small><div>${recent}</div></div>`:""}
+      <div class="cpPgChips">
+        <span class="good">${pressure==="ALTA"?"PRESSÃO ALTA":`PRESSÃO ${pressure}`}</span>
+        <span class="${h2hStrong?"good":"warn"}">${h2hStrong?"H2H FORTE":"H2H LIMITADO"}</span>
+        <span class="${profile==="LATERAIS_FORTES"?"good":"warn"}">${profile==="LATERAIS_FORTES"?"LATERAIS FORTES":"PERFIL EQUILIBRADO"}</span>
+        <span class="${line!==null&&line>=10.5?"good":"warn"}">${line!==null?`LINHA ${line}`:"LINHA ESTIMADA"}</span>
+      </div>
+      <section class="cpPgVerdict"><div><small>VEREDITO CORNER PRO</small><p>${cpEscape(shortVerdict)}</p></div><strong>${Math.round(prob)}<small>%</small></strong></section>
+      <footer class="cpPgAuto">AO INICIAR, ESTA TELA MUDA AUTOMATICAMENTE PARA O MATCH CENTER AO VIVO</footer>
+    </div>`;
+  }
+
   async function openMatch(game,index){
     openLayer(matchLayer);
     matchContent.innerHTML='<div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>';
@@ -13885,13 +13981,23 @@ function resetDesktopMatchRailToEmpty(){
     }catch(e){ console.warn("Match Center mobile:",e); }
     setTimeout(()=>{
       const rail=$("#desktopMatchRail")||$(".dashboardRightRail");
+      const state=cpGameStatusFromRail(rail);
+      if(state==="pregame" && selected){
+        renderMobilePregame(selected);
+        return;
+      }
       if(rail){
+        const title=document.getElementById("cpMobileMatchTitle"),sub=document.getElementById("cpMobileMatchSubtitle");
+        if(title) title.textContent=state==="finished"?"RESUMO FINAL":"MATCH CENTER";
+        if(sub) sub.textContent=state==="finished"?"Como terminou a partida":"Dados em tempo real da partida";
         const clone=rail.cloneNode(true); clone.removeAttribute("id"); clone.classList.add("cpMobileRailClone");
         matchContent.innerHTML=""; matchContent.appendChild(clone);
+      }else if(selected){
+        renderMobilePregame(selected);
       }else{
         matchContent.innerHTML='<div class="cpMobileMatchLoading"><b>Não foi possível carregar os dados desta partida.</b></div>';
       }
-    },180);
+    },320);
   }
 
   function marketTypeFromTab(tab){

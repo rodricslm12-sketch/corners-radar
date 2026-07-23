@@ -364,6 +364,9 @@ function calcH2HCornersProfile(h2hBlock) {
   let games = 0;
   let totalCorners = 0;
   let over95 = 0;
+  let over105 = 0;
+  let over115 = 0;
+  const recentTotals = [];
 
   for (const m of list) {
     const c1 = Number(
@@ -387,17 +390,30 @@ function calcH2HCornersProfile(h2hBlock) {
     const total = c1 + c2;
     totalCorners += total;
     if (total >= 10) over95++;
+    if (total >= 11) over105++;
+    if (total >= 12) over115++;
+    recentTotals.push({
+      total,
+      home: Number.isFinite(c1) ? c1 : null,
+      away: Number.isFinite(c2) ? c2 : null,
+      date: m.match_date ?? m.date ?? null,
+      home_team: m.match_hometeam_name ?? m.home_team ?? null,
+      away_team: m.match_awayteam_name ?? m.away_team ?? null
+    });
     games++;
   }
 
   if (!games) {
-    return { games: 0, avgCorners: null, over95Rate: null };
+    return { games: 0, avgCorners: null, over95Rate: null, over105Rate: null, over115Rate: null, recentTotals: [] };
   }
 
   return {
     games,
     avgCorners: totalCorners / games,
-    over95Rate: (over95 / games) * 100
+    over95Rate: (over95 / games) * 100,
+    over105Rate: (over105 / games) * 100,
+    over115Rate: (over115 / games) * 100,
+    recentTotals: recentTotals.slice(0, 5)
   };
 }
 
@@ -5291,6 +5307,15 @@ if (isEuropeanClassic(casaN, foraN)) {
           lastN_used: lastN,
           homeRecent,
           awayRecent
+        },
+
+        h2h_corners: {
+          games: h2hProfile?.games ?? 0,
+          average: h2hProfile?.avgCorners ?? null,
+          over95_rate: h2hProfile?.over95Rate ?? null,
+          over105_rate: h2hProfile?.over105Rate ?? null,
+          over115_rate: h2hProfile?.over115Rate ?? null,
+          recent_totals: Array.isArray(h2hProfile?.recentTotals) ? h2hProfile.recentTotals : []
         },
 
         last5: {

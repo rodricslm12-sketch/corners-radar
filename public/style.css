@@ -7573,3 +7573,31 @@ button.railFullBtn {
 
   @keyframes cpHomeLoadingSpin{to{transform:rotate(360deg)}}
 }
+
+/* =========================================================
+   MATCH PREVIEW COMPACTO — SOMENTE MOBILE
+   Cabe em uma tela e muda para ao vivo/pós-jogo após o início.
+   ========================================================= */
+@media (max-width:700px){
+  .cpMobileMatchLayer{background:#05090c!important;overflow:hidden!important}
+  .cpMobileMatchLayer .cpMobileLayerHeader{height:58px!important;min-height:58px!important;padding:0 12px!important}
+  .cpMobileMatchLayer .cpMobileLayerHeader>div strong{font-size:13px!important;letter-spacing:.4px}
+  .cpMobileMatchLayer .cpMobileLayerHeader>div small{font-size:8px!important;color:#8e9a9e!important}
+  .cpMobileMatchContent{height:calc(100dvh - 58px)!important;overflow:hidden!important;padding:8px 10px 10px!important}
+  .cpPregameCompact{height:100%;display:grid;grid-template-rows:auto auto auto auto auto 1fr auto;gap:6px;overflow:hidden}
+  .cpPgHero,.cpPgContext,.cpPgQuick,.cpPgRecent,.cpPgVerdict{background:linear-gradient(180deg,#11191f,#0b1116);border:1px solid #1b2a31;border-radius:10px}
+  .cpPgHero{padding:8px 10px}
+  .cpPgMeta{display:flex;justify-content:space-between;align-items:center;font-size:8px;color:#99a5a8;text-transform:uppercase}
+  .cpPgMeta b{color:#63f127;font-size:8px}
+  .cpPgTeams{display:grid;grid-template-columns:1fr 52px 1fr;align-items:center;text-align:center;margin-top:5px;gap:6px}
+  .cpPgTeams div{min-width:0}.cpPgTeams strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cpPgTeams small{font-size:7px;color:#7f8b8f}.cpPgTeams time{font-size:16px;font-weight:950;color:#63f127}
+  .cpPgContext{padding:7px 10px;text-align:center;border-color:rgba(99,241,39,.25)}
+  .cpPgContext small{display:block;font-size:7px;color:#8d999d;font-weight:900}.cpPgContext strong{display:block;font-size:15px;color:#fff;margin:1px 0}.cpPgContext span{display:block;font-size:8px;color:#63f127;font-weight:900}
+  .cpPgContext.knockout{border-color:rgba(255,190,55,.38)}.cpPgContext.knockout span{color:#ffbf3c}
+  .cpPgQuick{display:grid;grid-template-columns:repeat(4,1fr);padding:6px 4px}
+  .cpPgQuick article{text-align:center;border-right:1px solid #1b2a31}.cpPgQuick article:last-child{border-right:0}.cpPgQuick small{display:block;font-size:6.5px;color:#899599;font-weight:900}.cpPgQuick strong{display:block;font-size:14px;color:#fff;margin-top:2px}
+  .cpPgRecent{padding:5px 8px;display:flex;align-items:center;gap:7px}.cpPgRecent>small{font-size:7px;color:#8d999d;font-weight:900;white-space:nowrap}.cpPgRecent>div{display:flex;gap:4px;overflow:hidden}.cpPgRecent span{padding:3px 6px;border-radius:99px;background:#101a20;color:#dce4e1;font-size:7px;white-space:nowrap}
+  .cpPgChips{display:grid;grid-template-columns:1fr 1fr;gap:4px}.cpPgChips span{height:24px;display:grid;place-items:center;border-radius:7px;font-size:7px;font-weight:950;letter-spacing:.2px}.cpPgChips .good{background:rgba(99,241,39,.1);border:1px solid rgba(99,241,39,.28);color:#63f127}.cpPgChips .warn{background:rgba(255,190,55,.08);border:1px solid rgba(255,190,55,.25);color:#ffbf3c}
+  .cpPgVerdict{display:grid;grid-template-columns:1fr 66px;gap:8px;padding:8px 9px;min-height:0}.cpPgVerdict>div{min-width:0}.cpPgVerdict small{font-size:7px;color:#63f127;font-weight:950}.cpPgVerdict p{margin:3px 0 0;color:#d5ddda;font-size:9px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.cpPgVerdict>strong{display:grid;place-items:center;border-left:1px solid #1c2a31;color:#63f127;font-size:27px}.cpPgVerdict>strong small{font-size:10px;margin-left:-17px;margin-top:20px}
+  .cpPgAuto{text-align:center;color:#718086;font-size:6.5px;font-weight:800;padding:1px 4px}
+}
