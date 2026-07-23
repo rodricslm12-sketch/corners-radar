@@ -13873,6 +13873,7 @@ function resetDesktopMatchRailToEmpty(){
 
 
   function cpNum(value, fallback=null){
+    if(value===null || value===undefined || value==="" || value==="—") return fallback;
     const n=Number(value);
     return Number.isFinite(n)?n:fallback;
   }
@@ -13934,24 +13935,42 @@ function resetDesktopMatchRailToEmpty(){
     };
   }
   function cpCompetitionContext(game){
+    const leagueText=String(game?.liga??game?.league??game?.league_name??"");
+    const roundText=String(game?.round_raw??game?.match_round??game?.round??"");
+    const stageText=String(game?.stage_raw??game?.type_raw??game?.match_stage??game?.match_type??"");
+    const all=`${leagueText} ${roundText} ${stageText}`.toLowerCase();
     const urgent=game?.home_urgency?.active===true||game?.knockout_second_leg_exception===true;
-    const stage=String(game?.stage_raw??game?.type_raw??game?.round_raw??"").toLowerCase();
-    const knockout=urgent||/knock|playoff|mata|final|semi|quarter|round of|oitavas|quartas|elimin/.test(stage);
+    const knockout=urgent||/knock|playoff|mata|final|semi|quarter|round of|oitavas|quartas|elimin|qualifying|qualification|preliminary|pré-elimin/.test(all);
+
     if(knockout){
-      const first=game?.home_urgency?.first_leg_score_home_view;
+      const first=game?.home_urgency?.first_leg_score_home_view || game?.first_leg_score_home_view || game?.first_leg_score || null;
+      const legRaw=String(game?.leg??game?.match_leg??game?.home_urgency?.leg??roundText).toLowerCase();
+      const isSecond=urgent || /2nd|second|segunda|2ª|2a|return|volta/.test(legRaw);
+      const isFirst=/1st|first|primeira|1ª|1a|ida/.test(legRaw);
+      const legLabel=isSecond?"JOGO DE VOLTA":isFirst?"JOGO DE IDA":"CONFRONTO ELIMINATÓRIO";
+      const urgencyText=urgent?`${gameName(game,true)} PRECISA DO RESULTADO`:isSecond?"DECISÃO DA VAGA NESTA PARTIDA":"CLASSIFICAÇÃO EM DISPUTA";
       return {
         type:"knockout",
-        label:urgent?"VOLTA DO MATA-MATA":"MATA-MATA",
-        main:first?`IDA: ${first}`:"CONFRONTO ELIMINATÓRIO",
-        sub:urgent?`${gameName(game,true)} PRECISA DO RESULTADO`:"CENÁRIO ELIMINATÓRIO"
+        label:"MATA-MATA",
+        main:first?`${legLabel} • IDA: ${first}`:legLabel,
+        sub:urgencyText
       };
     }
+
     const ph=cpNum(game?.pos_home,null),pa=cpNum(game?.pos_away,null);
+    if(ph!==null&&pa!==null){
+      return {
+        type:"league",
+        label:"POSIÇÃO NA TABELA",
+        main:`${ph}º  ×  ${pa}º`,
+        sub:Math.abs(ph-pa)>=7?"DIFERENÇA FORTE NA CLASSIFICAÇÃO":"CONFRONTO EQUILIBRADO NA TABELA"
+      };
+    }
     return {
       type:"league",
-      label:"POSIÇÃO NA TABELA",
-      main:(ph!==null&&pa!==null)?`${ph}º  ×  ${pa}º`:(game?.posicao||"POSIÇÕES INDISPONÍVEIS"),
-      sub:(ph!==null&&pa!==null)?(Math.abs(ph-pa)>=7?"DIFERENÇA FORTE NA CLASSIFICAÇÃO":"CONFRONTO EQUILIBRADO NA TABELA"):"CAMPEONATO DE LIGA"
+      label:"CONTEXTO DA COMPETIÇÃO",
+      main:"CLASSIFICAÇÃO NÃO DISPONÍVEL",
+      sub:"A API NÃO INFORMOU A TABELA DESTA FASE"
     };
   }
   function cpPressureLabel(game){
@@ -13962,41 +13981,58 @@ function resetDesktopMatchRailToEmpty(){
   }
   function renderMobilePregame(game){
     const home=gameName(game,true),away=gameName(game,false),time=gameTime(game);
-    const league=String(game?.liga??game?.league??"Competição");
+    const league=String(game?.liga??game?.league??game?.league_name??"Competição");
+    const round=String(game?.round_raw??game?.match_round??game?.round??"");
     const ctx=cpCompetitionContext(game),h=cpH2H(game);
     const prob=cpNum(game?.over95_prob_adj??game?.over95_prob??game?.ai_score,0);
     const proj=cpNum(game?.proj_cantos,null);
     const line=cpNum(game?.bet365_corner_line??game?.odds?.bet365_corners?.line,null);
     const profile=String(game?.perfil_laterais||"");
     const pressure=cpPressureLabel(game);
+    const urgent=game?.home_urgency?.active===true||game?.knockout_second_leg_exception===true;
+    const isSecondLeg=/volta|2nd|second|segunda|2ª|2a/i.test(`${ctx.main} ${round}`)||urgent;
+    const isFirstLeg=/ida|1st|first|primeira|1ª|1a/i.test(`${ctx.main} ${round}`)&&!isSecondLeg;
+    const legLabel=isSecondLeg?"MATA-MATA • JOGO DE VOLTA":isFirstLeg?"MATA-MATA • JOGO DE IDA":ctx.type==="knockout"?"CONFRONTO ELIMINATÓRIO":"CAMPEONATO";
+    const firstLeg=game?.home_urgency?.first_leg_score_home_view||game?.first_leg_score_home_view||game?.first_leg_score||null;
+    const needText=urgent?`${home} precisa do resultado para avançar`:isSecondLeg?"A vaga será decidida nesta partida":isFirstLeg?"A vantagem será definida para o jogo de volta":ctx.sub;
+    const venue=String(game?.match_stadium??game?.stadium??game?.venue??game?.local??"Local não informado");
     const h2hStrong=h.games>=2&&h.o95!==null&&h.o95>=60;
-    const verdict=game?.comentario||`${home} e ${away} apresentam cenário compatível com pressão e volume de escanteios. Projeção Corner Pro: ${proj!==null?proj.toFixed(1):"—"}.`;
-    const shortVerdict=String(verdict).split(".").filter(Boolean).slice(0,3).join(". ")+".";
-    const recent=h.totals.slice(0,5).map(x=>`<span>${cpEscape(x.total)} cantos</span>`).join("");
+    const verdict=game?.comentario||game?.ai_explanation||game?.reason||`${home} e ${away} apresentam projeção de ${proj!==null?proj.toFixed(1):"—"} escanteios. O cenário da partida e o comportamento recente indicam ${pressure==="ALTA"?"pressão ofensiva elevada":"um confronto equilibrado"}.`;
+    const shortVerdict=String(verdict).split(".").map(x=>x.trim()).filter(Boolean).slice(0,3).join(". ")+".";
     const title=document.getElementById("cpMobileMatchTitle"),sub=document.getElementById("cpMobileMatchSubtitle");
     if(title) title.textContent="ANÁLISE PRÉ-JOGO";
     if(sub) sub.textContent="Informações essenciais antes da partida";
-    matchContent.innerHTML=`<div class="cpPregameCompact">
-      <section class="cpPgHero">
-        <div class="cpPgMeta"><span>${cpEscape(league)}</span><b>PRÉ-JOGO</b></div>
-        <div class="cpPgTeams"><div><strong>${cpEscape(home)}</strong><small>CASA</small></div><time>${cpEscape(time)}</time><div><strong>${cpEscape(away)}</strong><small>FORA</small></div></div>
+
+    const tableBlock=ctx.type==="league"&&cpNum(game?.pos_home,null)!==null&&cpNum(game?.pos_away,null)!==null
+      ? `<section class="cpPgTable"><small>POSIÇÃO NA TABELA</small><strong>${cpNum(game.pos_home)}º <i>×</i> ${cpNum(game.pos_away)}º</strong><span>${cpEscape(ctx.sub)}</span></section>`
+      : "";
+
+    const h2hSummary=h.games>0
+      ? `<div class="cpPgH2HStats"><span><small>JOGOS</small><b>${h.games}</b></span><span><small>MÉDIA</small><b>${h.avg!==null?h.avg.toFixed(1):"—"}</b></span><span><small>OVER 9.5</small><b>${cpPct(h.o95)}</b></span></div>`
+      : `<div class="cpPgH2HEmpty">SEM CONFRONTOS RECENTES COM DADOS DE ESCANTEIOS</div>`;
+
+    matchContent.innerHTML=`<div class="cpPregameImage2">
+      <section class="cpPg2Hero">
+        <div class="cpPg2Competition"><span>${cpEscape(league)}${round?` • ${cpEscape(round)}`:""}</span><b>PRÉ-JOGO</b></div>
+        <div class="cpPg2Teams">
+          <div class="cpPg2Team"><i>${cpEscape(home.charAt(0).toUpperCase())}</i><strong>${cpEscape(home)}</strong><small>CASA</small></div>
+          <div class="cpPg2Kickoff"><small>HOJE • ${cpEscape(time)}</small><time>${cpEscape(time)}</time><span>${isSecondLeg?"VOLTA":isFirstLeg?"IDA":"PRÉ-JOGO"}</span></div>
+          <div class="cpPg2Team"><i>${cpEscape(away.charAt(0).toUpperCase())}</i><strong>${cpEscape(away)}</strong><small>FORA</small></div>
+        </div>
       </section>
-      <section class="cpPgContext ${ctx.type}"><small>${cpEscape(ctx.label)}</small><strong>${cpEscape(ctx.main)}</strong><span>${cpEscape(ctx.sub)}</span></section>
-      <section class="cpPgQuick">
-        <article><small>H2H MÉDIA</small><strong>${h.avg!==null?h.avg.toFixed(1):"—"}</strong></article>
-        <article><small>OVER 9.5</small><strong>${cpPct(h.o95)}</strong></article>
-        <article><small>OVER 10.5</small><strong>${cpPct(h.o105)}</strong></article>
-        <article><small>PROJEÇÃO</small><strong>${proj!==null?proj.toFixed(1):"—"}</strong></article>
-      </section>
-      ${recent?`<div class="cpPgRecent"><small>ÚLTIMOS H2H</small><div>${recent}</div></div>`:""}
-      <div class="cpPgChips">
-        <span class="good">${pressure==="ALTA"?"PRESSÃO ALTA":`PRESSÃO ${pressure}`}</span>
-        <span class="${h2hStrong?"good":"warn"}">${h2hStrong?"H2H FORTE":"H2H LIMITADO"}</span>
-        <span class="${profile==="LATERAIS_FORTES"?"good":"warn"}">${profile==="LATERAIS_FORTES"?"LATERAIS FORTES":"PERFIL EQUILIBRADO"}</span>
-        <span class="${line!==null&&line>=10.5?"good":"warn"}">${line!==null?`LINHA ${line}`:"LINHA ESTIMADA"}</span>
-      </div>
-      <section class="cpPgVerdict"><div><small>VEREDITO CORNER PRO</small><p>${cpEscape(shortVerdict)}</p></div><strong>${Math.round(prob)}<small>%</small></strong></section>
-      <footer class="cpPgAuto">AO INICIAR, ESTA TELA MUDA AUTOMATICAMENTE PARA O MATCH CENTER AO VIVO</footer>
+
+      ${ctx.type==="knockout"?`<section class="cpPg2Knockout"><small>🏆 ${cpEscape(legLabel)}</small><strong>CONFRONTO ELIMINATÓRIO</strong><div><span>${firstLeg?`PLACAR DA IDA: ${cpEscape(firstLeg)}`:"AGREGADO"}</span><b>${firstLeg?cpEscape(firstLeg):"—  ×  —"}</b></div></section>`:tableBlock}
+
+      <section class="cpPg2Need"><small>NESTE CONFRONTO, QUEM PRECISA VENCER?</small><strong>${cpEscape(needText)}</strong><span>${ctx.type==="knockout"?(isFirstLeg?"Confronto de ida: a vantagem será construída agora.":"O contexto do agregado define a necessidade ofensiva."):"A classificação indica a pressão competitiva de cada equipe."}</span></section>
+
+      <section class="cpPg2H2H"><h3>🤝 HISTÓRICO DE CONFRONTOS (H2H)</h3>${h2hSummary}<div class="cpPg2Overs"><article><small>OVER 9.5</small><strong>${cpPct(h.o95)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article><small>OVER 10.5</small><strong>${cpPct(h.o105)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article><small>OVER 11.5</small><strong>${cpPct(h.o115)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article class="projection"><small>PROJEÇÃO</small><strong>${proj!==null?proj.toFixed(1):"—"}</strong><span>ESCANTEIOS</span></article></div></section>
+
+      <section class="cpPg2Signals"><article class="good"><b>🛡</b><strong>PRESSÃO<br>${cpEscape(pressure)}</strong><span>${pressure==="ALTA"?"Ataque intenso esperado":"Equilíbrio entre as equipes"}</span></article><article class="warn"><b>⚖</b><strong>${profile==="LATERAIS_FORTES"?"LATERAIS FORTES":"PERFIL EQUILIBRADO"}</strong><span>${profile==="LATERAIS_FORTES"?"Ataques pelos dois lados":"Força semelhante dos lados"}</span></article><article class="orange"><b>ϟ</b><strong>${h2hStrong?"RITMO ALTO":"RITMO MÉDIO"}</strong><span>${h2hStrong?"Histórico favorável":"Tendência moderada"}</span></article><article class="blue"><b>◌</b><strong>${line!==null?`LINHA ${line}`:"LINHA ESTIMADA"}</strong><span>${line!==null?"Mercado confirmado":`Entre 9.5 e 10.5`}</span></article></section>
+
+      <section class="cpPg2Verdict"><div><small>🧠 VEREDITO CORNER PRO</small><p>${cpEscape(shortVerdict)}</p></div><div class="cpPg2Confidence"><strong>${Math.round(prob)}<i>%</i></strong><b>CONFIANÇA</b><span>${prob>=75?"CONFIANTE":prob>=60?"MODERADA":"SEMI CONFIANTE"}</span></div></section>
+
+      <section class="cpPg2Venue"><b>⌖</b><div><small>LOCAL DA PARTIDA</small><strong>${cpEscape(venue)}</strong></div></section>
+      <footer class="cpPg2Auto">ⓘ Ao iniciar a partida, esta tela muda automaticamente para o Match Center ao vivo.</footer>
     </div>`;
   }
 

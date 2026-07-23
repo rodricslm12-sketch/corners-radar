@@ -137,6 +137,9 @@ function getOnlineUsersCount(){
 }
 
 
+
+// Mobile Match Preview schema version (layout imagem 2)
+const CORNER_PRO_PREVIEW_SCHEMA_VERSION = "2026-07-23-image2";
 // --------- Config ----------
 const APIKEY = process.env.APIFOOTBALL_KEY;
 
