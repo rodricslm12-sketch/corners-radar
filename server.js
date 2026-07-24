@@ -3418,6 +3418,197 @@ app.get("/ia_match", async (req, res) => {
   }
 });
 
+
+
+/* =========================================================
+   MATCH CENTER — 3 ETAPAS: PRÉ-JOGO / AO VIVO / ENCERRADO
+   Dados reais da API. Não interfere no motor de seleção.
+   ========================================================= */
+function mcNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace("%", "").replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function mcFirst(obj, keys, fallback = null) {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return fallback;
+}
+
+function mcStatusInfo(event) {
+  const raw = cleanText(mcFirst(event, [
+    "match_status", "status", "event_status", "fixture_status", "status_long", "status_short"
+  ], ""));
+  const s = raw.toLowerCase();
+
+  const finished = [
+    "finished", "ft", "after penalties", "aet", "penalties", "encerrado", "finalizado"
+  ].some(x => s === x || s.includes(x));
+
+  const notStarted = !s || [
+    "not started", "ns", "scheduled", "time to be defined", "tbd", "postponed", "cancelled", "canceled"
+  ].some(x => s === x || s.includes(x));
+
+  const liveByText = !finished && !notStarted && [
+    "live", "1st half", "2nd half", "half time", "halftime", "extra time", "break", "in progress"
+  ].some(x => s.includes(x));
+
+  const minuteRaw = mcFirst(event, [
+    "match_live", "match_minute", "minute", "elapsed", "time_live"
+  ], "");
+  const minuteMatch = String(minuteRaw).match(/\d+/);
+  const minute = minuteMatch ? Number(minuteMatch[0]) : null;
+  const live = !finished && (liveByText || (Number.isFinite(minute) && minute > 0));
+
+  return {
+    raw: raw || (finished ? "Finished" : live ? "Live" : "Not Started"),
+    finished,
+    live,
+    minute: Number.isFinite(minute) ? minute : (finished ? 90 : null)
+  };
+}
+
+function mcStatPair(statsMap, aliases) {
+  if (!statsMap) return { home: null, away: null };
+  for (const alias of aliases) {
+    const row = statsMap.get(String(alias).toLowerCase());
+    if (row) return { home: mcNumber(row.home), away: mcNumber(row.away) };
+  }
+  return { home: null, away: null };
+}
+
+function mcNormalizeEvents(event) {
+  const output = [];
+  const homeName = teamFromEvent(event, "home");
+  const awayName = teamFromEvent(event, "away");
+
+  const add = (items, type) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      const team = cleanText(mcFirst(item, ["team", "team_name", "score_info", "card_team", "substitution_team"], ""));
+      const minute = cleanText(mcFirst(item, ["time", "minute", "score_time", "card_time", "substitution_time"], ""));
+      let side = cleanText(mcFirst(item, ["side", "team_side"], "")).toLowerCase();
+      if (!side && team) {
+        const t = normTeamKey(team);
+        if (t && t === normTeamKey(homeName)) side = "home";
+        else if (t && t === normTeamKey(awayName)) side = "away";
+      }
+      output.push({
+        minute,
+        type,
+        label: cleanText(mcFirst(item, ["type", "info", "score_info", "card", "substitution"], type)),
+        team,
+        side
+      });
+    }
+  };
+
+  add(event?.goalscorer, "goal");
+  add(event?.cards, "card");
+  add(event?.substitutions?.home, "substitution");
+  add(event?.substitutions?.away, "substitution");
+  add(event?.events, "event");
+
+  output.sort((a, b) => {
+    const ma = Number(String(a.minute).match(/\d+/)?.[0] || 0);
+    const mb = Number(String(b.minute).match(/\d+/)?.[0] || 0);
+    return ma - mb;
+  });
+  return output;
+}
+
+app.get("/match_center", async (req, res) => {
+  const matchId = cleanText(req.query.match_id || req.query.event_id || "");
+  if (!matchId) return res.status(400).json({ error: "match_id obrigatório" });
+
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+
+  try {
+    let data = await apiGetAny({ action: "get_events", match_id: matchId });
+    let event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
+    if (!event && Array.isArray(data) && data.length === 1) event = data[0];
+
+    // Algumas versões da API usam event_id em vez de match_id.
+    if (!event) {
+      data = await apiGetAny({ action: "get_events", event_id: matchId });
+      event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
+      if (!event && Array.isArray(data) && data.length === 1) event = data[0];
+    }
+
+    if (!event) return res.status(404).json({ error: "Partida não encontrada na API", match_id: matchId });
+
+    const status = mcStatusInfo(event);
+    const statsMap = await getStats(matchId).catch(() => null);
+
+    const corners = mcStatPair(statsMap, ["corner kicks", "corners"]);
+    const shots = mcStatPair(statsMap, ["shots total", "total shots", "shots"]);
+    const shotsOnTarget = mcStatPair(statsMap, ["shots on goal", "shots on target"]);
+    const possession = mcStatPair(statsMap, ["ball possession", "possession"]);
+    const dangerousAttacks = mcStatPair(statsMap, ["dangerous attacks"]);
+    const attacks = mcStatPair(statsMap, ["attacks"]);
+    const passes = mcStatPair(statsMap, ["passes accurate", "accurate passes", "passes"]);
+    const fouls = mcStatPair(statsMap, ["fouls"]);
+    const yellow = mcStatPair(statsMap, ["yellow cards"]);
+    const red = mcStatPair(statsMap, ["red cards"]);
+
+    const homeScore = mcNumber(mcFirst(event, ["match_hometeam_score", "home_score", "score_home"], 0)) ?? 0;
+    const awayScore = mcNumber(mcFirst(event, ["match_awayteam_score", "away_score", "score_away"], 0)) ?? 0;
+
+    return res.json({
+      ok: true,
+      match_id: String(matchId),
+      home: teamFromEvent(event, "home"),
+      away: teamFromEvent(event, "away"),
+      league: cleanText(mcFirst(event, ["league_name", "league", "competition_name"], "Liga")),
+      date: cleanText(mcFirst(event, ["match_date", "date"], "")),
+      time: cleanText(mcFirst(event, ["match_time", "time"], "")),
+      status: status.raw,
+      status_raw: status.raw,
+      live: status.live,
+      finished: status.finished,
+      minute: status.minute,
+      goals: { home: homeScore, away: awayScore },
+      score: { home: homeScore, away: awayScore },
+      corners,
+      shots,
+      shots_on_target: shotsOnTarget,
+      possession,
+      dangerous_attacks: dangerousAttacks,
+      attacks,
+      passes,
+      fouls,
+      cards: {
+        home: yellow.home,
+        away: yellow.away,
+        yellow_home: yellow.home,
+        yellow_away: yellow.away,
+        red_home: red.home,
+        red_away: red.away
+      },
+      pressure: {
+        home: dangerousAttacks.home ?? attacks.home,
+        away: dangerousAttacks.away ?? attacks.away
+      },
+      events: mcNormalizeEvents(event),
+      sources: {
+        event: true,
+        statistics: Boolean(statsMap)
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Erro ao carregar Match Center",
+      details: String(err?.message || err),
+      match_id: matchId
+    });
+  }
+});
+
 app.get("/", (req, res) => res.send("Servidor rodando com API ⚽"));
 
 // ---------------- Start ----------------
