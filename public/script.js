@@ -4507,8 +4507,8 @@
 
     function mcMatchStorageKey(data, fallback = {}){
       const id = mcSafe(data?.match_id || fallback?.matchId || fallback?.match_id, "");
-      if (id && id !== "—") return `cornersRadar_pressure_${id}`;
-      return `cornersRadar_pressure_${mcSafe(data?.home || fallback?.home,"casa")}_${mcSafe(data?.away || fallback?.away,"fora")}`;
+      if (id && id !== "—") return `cornersRadar_pressure_real_v2_${id}`;
+      return `cornersRadar_pressure_real_v2_${mcSafe(data?.home || fallback?.home,"casa")}_${mcSafe(data?.away || fallback?.away,"fora")}`;
     }
 
     function mcReadSavedTimeline(key){
@@ -4544,52 +4544,14 @@
     }
 
     function mcBuildFallbackTimeline(data){
-      const ph = mcNum(data?.pressure?.home, null);
-      const pa = mcNum(data?.pressure?.away, null);
-      if (ph === null && pa === null) return [];
-
-      const finished = !!data?.finished;
-      const currentMinute = finished ? 90 : Math.max(1, Math.min(90, mcNum(data?.minute, 78) || 78));
-      const points = finished
-        ? [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
-        : [Math.max(1,currentMinute-35),Math.max(1,currentMinute-30),Math.max(1,currentMinute-25),Math.max(1,currentMinute-20),Math.max(1,currentMinute-15),Math.max(1,currentMinute-10),Math.max(1,currentMinute-5),currentMinute];
-
-      // IMPORTANTE: o gráfico de pressão não pode parecer acumulado/crescente.
-      // Esses fatores criam variação natural por bloco do jogo, mantendo os dados de cima como referência.
-      const homeShape = [0.42,0.66,0.54,0.78,0.49,0.70,0.58,0.86,0.61,0.73,0.52,0.82,0.68,0.56,0.77,0.63,0.88,0.71];
-      const awayShape = [0.48,0.36,0.59,0.41,0.64,0.46,0.39,0.55,0.43,0.62,0.51,0.37,0.58,0.45,0.34,0.53,0.40,0.57];
-      const gh = mcNum(data?.goals?.home, 0) || 0;
-      const ga = mcNum(data?.goals?.away, 0) || 0;
-      const homeBonus = gh > ga ? 1.07 : gh < ga ? 0.96 : 1;
-      const awayBonus = ga > gh ? 1.07 : ga < gh ? 0.96 : 1;
-
-      return points.map((m, idx) => {
-        const hFactor = homeShape[idx % homeShape.length];
-        const aFactor = awayShape[idx % awayShape.length];
-        const waveH = Math.sin((idx + 1) * 1.73) * 2.6;
-        const waveA = Math.cos((idx + 2) * 1.51) * 2.6;
-
-        return {
-          minute: `${m}'`,
-          home: ph === null ? null : Math.max(2, Math.round((ph / 2.8) * hFactor * homeBonus + waveH)),
-          away: pa === null ? null : Math.max(2, Math.round((pa / 2.8) * aFactor * awayBonus + waveA))
-        };
-      });
+      // Dados sintéticos desativados: sem timeline real, não desenha gráfico.
+      return [];
     }
 
     function mcNormalizeTimeline(data, fallback){
-      const key = mcMatchStorageKey(data, fallback);
-      let timeline = Array.isArray(data?.pressure_timeline) ? data.pressure_timeline : [];
-      if (!timeline.length) timeline = mcBuildFallbackTimeline(data);
-
-      if (data?.live && timeline.length) mcSaveTimeline(key, timeline);
-
-      if (data?.finished){
-        const saved = mcReadSavedTimeline(key);
-        if (saved.length >= 6) return saved;
-        if (timeline.length) mcSaveTimeline(key, timeline);
-      }
-
+      const timeline = Array.isArray(data?.pressure_timeline)
+        ? data.pressure_timeline.filter(item => item && (item.home !== undefined || item.away !== undefined))
+        : [];
       return timeline;
     }
 
@@ -4798,7 +4760,7 @@
     <div class="mcCornersDonutWrap" style="--homePct:${((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0)) > 0 ? Math.round(((Number(data?.corners?.home ?? 0) || 0) / ((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0))) * 100) : 50};--awayPct:${((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0)) > 0 ? 100 - Math.round(((Number(data?.corners?.home ?? 0) || 0) / ((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0))) * 100) : 50};">
       <div class="mcCornerSide mcCornerHome">
         <span class="mcShieldTiny">⬟</span>
-        <b class="green">${Number(data?.corners?.home ?? 0) || 0}</b>
+        <b class="green">${data?.corners?.home === null || data?.corners?.home === undefined ? "—" : Number(data.corners.home)}</b>
         <small>${((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0)) > 0 ? Math.round(((Number(data?.corners?.home ?? 0) || 0) / ((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0))) * 100) : 50}%</small>
         <em>${safe(data?.home || data?.casa || data?.home_name || data?.team_home || data?.teams?.home?.name || "Casa")}</em>
       </div>
@@ -4811,7 +4773,7 @@
       </div>
       <div class="mcCornerSide mcCornerAway">
         <span class="mcShieldTiny away">🏆</span>
-        <b class="blue">${Number(data?.corners?.away ?? 0) || 0}</b>
+        <b class="blue">${data?.corners?.away === null || data?.corners?.away === undefined ? "—" : Number(data.corners.away)}</b>
         <small>${((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0)) > 0 ? 100 - Math.round(((Number(data?.corners?.home ?? 0) || 0) / ((Number(data?.corners?.home ?? 0) || 0) + (Number(data?.corners?.away ?? 0) || 0))) * 100) : 50}%</small>
         <em>${safe(data?.away || data?.fora || data?.away_name || data?.team_away || data?.teams?.away?.name || "Fora")}</em>
       </div>
@@ -5399,51 +5361,20 @@
     }
 
     function buildPressureSeries(data, fallbackPct = 60){
-      // 1) Prioridade total: timeline real enviada pela API.
-      const timelineCandidates = [
-        data?.pressure_timeline,
-        data?.pressureTimeline,
-        data?.pressure_history,
-        data?.pressureHistory,
-        data?.momentum,
-        data?.momentum_timeline,
-        data?.momentumTimeline,
-        data?.last15_pressure,
-        data?.last15Pressure,
-        data?.attacks_timeline,
-        data?.dangerous_attacks_timeline
+      // Exibe exclusivamente uma timeline real enviada pelo backend/API.
+      const candidates = [
+        data?.pressure_timeline, data?.pressureTimeline,
+        data?.pressure_history, data?.pressureHistory,
+        data?.momentum, data?.momentum_timeline, data?.momentumTimeline,
+        data?.attacks_timeline, data?.dangerous_attacks_timeline
       ];
-
-      for (const candidate of timelineCandidates){
-        if (Array.isArray(candidate) && candidate.length >= 2){
-          const real = candidate
-            .slice(-15)
-            .map(normalizeTimelineItem)
-            .filter(p => num(p.home, null) !== null || num(p.away, null) !== null);
-          if (real.length >= 2) return real;
-        }
+      for (const candidate of candidates){
+        if (!Array.isArray(candidate) || candidate.length < 2) continue;
+        const real = candidate.slice(-40).map(normalizeTimelineItem).filter(p =>
+          num(p.home, null) !== null || num(p.away, null) !== null
+        );
+        if (real.length >= 2) return real;
       }
-
-      // 2) Se não houver timeline, monta o recorte apenas com EVENTOS REAIS do jogo.
-      const eventSeries = seriesFromEvents(data);
-      if (eventSeries.length >= 2) return eventSeries;
-
-      // 3) Último recurso: snapshot real acumulado da API.
-      // Não é projeção: usa apenas pressão/ataques perigosos atuais retornados pelo backend.
-      const ph = num(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure, null);
-      const pa = num(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure, null);
-      const hasRealSnapshot = ph !== null || pa !== null;
-      if (hasRealSnapshot && (data?.live || data?.finished)){
-        const minute = getMinute(data) || (data?.finished ? 90 : 15);
-        const start = Math.max(1, minute - 14);
-        return Array.from({ length: 15 }, (_, i) => ({
-          minute: i === 0 ? "15'" : (i === 7 ? "10'" : (i === 14 ? "0'" : "")),
-          home: Math.max(0, Math.round((ph ?? 0) / 15)),
-          away: Math.max(0, Math.round((pa ?? 0) / 15)),
-          source: "snapshot"
-        }));
-      }
-
       return [];
     }
 
@@ -8864,23 +8795,9 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function buildPressureSeries(data, homeName, awayName){
+    // Nada de estimativa por eventos, snapshot ou fórmulas: somente série real da API.
     const real = seriesFromTimeline(data);
-    if (real.length >= 2) return real;
-    const fromEvents = seriesFromEvents(data, homeName, awayName);
-    if (fromEvents.length >= 2) return fromEvents;
-    const ph = num(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.home_pressure, null);
-    const pa = num(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.away_pressure, null);
-    if (ph !== null || pa !== null){
-      const hh = Math.max(1, Math.round((ph || 0) / 12));
-      const aa = Math.max(1, Math.round((pa || 0) / 12));
-      return Array.from({length:15}, (_,i) => ({
-        minute: i === 0 ? "15'" : (i === 7 ? "10'" : (i === 14 ? "0'" : "")),
-        home: Math.max(1, Math.round(hh * (.72 + ((i*7)%9)/18))),
-        away: Math.max(1, Math.round(aa * (.72 + ((i*5)%8)/18))),
-        source:"API"
-      }));
-    }
-    return [];
+    return real.length >= 2 ? real : [];
   }
 
   function svgPressureChart(series){
@@ -11139,8 +11056,8 @@ function resetDesktopMatchRailToEmpty(){
 
       const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
       const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");
-      const ch = clean(data?.corners?.home ?? data?.home_corners ?? game?.corners_home ?? 0, "0");
-      const ca = clean(data?.corners?.away ?? data?.away_corners ?? game?.corners_away ?? 0, "0");
+      const ch = clean(data?.corners?.home ?? data?.home_corners ?? (isReal ? null : game?.corners_home), "—");
+      const ca = clean(data?.corners?.away ?? data?.away_corners ?? (isReal ? null : game?.corners_away), "—");
       const sh = clean(data?.shots?.home ?? data?.shots?.total_home ?? data?.home_shots ?? "—", "—");
       const sa = clean(data?.shots?.away ?? data?.shots?.total_away ?? data?.away_shots ?? "—", "—");
       const sotH = clean(data?.shots_on_target?.home ?? data?.on_target?.home ?? data?.shots?.on_home ?? "—", "—");
@@ -11153,8 +11070,8 @@ function resetDesktopMatchRailToEmpty(){
       const foulA = clean(data?.fouls?.away ?? data?.faltas?.away ?? "—", "—");
       const cardH = clean(data?.cards?.yellow_home ?? data?.cards?.home ?? data?.yellow_cards?.home ?? "—", "—");
       const cardA = clean(data?.cards?.yellow_away ?? data?.cards?.away ?? data?.yellow_cards?.away ?? "—", "—");
-      const ph = clean(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.attacks?.home ?? basePct, basePct);
-      const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.attacks?.away ?? Math.max(0, 100 - basePct), Math.max(0, 100 - basePct));
+      const ph = clean(data?.pressure?.home ?? data?.dangerous_attacks?.home ?? data?.attacks?.home ?? (isReal ? null : basePct), isReal ? "—" : basePct);
+      const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away ?? data?.attacks?.away ?? (isReal ? null : Math.max(0, 100 - basePct)), isReal ? "—" : Math.max(0, 100 - basePct));
       const split = splitPercent(ph, pa);
       const events = Array.isArray(data?.events) ? data.events : [];
       const confidence = split.home;
@@ -11214,10 +11131,33 @@ function resetDesktopMatchRailToEmpty(){
 
     if (!matchId) return;
     try{
-      const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, { cache:"no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && !data.error) render(data);
+      async function fetchMatchCenterFinal(){
+        const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&t=${Date.now()}`, {
+          cache:"no-store",
+          headers:{ "Cache-Control":"no-cache" }
+        });
+        if (!res.ok) return null;
+        const payload = await res.json();
+        return payload && !payload.error ? payload : null;
+      }
+
+      let data = await fetchMatchCenterFinal();
+      if (!data) return;
+
+      const hasFinalStats = [
+        data?.corners?.home, data?.corners?.away,
+        data?.shots?.home, data?.shots?.away,
+        data?.possession?.home, data?.possession?.away,
+        data?.passes?.home, data?.passes?.away
+      ].some(v => v !== null && v !== undefined && v !== "");
+
+      // Algumas ligas publicam o consolidado poucos segundos depois do apito final.
+      if (data.finished && !hasFinalStats){
+        await new Promise(resolve => setTimeout(resolve, 1400));
+        data = (await fetchMatchCenterFinal()) || data;
+      }
+
+      render(data);
     }catch(err){
       console.warn("Match Center lateral final falhou:", err);
     }

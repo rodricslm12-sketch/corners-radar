@@ -1472,6 +1472,34 @@ async function apiGetAny(params){
   return await apiGetV2(params);
 }
 
+
+// Match Center precisa sempre de dados atuais. Estas chamadas ignoram o cache
+// de 25 minutos usado pelo motor pré-jogo.
+async function apiGetFreshBase(baseUrl, params) {
+  const url = new URL(baseUrl);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  url.searchParams.set("APIkey", APIKEY);
+  url.searchParams.set("_ts", String(Date.now()));
+
+  const data = await fetchJson(url.toString());
+  const errMsg = apiHasError(data);
+  if (errMsg) throw new Error(`API retornou erro: ${errMsg}`);
+  return data;
+}
+
+async function apiGetFreshV3(params) {
+  return await apiGetFreshBase(API_BASE_V3, params);
+}
+
+async function apiGetFreshV2(params) {
+  return await apiGetFreshBase(API_BASE_V2, params);
+}
+
+async function apiGetFreshAny(params) {
+  try { return await apiGetFreshV3(params); } catch {}
+  return await apiGetFreshV2(params);
+}
+
 // ---------------- Concurrency ----------------
 async function mapLimit(items, limit, fn){
   const out = [];
@@ -1595,23 +1623,286 @@ async function getH2H(firstTeam, secondTeam) {
   return data[0];
 }
 
-// ✅ STATS: tenta v3 e cai pro v2
+// ✅ STATS: tenta v3 e cai pro v2 — parser robusto para formatos diferentes da API
+function normalizeStatType(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function statSideValue(row, side) {
+  if (!row || typeof row !== "object") return null;
+  const keys = side === "home"
+    ? ["home", "hometeam", "home_team", "local", "casa", "value_home"]
+    : ["away", "awayteam", "away_team", "visitor", "fora", "value_away"];
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+  }
+  return null;
+}
+
+function collectStatisticsRows(node, out, inheritedType = "") {
+  if (node === null || node === undefined) return;
+
+  if (Array.isArray(node)) {
+    for (const item of node) collectStatisticsRows(item, out, inheritedType);
+    return;
+  }
+
+  if (typeof node !== "object") return;
+
+  const explicitType =
+    node.type ?? node.name ?? node.statistic ?? node.stat_name ??
+    node.label ?? node.key ?? inheritedType;
+  const home = statSideValue(node, "home");
+  const away = statSideValue(node, "away");
+
+  if (explicitType && (home !== null || away !== null)) {
+    const key = normalizeStatType(explicitType);
+    if (key) out.set(key, { home, away });
+  }
+
+  for (const [key, value] of Object.entries(node)) {
+    if (["type","name","statistic","stat_name","label","key","home","away","hometeam","awayteam","home_team","away_team","local","visitor","casa","fora","value_home","value_away"].includes(key)) continue;
+
+    if (value && typeof value === "object") {
+      const nestedHome = statSideValue(value, "home");
+      const nestedAway = statSideValue(value, "away");
+      if (nestedHome !== null || nestedAway !== null) {
+        const statKey = normalizeStatType(key);
+        if (statKey) out.set(statKey, { home: nestedHome, away: nestedAway });
+      }
+      collectStatisticsRows(value, out, key);
+    }
+  }
+}
+
 async function getStats(matchId) {
   const data = await apiGetAny({ action: "get_statistics", match_id: matchId });
-  if (!Array.isArray(data) || !data.length) return null;
-
-  const root = data[0];
-  const arr = root.statistics || root.match_statistics || root;
-  const list = Array.isArray(arr) ? arr : (Array.isArray(root.statistics) ? root.statistics : null);
-  if (!list) return null;
+  if (!data) return null;
 
   const map = new Map();
-  for (const row of list) {
-    const type = String(row.type || row.name || "").trim().toLowerCase();
-    if (!type) continue;
-    map.set(type, { home: row.home, away: row.away });
+  collectStatisticsRows(data, map);
+  return map.size ? map : null;
+}
+
+
+async function getStatsFresh(matchId, event = null) {
+  const map = new Map();
+
+  // Algumas respostas de get_events já trazem statistics dentro do próprio jogo.
+  if (event) {
+    collectStatisticsRows(event?.statistics, map);
+    collectStatisticsRows(event?.stats, map);
+    collectStatisticsRows(event?.match_statistics, map);
   }
-  return map;
+
+  const attempts = [
+    { action: "get_statistics", match_id: matchId },
+    { action: "get_statistics", event_id: matchId }
+  ];
+
+  for (const params of attempts) {
+    try {
+      const data = await apiGetFreshAny(params);
+      collectStatisticsRows(data, map);
+      if (map.size) break;
+    } catch {}
+  }
+
+  return map.size ? map : null;
+}
+
+/* =========================================================
+   MATCH CENTER — ESTATÍSTICAS POR PERÍODO
+   A API pode devolver 1º tempo, 2º tempo e jogo completo.
+   O parser antigo misturava os blocos e podia exibir o 1º tempo
+   como se fosse o resultado final.
+   ========================================================= */
+
+function mcPeriodPriority(text) {
+  const s = normalizeStatType(text);
+
+  if (
+    s.includes("full time") ||
+    s.includes("fulltime") ||
+    s.includes("match total") ||
+    s.includes("total match") ||
+    s.includes("whole match") ||
+    s.includes("90 min") ||
+    s.includes("90 minutes") ||
+    s === "match" ||
+    s === "total" ||
+    s.includes("jogo completo") ||
+    s.includes("tempo regulamentar")
+  ) return 100;
+
+  if (
+    s.includes("second half") ||
+    s.includes("2nd half") ||
+    s.includes("2 half") ||
+    s.includes("segundo tempo")
+  ) return 30;
+
+  if (
+    s.includes("first half") ||
+    s.includes("1st half") ||
+    s.includes("1 half") ||
+    s.includes("primeiro tempo") ||
+    s.includes("half time")
+  ) return 10;
+
+  return 50;
+}
+
+function collectStatisticsRowsByPeriod(node, state, context = "") {
+  if (node === null || node === undefined) return;
+
+  if (Array.isArray(node)) {
+    for (const item of node) collectStatisticsRowsByPeriod(item, state, context);
+    return;
+  }
+
+  if (typeof node !== "object") return;
+
+  const ownPeriod = [
+    node.period,
+    node.half,
+    node.time,
+    node.stage,
+    node.section,
+    node.title,
+    node.group,
+    node.name
+  ].filter(Boolean).join(" ");
+
+  const currentContext = `${context} ${ownPeriod}`.trim();
+  const priority = mcPeriodPriority(currentContext);
+
+  const explicitType =
+    node.type ?? node.statistic ?? node.stat_name ??
+    node.label ?? node.key ?? "";
+
+  const home = statSideValue(node, "home");
+  const away = statSideValue(node, "away");
+
+  if (explicitType && (home !== null || away !== null)) {
+    const key = normalizeStatType(explicitType);
+    if (key) {
+      const previous = state.get(key);
+      if (!previous || priority > previous.priority) {
+        state.set(key, {
+          home,
+          away,
+          priority,
+          period: currentContext || "generic"
+        });
+      }
+    }
+  }
+
+  for (const [key, value] of Object.entries(node)) {
+    if ([
+      "type","statistic","stat_name","label","key",
+      "home","away","hometeam","awayteam","home_team","away_team",
+      "local","visitor","casa","fora","value_home","value_away"
+    ].includes(key)) continue;
+
+    if (value && typeof value === "object") {
+      collectStatisticsRowsByPeriod(value, state, `${currentContext} ${key}`.trim());
+    }
+  }
+}
+
+async function getMatchCenterStatsFresh(matchId, event = null, finished = false) {
+  const ranked = new Map();
+  const usedSources = [];
+  let rawShape = null;
+
+  // Partida encerrada: V2 primeiro, pois normalmente guarda o consolidado final.
+  // Ao vivo: V3 primeiro. As outras tentativas apenas completam campos ausentes.
+  const providers = finished
+    ? [
+        { name: "v2_final", fn: apiGetFreshV2 },
+        { name: "v3_fallback", fn: apiGetFreshV3 }
+      ]
+    : [
+        { name: "v3_live", fn: apiGetFreshV3 },
+        { name: "v2_fallback", fn: apiGetFreshV2 }
+      ];
+
+  const paramAttempts = [
+    { action: "get_statistics", match_id: matchId },
+    { action: "get_statistics", event_id: matchId }
+  ];
+
+  for (const provider of providers) {
+    let providerAdded = false;
+
+    for (const params of paramAttempts) {
+      try {
+        const data = await provider.fn(params);
+        if (data === null || data === undefined) continue;
+
+        rawShape = Array.isArray(data)
+          ? "array"
+          : data && typeof data === "object"
+            ? "object"
+            : typeof data;
+
+        const before = ranked.size;
+        collectStatisticsRowsByPeriod(
+          data,
+          ranked,
+          `${provider.name} full match`
+        );
+
+        if (ranked.size > before) providerAdded = true;
+      } catch {}
+    }
+
+    if (providerAdded) usedSources.push(provider.name);
+  }
+
+  // Completa somente campos ausentes com estatísticas embutidas no evento.
+  // Isso é útil porque alguns campeonatos entregam o resultado final em get_events.
+  if (event) {
+    const before = ranked.size;
+    collectStatisticsRowsByPeriod(event?.statistics, ranked, "event statistics");
+    collectStatisticsRowsByPeriod(event?.stats, ranked, "event stats");
+    collectStatisticsRowsByPeriod(event?.match_statistics, ranked, "event match statistics");
+    if (ranked.size > before) usedSources.push("event_embedded");
+  }
+
+  if (!ranked.size) {
+    return {
+      map: null,
+      periods: {},
+      source: "unavailable",
+      rawShape
+    };
+  }
+
+  const map = new Map();
+  const periods = {};
+
+  for (const [key, value] of ranked.entries()) {
+    map.set(key, { home: value.home, away: value.away });
+    periods[key] = {
+      period: value.period,
+      priority: value.priority
+    };
+  }
+
+  return {
+    map,
+    periods,
+    source: usedSources.join("+") || "statistics",
+    rawShape
+  };
 }
 
 function numFromStat(v) {
@@ -3474,10 +3765,46 @@ function mcStatusInfo(event) {
 function mcStatPair(statsMap, aliases) {
   if (!statsMap) return { home: null, away: null };
   for (const alias of aliases) {
-    const row = statsMap.get(String(alias).toLowerCase());
+    const row = statsMap.get(normalizeStatType(alias));
     if (row) return { home: mcNumber(row.home), away: mcNumber(row.away) };
   }
   return { home: null, away: null };
+}
+
+function mcEventPair(event, homeKeys, awayKeys) {
+  return {
+    home: mcNumber(mcFirst(event, homeKeys, null)),
+    away: mcNumber(mcFirst(event, awayKeys, null))
+  };
+}
+
+function mcPreferPair(primary, fallback) {
+  return {
+    home: primary?.home ?? fallback?.home ?? null,
+    away: primary?.away ?? fallback?.away ?? null
+  };
+}
+
+function mcCountCards(event) {
+  const result = { yellowHome: 0, yellowAway: 0, redHome: 0, redAway: 0, found: false };
+  const homeName = normTeamKey(teamFromEvent(event, "home"));
+  const awayName = normTeamKey(teamFromEvent(event, "away"));
+  const cards = Array.isArray(event?.cards) ? event.cards : [];
+  for (const card of cards) {
+    const label = cleanText(mcFirst(card, ["card", "type", "info"], "")).toLowerCase();
+    const team = normTeamKey(mcFirst(card, ["team", "team_name", "card_team"], ""));
+    let side = cleanText(mcFirst(card, ["side", "team_side"], "")).toLowerCase();
+    if (!side && team) {
+      if (team === homeName) side = "home";
+      else if (team === awayName) side = "away";
+    }
+    if (side !== "home" && side !== "away") continue;
+    result.found = true;
+    const isRed = label.includes("red") || label.includes("vermelho");
+    if (side === "home") isRed ? result.redHome++ : result.yellowHome++;
+    else isRed ? result.redAway++ : result.yellowAway++;
+  }
+  return result;
 }
 
 function mcNormalizeEvents(event) {
@@ -3529,13 +3856,13 @@ app.get("/match_center", async (req, res) => {
   res.set("Expires", "0");
 
   try {
-    let data = await apiGetAny({ action: "get_events", match_id: matchId });
+    let data = await apiGetFreshAny({ action: "get_events", match_id: matchId });
     let event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
     if (!event && Array.isArray(data) && data.length === 1) event = data[0];
 
     // Algumas versões da API usam event_id em vez de match_id.
     if (!event) {
-      data = await apiGetAny({ action: "get_events", event_id: matchId });
+      data = await apiGetFreshAny({ action: "get_events", event_id: matchId });
       event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
       if (!event && Array.isArray(data) && data.length === 1) event = data[0];
     }
@@ -3543,18 +3870,109 @@ app.get("/match_center", async (req, res) => {
     if (!event) return res.status(404).json({ error: "Partida não encontrada na API", match_id: matchId });
 
     const status = mcStatusInfo(event);
-    const statsMap = await getStats(matchId).catch(() => null);
+    const statsResult = await getMatchCenterStatsFresh(
+      matchId,
+      event,
+      status.finished
+    ).catch(() => ({
+      map: null,
+      periods: {},
+      source: "error",
+      rawShape: null
+    }));
+    const statsMap = statsResult.map;
+    const statsPeriods = statsResult.periods;
+    const statsSource = statsResult.source;
+    const statsRawShape = statsResult.rawShape;
 
-    const corners = mcStatPair(statsMap, ["corner kicks", "corners"]);
-    const shots = mcStatPair(statsMap, ["shots total", "total shots", "shots"]);
-    const shotsOnTarget = mcStatPair(statsMap, ["shots on goal", "shots on target"]);
-    const possession = mcStatPair(statsMap, ["ball possession", "possession"]);
-    const dangerousAttacks = mcStatPair(statsMap, ["dangerous attacks"]);
-    const attacks = mcStatPair(statsMap, ["attacks"]);
-    const passes = mcStatPair(statsMap, ["passes accurate", "accurate passes", "passes"]);
-    const fouls = mcStatPair(statsMap, ["fouls"]);
-    const yellow = mcStatPair(statsMap, ["yellow cards"]);
-    const red = mcStatPair(statsMap, ["red cards"]);
+    // Usa primeiro o bloco de JOGO COMPLETO da rota get_statistics.
+    // Os campos diretos de get_events ficam apenas como fallback.
+    const cornersStats = mcStatPair(
+      statsMap,
+      ["corner kicks", "corners", "corners total", "total corners", "escanteios"]
+    );
+
+    const cornersEvent = mcEventPair(
+      event,
+      [
+        "match_hometeam_corner",
+        "match_hometeam_corners",
+        "match_hometeam_corner_count",
+        "home_corners",
+        "hometeam_corner"
+      ],
+      [
+        "match_awayteam_corner",
+        "match_awayteam_corners",
+        "match_awayteam_corner_count",
+        "away_corners",
+        "awayteam_corner"
+      ]
+    );
+
+    const statsHasCorners =
+      cornersStats.home !== null && cornersStats.away !== null;
+    const eventHasCorners =
+      cornersEvent.home !== null && cornersEvent.away !== null;
+
+    const corners = statsHasCorners
+      ? cornersStats
+      : eventHasCorners
+        ? cornersEvent
+        : { home: null, away: null };
+
+    const cornersSource = statsHasCorners
+      ? `${statsSource}_official`
+      : eventHasCorners
+        ? (status.finished ? "event_final_fallback" : "event_live_fallback")
+        : "unavailable";
+    const shots = mcPreferPair(
+      mcStatPair(statsMap, ["shots total", "total shots", "shots", "goal attempts", "attempts", "finalizacoes"]),
+      mcEventPair(event,
+        ["match_hometeam_shots", "match_hometeam_shots_total", "home_shots", "home_total_shots"],
+        ["match_awayteam_shots", "match_awayteam_shots_total", "away_shots", "away_total_shots"])
+    );
+    const shotsOnTarget = mcPreferPair(
+      mcStatPair(statsMap, ["shots on goal", "shots on target", "on target", "shots on goal total", "finalizacoes no gol"]),
+      mcEventPair(event,
+        ["match_hometeam_shots_on_target", "home_shots_on_target"],
+        ["match_awayteam_shots_on_target", "away_shots_on_target"])
+    );
+    const possession = mcPreferPair(
+      mcStatPair(statsMap, ["ball possession", "possession", "posse de bola"]),
+      mcEventPair(event,
+        ["match_hometeam_possession", "home_possession"],
+        ["match_awayteam_possession", "away_possession"])
+    );
+    const dangerousAttacks = mcPreferPair(
+      mcStatPair(statsMap, ["dangerous attacks", "dangerous attack", "ataques perigosos"]),
+      mcEventPair(event,
+        ["match_hometeam_dangerous_attacks", "home_dangerous_attacks", "dangerous_attacks_home"],
+        ["match_awayteam_dangerous_attacks", "away_dangerous_attacks", "dangerous_attacks_away"])
+    );
+    const attacks = mcPreferPair(
+      mcStatPair(statsMap, ["attacks", "total attacks", "ataques"]),
+      mcEventPair(event,
+        ["match_hometeam_attacks", "home_attacks", "attacks_home"],
+        ["match_awayteam_attacks", "away_attacks", "attacks_away"])
+    );
+    const passes = mcPreferPair(
+      mcStatPair(statsMap, ["passes accurate", "accurate passes", "successful passes", "passes completed", "completed passes", "passes", "passes certos"]),
+      mcEventPair(event,
+        ["match_hometeam_passes", "match_hometeam_passes_completed", "home_passes", "home_accurate_passes"],
+        ["match_awayteam_passes", "match_awayteam_passes_completed", "away_passes", "away_accurate_passes"])
+    );
+    const fouls = mcPreferPair(
+      mcStatPair(statsMap, ["fouls", "fouls committed", "faltas"]),
+      mcEventPair(event,
+        ["match_hometeam_fouls", "home_fouls", "fouls_home"],
+        ["match_awayteam_fouls", "away_fouls", "fouls_away"])
+    );
+    const yellowStats = mcStatPair(statsMap, ["yellow cards", "yellow card", "cartoes amarelos"]);
+    const redStats = mcStatPair(statsMap, ["red cards", "red card", "cartoes vermelhos"]);
+    const countedCards = mcCountCards(event);
+    const yellow = mcPreferPair(yellowStats, countedCards.found ? { home: countedCards.yellowHome, away: countedCards.yellowAway } : null);
+    const red = mcPreferPair(redStats, countedCards.found ? { home: countedCards.redHome, away: countedCards.redAway } : null);
 
     const homeScore = mcNumber(mcFirst(event, ["match_hometeam_score", "home_score", "score_home"], 0)) ?? 0;
     const awayScore = mcNumber(mcFirst(event, ["match_awayteam_score", "away_score", "score_away"], 0)) ?? 0;
@@ -3582,6 +4000,10 @@ app.get("/match_center", async (req, res) => {
       attacks,
       passes,
       fouls,
+      accurate_passes: passes,
+      yellow_cards: { home: yellow.home, away: yellow.away },
+      red_cards: { home: red.home, away: red.away },
+      stats_available: Boolean(statsMap || eventHasCorners),
       cards: {
         home: yellow.home,
         away: yellow.away,
@@ -3597,7 +4019,15 @@ app.get("/match_center", async (req, res) => {
       events: mcNormalizeEvents(event),
       sources: {
         event: true,
-        statistics: Boolean(statsMap)
+        statistics: Boolean(statsMap),
+        statistics_count: statsMap?.size || 0,
+        statistics_keys: statsMap ? Array.from(statsMap.keys()) : [],
+        statistics_periods: statsPeriods,
+        statistics_source: statsSource,
+        statistics_raw_shape: statsRawShape,
+        corners_source: cornersSource,
+        corners_statistics: cornersStats,
+        corners_event_fallback: cornersEvent
       }
     });
   } catch (err) {
