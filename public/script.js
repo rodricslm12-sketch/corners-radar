@@ -8,7 +8,7 @@
   // ✅ Segunda a sexta: 2 jogos no centro, em horários distintos
   // ✅ Sábado e domingo: 3 melhores jogos no centro, ordenados por horário
   // ✅ Dias úteis: Jogo 1 mais cedo + Jogo 2 mais tarde
-  // ✅ Bloqueio visual: mandante 4º lugar pra baixo não entra no topo
+  // ✅ Alinhado ao servidor: Top 5 pode entrar contra 6º ou pior; Top 5 x Top 5 é bloqueado
   // ✅ Chip de Ritmo IA
   // ✅ Chip de Alerta IA com 3 níveis
   // ✅ NOTE SEM REPETIÇÃO
@@ -289,8 +289,14 @@
   const ODDS_MAX = 1.85;
   const HIDE_NON_FULL_FROM_OTHERS = false;
   
-  const BLOCK_HOME_FROM_POSITION = 4;
-  const BLOCK_HOME_4PLUS = true;
+  const TOP_GROUP_MAX_POSITION = 5;
+  const BLOCK_TOP5_DIRECT_CLASH = true;
+
+  // Top 5 só entra quando o jogo realmente apresenta qualidade para a linha de 10.5 escanteios.
+  const TOP5_MIN_CORNER_PROJECTION = 10.5;
+  const TOP5_MIN_CORNER_PROBABILITY = 70;
+  const TOP5_BLOCK_CENTRAL_PROFILE = true;
+
   const SIDE_MAX_CARDS = 3;
   const LOADING_MIN_MS = 900;
   
@@ -688,21 +694,110 @@
     return String(j?.perfil_laterais ?? "") === "TENDENCIA_CENTRAL";
   }
   
-  // ---------------- BLOQUEIO DE POSIÇÃO CASA ----------------
+  // ---------------- ALINHAMENTO DE POSIÇÃO COM O SERVIDOR ----------------
   function getPosHome(j){
     const n = Number(j?.pos_home);
     return Number.isFinite(n) ? n : null;
   }
-  
-  function isBlockedHomePosition(j){
-    if (!BLOCK_HOME_4PLUS) return false;
-    const posHome = getPosHome(j);
-    if (!Number.isFinite(posHome)) return false;
-    return posHome >= BLOCK_HOME_FROM_POSITION;
+
+  function getPosAway(j){
+    const n = Number(j?.pos_away);
+    return Number.isFinite(n) ? n : null;
   }
-  
-  function filterBlockedHomePositions(list){
-    return (Array.isArray(list) ? list : []).filter(j => !isBlockedHomePosition(j));
+
+  function isTopGroupPosition(pos){
+    return Number.isFinite(pos) && pos >= 1 && pos <= TOP_GROUP_MAX_POSITION;
+  }
+
+  function isBlockedTop5DirectClash(j){
+    if (!BLOCK_TOP5_DIRECT_CLASH) return false;
+    return isTopGroupPosition(getPosHome(j)) && isTopGroupPosition(getPosAway(j));
+  }
+
+  function isServerCompatibleGame(j){
+    if (!j || typeof j !== "object") return false;
+    if (j?.blocked === true || j?.is_blocked === true || j?.server_blocked === true) return false;
+    if (String(j?.status || "").toLowerCase() === "blocked") return false;
+    if (isBlockedTop5DirectClash(j)) return false;
+    return true;
+  }
+
+  function filterServerCompatibleGames(list){
+    return (Array.isArray(list) ? list : []).filter(isServerCompatibleGame);
+  }
+
+  function hasTop5Team(j){
+    return isTopGroupPosition(getPosHome(j)) || isTopGroupPosition(getPosAway(j));
+  }
+
+  function top5HasEnoughCorners(j){
+    if (!hasTop5Team(j)) return true;
+
+    const proj = getProj(j);
+    const prob = getProb(j);
+    const perfil = String(j?.perfil_laterais || "");
+
+    if (!Number.isFinite(proj) || proj < TOP5_MIN_CORNER_PROJECTION) return false;
+    if (!Number.isFinite(prob) || prob < TOP5_MIN_CORNER_PROBABILITY) return false;
+    if (TOP5_BLOCK_CENTRAL_PROFILE && perfil === "TENDENCIA_CENTRAL") return false;
+    if (getAlertInfo(j).level === "red") return false;
+
+    return true;
+  }
+
+  function filterTop5CornerQuality(list){
+    return (Array.isArray(list) ? list : []).filter(top5HasEnoughCorners);
+  }
+
+  // Filtro IA local: compara todos os candidatos aprovados e escolhe o melhor para o Top 1.
+  // Não inventa dados; usa somente os indicadores já enviados pelo servidor.
+  function top1AiScore(j){
+    const prob = getProb(j);
+    const proj = getProj(j);
+    const serverScore = Number(j?.ai_score ?? j?.local_score ?? j?.score_adj ?? j?.score ?? 0);
+    const perfil = String(j?.perfil_laterais || "");
+    const alert = getAlertInfo(j).level;
+
+    let score = 0;
+    score += Number.isFinite(prob) ? prob * 1.35 : 0;
+    score += Number.isFinite(proj) ? proj * 7.5 : 0;
+    score += Number.isFinite(serverScore) ? serverScore * 0.35 : 0;
+
+    if (hasFullBase(j)) score += 10;
+    else if (isSemi(j)) score -= 4;
+
+    if (perfil === "LATERAIS_FORTES") score += 8;
+    if (perfil === "TENDENCIA_CENTRAL") score -= 14;
+    if (alert === "green") score += 6;
+    if (alert === "yellow") score -= 5;
+    if (alert === "red") score -= 40;
+
+    if (hasTop5Team(j)) {
+      // Top 5 recebe bônus apenas depois de passar pelo filtro de alto volume.
+      score += top5HasEnoughCorners(j) ? 4 : -100;
+    }
+
+    return score;
+  }
+
+  function sortByTop1AI(list){
+    return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
+      const diff = top1AiScore(b) - top1AiScore(a);
+      if (diff !== 0) return diff;
+      const projDiff = getProj(b) - getProj(a);
+      if (projDiff !== 0) return projDiff;
+      return getProb(b) - getProb(a);
+    });
+  }
+
+  function placeBestAiGameFirst(list, dateYMD){
+    const safeList = filterTop5CornerQuality(filterServerCompatibleGames(dedupeList(list)));
+    if (!safeList.length) return [];
+
+    const ranked = sortByTop1AI(safeList);
+    const best = ranked[0];
+    const rest = sortGamesByAmazonasTime(ranked.slice(1), dateYMD);
+    return [best, ...rest];
   }
   
   // ---------------- IA AUX ----------------
@@ -738,7 +833,7 @@
   
   function isPregameStrongFull(j){
     if (!hasFullBase(j)) return false;
-    if (isBlockedHomePosition(j)) return false;
+    if (!isServerCompatibleGame(j)) return false;
     const p = getProb(j);
     if (!Number.isFinite(p) || p < TOP6_MIN_PROB_FULL) return false;
     if (isCentral(j) && p < 74) return false;
@@ -747,7 +842,7 @@
   
   function isPregameStrongSemi(j){
     if (!isSemi(j)) return false;
-    if (isBlockedHomePosition(j)) return false;
+    if (!isServerCompatibleGame(j)) return false;
     const p = getProb(j);
     const proj = getProj(j);
     if (!Number.isFinite(p) || p < TOP6_MIN_PROB_SEMI) return false;
@@ -1551,13 +1646,13 @@
     const panelCache = gamesPanelCacheEl?.__cornerProAllGames;
     const panelCacheDate = gamesPanelCacheEl?.dataset?.marketCacheDate;
     if (!fresh && panelCacheDate === dateYMD && Array.isArray(panelCache) && panelCache.length){
-      lastMarketGames = enrichMarketsList(panelCache.map(g => g?.raw || g));
+      lastMarketGames = enrichMarketsList(filterServerCompatibleGames(panelCache.map(g => g?.raw || g)));
       lastMarketDateYMD = dateYMD;
       return lastMarketGames;
     }
 
     if (!fresh && lastDateYMD === dateYMD && Array.isArray(lastRawGames) && lastRawGames.length){
-      lastMarketGames = enrichMarketsList(lastRawGames);
+      lastMarketGames = enrichMarketsList(filterServerCompatibleGames(lastRawGames));
       lastMarketDateYMD = dateYMD;
       return lastMarketGames;
     }
@@ -1571,7 +1666,7 @@
       // Se /mercados não existir ou vier vazio, tenta /quentes automaticamente.
       const list = await fetchGamesFromApi(["/mercados", "/quentes"], dateYMD, fresh);
   
-      lastMarketGames = enrichMarketsList(Array.isArray(list) ? list : []);
+      lastMarketGames = enrichMarketsList(filterServerCompatibleGames(Array.isArray(list) ? list : []));
       lastMarketDateYMD = dateYMD;
   
       return lastMarketGames;
@@ -1579,7 +1674,7 @@
       console.warn("Falha ao carregar /mercados. Usando fallback de /quentes.", err);
   
       // Fallback seguro: mantém a tela funcionando se o backend ainda não tiver /mercados.
-      lastMarketGames = enrichMarketsList(Array.isArray(lastRawGames) ? lastRawGames : []);
+      lastMarketGames = enrichMarketsList(filterServerCompatibleGames(Array.isArray(lastRawGames) ? lastRawGames : []));
       lastMarketDateYMD = dateYMD;
   
       return lastMarketGames;
@@ -1602,7 +1697,7 @@
       ? lastMarketGames
       : lastRawGames;
   
-    const games = enrichMarketsList(dedupeList(baseMarketList));
+    const games = enrichMarketsList(filterServerCompatibleGames(dedupeList(baseMarketList)));
     let filtered = games.filter(j => marketPass(j, activeMarketFilter));
   
     filtered = filtered.sort((a, b) => {
@@ -2676,19 +2771,13 @@
     const minGap = isWeekday ? WEEKDAY_MIN_TIME_GAP_MINUTES : 0;
   
     const raw = dedupeList(Array.isArray(list) ? list.slice() : []);
-    const arr = filterBlockedHomePositions(raw);
+    const arr = filterTop5CornerQuality(filterServerCompatibleGames(raw));
 
     // 🔒 NUNCA envia card vermelho para o Top do Dia.
     // Se não houver jogos seguros suficientes, mostra menos cards em vez de completar com RED.
     const safeForTop = arr.filter(j => getAlertInfo(j).level !== "red");
   
-    const pool = safeForTop.slice().sort((a, b) => {
-      const m = modeRank(b?.mode) - modeRank(a?.mode);
-      if (m !== 0) return m;
-      const s = Number(b?.ai_score ?? b?.local_score ?? 0) - Number(a?.ai_score ?? a?.local_score ?? 0);
-      if (s !== 0) return s;
-      return getProb(b) - getProb(a);
-    });
+    const pool = sortByTop1AI(safeForTop);
   
     const fullStrong = pool.filter(isPregameStrongFull);
     const semiStrong = pool.filter(isPregameStrongSemi);
@@ -2707,7 +2796,9 @@
       fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: semiStrong, targetCount });
     }
   
-    const orderedTop = sortGamesByAmazonasTime(top, dateYMD);
+    // O primeiro card é sempre o melhor jogo segundo o filtro IA.
+    // Os demais continuam organizados por horário para manter a leitura do painel.
+    const orderedTop = placeBestAiGameFirst(top, dateYMD);
     const topKeys = new Set(orderedTop.map(stableKey));
     let rest = pool.filter(j => !topKeys.has(stableKey(j)));
     if (HIDE_NON_FULL_FROM_OTHERS) rest = rest.filter(hasFullBase);
@@ -2882,7 +2973,7 @@
     try{
       setIaLoading("Analisando…");
       const dateYMD = requestedDate;
-      const list = enrichMarketsList(await fetchGamesFromApi(["/quentes", "/mercados"], dateYMD, fresh));
+      const list = enrichMarketsList(filterTop5CornerQuality(filterServerCompatibleGames(await fetchGamesFromApi(["/quentes", "/mercados"], dateYMD, fresh))));
       lastRawGames = list.slice();
       lastDateYMD = dateYMD;
   
@@ -2901,7 +2992,9 @@
   
       try{
         const sideResp = await fetchSideGames(dateYMD, fresh);
-        sideGames = Array.isArray(sideResp?.games) ? enrichMarketsList(dedupeList(sideResp.games)).slice(0, SIDE_MAX_CARDS) : [];
+        sideGames = Array.isArray(sideResp?.games)
+          ? enrichMarketsList(filterTop5CornerQuality(filterServerCompatibleGames(dedupeList(sideResp.games)))).slice(0, SIDE_MAX_CARDS)
+          : [];
         sideMessage = sideResp?.message || "";
       } catch (err){
         console.warn("Falha ao buscar /side.", err);
@@ -2910,10 +3003,14 @@
       // ✅ Exibição final:
       // - Dia normal: 1 card
       // - Sábado/Domingo: até 3 cards
-      // Primeiro tenta os TOP fortes; se faltar, completa com /side, support e rest.
+      // Primeiro tenta os TOP fortes; se faltar, completa apenas com candidatos ainda compatíveis com o servidor.
       let displayGames = dedupeList(Array.isArray(main) ? main.slice(0, targetCount) : []);
       const usedDisplay = new Set(displayGames.map(stableKey));
-      const promotedCandidates = dedupeList([...(sideGames || []), ...(support || []), ...(rest || [])]);
+      const promotedCandidates = sortByTop1AI(
+        filterTop5CornerQuality(
+          filterServerCompatibleGames(dedupeList([...(sideGames || []), ...(support || []), ...(rest || [])]))
+        )
+      );
       const isWeekday = isWeekdayDateYMD(dateYMD);
       const minGap = isWeekday ? WEEKDAY_MIN_TIME_GAP_MINUTES : 0;
   
@@ -2932,7 +3029,7 @@
         fillIfNotEnoughIgnoringGap({ selected: displayGames, used: usedDisplay, candidates: promotedCandidates, targetCount });
       }
   
-      displayGames = sortGamesByAmazonasTime(displayGames, dateYMD);
+      displayGames = placeBestAiGameFirst(displayGames, dateYMD);
   
       updateIaBoxFromTop(displayGames);
   
