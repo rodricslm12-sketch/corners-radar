@@ -429,6 +429,16 @@ function isBlockedAwayFavoriteForSelection(x) {
   return isAwayFavoriteStrict(x?.odds, x?.pos_home, x?.pos_away) && !isEliteAwayReplacementGame(x);
 }
 
+// Blindagem única da seleção: nenhum jogo vermelho ou confronto
+// de meio de tabela pode voltar por fallback, IA ou modo SEMI.
+function isHardBlockedForSelection(x) {
+  const flags = Array.isArray(x?.flags) ? x.flags : [];
+  const midTableClash = isMidTable(Number(x?.pos_home)) && isMidTable(Number(x?.pos_away));
+  const hasRedFlag = flags.some(f => String(f).startsWith("red_"));
+
+  return midTableClash || hasRedFlag || isBlockedAwayFavoriteForSelection(x);
+}
+
 function hasLowCornerTrapFlag(x) {
   const flags = Array.isArray(x?.flags) ? x.flags : [];
   return flags.some(f => [
@@ -1810,7 +1820,7 @@ function stableKey(x){
 
 function fallbackPickTop6(list){
   const arr = [...(list || [])]
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)) // ✅ garante
+    .filter(x => !isHardBlockedForSelection(x)) // ✅ blindagem total
     .map(x => ({ ...x, ai_score: Number.isFinite(x?.ai_score) ? x.ai_score : aiScoreFromMatch(x) }));
   arr.sort((a,b) => (b.ai_score ?? 0) - (a.ai_score ?? 0));
   return arr.slice(0, 6).map((x, i) => ({ ...x, ai_pick: true, ai_rank: i+1, ai_reason: "fallback_ai_score" }));
@@ -1867,7 +1877,7 @@ function ensureBRStrongInTop6(top6, allList){
   let out = [...(top6 || [])].slice(0, 6);
 
   // ✅ nunca deixa favorito fora passar (blindagem final)
-  out = out.filter(x => !isBlockedAwayFavoriteForSelection(x));
+  out = out.filter(x => !isHardBlockedForSelection(x));
 
   const brStrong = pickTopBRStrong(allList, BR_ENSURE_MAX);
   if (!brStrong.length) return out.slice(0,6).map((x,i)=>({ ...x, ai_rank: i+1 }));
@@ -1910,7 +1920,7 @@ function isFullBaseGame(x){
 function onlyFullBaseCandidates(list){
   return (list || [])
     .filter(isFullBaseGame)
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ favorito fora nunca entra
+    .filter(x => !isHardBlockedForSelection(x)); // ✅ nenhum red/mid-table entra
 }
 
 /* =========================================================
@@ -2791,6 +2801,10 @@ async function buildQuentesList({ date, fresh }) {
       const posHome = findTeamPos(standings, casa);
       const posAway = findTeamPos(standings, fora);
 
+      // 🚫 BLOQUEIO ESTRUTURAL: meio de tabela x meio de tabela
+      // Ex.: 10º x 12º não chega sequer à fase pesada.
+      if (isMidTable(posHome) && isMidTable(posAway)) return null;
+
       // 🚫 Os cinco primeiros podem enfrentar times do 6º para baixo,
       // mas confrontos Top 5 x Top 5 ficam totalmente fora da seleção.
       if (isTop5DirectClash(posHome, posAway)) return null;
@@ -2831,6 +2845,10 @@ async function buildQuentesList({ date, fresh }) {
     // 🚫 Segurança final: nenhum Top 5 x Top 5 entra na fase pesada,
     // mesmo que chegue por fila extra, fallback ou substituição.
     if (isTop5DirectClash(posHome, posAway)) return null;
+
+    // 🚫 Segurança final: 7º–14º contra 7º–14º nunca entra,
+    // inclusive por fila extra, substituição ou modo SEMI.
+    if (isMidTable(posHome) && isMidTable(posAway)) return null;
 
     // 🚫 BLOQUEIO DE CLÁSSICO EUROPEU
 if (isEuropeanClassic(casaN, foraN)) {
@@ -3128,7 +3146,13 @@ if (isEuropeanClassic(casaN, foraN)) {
       return { ...obj, ai_score: aiScoreFromMatch(obj) };
     }
 
-    // ✅ SEM BASE COMPLETA => modo SEMI (mas continua proibindo favorito fora)
+    // ✅ SEM BASE COMPLETA => modo SEMI
+    // O modo SEMI antes escapava do anti-red global. Esta trava impede
+    // que confronto de meio de tabela ou perfil central seja devolvido.
+    if (isMidTable(posHome) && isMidTable(posAway)) return null;
+    if (perfil_laterais === "TENDENCIA_CENTRAL") return null;
+    if (isAwayFavoriteStrict(oddsInfo, posHome, posAway)) return null;
+
     const semi = {
       mode: "semi",
       lite_reason: (!h2h ? "no_h2h" : "no_stats_recent"),
@@ -3246,7 +3270,7 @@ if (isEuropeanClassic(casaN, foraN)) {
     : [...completos, ...litePool].slice(0, 30);
 
   // ✅ blindagem final na saída geral
-  out = out.filter(x => !isBlockedAwayFavoriteForSelection(x));
+  out = out.filter(x => !isHardBlockedForSelection(x));
 
   const prefer = litePool.filter(j => LITE_FALLBACK_LEAGUE_IDS.has(j.league_id));
   if (prefer.length) {
@@ -3393,4 +3417,3 @@ app.listen(PORT, () => {
   console.log(`- Debug leagues of day: /debug/leagues?date=YYYY-MM-DD`);
   console.log(`- Debug match base: /debug/match_base?match_id=XXXX`);
 });
-
