@@ -429,14 +429,37 @@ function isBlockedAwayFavoriteForSelection(x) {
   return isAwayFavoriteStrict(x?.odds, x?.pos_home, x?.pos_away) && !isEliteAwayReplacementGame(x);
 }
 
-// Blindagem única da seleção: nenhum jogo vermelho ou confronto
-// de meio de tabela pode voltar por fallback, IA ou modo SEMI.
-function isHardBlockedForSelection(x) {
-  const flags = Array.isArray(x?.flags) ? x.flags : [];
-  const midTableClash = isMidTable(Number(x?.pos_home)) && isMidTable(Number(x?.pos_away));
-  const hasRedFlag = flags.some(f => String(f).startsWith("red_"));
+// Blindagem única da seleção final. Também atua sobre jogos LITE/SEMI e caches antigos.
+function isBlockedForSelection(x) {
+  if (!x) return true;
 
-  return midTableClash || hasRedFlag || isBlockedAwayFavoriteForSelection(x);
+  const flags = Array.isArray(x?.flags) ? x.flags : [];
+  const posHome = Number(x?.pos_home);
+  const posAway = Number(x?.pos_away);
+  const perfil = String(x?.perfil_laterais || "");
+
+  // Nunca permite flags vermelhas, salvo a exceção controlada do favorito fora elite.
+  const hasForbiddenRed = flags.some(flag => {
+    if (!String(flag).startsWith("red_")) return false;
+    if (flag === "red_away_favorite" && isEliteAwayReplacementGame(x)) return false;
+    return true;
+  });
+  if (hasForbiddenRed) return true;
+
+  // Bloqueio direto por posição, inclusive quando o LITE não possui flags.
+  if (isMidTable(posHome) && isMidTable(posAway)) return true;
+
+  // Perfil central não entra na seleção principal.
+  if (perfil === "TENDENCIA_CENTRAL") return true;
+
+  // Mantém a regra absoluta de favorito visitante.
+  if (isBlockedAwayFavoriteForSelection(x)) return true;
+
+  return false;
+}
+
+function sanitizeSelectionList(list) {
+  return (Array.isArray(list) ? list : []).filter(x => !isBlockedForSelection(x));
 }
 
 function hasLowCornerTrapFlag(x) {
@@ -1820,7 +1843,7 @@ function stableKey(x){
 
 function fallbackPickTop6(list){
   const arr = [...(list || [])]
-    .filter(x => !isHardBlockedForSelection(x)) // ✅ blindagem total
+    .filter(x => !isBlockedForSelection(x)) // ✅ blindagem completa
     .map(x => ({ ...x, ai_score: Number.isFinite(x?.ai_score) ? x.ai_score : aiScoreFromMatch(x) }));
   arr.sort((a,b) => (b.ai_score ?? 0) - (a.ai_score ?? 0));
   return arr.slice(0, 6).map((x, i) => ({ ...x, ai_pick: true, ai_rank: i+1, ai_reason: "fallback_ai_score" }));
@@ -1860,7 +1883,7 @@ function brCornerStrengthScore(x){
 function pickTopBRStrong(allList, k = 2){
   const br = (allList || [])
     .filter(isBR)
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ garante
+    .filter(x => !isBlockedForSelection(x)); // ✅ blindagem completa
   br.sort((a,b) => brCornerStrengthScore(b) - brCornerStrengthScore(a));
 
   const out = [];
@@ -1877,7 +1900,7 @@ function ensureBRStrongInTop6(top6, allList){
   let out = [...(top6 || [])].slice(0, 6);
 
   // ✅ nunca deixa favorito fora passar (blindagem final)
-  out = out.filter(x => !isHardBlockedForSelection(x));
+  out = sanitizeSelectionList(out);
 
   const brStrong = pickTopBRStrong(allList, BR_ENSURE_MAX);
   if (!brStrong.length) return out.slice(0,6).map((x,i)=>({ ...x, ai_rank: i+1 }));
@@ -1920,7 +1943,7 @@ function isFullBaseGame(x){
 function onlyFullBaseCandidates(list){
   return (list || [])
     .filter(isFullBaseGame)
-    .filter(x => !isHardBlockedForSelection(x)); // ✅ nenhum red/mid-table entra
+    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ favorito fora nunca entra
 }
 
 /* =========================================================
@@ -2134,7 +2157,7 @@ async function aiHumanAnalyzeTop6(top6, date){
   const safeTop6 = (top6 || [])
     .slice(0,6)
     .filter(Boolean)
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ garante
+    .filter(x => !isBlockedForSelection(x)); // ✅ blindagem completa
   if (safeTop6.length < 1) return new Map();
 
   const fallbackMap = new Map();
@@ -2323,7 +2346,7 @@ function pickBestFromTop6(top6){
   const arr = (top6 || [])
     .slice()
     .filter(Boolean)
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ garante
+    .filter(x => !isBlockedForSelection(x)); // ✅ blindagem completa
 
   arr.sort((a,b) => {
     const ar = Number.isFinite(a?.ai_rank) ? a.ai_rank : null;
@@ -2766,7 +2789,11 @@ const EXTRA_HEAVY_MIN_FULL_WANT = 6;
 async function buildQuentesList({ date, fresh }) {
   if (!fresh) {
     const persisted = readPersist(date);
-    if (persisted) return persisted;
+    if (persisted) {
+      // Filtra também caches gravados por versões anteriores do servidor.
+      const cleanedPersisted = sanitizeSelectionList(persisted).map(normalizeTeamsOnGame);
+      if (cleanedPersisted.length) return cleanedPersisted;
+    }
   }
 
   if (!APIKEY) throw new Error("Falta APIFOOTBALL_KEY no .env");
@@ -2800,10 +2827,6 @@ async function buildQuentesList({ date, fresh }) {
 
       const posHome = findTeamPos(standings, casa);
       const posAway = findTeamPos(standings, fora);
-
-      // 🚫 BLOQUEIO ESTRUTURAL: meio de tabela x meio de tabela
-      // Ex.: 10º x 12º não chega sequer à fase pesada.
-      if (isMidTable(posHome) && isMidTable(posAway)) return null;
 
       // 🚫 Os cinco primeiros podem enfrentar times do 6º para baixo,
       // mas confrontos Top 5 x Top 5 ficam totalmente fora da seleção.
@@ -2845,10 +2868,6 @@ async function buildQuentesList({ date, fresh }) {
     // 🚫 Segurança final: nenhum Top 5 x Top 5 entra na fase pesada,
     // mesmo que chegue por fila extra, fallback ou substituição.
     if (isTop5DirectClash(posHome, posAway)) return null;
-
-    // 🚫 Segurança final: 7º–14º contra 7º–14º nunca entra,
-    // inclusive por fila extra, substituição ou modo SEMI.
-    if (isMidTable(posHome) && isMidTable(posAway)) return null;
 
     // 🚫 BLOQUEIO DE CLÁSSICO EUROPEU
 if (isEuropeanClassic(casaN, foraN)) {
@@ -3146,13 +3165,7 @@ if (isEuropeanClassic(casaN, foraN)) {
       return { ...obj, ai_score: aiScoreFromMatch(obj) };
     }
 
-    // ✅ SEM BASE COMPLETA => modo SEMI
-    // O modo SEMI antes escapava do anti-red global. Esta trava impede
-    // que confronto de meio de tabela ou perfil central seja devolvido.
-    if (isMidTable(posHome) && isMidTable(posAway)) return null;
-    if (perfil_laterais === "TENDENCIA_CENTRAL") return null;
-    if (isAwayFavoriteStrict(oddsInfo, posHome, posAway)) return null;
-
+    // ✅ SEM BASE COMPLETA => modo SEMI (mas continua proibindo favorito fora)
     const semi = {
       mode: "semi",
       lite_reason: (!h2h ? "no_h2h" : "no_stats_recent"),
@@ -3255,13 +3268,13 @@ if (isEuropeanClassic(casaN, foraN)) {
   for (const pack of candidatesByLeague) {
     for (const c of pack.top) {
       const lite = liteFromEvent(c.e, c.league, c.posHome, c.posAway, "pool_lite");
-      if (lite) litePool.push(lite);
+      if (lite && !isBlockedForSelection(lite)) litePool.push(lite);
     }
   }
 
   completos = completos
     .map(x => ({ ...x, ai_score: Number.isFinite(x?.ai_score) ? x.ai_score : aiScoreFromMatch(x) }))
-    .filter(x => !isBlockedAwayFavoriteForSelection(x)); // ✅ blindagem final
+    .filter(x => !isBlockedForSelection(x)); // ✅ blindagem final completa
 
   completos.sort((a,b) => (b.ai_score ?? 0) - (a.ai_score ?? 0));
 
@@ -3270,9 +3283,11 @@ if (isEuropeanClassic(casaN, foraN)) {
     : [...completos, ...litePool].slice(0, 30);
 
   // ✅ blindagem final na saída geral
-  out = out.filter(x => !isHardBlockedForSelection(x));
+  out = sanitizeSelectionList(out);
 
-  const prefer = litePool.filter(j => LITE_FALLBACK_LEAGUE_IDS.has(j.league_id));
+  const prefer = litePool.filter(j =>
+    LITE_FALLBACK_LEAGUE_IDS.has(j.league_id) && !isBlockedForSelection(j)
+  );
   if (prefer.length) {
     const seen = new Set(out.map(x => `${x.league_id}|${x.match_id}`));
     const add = prefer.filter(x => !seen.has(`${x.league_id}|${x.match_id}`));
@@ -3296,9 +3311,11 @@ app.get("/quentes", async (req, res) => {
   try {
     const out = await buildQuentesList({ date, fresh });
 
-    if (!ai) return res.json(out);
+    const safeOut = sanitizeSelectionList(out);
 
-    const top6 = await aiPickTop6(out, date);
+    if (!ai) return res.json(safeOut);
+
+    const top6 = await aiPickTop6(safeOut, date);
 
     const humanMap = await aiHumanAnalyzeTop6(top6, date);
 
@@ -3310,14 +3327,14 @@ app.get("/quentes", async (req, res) => {
     if (onlyTop) return res.json(top6_enriched);
 
     const topKeys = new Set(top6_enriched.map(stableKey));
-    const rest = out.filter(x => !topKeys.has(stableKey(x)));
+    const rest = safeOut.filter(x => !topKeys.has(stableKey(x)));
 
     // ✅ retorna top6 + resto (já sem favorito fora)
     return res.json([...top6_enriched, ...rest]);
 
   } catch (err) {
     const fallback = !fresh ? readPersist(date) : null;
-    if (fallback) return res.json(fallback);
+    if (fallback) return res.json(sanitizeSelectionList(fallback));
     res.status(500).json({ error: "Erro ao buscar jogos quentes", details: String(err?.message || err) });
   }
 });
