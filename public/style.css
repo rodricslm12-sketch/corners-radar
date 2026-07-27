@@ -7889,3 +7889,49 @@ button.railFullBtn {
     background:#ffd400!important;
   }
 }
+
+
+/* =========================================================
+   AJUSTE FINAL MOBILE — PONTOS REAIS + CARD SEM CRESCER
+   ========================================================= */
+@media (max-width:700px){
+  /* Altura única para os três mercados. Evita o Safari medir o trilho/clones
+     após atualizar a página e deixar somente o card de cantos mais alto. */
+  .cpHomeSwipeViewport{
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    contain:layout paint size!important;
+  }
+  .cpHomeSwipeTrack{
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    align-items:stretch!important;
+  }
+  .cpHomeSwipeTrack > .cpHomeBest{
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    align-self:stretch!important;
+    overflow:hidden!important;
+  }
+
+  /* Garantia independente do JS: o atributo da Home define exatamente qual
+     dos três pontos deve ficar ativo. */
+  .cpHomeMarketDots button{
+    width:5px!important;
+    background:rgba(255,255,255,.23)!important;
+    transform:none!important;
+  }
+  .cpMobileHome[data-active-market="corners"] .cpHomeMarketDots button:nth-child(1),
+  .cpMobileHome[data-active-market="goals"] .cpHomeMarketDots button:nth-child(2),
+  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button:nth-child(3){
+    width:14px!important;
+    background:#63f127!important;
+    transform:scaleY(1.05)!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button:nth-child(3){
+    background:#ffd400!important;
+  }
+}

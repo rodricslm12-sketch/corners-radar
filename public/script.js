@@ -14538,11 +14538,15 @@ function resetDesktopMatchRailToEmpty(){
 
   function updateDots(){
     const dots=ensureMarketDots();
-    Array.from(dots.children).forEach((dot,i)=>{
-      const active=MARKETS[i]===activeMarket;
+    // Usa o valor real do data-attribute, sem depender da posição do botão.
+    dots.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
+      const active=dot.dataset.cpHomeDot===activeMarket;
       dot.classList.toggle('active',active);
       dot.setAttribute('aria-selected',active?'true':'false');
+      dot.tabIndex=active?0:-1;
     });
+    // O CSS também usa este atributo como garantia visual no Safari.
+    home.dataset.activeMarket=activeMarket;
   }
   function render(){
     const data=currentData();
@@ -14708,28 +14712,14 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function syncSwipeHeight(){
-    if(!swipeViewport || !swipeCard)return;
-
-    requestAnimationFrame(()=>{
-      // Primeiro libera qualquer medida antiga para ler a altura natural do card real.
-      swipeViewport.style.height='auto';
-      swipeSlides.forEach(slide=>{
-        slide.style.height='auto';
-        slide.style.minHeight='0';
-        slide.style.maxHeight='none';
-      });
-
-      const height=Math.ceil(swipeCard.scrollHeight || swipeCard.getBoundingClientRect().height);
-      if(!Number.isFinite(height) || height<180)return;
-
-      // Trava todos os slides exatamente na mesma altura do card central.
-      // Assim o Safari não aumenta o carrossel para baixo depois do refresh.
-      swipeViewport.style.height=`${height}px`;
-      swipeSlides.forEach(slide=>{
-        slide.style.height=`${height}px`;
-        slide.style.minHeight=`${height}px`;
-        slide.style.maxHeight=`${height}px`;
-      });
+    if(!swipeViewport)return;
+    // A altura é controlada pelo CSS no mobile. Removemos medições por scrollHeight,
+    // pois no Safari elas podem capturar o trilho inteiro após o refresh e aumentar o card.
+    swipeViewport.style.removeProperty('height');
+    swipeSlides.forEach(slide=>{
+      slide.style.removeProperty('height');
+      slide.style.removeProperty('min-height');
+      slide.style.removeProperty('max-height');
     });
   }
 
@@ -14822,6 +14812,15 @@ function resetDesktopMatchRailToEmpty(){
     // Resistência apenas nas pontas virtuais; entre os mercados é movimento 1:1.
     const max=swipeWidth*.92;
     swipeDx=Math.max(-max,Math.min(max,swipeDx));
+
+    // Pré-visualiza o ponto do próximo card enquanto o dedo acompanha o trilho.
+    const previewDirection = Math.abs(swipeDx) >= swipeWidth*.12 ? (swipeDx<0 ? 1 : -1) : 0;
+    const previewIndex=(MARKETS.indexOf(activeMarket)+previewDirection+MARKETS.length)%MARKETS.length;
+    const previewMarket=MARKETS[previewIndex];
+    ensureMarketDots().querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
+      dot.classList.toggle('active',dot.dataset.cpHomeDot===previewMarket);
+    });
+
     if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipeTrack);
   }
 
@@ -14832,6 +14831,7 @@ function resetDesktopMatchRailToEmpty(){
     if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;paintSwipeTrack();}
 
     if(swipeAxis!=='x'){
+      updateDots();
       finishSwipe(0);
       return;
     }
