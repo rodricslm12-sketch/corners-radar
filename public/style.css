@@ -7692,148 +7692,9 @@ button.railFullBtn {
   }
 }
 
-/* =========================================================
-   MOBILE — CARROSSEL DE MERCADOS NO CARD PRINCIPAL
-   Mantém as cores originais do site. Apenas cartões usa amarelo/preto.
-   Sem borda amarela e sem sombra luminosa nas bordas.
-   ========================================================= */
-@media (max-width:700px){
-  .cpHomeBest{
-    touch-action:pan-y;
-    transform:translate3d(0,0,0);
-    transition:transform .30s cubic-bezier(.22,1,.36,1);
-    will-change:transform;
-    backface-visibility:hidden;
-    -webkit-backface-visibility:hidden;
-    -webkit-tap-highlight-color:transparent;
-    box-shadow:none!important;
-    border-color:rgba(255,255,255,.035)!important;
-    opacity:1!important;
-    filter:none!important;
-  }
-  .cpHomeBest.is-dragging{
-    transition:none!important;
-    cursor:grabbing;
-  }
-  .cpHomeBest.is-settling,
-  .cpHomeBest.is-entering{
-    transition:transform .30s cubic-bezier(.22,1,.36,1)!important;
-  }
-  .cpHomeBest.cp-swipe-left,
-  .cpHomeBest.cp-swipe-right{
-    opacity:1!important;
-    filter:none!important;
-  }
-  .cpHomeSwipeGuide{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:7px;
-    margin:1px 0 5px;
-    color:rgba(229,235,233,.48);
-    font-size:9px;
-    font-weight:650;
-    letter-spacing:0;
-    text-transform:none;
-    user-select:none;
-    -webkit-user-select:none;
-  }
-  .cpHomeSwipeGuide b{
-    color:inherit;
-    font:inherit;
-    font-weight:650;
-  }
-  .cpHomeSwipeGuide span{
-    color:rgba(99,241,39,.58);
-    font-size:14px;
-    line-height:1;
-    font-weight:500;
-  }
-  .cpHomeMarketDots{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
-  .cpHomeMarketDots button{
-    width:5px;
-    height:5px;
-    padding:0;
-    border-radius:999px;
-    background:rgba(255,255,255,.23);
-    opacity:1;
-    transition:width .24s cubic-bezier(.22,1,.36,1),background-color .24s ease,transform .24s ease;
-  }
-  .cpHomeMarketDots button.active{
-    width:14px;
-    background:var(--green);
-    transform:scaleY(1.05);
-  }
-  .cpHomeBestTop b{max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cpMobileHome[data-active-market="cards"] .cpHomeBest{
-    background:linear-gradient(180deg,#10110c,#090b09)!important;
-    border-color:rgba(255,255,255,.035)!important;
-    box-shadow:none!important;
-  }
-  .cpMobileHome[data-active-market="cards"] .cpHomeBestTop b,
-  .cpMobileHome[data-active-market="cards"] .cpHomeBestTop span,
-  .cpMobileHome[data-active-market="cards"] .cpHomeBestBody time,
-  .cpMobileHome[data-active-market="cards"] .cpHomeBestConfidence b,
-  .cpMobileHome[data-active-market="cards"] .cpHomeSwipeGuide span,
-  .cpMobileHome[data-active-market="cards"] .cpHomeGame time,
-  .cpMobileHome[data-active-market="cards"] .cpHomeGame strong{
-    color:#ffd400!important;
-  }
-  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button.active{background:#ffd400!important}
-  .cpMobileHome[data-active-market="cards"] #cpHomeBestOpen,
-  .cpMobileHome[data-active-market="cards"] .cpHomeOrderSwitch button.active{
-    background:#ffd400!important;
-    color:#050505!important;
-    box-shadow:none!important;
-    border:0!important;
-  }
-  .cpMobileHome[data-active-market="cards"] .cpHomeGame,
-  .cpMobileHome[data-active-market="cards"] .cpHomeGame.is-first{
-    border-color:rgba(255,255,255,.035)!important;
-    box-shadow:none!important;
-  }
-  .cpMobileHome[data-active-market="cards"] .cpHomeGame small{color:#aeb3af!important}
-}
-
-/* =========================================================
-   AJUSTE FINAL MOBILE — SWIPE SEM ESPAÇO PRETO
-   O card não sai mais da tela durante o gesto.
-   ========================================================= */
-@media (max-width:700px){
-  .cpHomeBest{
-    transform-origin:center center!important;
-    transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
-    contain:paint;
-  }
-  .cpHomeBest.is-dragging{
-    transition:none!important;
-  }
-  .cpHomeBest.is-settling,
-  .cpHomeBest.is-entering{
-    transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
-  }
-}
 
 
-/* =========================================================
-   PATCH FINAL — SWIPE MAIS LEVE E IMEDIATO
-   Remove sensação de peso sem revelar o fundo preto.
-   ========================================================= */
-@media (max-width:700px){
-  .cpHomeBest{
-    touch-action:pan-y!important;
-    transition:transform .19s cubic-bezier(.2,.8,.2,1)!important;
-    will-change:transform!important;
-    contain:none!important;
-  }
-  .cpHomeBest.is-dragging{
-    transition:none!important;
-  }
-  .cpHomeBest.is-settling,
-  .cpHomeBest.is-entering{
-    transition:transform .19s cubic-bezier(.2,.8,.2,1)!important;
-  }
-}
+
 
 
 /* =========================================================
@@ -7860,39 +7721,123 @@ button.railFullBtn {
 }
 
 /* =========================================================
-   CORREÇÃO FINAL MOBILE — 3 INDICADORES + ALTURA ESTÁVEL
-   Mantém o card com o mesmo tamanho após atualizar e deslizar.
+   MOBILE — CARROSSEL NATIVO DE MERCADOS (INSPIRADO NO NUBANK)
+   Mantém exatamente o visual dos cards e melhora somente a troca.
    ========================================================= */
 @media (max-width:700px){
-  .cpHomeBest{
-    height:228px!important;
-    min-height:228px!important;
-    max-height:228px!important;
-    display:flex!important;
-    flex-direction:column!important;
-    overflow:hidden!important;
-    box-sizing:border-box!important;
+  .cpHomeSwipeViewport{
+    width:100%;
+    overflow:hidden;
+    border-radius:19px;
+    touch-action:pan-y;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    isolation:isolate;
   }
-  .cpHomeBestTop{
-    flex:0 0 auto!important;
+
+  .cpHomeSwipeTrack{
+    display:flex;
+    width:100%;
+    align-items:stretch;
+    transform:translate3d(-100%,0,0);
+    will-change:transform;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
   }
-  .cpHomeBestBody{
-    flex:1 1 auto!important;
-    min-height:0!important;
+
+  .cpHomeSwipeTrack > .cpHomeBest{
+    flex:0 0 100%;
+    width:100%;
+    min-width:100%;
+    margin:0!important;
+    transform:none!important;
+    transition:none!important;
+    will-change:auto!important;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    box-shadow:none!important;
+    border-color:rgba(255,255,255,.035)!important;
+    opacity:1!important;
+    filter:none!important;
   }
-  .cpHomeBest>button{
-    flex:0 0 43px!important;
+
+  .cpHomeSwipeTrack.is-dragging{
+    cursor:grabbing;
   }
-  .cpHomeMarketDots{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    min-height:14px!important;
-    gap:6px!important;
-    margin:0 0 10px!important;
+
+  .cpHomeBestClone{
+    pointer-events:auto;
   }
+
+  .cpHomeBestClone [data-clone-id="cpHomeBestOpen"]{
+    pointer-events:auto;
+  }
+
+  .cpHomeSwipeGuide{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    margin:1px 0 5px;
+    color:rgba(229,235,233,.48);
+    font-size:9px;
+    font-weight:650;
+    letter-spacing:0;
+    text-transform:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .cpHomeSwipeGuide b{color:inherit;font:inherit;font-weight:650}
+  .cpHomeSwipeGuide span{color:rgba(99,241,39,.58);font-size:14px;line-height:1;font-weight:500}
+
+  .cpHomeMarketDots{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
   .cpHomeMarketDots button{
+    width:5px;height:5px;padding:0;border-radius:999px;
+    background:rgba(255,255,255,.23);opacity:1;
+    transition:width .24s cubic-bezier(.22,1,.36,1),background-color .24s ease,transform .24s ease;
+  }
+  .cpHomeMarketDots button.active{width:14px;background:var(--green);transform:scaleY(1.05)}
+
+  .cpHomeBestTop b{max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .cpHomeBest[data-market="cards"]{
+    background:linear-gradient(180deg,#10110c,#090b09)!important;
+    border-color:rgba(255,255,255,.035)!important;
+    box-shadow:none!important;
+  }
+  .cpHomeBest[data-market="cards"] .cpHomeBestTop b,
+  .cpHomeBest[data-market="cards"] .cpHomeBestTop span,
+  .cpHomeBest[data-market="cards"] .cpHomeBestBody time,
+  .cpHomeBest[data-market="cards"] .cpHomeBestConfidence b,
+  .cpHomeBest[data-market="cards"] .cpHomeSwipeGuide span{
+    color:#ffd400!important;
+  }
+  .cpHomeBest[data-market="cards"] button{
+    background:#ffd400!important;
+    color:#050505!important;
+    box-shadow:none!important;
+    border:0!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button.active{background:#ffd400!important}
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame time,
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame strong{color:#ffd400!important}
+  .cpMobileHome[data-active-market="cards"] .cpHomeOrderSwitch button.active{background:#ffd400!important;color:#050505!important;box-shadow:none!important;border:0!important}
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame,
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame.is-first{border-color:rgba(255,255,255,.035)!important;box-shadow:none!important}
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame small{color:#aeb3af!important}
+}
+
+
+/* ESTABILIDADE MOBILE — preserva o trilho Nubank sem crescimento visual */
+@media (max-width:700px){
+  .cpHomeSwipeViewport{
     display:block!important;
-    flex:0 0 auto!important;
+    min-width:0!important;
+  }
+  .cpHomeSwipeTrack > .cpHomeBest{
+    align-self:stretch!important;
+    height:auto!important;
+    min-height:0!important;
   }
 }
