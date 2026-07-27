@@ -267,6 +267,64 @@
   // ✅ distância mínima entre os dois jogos de segunda a sexta
   // 120 = evita jogos muito colados, tipo 15:00 e 15:30
   const WEEKDAY_MIN_TIME_GAP_MINUTES = 120;
+
+  // =========================================================
+  // ORDENACAO DOS DESTAQUES
+  // "strength" = maior forca de cantos primeiro, sem considerar horario.
+  // "time" = ordem cronologica, somente quando o usuario selecionar.
+  // =========================================================
+  const CORNER_ORDER_STORAGE_KEY = "cornerProGamesOrder";
+  const DAILY_LOCK_STORAGE_PREFIX = "cornerProDailyLockedGames:";
+  let cornerGamesOrderMode = localStorage.getItem(CORNER_ORDER_STORAGE_KEY) === "time"
+    ? "time"
+    : "strength";
+
+  function getCornerOrderMode(){
+    return cornerGamesOrderMode;
+  }
+
+  function setCornerOrderMode(mode){
+    cornerGamesOrderMode = mode === "time" ? "time" : "strength";
+    localStorage.setItem(CORNER_ORDER_STORAGE_KEY, cornerGamesOrderMode);
+    document.querySelectorAll("[data-corner-order]").forEach(button => {
+      const active = button.dataset.cornerOrder === cornerGamesOrderMode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function dailyLockKey(dateYMD){
+    return `${DAILY_LOCK_STORAGE_PREFIX}${dateYMD || todayAM_YMD()}`;
+  }
+
+  function readLockedGames(dateYMD){
+    try {
+      const raw = localStorage.getItem(dailyLockKey(dateYMD));
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed?.games) ? parsed.games : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeLockedGames(dateYMD, games){
+    try {
+      localStorage.setItem(dailyLockKey(dateYMD), JSON.stringify({
+        dateYMD,
+        lockedAt: new Date().toISOString(),
+        games: Array.isArray(games) ? games : []
+      }));
+    } catch (error) {
+      console.warn("Nao foi possivel congelar os destaques do dia.", error);
+    }
+  }
+
+  function orderGamesForSelectedFilter(list, dateYMD){
+    const safe = dedupeList(Array.isArray(list) ? list : []);
+    return getCornerOrderMode() === "time"
+      ? sortGamesByAmazonasTime(safe, dateYMD)
+      : sortByTop1AI(safe);
+  }
   
   function isWeekendDateYMD(dateYMD){
     if (!dateYMD || !/^\d{4}-\d{2}-\d{2}$/.test(dateYMD)) return false;
@@ -794,10 +852,10 @@
     const safeList = filterTop5CornerQuality(filterServerCompatibleGames(dedupeList(list)));
     if (!safeList.length) return [];
 
-    const ranked = sortByTop1AI(safeList);
-    const best = ranked[0];
-    const rest = sortGamesByAmazonasTime(ranked.slice(1), dateYMD);
-    return [best, ...rest];
+    // No modo FORCA, todos os cards seguem a forca de cantos.
+    // O horario nao interfere nem no primeiro nem nos demais lugares.
+    // No modo HORARIO, os mesmos jogos ficam apenas em ordem cronologica.
+    return orderGamesForSelectedFilter(safeList, dateYMD);
   }
   
   // ---------------- IA AUX ----------------
@@ -2784,16 +2842,19 @@
     const top = [];
     const used = new Set();
   
-    // ✅ Segunda a sexta: tenta montar 2 jogos em horários realmente diferentes.
-    // Primeiro pega FULL forte; se faltar, completa com SEMI forte.
-    addDistinctTimeCandidates({ selected: top, used, candidates: fullStrong, targetCount, dateYMD, minGapMinutes: minGap });
-    addDistinctTimeCandidates({ selected: top, used, candidates: semiStrong, targetCount, dateYMD, minGapMinutes: minGap });
-  
-    // ✅ Se o dia tiver poucos jogos bons, completa sem travar a tela.
-    // Ainda assim, a prioridade sempre foi horário distinto.
-    if (top.length < targetCount){
+    if (getCornerOrderMode() === "strength") {
+      // FORCA DE CANTOS: seleciona os melhores do dia sem qualquer trava de horario.
       fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: fullStrong, targetCount });
       fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: semiStrong, targetCount });
+    } else {
+      // HORARIO: preserva a antiga distribuicao temporal.
+      addDistinctTimeCandidates({ selected: top, used, candidates: fullStrong, targetCount, dateYMD, minGapMinutes: minGap });
+      addDistinctTimeCandidates({ selected: top, used, candidates: semiStrong, targetCount, dateYMD, minGapMinutes: minGap });
+
+      if (top.length < targetCount){
+        fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: fullStrong, targetCount });
+        fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: semiStrong, targetCount });
+      }
     }
   
     // O primeiro card é sempre o melhor jogo segundo o filtro IA.
@@ -2948,6 +3009,25 @@
     }, wait);
   }
   
+  // ---------------- Controle Forca x Horario ----------------
+  function setupCornerOrderControls(){
+    setCornerOrderMode(getCornerOrderMode());
+
+    document.addEventListener("click", event => {
+      const button = event.target.closest("[data-corner-order]");
+      if (!button) return;
+      event.preventDefault();
+
+      const nextMode = button.dataset.cornerOrder === "time" ? "time" : "strength";
+      if (nextMode === getCornerOrderMode()) return;
+
+      setCornerOrderMode(nextMode);
+      loadAll({ date: dateInput?.value || todayAM_YMD(), fresh: false });
+    });
+  }
+
+  setupCornerOrderControls();
+
   // ---------------- Main Load ----------------
   async function loadAll({ date, fresh = false } = {}){
     ensureDateVisible();
@@ -3014,22 +3094,36 @@
       const isWeekday = isWeekdayDateYMD(dateYMD);
       const minGap = isWeekday ? WEEKDAY_MIN_TIME_GAP_MINUTES : 0;
   
-      // ✅ Completa os cards respeitando horários distintos nos dias úteis.
-      addDistinctTimeCandidates({
-        selected: displayGames,
-        used: usedDisplay,
-        candidates: promotedCandidates,
-        targetCount,
-        dateYMD,
-        minGapMinutes: minGap
-      });
-  
-      // ✅ Fallback: se não existir segundo horário bom, mostra o melhor restante para não deixar vazio.
-      if (displayGames.length < targetCount){
+      if (getCornerOrderMode() === "strength") {
+        // FORCA DE CANTOS: completa estritamente pelo ranking, independente do horario.
         fillIfNotEnoughIgnoringGap({ selected: displayGames, used: usedDisplay, candidates: promotedCandidates, targetCount });
+      } else {
+        // HORARIO: tenta manter partidas em faixas distintas.
+        addDistinctTimeCandidates({
+          selected: displayGames,
+          used: usedDisplay,
+          candidates: promotedCandidates,
+          targetCount,
+          dateYMD,
+          minGapMinutes: minGap
+        });
+
+        if (displayGames.length < targetCount){
+          fillIfNotEnoughIgnoringGap({ selected: displayGames, used: usedDisplay, candidates: promotedCandidates, targetCount });
+        }
       }
-  
-      displayGames = placeBestAiGameFirst(displayGames, dateYMD);
+
+      // Congela a selecao original do dia. Partida encerrada continua no card
+      // e nunca e substituida por um jogo que apareceu somente depois.
+      const lockedGames = readLockedGames(dateYMD);
+      if (lockedGames.length) {
+        displayGames = lockedGames.slice(0, targetCount);
+      } else {
+        displayGames = sortByTop1AI(displayGames).slice(0, targetCount);
+        writeLockedGames(dateYMD, displayGames);
+      }
+
+      displayGames = orderGamesForSelectedFilter(displayGames, dateYMD);
   
       updateIaBoxFromTop(displayGames);
   
@@ -14234,10 +14328,23 @@ function resetDesktopMatchRailToEmpty(){
     const odds=row?.querySelector('.oddBox');
     const market=clean(odds?.querySelector('b')?.textContent)||'OVER 9.5';
     let conf=Number((row?.dataset?.confidence||'').replace(/[^0-9.]/g,''));
-    if(!Number.isFinite(conf)||!conf) conf=[83,72,68,64][index]||61;
-    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf:Math.round(conf)};
+    if(!Number.isFinite(conf)||!conf){
+      const pctMatch=clean(row?.innerText||'').match(/(\d{2,3})\s*%/);
+      conf=pctMatch ? Number(pctMatch[1]) : 0;
+    }
+    const strength=Number(row?.dataset?.cornerStrength || row?.dataset?.aiScore || conf || 0);
+    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf:Math.round(conf||0),strength};
   }
-  function getData(){return rows().slice(0,6).map(rowData)}
+  function minutesOf(time){
+    const match=String(time||'').match(/^(\d{1,2}):(\d{2})$/);
+    return match ? Number(match[1])*60+Number(match[2]) : 99999;
+  }
+  function getData(){
+    const data=rows().slice(0,6).map(rowData);
+    return getCornerOrderMode() === 'time'
+      ? data.sort((a,b)=>minutesOf(a.time)-minutesOf(b.time))
+      : data.sort((a,b)=>(b.strength-a.strength)||(b.conf-a.conf));
+  }
 
   function openOriginalRow(index){
     const list=rows(); const row=list[index]||list[0];
@@ -14273,6 +14380,13 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   home.addEventListener('click',e=>{
+    const orderButton=e.target.closest('[data-corner-order]');
+    if(orderButton){
+      e.preventDefault();
+      setCornerOrderMode(orderButton.dataset.cornerOrder);
+      render();
+      return;
+    }
     const market=e.target.closest('[data-home-market]');
     if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return}
     const game=e.target.closest('[data-home-game]');

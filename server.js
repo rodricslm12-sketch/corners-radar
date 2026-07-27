@@ -23,6 +23,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { db } from "./firebase.js";
 
 dotenv.config();
 
@@ -1368,15 +1369,37 @@ function cacheSet(key, val, ttlMs = CACHE_TTL_MIN * 60 * 1000) {
   cache.set(key, { val, exp: Date.now() + ttlMs });
 }
 
-// ---------------- Cache disco ----------------
+// ---------------- Cache persistente: Firestore + disco local de fallback ----------------
 const CACHE_DIR = path.join(__dirname, ".cache");
-if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
+if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
 function persistPath(date){
   return path.join(CACHE_DIR, `quentes-${date}.json`);
 }
 
-function readPersist(date){
+function firestoreSafeId(value){
+  return String(value || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+async function readPersist(date){
+  // 1) Firestore: funciona tanto localmente quanto no Render.
+  try {
+    const snap = await db.collection("cache_quentes").doc(firestoreSafeId(date)).get();
+    if (snap.exists) {
+      const parsed = snap.data();
+      if (parsed?.savedAt && Array.isArray(parsed?.data)) {
+        const savedAtMs = Number(parsed.savedAtMs ?? new Date(parsed.savedAt).getTime());
+        const ageMs = Date.now() - savedAtMs;
+        if (Number.isFinite(ageMs) && ageMs <= PERSIST_TTL_MIN * 60 * 1000) {
+          return parsed.data;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Firestore cache read falhou; usando disco:", err?.message || err);
+  }
+
+  // 2) Disco: fallback útil no desenvolvimento local.
   const fp = persistPath(date);
   if (!fs.existsSync(fp)) return null;
   try{
@@ -1391,11 +1414,205 @@ function readPersist(date){
   }
 }
 
-function writePersist(date, data){
+async function writePersist(date, data){
+  const payload = {
+    date,
+    savedAt: new Date().toISOString(),
+    savedAtMs: Date.now(),
+    data
+  };
+
+  // Firestore é o armazenamento principal.
+  try {
+    await db.collection("cache_quentes").doc(firestoreSafeId(date)).set(payload, { merge: true });
+  } catch (err) {
+    console.warn("Firestore cache write falhou; mantendo fallback local:", err?.message || err);
+  }
+
+  // Mantém uma cópia local para desenvolvimento e contingência.
   const fp = persistPath(date);
   try{
-    fs.writeFileSync(fp, JSON.stringify({ savedAt: Date.now(), data }, null, 2));
+    fs.writeFileSync(fp, JSON.stringify({ savedAt: payload.savedAtMs, data }, null, 2));
   } catch {}
+}
+
+function firestoreSanitize(value){
+  if (value === undefined) return null;
+  if (typeof value === "number" && !Number.isFinite(value)) return null;
+
+  if (Array.isArray(value)) {
+    return value.map(firestoreSanitize);
+  }
+
+  if (value instanceof Map) {
+    return Object.fromEntries(
+      Array.from(value.entries()).map(([key, item]) => [
+        String(key),
+        firestoreSanitize(item)
+      ])
+    );
+  }
+
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (item === undefined) continue;
+      out[key] = firestoreSanitize(item);
+    }
+    return out;
+  }
+
+  return value;
+}
+
+function matchCenterPairHasData(pair){
+  return Boolean(
+    pair &&
+    typeof pair === "object" &&
+    (pair.home !== null && pair.home !== undefined ||
+     pair.away !== null && pair.away !== undefined)
+  );
+}
+
+function matchCenterHasUsefulStats(payload){
+  if (!payload || typeof payload !== "object") return false;
+
+  return [
+    payload.corners,
+    payload.shots,
+    payload.shots_on_target,
+    payload.possession,
+    payload.dangerous_attacks,
+    payload.attacks,
+    payload.passes,
+    payload.fouls,
+    payload.yellow_cards,
+    payload.red_cards
+  ].some(matchCenterPairHasData);
+}
+
+function preferStoredPair(incoming, stored){
+  const incomingHasData = matchCenterPairHasData(incoming);
+  const storedHasData = matchCenterPairHasData(stored);
+
+  if (!incomingHasData && storedHasData) return stored;
+  if (!incoming || typeof incoming !== "object") return stored || incoming;
+
+  return {
+    ...stored,
+    ...incoming,
+    home: incoming.home ?? stored?.home ?? null,
+    away: incoming.away ?? stored?.away ?? null
+  };
+}
+
+function mergeMatchCenterPayload(stored, incoming){
+  if (!stored || typeof stored !== "object") return incoming;
+  if (!incoming || typeof incoming !== "object") return stored;
+
+  const merged = {
+    ...stored,
+    ...incoming
+  };
+
+  const pairFields = [
+    "corners",
+    "shots",
+    "shots_on_target",
+    "possession",
+    "dangerous_attacks",
+    "attacks",
+    "passes",
+    "fouls",
+    "accurate_passes",
+    "yellow_cards",
+    "red_cards",
+    "pressure"
+  ];
+
+  for (const field of pairFields) {
+    merged[field] = preferStoredPair(incoming[field], stored[field]);
+  }
+
+  merged.cards = {
+    ...(stored.cards || {}),
+    ...(incoming.cards || {})
+  };
+
+  for (const key of [
+    "home", "away", "yellow_home", "yellow_away", "red_home", "red_away"
+  ]) {
+    merged.cards[key] = incoming.cards?.[key] ?? stored.cards?.[key] ?? null;
+  }
+
+  const incomingEvents = Array.isArray(incoming.events) ? incoming.events : [];
+  const storedEvents = Array.isArray(stored.events) ? stored.events : [];
+  merged.events = incomingEvents.length ? incomingEvents : storedEvents;
+
+  merged.sources = {
+    ...(stored.sources || {}),
+    ...(incoming.sources || {})
+  };
+
+  merged.stats_available = Boolean(
+    incoming.stats_available ||
+    stored.stats_available ||
+    matchCenterHasUsefulStats(merged)
+  );
+
+  return merged;
+}
+
+async function readMatchCenterPersist(matchId){
+  try {
+    const snap = await db.collection("match_center").doc(firestoreSafeId(matchId)).get();
+    if (!snap.exists) return null;
+
+    const data = snap.data();
+    const payload = data?.payload && typeof data.payload === "object"
+      ? data.payload
+      : null;
+
+    if (!payload) return null;
+
+    return {
+      ...payload,
+      _firestore: {
+        updatedAt: data?.updatedAt || null,
+        updatedAtMs: Number(data?.updatedAtMs || 0) || null
+      }
+    };
+  } catch (err) {
+    console.warn("Firestore Match Center read falhou:", err?.message || err);
+    return null;
+  }
+}
+
+async function writeMatchCenterPersist(matchId, payload){
+  try {
+    const stored = await readMatchCenterPersist(matchId);
+    const storedClean = stored ? { ...stored } : null;
+    if (storedClean) delete storedClean._firestore;
+
+    const mergedPayload = mergeMatchCenterPayload(storedClean, payload);
+    const sanitizedPayload = firestoreSanitize(mergedPayload);
+
+    await db.collection("match_center").doc(firestoreSafeId(matchId)).set({
+      match_id: String(matchId),
+      status: sanitizedPayload?.status || "",
+      live: Boolean(sanitizedPayload?.live),
+      finished: Boolean(sanitizedPayload?.finished),
+      stats_available: matchCenterHasUsefulStats(sanitizedPayload),
+      updatedAt: new Date().toISOString(),
+      updatedAtMs: Date.now(),
+      payload: sanitizedPayload
+    }, { merge: true });
+
+    return sanitizedPayload;
+  } catch (err) {
+    console.warn("Firestore Match Center write falhou:", err?.message || err);
+    return payload;
+  }
 }
 
 // ---------------- fetch com timeout ----------------
@@ -3079,7 +3296,7 @@ const EXTRA_HEAVY_MIN_FULL_WANT = 6;
 
 async function buildQuentesList({ date, fresh }) {
   if (!fresh) {
-    const persisted = readPersist(date);
+    const persisted = await readPersist(date);
     if (persisted) {
       // Filtra também caches gravados por versões anteriores do servidor.
       const cleanedPersisted = sanitizeSelectionList(persisted).map(normalizeTeamsOnGame);
@@ -3587,8 +3804,30 @@ if (isEuropeanClassic(casaN, foraN)) {
 
   out = out.map(normalizeTeamsOnGame);
 
-  if (!fresh) writePersist(date, out);
+  await writePersist(date, out);
   return out;
+}
+
+// ---------------- Ranking estável para o aplicativo ----------------
+// A API entrega a lista principal pela força de cantos. O horário continua
+// disponível como informação e só deve ordenar quando o usuário pedir no app.
+function cornerStrengthForClient(game) {
+  const ai = Number(game?.ai_score ?? game?.score_adj ?? game?.local_score ?? game?.score ?? 0);
+  const prob = Number(game?.prob_over_95 ?? game?.prob_over95 ?? game?.probabilidade ?? game?.confidence ?? 0);
+  const proj = Number(game?.proj_cantos ?? game?.projected_corners ?? game?.projection ?? 0);
+  return (Number.isFinite(ai) ? ai : 0) * 0.45
+    + (Number.isFinite(prob) ? prob : 0) * 0.35
+    + (Number.isFinite(proj) ? proj : 0) * 2.0;
+}
+
+function rankGamesByCornerStrength(list) {
+  return (Array.isArray(list) ? list.slice() : [])
+    .sort((a, b) => cornerStrengthForClient(b) - cornerStrengthForClient(a))
+    .map((game, index) => ({
+      ...game,
+      corner_strength: Number(cornerStrengthForClient(game).toFixed(2)),
+      corner_rank: index + 1
+    }));
 }
 
 // ---------------- Endpoints ----------------
@@ -3602,7 +3841,7 @@ app.get("/quentes", async (req, res) => {
   try {
     const out = await buildQuentesList({ date, fresh });
 
-    const safeOut = sanitizeSelectionList(out);
+    const safeOut = rankGamesByCornerStrength(sanitizeSelectionList(out));
 
     if (!ai) return res.json(safeOut);
 
@@ -3624,8 +3863,8 @@ app.get("/quentes", async (req, res) => {
     return res.json([...top6_enriched, ...rest]);
 
   } catch (err) {
-    const fallback = !fresh ? readPersist(date) : null;
-    if (fallback) return res.json(sanitizeSelectionList(fallback));
+    const fallback = !fresh ? await readPersist(date) : null;
+    if (fallback) return res.json(rankGamesByCornerStrength(sanitizeSelectionList(fallback)));
     res.status(500).json({ error: "Erro ao buscar jogos quentes", details: String(err?.message || err) });
   }
 });
@@ -3855,6 +4094,19 @@ app.get("/match_center", async (req, res) => {
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
 
+  const forceFresh = String(req.query.fresh || "") === "1";
+  if (!forceFresh) {
+    const stored = await readMatchCenterPersist(matchId);
+    if (stored?.finished && matchCenterHasUsefulStats(stored)) {
+      const { _firestore, ...storedPayload } = stored;
+      return res.json({
+        ...storedPayload,
+        source: "firestore_finished",
+        firestore_updated_at: _firestore?.updatedAt || null
+      });
+    }
+  }
+
   try {
     let data = await apiGetFreshAny({ action: "get_events", match_id: matchId });
     let event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
@@ -3977,7 +4229,7 @@ app.get("/match_center", async (req, res) => {
     const homeScore = mcNumber(mcFirst(event, ["match_hometeam_score", "home_score", "score_home"], 0)) ?? 0;
     const awayScore = mcNumber(mcFirst(event, ["match_awayteam_score", "away_score", "score_away"], 0)) ?? 0;
 
-    return res.json({
+    const payload = {
       ok: true,
       match_id: String(matchId),
       home: teamFromEvent(event, "home"),
@@ -4029,8 +4281,22 @@ app.get("/match_center", async (req, res) => {
         corners_statistics: cornersStats,
         corners_event_fallback: cornersEvent
       }
-    });
+    };
+
+    const persistedPayload = await writeMatchCenterPersist(matchId, payload);
+    return res.json(persistedPayload);
   } catch (err) {
+    const stored = await readMatchCenterPersist(matchId);
+    if (stored) {
+      const { _firestore, ...storedPayload } = stored;
+      return res.json({
+        ...storedPayload,
+        source: "firestore_fallback",
+        stale: true,
+        firestore_updated_at: _firestore?.updatedAt || null
+      });
+    }
+
     return res.status(500).json({
       error: "Erro ao carregar Match Center",
       details: String(err?.message || err),
@@ -4038,6 +4304,7 @@ app.get("/match_center", async (req, res) => {
     });
   }
 });
+
 
 app.get("/", (req, res) => res.send("Servidor rodando com API ⚽"));
 

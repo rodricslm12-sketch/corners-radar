@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260723-pregame-image2" />
-  <script src="script.js?v=20260723-pregame-image2" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260727-corner-order" />
+  <script src="script.js?v=20260727-corner-order" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -128,6 +128,10 @@
           <section class="gamesPanel">
             <div class="sectionHead">
               <h2>Jogos em Destaque</h2>
+              <div class="cornerOrderSwitch" aria-label="Ordenar jogos">
+                <button type="button" class="active" data-corner-order="strength" aria-pressed="true">🔥 Força de cantos</button>
+                <button type="button" data-corner-order="time" aria-pressed="false">🕒 Horário</button>
+              </div>
               <div class="filterPills">
                 <button type="button">Todos</button>
                 <button type="button" class="active">Hoje</button>
@@ -228,6 +232,11 @@
 
       <section class="cpHomeSection">
         <div class="cpHomeSectionHead"><h2>Jogos em destaque</h2><button type="button">VER TODOS ›</button></div>
+        <div class="cpHomeOrderSwitch" aria-label="Ordenar jogos em destaque">
+          <button type="button" class="active" data-corner-order="strength" aria-pressed="true"><span>🔥</span> FORÇA DE CANTOS</button>
+          <button type="button" data-corner-order="time" aria-pressed="false"><span>🕒</span> HORÁRIO</button>
+        </div>
+        <small class="cpHomeOrderHint">Em força de cantos, o melhor jogo do dia fica sempre em primeiro.</small>
         <div class="cpHomeGames" id="cpHomeGames"><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div></div>
       </section>
 
@@ -317,6 +326,9 @@
       <div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>
     </div>
   </section>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="auth.js"></script>
 
 </body>
 </html>
