@@ -7989,3 +7989,100 @@ button.railFullBtn {
     box-shadow:none!important;
   }
 }
+
+/* =========================================================
+   CORREÇÃO FINAL — CARD NÃO ESTICA APÓS ATUALIZAR
+   Mantém o efeito Nubank e trava todos os slides na mesma medida.
+   ========================================================= */
+@media (max-width:700px){
+
+  .cpHomeSwipeViewport{
+    width:100%!important;
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    overflow:hidden!important;
+    border-radius:19px!important;
+    contain:layout paint size!important;
+  }
+
+  .cpHomeSwipeTrack{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    align-items:stretch!important;
+    overflow:visible!important;
+  }
+
+  .cpHomeSwipeTrack > .cpHomeBest,
+  .cpHomeSwipeTrack > .cpHomeBestClone{
+    position:relative!important;
+    flex:0 0 100%!important;
+    width:100%!important;
+    min-width:100%!important;
+    max-width:100%!important;
+    height:263px!important;
+    min-height:263px!important;
+    max-height:263px!important;
+    align-self:stretch!important;
+    overflow:hidden!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+  }
+
+  /* O loading deixa de participar do cálculo de altura do slide. */
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading{
+    position:absolute!important;
+    left:16px!important;
+    right:16px!important;
+    top:62px!important;
+    bottom:54px!important;
+    width:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:8px 10px!important;
+    margin:0!important;
+    display:flex!important;
+    overflow:hidden!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeLoadingSpinner,
+  .cpHomeBestClone.is-loading-initial .cpHomeLoadingSpinner{
+    width:32px!important;
+    height:32px!important;
+    min-width:32px!important;
+    min-height:32px!important;
+    border-width:4px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading strong,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading strong{
+    margin-top:9px!important;
+    font-size:13px!important;
+    line-height:1.2!important;
+    white-space:nowrap!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading small,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading small{
+    margin-top:4px!important;
+    font-size:9px!important;
+    line-height:1.25!important;
+    max-width:100%!important;
+  }
+
+  /* Impede conteúdo interno de aumentar o card no Safari. */
+  .cpHomeBestTop,
+  .cpHomeBestBody,
+  .cpHomeInitialLoading,
+  #cpHomeBestOpen,
+  [data-clone-id="cpHomeBestOpen"]{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
