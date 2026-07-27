@@ -7691,3 +7691,53 @@ button.railFullBtn {
     line-height:1.3;
   }
 }
+
+/* =========================================================
+   MOBILE — CARROSSEL DE MERCADOS NO CARD PRINCIPAL
+   Mantém as cores originais do site. Apenas cartões usa amarelo/preto.
+   Sem borda amarela e sem sombra luminosa nas bordas.
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeBest{
+    touch-action:pan-y;
+    transition:transform .18s ease,opacity .18s ease;
+    box-shadow:none!important;
+    border-color:rgba(255,255,255,.035)!important;
+  }
+  .cpHomeBest.cp-swipe-left{transform:translateX(-18px);opacity:.70}
+  .cpHomeBest.cp-swipe-right{transform:translateX(18px);opacity:.70}
+  .cpHomeSwipeGuide{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 7px;color:#9ca5a5;font-size:10px;font-weight:850;letter-spacing:.2px}
+  .cpHomeSwipeGuide span{color:var(--green);font-size:18px;line-height:1}
+  .cpHomeMarketDots{display:flex;justify-content:center;gap:8px;margin:0 0 13px}
+  .cpHomeMarketDots button{width:7px;height:7px;padding:0;border-radius:50%;background:#4e5658;opacity:.72}
+  .cpHomeMarketDots button.active{background:var(--green);opacity:1}
+  .cpHomeBestTop b{max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cpMobileHome[data-active-market="cards"] .cpHomeBest{
+    background:linear-gradient(180deg,#10110c,#090b09)!important;
+    border-color:rgba(255,255,255,.035)!important;
+    box-shadow:none!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeBestTop b,
+  .cpMobileHome[data-active-market="cards"] .cpHomeBestTop span,
+  .cpMobileHome[data-active-market="cards"] .cpHomeBestBody time,
+  .cpMobileHome[data-active-market="cards"] .cpHomeBestConfidence b,
+  .cpMobileHome[data-active-market="cards"] .cpHomeSwipeGuide span,
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame time,
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame strong{
+    color:#ffd400!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button.active{background:#ffd400!important}
+  .cpMobileHome[data-active-market="cards"] #cpHomeBestOpen,
+  .cpMobileHome[data-active-market="cards"] .cpHomeOrderSwitch button.active{
+    background:#ffd400!important;
+    color:#050505!important;
+    box-shadow:none!important;
+    border:0!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame,
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame.is-first{
+    border-color:rgba(255,255,255,.035)!important;
+    box-shadow:none!important;
+  }
+  .cpMobileHome[data-active-market="cards"] .cpHomeGame small{color:#aeb3af!important}
+}

@@ -14261,180 +14261,285 @@ function resetDesktopMatchRailToEmpty(){
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const home=$('#cpMobileHome');
-  if(!home) return;
+  if(!home || window.__cpMobileMarketCarouselV1) return;
+  window.__cpMobileMarketCarouselV1=true;
 
-  function setMobileLoading(mode='initial'){
-    const card=$('#cpHomeBest');
-    const button=$('#cpHomeBestOpen');
-    const text=$('.cpHomeBestOpenText');
-    const games=$('#cpHomeGames');
+  const MARKETS=['corners','goals','cards'];
+  const MARKET_META={
+    corners:{label:'ESCANTEIOS',icon:'⚑',force:'FORÇA DE CANTOS',hint:'Em força de cantos, o melhor jogo do dia fica sempre em primeiro.'},
+    goals:{label:'GOLS',icon:'⚽',force:'FORÇA DE GOLS',hint:'Em força de gols, os jogos são classificados por produção ofensiva e probabilidade da linha.'},
+    cards:{label:'CARTÕES',icon:'▯',force:'FORÇA DE CARTÕES',hint:'Em força de cartões, os jogos são classificados por projeção, histórico e intensidade.'}
+  };
+  let activeMarket='corners';
+  let marketRankings={corners:[],goals:[],cards:[]};
+  let touchStartX=0;
+  let touchStartY=0;
+  let touchMoving=false;
 
-    if(!card || !button) return;
-
-    card.classList.remove('is-loading-initial','is-loading-date');
-
-    if(mode==='initial'){
-      card.classList.add('is-loading-initial');
-      card.setAttribute('aria-busy','true');
-      button.disabled=true;
-      if(text) text.textContent='CARREGANDO JOGOS DO DIA...';
-      if(games){
-        games.classList.add('is-loading');
-        games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
-      }
-      return;
+  function clampLocal(n,a,b){ return Math.max(a,Math.min(b,n)); }
+  function numberOf(...values){
+    for(const value of values){
+      const n=Number(value);
+      if(Number.isFinite(n)) return n;
     }
-
-    if(mode==='selected'){
-      card.classList.add('is-loading-date');
-      card.setAttribute('aria-busy','true');
-      button.disabled=true;
-      if(text) text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
-      return;
-    }
-
-    card.setAttribute('aria-busy','false');
-    button.disabled=false;
-    games?.classList.remove('is-loading');
-    if(text) text.textContent='VER ANÁLISE COMPLETA →';
-  }
-
-  window.CornerProMobileHomeLoading=setMobileLoading;
-
-  function rows(){
-    return $$('.gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .marketGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]')
-      .filter(el=>!el.closest('.cpMobileHome'));
+    return null;
   }
   function clean(s){return String(s||'').replace(/\s+/g,' ').trim()}
-  function rowData(row,index){
-    const meta=row?.querySelector('.gameMeta');
-    const txt=clean(meta?.innerText||row?.innerText||'');
-    const time=(txt.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/)||[])[0]||'--:--';
-    let names=[];
-    if(meta){
-      const em=clean(meta.querySelector('em')?.textContent);
-      const b=meta.querySelector('b');
-      if(b){
-        const clone=b.cloneNode(true); clone.querySelectorAll('span,small').forEach(x=>x.remove());
-        const parts=clone.innerHTML.split(/<br\s*\/?>(?:\s*)/i).map(x=>clean(x.replace(/<[^>]+>/g,' '))).filter(Boolean);
-        names=parts;
-      }
-      if(em && !names.includes(em)) names.push(em);
-    }
-    if(names.length<2){
-      const lines=(meta?.innerText||'').split('\n').map(clean).filter(Boolean).filter(x=>!x.includes(':')&&!/liga|league|serie|premier|la liga/i.test(x));
-      names=lines.slice(-2);
-    }
-    const odds=row?.querySelector('.oddBox');
-    const market=clean(odds?.querySelector('b')?.textContent)||'OVER 9.5';
-
-    // A confiança do mobile deve vir da probabilidade real do jogo,
-    // nunca da projeção de cantos (ex.: 11.0) nem de textos soltos do card.
-    const panel = row?.closest('.gamesPanel');
-    const rawIndex = Number(row?.dataset?.realGameIndex ?? row?.dataset?.gameIndex ?? -1);
-    const linked = Number.isInteger(rawIndex) && rawIndex >= 0
-      ? panel?.__cornerProGames?.[rawIndex]
-      : null;
-    const sourceGame = linked?.raw || linked || null;
-
-    let conf = sourceGame && typeof getProb === 'function'
-      ? Number(getProb(sourceGame))
-      : NaN;
-
-    if(!Number.isFinite(conf) || conf <= 0){
-      conf = Number((row?.dataset?.confidence||'').replace(/[^0-9.]/g,''));
-    }
-
-    if(!Number.isFinite(conf) || conf <= 0){
-      const firstMarketText = clean(odds?.querySelector('span')?.textContent || '');
-      const match = firstMarketText.match(/(\d{1,2}(?:[.,]\d+)?)\s*%/);
-      conf = match ? Number(match[1].replace(',', '.')) : NaN;
-    }
-
-    // Segurança: probabilidade sempre entre 5% e 95%.
-    conf = Number.isFinite(conf) ? Math.max(5, Math.min(95, conf)) : 65;
-
-    const strength=Number(row?.dataset?.cornerStrength || row?.dataset?.aiScore || conf || 0);
-    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf:Math.round(conf),strength};
+  function gameId(g,index=0){
+    return String(g?.match_id??g?.id??g?.event_key??`${g?.casa||g?.home||''}|${g?.fora||g?.away||''}|${g?.hora||g?.time||index}`);
   }
-  function minutesOf(time){
-    const match=String(time||'').match(/^(\d{1,2}):(\d{2})$/);
-    return match ? Number(match[1])*60+Number(match[2]) : 99999;
+  function gameName(g,home){
+    return clean(home?(g?.casa??g?.home??g?.home_name??g?.match_hometeam_name):(g?.fora??g?.away??g?.away_name??g?.match_awayteam_name)) || (home?'Mandante':'Visitante');
   }
-  function getData(){
-    const data=rows().slice(0,6).map(rowData);
-    return getCornerOrderMode() === 'time'
-      ? data.sort((a,b)=>minutesOf(a.time)-minutesOf(b.time))
-      : data.sort((a,b)=>(b.strength-a.strength)||(b.conf-a.conf));
+  function gameTime(g){ return clean(g?.hora??g?.time??g?.match_time??'--:--').slice(0,5); }
+  function getPathValue(obj,path){
+    return String(path).split('.').reduce((acc,key)=>acc==null?undefined:acc[key],obj);
+  }
+  function pickNumber(g,paths){
+    for(const path of paths){
+      const n=Number(getPathValue(g,path));
+      if(Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+  function normalizePct(value,fallback=55){
+    let n=Number(value);
+    if(!Number.isFinite(n)) n=fallback;
+    if(n>0 && n<=1) n*=100;
+    while(n>100) n/=10;
+    return clampLocal(Math.round(n),5,95);
   }
 
-  function openOriginalRow(index){
-    const list=rows(); const row=list[index]||list[0];
+  function rawGames(){
+    const pools=[];
+    const panel=$('.gamesPanel');
+    if(Array.isArray(panel?.__cornerProGames)) pools.push(panel.__cornerProGames.map(x=>x?.raw||x));
+    for(const key of ['__premiumFilteredGames','__premiumMarketGames','__lastMarketGames','__lastRawGames']){
+      try{ if(Array.isArray(window[key])) pools.push(window[key]); }catch(_){ }
+    }
+    try{ if(typeof lastMarketGames!=='undefined'&&Array.isArray(lastMarketGames)) pools.push(lastMarketGames); }catch(_){ }
+    try{ if(typeof lastRawGames!=='undefined'&&Array.isArray(lastRawGames)) pools.push(lastRawGames); }catch(_){ }
+    const out=[],seen=new Set();
+    pools.flat().forEach((g,index)=>{
+      if(!g||typeof g!=='object') return;
+      const id=gameId(g,index);
+      if(seen.has(id)) return;
+      seen.add(id); out.push(g);
+    });
+    return out;
+  }
+
+  function cornersProjection(g){
+    return numberOf(g?.proj_cantos,g?.projCorners,g?.projection,g?.proj,g?.real?.recentCombinedAvg,g?.avg_total) ?? 9.5;
+  }
+  function cornersConfidence(g){
+    let p=null;
+    try{ if(typeof getProb==='function') p=getProb(g); }catch(_){ }
+    return normalizePct(p ?? pickNumber(g,['over95_prob_adj','over95_prob','markets.prob.corners95','prob','confidence']),52);
+  }
+  function cornersLine(g){
+    const proj=cornersProjection(g);
+    if(proj>=12.1) return 'OVER 11.5';
+    if(proj>=11.1) return 'OVER 10.5';
+    if(proj>=10.1) return 'OVER 9.5';
+    return 'OVER 8.5';
+  }
+
+  function goalsProjectionLocal(g){
+    try{ if(typeof projectedGoals==='function'){const n=Number(projectedGoals(g));if(Number.isFinite(n))return n;} }catch(_){ }
+    return numberOf(g?.proj_goals,g?.goals_projection,g?.expected_goals_total,g?.totalExpected,g?.markets?.totalExpected,g?.real?.goalsCombinedAvg,g?.avg_goals) ?? 2.1;
+  }
+  function goalsLineLocal(g){
+    const proj=goalsProjectionLocal(g);
+    const p35=normalizePct(pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']),35);
+    const p25=normalizePct(pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']),52);
+    if(proj>=3.45 && p35>=48) return 'OVER 3.5';
+    if(proj>=2.55 && p25>=56) return 'OVER 2.5';
+    return 'OVER 1.5';
+  }
+  function goalsConfidenceLocal(g){
+    const line=goalsLineLocal(g);
+    const key=line.includes('3.5')?'over35':line.includes('2.5')?'over25':'over15';
+    let p=null;
+    try{ if(typeof marketPercent==='function') p=marketPercent(g,key); }catch(_){ }
+    if(!Number.isFinite(Number(p))){
+      try{ if(typeof goalsPercent==='function') p=goalsPercent(g); }catch(_){ }
+    }
+    p = p ?? pickNumber(g,[`markets.prob.${key}`,`${key}_prob`,`prob_${key}`]);
+    const proj=goalsProjectionLocal(g);
+    const fallback=line.includes('3.5')?42+(proj-3.2)*16:line.includes('2.5')?52+(proj-2.4)*18:67+(proj-1.7)*13;
+    return normalizePct(p,fallback);
+  }
+
+  function cardsProjectionLocal(g){
+    try{ if(typeof projectedCards==='function'){const n=Number(projectedCards(g));if(Number.isFinite(n))return n;} }catch(_){ }
+    return numberOf(g?.proj_cards,g?.cards_projection,g?.expected_cards_total,g?.total_cards_avg,g?.media_cartoes_total,g?.cartoes_media) ?? 3.6;
+  }
+  function cardsLineLocal(g){
+    const proj=cardsProjectionLocal(g);
+    if(proj>=5.15) return 'OVER 4.5';
+    if(proj>=4.05) return 'OVER 3.5';
+    return 'OVER 2.5';
+  }
+  function cardsConfidenceLocal(g){
+    const line=cardsLineLocal(g);
+    const key=line.includes('4.5')?'cards45':line.includes('3.5')?'cards35':'cards25';
+    let p=null;
+    try{ if(typeof marketPercent==='function') p=marketPercent(g,key); }catch(_){ }
+    if(!Number.isFinite(Number(p))){
+      try{ if(typeof cardsPercent==='function') p=cardsPercent(g); }catch(_){ }
+    }
+    p = p ?? pickNumber(g,[`markets.prob.${key}`,`${key}_prob`,`over${line.replace(/\D/g,'')}cards_prob`]);
+    const proj=cardsProjectionLocal(g);
+    const target=Number(line.match(/[\d.]+/)?.[0]||3.5);
+    return normalizePct(p,52+(proj-target)*15);
+  }
+
+  function marketItem(g,type,index){
+    let projection,confidence,line,score;
+    if(type==='goals'){
+      projection=goalsProjectionLocal(g); confidence=goalsConfidenceLocal(g); line=goalsLineLocal(g);
+      const btts=normalizePct(pickNumber(g,['markets.prob.btts','btts_prob','prob_btts']),50);
+      score=confidence*1.15+projection*10+btts*.12;
+    }else if(type==='cards'){
+      projection=cardsProjectionLocal(g); confidence=cardsConfidenceLocal(g); line=cardsLineLocal(g);
+      score=confidence*1.18+projection*9;
+    }else{
+      projection=cornersProjection(g); confidence=cornersConfidence(g); line=cornersLine(g);
+      const pressure=numberOf(g?.real?.pressureHits,g?.pressureHits)??0;
+      const ai=numberOf(g?.top1_score,g?.ai_score,g?.score_adj,g?.score)??0;
+      score=confidence*1.12+projection*6+pressure*3+ai*.12;
+    }
+    return {raw:g,id:gameId(g,index),time:gameTime(g),home:gameName(g,true),away:gameName(g,false),market:line,conf:confidence,projection,score};
+  }
+
+  function buildRankings(){
+    const games=rawGames();
+    if(!games.length) return marketRankings;
+    const rankings={};
+    MARKETS.forEach(type=>{
+      rankings[type]=games.map((g,i)=>marketItem(g,type,i)).sort((a,b)=>(b.score-a.score)||(b.conf-a.conf));
+    });
+    // Cada mercado deve ter um Top 1 próprio. Evita repetir automaticamente
+    // o mesmo jogo do card de cantos quando há outra opção forte disponível.
+    const used=new Set();
+    for(const type of MARKETS){
+      const list=rankings[type];
+      const alternative=list.findIndex((x,i)=>i<5&&!used.has(x.id)&&x.conf>=55);
+      if(alternative>0) list.unshift(list.splice(alternative,1)[0]);
+      if(list[0]) used.add(list[0].id);
+    }
+    marketRankings=rankings;
+    return rankings;
+  }
+
+  function setMobileLoading(mode='initial'){
+    const card=$('#cpHomeBest'); const button=$('#cpHomeBestOpen'); const text=$('.cpHomeBestOpenText'); const games=$('#cpHomeGames');
+    if(!card||!button)return;
+    card.classList.remove('is-loading-initial','is-loading-date');
+    if(mode==='initial'){
+      card.classList.add('is-loading-initial'); card.setAttribute('aria-busy','true'); button.disabled=true;
+      if(text)text.textContent='CARREGANDO JOGOS DO DIA...';
+      if(games){games.classList.add('is-loading');games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';}
+      return;
+    }
+    if(mode==='selected'){
+      card.classList.add('is-loading-date');card.setAttribute('aria-busy','true');button.disabled=true;
+      if(text)text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';return;
+    }
+    card.setAttribute('aria-busy','false');button.disabled=false;games?.classList.remove('is-loading');
+    if(text)text.textContent='VER ANÁLISE COMPLETA →';
+  }
+  window.CornerProMobileHomeLoading=setMobileLoading;
+
+  function currentData(){
+    buildRankings();
+    const list=[...(marketRankings[activeMarket]||[])];
+    if(getCornerOrderMode()==='time') list.sort((a,b)=>{
+      const min=t=>{const m=String(t).match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):99999};
+      return min(a.time)-min(b.time);
+    });
+    return list;
+  }
+  function originalRowFor(item){
+    const panel=$('.gamesPanel');
+    const linked=Array.isArray(panel?.__cornerProGames)?panel.__cornerProGames:[];
+    const idx=linked.findIndex(x=>gameId(x?.raw||x)===item?.id);
+    const rows=$$('.gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .marketGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]').filter(el=>!el.closest('.cpMobileHome'));
+    return rows[idx]||rows[0]||null;
+  }
+  function openItem(item){
+    const row=originalRowFor(item);
     if(row) row.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
   }
   function openMarket(type){
     const map={pregame:0,corners:1,goals:2,cards:3,props:4};
-    if(type==='combined'){
-      const kind=$('[data-cp-market="combined"]');
-      const original=$$('.marketTabs .marketTab')[1];
-      original?.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
-      setTimeout(()=>kind?.click(),40); return;
-    }
     const original=$$('.marketTabs .marketTab')[map[type]??1];
     if(original) original.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
   }
 
+  function updateDots(){
+    $$('[data-cp-home-dot]').forEach((dot,i)=>dot.classList.toggle('active',MARKETS[i]===activeMarket));
+  }
   function render(){
-    const data=getData();
+    const data=currentData();
     if(!data.length) return;
-
     setMobileLoading('done');
-
-    const best=data[0];
+    const best=data[0]; const meta=MARKET_META[activeMarket];
+    home.dataset.activeMarket=activeMarket;
+    $('#cpHomeBest')?.setAttribute('data-market',activeMarket);
+    $('#cpHomeBestTitle').textContent=`${meta.icon} MELHOR APOSTA DE ${meta.label}`;
     $('#cpHomeBestTime').textContent=best.time;
     $('#cpHomeBestHome').textContent=best.home;
     $('#cpHomeBestAway').textContent=best.away;
     $('#cpHomeBestConfidence').textContent=best.conf+'%';
     $('#cpHomeBestMarket').textContent=best.market;
     $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
-    $('#cpHomeGames').innerHTML=data.slice(0,5).map((g,i)=>`<button type="button" class="cpHomeGame${i===0?' is-first':''}" data-home-game="${i}"><time>${g.time}</time><div class="teams"><b>${g.home}</b><i>×</i><b>${g.away}</b></div><small>${g.market}</small><strong>${g.conf}%</strong></button>`).join('');
-    $('#cpHomeLastGames').innerHTML=data.slice(1,4).map((g,i)=>`<button type="button" class="cpHomeLastGame" data-home-game="${i+1}"><time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i></button>`).join('');
+    const forceBtn=$('[data-corner-order="strength"]','.cpHomeOrderSwitch');
+    if(forceBtn) forceBtn.innerHTML=`<span>${meta.icon}</span> ${meta.force}`;
+    const hint=$('.cpHomeOrderHint'); if(hint) hint.textContent=meta.hint;
+    $('#cpHomeGames').innerHTML=data.slice(0,5).map((g,i)=>`<button type="button" class="cpHomeGame${i===0?' is-first':''}" data-home-market-game="${i}"><time>${g.time}</time><div class="teams"><b>${g.home}</b><i>×</i><b>${g.away}</b></div><small>${g.market}</small><strong>${g.conf}%</strong></button>`).join('');
+    $('#cpHomeLastGames').innerHTML=data.slice(1,4).map((g,i)=>`<button type="button" class="cpHomeLastGame" data-home-market-game="${i+1}"><time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i></button>`).join('');
+    updateDots();
+  }
+  function switchMarket(direction){
+    const current=MARKETS.indexOf(activeMarket);
+    activeMarket=MARKETS[(current+direction+MARKETS.length)%MARKETS.length];
+    const card=$('#cpHomeBest');
+    card?.classList.add(direction>0?'cp-swipe-left':'cp-swipe-right');
+    setTimeout(()=>{render();card?.classList.remove('cp-swipe-left','cp-swipe-right')},120);
   }
 
   home.addEventListener('click',e=>{
+    const dot=e.target.closest('[data-cp-home-dot]');
+    if(dot){e.preventDefault();activeMarket=dot.dataset.cpHomeDot;render();return;}
     const orderButton=e.target.closest('[data-corner-order]');
-    if(orderButton){
-      e.preventDefault();
-      setCornerOrderMode(orderButton.dataset.cornerOrder);
-      render();
-      return;
-    }
+    if(orderButton){e.preventDefault();setCornerOrderMode(orderButton.dataset.cornerOrder);render();return;}
     const market=e.target.closest('[data-home-market]');
-    if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return}
-    const game=e.target.closest('[data-home-game]');
-    if(game){e.preventDefault();openOriginalRow(Number(game.dataset.homeGame));return}
-    if(e.target.closest('#cpHomeBestOpen,#cpHomeBest')){e.preventDefault();openOriginalRow(0);return}
-    if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openOriginalRow(0)}
+    if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return;}
+    const game=e.target.closest('[data-home-market-game]');
+    if(game){e.preventDefault();openItem(currentData()[Number(game.dataset.homeMarketGame)]);return;}
+    if(e.target.closest('#cpHomeBestOpen')){e.preventDefault();openItem(currentData()[0]);return;}
+    if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openItem(currentData()[0]);}
   });
 
+  const swipeCard=$('#cpHomeBest');
+  swipeCard?.addEventListener('touchstart',e=>{
+    const t=e.changedTouches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchMoving=true;
+  },{passive:true});
+  swipeCard?.addEventListener('touchend',e=>{
+    if(!touchMoving)return;touchMoving=false;
+    const t=e.changedTouches[0];const dx=t.clientX-touchStartX;const dy=t.clientY-touchStartY;
+    if(Math.abs(dx)>=48&&Math.abs(dx)>Math.abs(dy)*1.25) switchMarket(dx<0?1:-1);
+  },{passive:true});
+
   setMobileLoading('initial');
-
-  // A tela mobile lê os jogos reais renderizados no painel desktop.
-  // Esta verificação resolve casos em que a API termina antes/depois do observer.
-  let cpMobileReadyChecks=0;
-  const cpMobileReadyTimer=setInterval(()=>{
-    cpMobileReadyChecks+=1;
-    render();
-    if(getData().length || cpMobileReadyChecks>=120){
-      clearInterval(cpMobileReadyTimer);
-    }
-  },250);
-
-  const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,120)});
-  const panel=$('.gamesPanel'); if(panel) observer.observe(panel,{childList:true,subtree:true,characterData:true});
-  setInterval(render,1800);
+  let checks=0;
+  const timer=setInterval(()=>{checks++;render();if(rawGames().length||checks>=120)clearInterval(timer)},250);
+  const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,140)});
+  const panel=$('.gamesPanel');if(panel)observer.observe(panel,{childList:true,subtree:true,characterData:true});
+  setInterval(render,2200);
 })();
-
 
 /* =========================================================
    CALENDÁRIO MOBILE V4 — funciona diretamente na nova Home.

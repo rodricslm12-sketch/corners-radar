@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260727-corner-order" />
-  <script src="script.js?v=20260727-corner-order" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260728-market-carousel" />
+  <script src="script.js?v=20260728-market-carousel" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -211,7 +211,13 @@
       <section class="cpHomeGreeting"><div><span>♧</span><strong>Olá, Rodrigo</strong></div><button type="button">Alertas <i></i></button></section>
 
       <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
-        <div class="cpHomeBestTop"><b>🔥 MELHOR APOSTA DO DIA</b><span id="cpHomeBestMarket">ANALISANDO</span></div>
+        <div class="cpHomeSwipeGuide" aria-hidden="true"><span>←</span><b>DESLIZE PARA OS LADOS</b><span>→</span></div>
+        <div class="cpHomeMarketDots" aria-label="Mercado do card">
+          <button type="button" class="active" data-cp-home-dot="corners" aria-label="Escanteios"></button>
+          <button type="button" data-cp-home-dot="goals" aria-label="Gols"></button>
+          <button type="button" data-cp-home-dot="cards" aria-label="Cartões"></button>
+        </div>
+        <div class="cpHomeBestTop"><b id="cpHomeBestTitle">⚑ MELHOR APOSTA DE ESCANTEIOS</b><span id="cpHomeBestMarket">ANALISANDO</span></div>
 
         <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
           <span class="cpHomeLoadingSpinner" aria-hidden="true"></span>
