@@ -14495,9 +14495,16 @@ function resetDesktopMatchRailToEmpty(){
     $('#cpHomeBestConfidence').textContent=best.conf+'%';
     $('#cpHomeBestMarket').textContent=best.market;
     $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
-    const forceBtn=$('[data-corner-order="strength"]','.cpHomeOrderSwitch');
-    if(forceBtn) forceBtn.innerHTML=`<span>${meta.icon}</span> ${meta.force}`;
-    const hint=$('.cpHomeOrderHint'); if(hint) hint.textContent=meta.hint;
+    const orderSwitch=$('.cpHomeOrderSwitch');
+    const forceBtn=orderSwitch?.querySelector('[data-corner-order="strength"]');
+    const timeBtn=orderSwitch?.querySelector('[data-corner-order="time"]');
+    if(forceBtn){
+      forceBtn.innerHTML=`<span>${meta.icon}</span> ${meta.force}`;
+      forceBtn.setAttribute('aria-label',meta.force);
+    }
+    if(timeBtn) timeBtn.setAttribute('aria-label',`Ordenar ${meta.label.toLowerCase()} por horário`);
+    const hint=$('.cpHomeOrderHint');
+    if(hint) hint.textContent=meta.hint;
     $('#cpHomeGames').innerHTML=data.slice(0,5).map((g,i)=>`<button type="button" class="cpHomeGame${i===0?' is-first':''}" data-home-market-game="${i}"><time>${g.time}</time><div class="teams"><b>${g.home}</b><i>×</i><b>${g.away}</b></div><small>${g.market}</small><strong>${g.conf}%</strong></button>`).join('');
     $('#cpHomeLastGames').innerHTML=data.slice(1,4).map((g,i)=>`<button type="button" class="cpHomeLastGame" data-home-market-game="${i+1}"><time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i></button>`).join('');
     updateDots();
