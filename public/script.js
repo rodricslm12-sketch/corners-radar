@@ -14580,45 +14580,36 @@ function resetDesktopMatchRailToEmpty(){
     swipeFrame=0;
     if(!swipeCard)return;
 
-    // Resposta leve e imediata: acompanha o dedo sem curva de resistência.
-    // O limite curto impede que o card revele o fundo preto.
-    const x=Math.max(-32,Math.min(32,swipeDx*.82));
+    // Movimento 1:1 com o dedo, mas curto para nunca revelar o fundo da página.
+    // Sem resistência, escala, opacidade ou cálculo de layout durante o gesto.
+    const x=Math.max(-24,Math.min(24,swipeDx));
     swipeCard.style.transform=`translate3d(${x}px,0,0)`;
   }
 
   function settleSwipe(direction=0){
     if(!swipeCard)return;
-    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
-    swipeCard.classList.remove('is-dragging');
-    swipeCard.classList.add('is-settling');
 
-    if(!direction){
-      swipeCard.style.transform='translate3d(0,0,0)';
-      window.setTimeout(()=>{
+    // Retorna imediatamente ao centro. Não há timeout, saída de tela,
+    // entrada animada nem leitura forçada de layout.
+    swipeCard.classList.remove('is-dragging','is-entering');
+    swipeCard.classList.add('is-settling');
+    swipeCard.style.transform='translate3d(0,0,0)';
+
+    if(direction){
+      // Espera apenas o próximo frame para o navegador pintar o card centralizado.
+      // Depois troca o conteúdo sem uma segunda animação pesada.
+      requestAnimationFrame(()=>{
+        switchMarket(direction);
         swipeCard.classList.remove('is-settling');
         swipeCard.style.transform='';
-      },320);
+      });
       return;
     }
 
-    // A troca acontece com deslocamento curto, sem jogar o card para fora da tela.
-    const exitX=direction>0?-32:32;
-    const enterX=direction>0?22:-22;
-    swipeCard.style.transform=`translate3d(${exitX}px,0,0)`;
     window.setTimeout(()=>{
-      switchMarket(direction);
       swipeCard.classList.remove('is-settling');
-      swipeCard.classList.add('is-entering');
-      swipeCard.style.transition='none';
-      swipeCard.style.transform=`translate3d(${enterX}px,0,0)`;
-      swipeCard.getBoundingClientRect();
-      swipeCard.style.transition='';
-      swipeCard.style.transform='translate3d(0,0,0)';
-      window.setTimeout(()=>{
-        swipeCard.classList.remove('is-entering');
-        swipeCard.style.transform='';
-      },190);
-    },90);
+      swipeCard.style.transform='';
+    },120);
   }
 
   swipeCard?.addEventListener('touchstart',e=>{
@@ -14656,7 +14647,7 @@ function resetDesktopMatchRailToEmpty(){
     if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
 
     const width=Math.max(1,swipeCard.getBoundingClientRect().width);
-    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(48,width*.14);
+    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(36,width*.10);
     swipeCard.style.transition='';
     settleSwipe(shouldChange?(swipeDx<0?1:-1):0);
     swipeDx=0;swipeDy=0;swipeAxis='';

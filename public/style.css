@@ -7834,3 +7834,27 @@ button.railFullBtn {
     transition:transform .19s cubic-bezier(.2,.8,.2,1)!important;
   }
 }
+
+
+/* =========================================================
+   PATCH FINAL — SWIPE ULTRALEVE, SEM PAUSA
+   Remove animação dupla, timeout visual e sensação de travamento.
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeBest{
+    touch-action:pan-y!important;
+    transition:transform .12s linear!important;
+    will-change:transform!important;
+    backface-visibility:hidden!important;
+    -webkit-backface-visibility:hidden!important;
+  }
+  .cpHomeBest.is-dragging{
+    transition:none!important;
+  }
+  .cpHomeBest.is-settling{
+    transition:transform .12s linear!important;
+  }
+  .cpHomeBest.is-entering{
+    transition:none!important;
+  }
+}
