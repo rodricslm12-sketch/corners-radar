@@ -14471,20 +14471,41 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function setMobileLoading(mode='initial'){
-    const card=$('#cpHomeBest'); const button=$('#cpHomeBestOpen'); const text=$('.cpHomeBestOpenText'); const games=$('#cpHomeGames');
+    const card=$('#cpHomeBest');
+    const button=$('#cpHomeBestOpen');
+    // Procura o texto somente dentro do card principal.
+    // Depois que o carrossel cria os clones, um seletor global poderia alterar
+    // o botão do clone e deixar o card visível preso em "CARREGANDO...".
+    const text=card?.querySelector('.cpHomeBestOpenText');
+    const games=$('#cpHomeGames');
+
     if(!card||!button)return;
+
     card.classList.remove('is-loading-initial','is-loading-date');
+
     if(mode==='initial'){
-      card.classList.add('is-loading-initial'); card.setAttribute('aria-busy','true'); button.disabled=true;
+      card.classList.add('is-loading-initial');
+      card.setAttribute('aria-busy','true');
+      button.disabled=true;
       if(text)text.textContent='CARREGANDO JOGOS DO DIA...';
-      if(games){games.classList.add('is-loading');games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';}
+      if(games){
+        games.classList.add('is-loading');
+        games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
+      }
       return;
     }
+
     if(mode==='selected'){
-      card.classList.add('is-loading-date');card.setAttribute('aria-busy','true');button.disabled=true;
-      if(text)text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';return;
+      card.classList.add('is-loading-date');
+      card.setAttribute('aria-busy','true');
+      button.disabled=true;
+      if(text)text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
+      return;
     }
-    card.setAttribute('aria-busy','false');button.disabled=false;games?.classList.remove('is-loading');
+
+    card.setAttribute('aria-busy','false');
+    button.disabled=false;
+    games?.classList.remove('is-loading');
     if(text)text.textContent='VER ANÁLISE COMPLETA →';
   }
   window.CornerProMobileHomeLoading=setMobileLoading;

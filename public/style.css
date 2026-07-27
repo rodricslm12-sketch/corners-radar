@@ -7935,3 +7935,53 @@ button.railFullBtn {
     background:#ffd400!important;
   }
 }
+
+/* =========================================================
+   AJUSTES SOLICITADOS — MOBILE
+   1) loading com a mesma altura do card pronto
+   2) somente um indicador ativo por card
+   ========================================================= */
+@media (max-width:700px){
+  /* Mantém o estado inicial compacto dentro da altura fixa do carrossel. */
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading{
+    min-height:112px!important;
+    height:112px!important;
+    padding:10px 14px 8px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeLoadingSpinner{
+    width:32px!important;
+    height:32px!important;
+    border-width:4px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading strong{
+    margin-top:9px!important;
+    font-size:13px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading small{
+    margin-top:4px!important;
+    font-size:9px!important;
+    line-height:1.3!important;
+  }
+
+  /* Neutraliza a antiga marcação por nth-child, que acumulava o ponto
+     do primeiro mercado junto com o ponto do terceiro durante o swipe. */
+  .cpHomeMarketDots button:not(.active){
+    width:5px!important;
+    background:rgba(255,255,255,.23)!important;
+    transform:none!important;
+  }
+
+  .cpHomeMarketDots button.active{
+    width:14px!important;
+    background:#63f127!important;
+    transform:scaleY(1.05)!important;
+  }
+
+  .cpHomeBest[data-market="cards"] .cpHomeMarketDots button.active,
+  .cpHomeBestClone[data-clone-market="cards"] .cpHomeMarketDots button.active{
+    background:#ffd400!important;
+  }
+}
