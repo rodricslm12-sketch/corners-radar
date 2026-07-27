@@ -42,6 +42,10 @@ const APIKEY = process.env.APIFOOTBALL_KEY;
 const API_BASE_V3 = "https://apiv3.apifootball.com/";
 const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
+// Todos os horários de eventos devem chegar já convertidos para Manaus.
+const API_TIMEZONE = "America/Manaus";
+const QUENTES_CACHE_VERSION = "tz-manaus-v2";
+
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
 // Cap de ligas analisadas no dia (segurança contra travar)
@@ -1195,7 +1199,8 @@ async function getLastMatchOfTeam(teamName, date){
     const events = await apiGetAny({
       action: "get_events",
       from,
-      to
+      to,
+      timezone: API_TIMEZONE
     });
 
     if (!Array.isArray(events)) return null;
@@ -1374,7 +1379,7 @@ const CACHE_DIR = path.join(__dirname, ".cache");
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
 function persistPath(date){
-  return path.join(CACHE_DIR, `quentes-${date}.json`);
+  return path.join(CACHE_DIR, `quentes-${date}-${QUENTES_CACHE_VERSION}.json`);
 }
 
 function firestoreSafeId(value){
@@ -1384,7 +1389,7 @@ function firestoreSafeId(value){
 async function readPersist(date){
   // 1) Firestore: funciona tanto localmente quanto no Render.
   try {
-    const snap = await db.collection("cache_quentes").doc(firestoreSafeId(date)).get();
+    const snap = await db.collection("cache_quentes").doc(firestoreSafeId(`${date}-${QUENTES_CACHE_VERSION}`)).get();
     if (snap.exists) {
       const parsed = snap.data();
       if (parsed?.savedAt && Array.isArray(parsed?.data)) {
@@ -1424,7 +1429,7 @@ async function writePersist(date, data){
 
   // Firestore é o armazenamento principal.
   try {
-    await db.collection("cache_quentes").doc(firestoreSafeId(date)).set(payload, { merge: true });
+    await db.collection("cache_quentes").doc(firestoreSafeId(`${date}-${QUENTES_CACHE_VERSION}`)).set(payload, { merge: true });
   } catch (err) {
     console.warn("Firestore cache write falhou; mantendo fallback local:", err?.message || err);
   }
@@ -1733,7 +1738,7 @@ async function mapLimit(items, limit, fn){
 
 // ---------------- API calls ----------------
 async function getEventsByLeagueDate(leagueId, date) {
-  const data = await apiGetV3({ action: "get_events", from: date, to: date, league_id: leagueId });
+  const data = await apiGetV3({ action: "get_events", from: date, to: date, league_id: leagueId, timezone: API_TIMEZONE });
   return Array.isArray(data) ? data : [];
 }
 
@@ -3276,7 +3281,7 @@ app.get("/debug/league", async (req, res) => {
     const date = req.query.date || toISODate();
     if (!Number.isFinite(league_id)) return res.status(400).json({ ok: false, error: "league_id inválido" });
 
-    const data = await apiGetV3({ action: "get_events", from: date, to: date, league_id });
+    const data = await apiGetV3({ action: "get_events", from: date, to: date, league_id, timezone: API_TIMEZONE });
     const arr = Array.isArray(data) ? data : [];
     res.json({
       ok: true,
@@ -4108,13 +4113,13 @@ app.get("/match_center", async (req, res) => {
   }
 
   try {
-    let data = await apiGetFreshAny({ action: "get_events", match_id: matchId });
+    let data = await apiGetFreshAny({ action: "get_events", match_id: matchId, timezone: API_TIMEZONE });
     let event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
     if (!event && Array.isArray(data) && data.length === 1) event = data[0];
 
     // Algumas versões da API usam event_id em vez de match_id.
     if (!event) {
-      data = await apiGetFreshAny({ action: "get_events", event_id: matchId });
+      data = await apiGetFreshAny({ action: "get_events", event_id: matchId, timezone: API_TIMEZONE });
       event = Array.isArray(data) ? data.find(e => String(e?.match_id ?? e?.event_key ?? e?.id ?? "") === String(matchId)) : null;
       if (!event && Array.isArray(data) && data.length === 1) event = data[0];
     }

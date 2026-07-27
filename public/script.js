@@ -13951,7 +13951,22 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function gameName(g,home){ return String(home?(g.casa??g.home??g.home_name??"Mandante"):(g.fora??g.away??g.away_name??"Visitante")); }
-  function gameTime(g){ return String(g.hora??g.time??g.match_time??"--:--").slice(0,5); }
+  function resolveGameTimeManaus(g){
+    const simple=[g?.kickoff_manaus,g?.hora_manaus,g?.time_manaus,g?.hora,g?.time,g?.match_time,g?.event_time,g?.horario];
+    for(const value of simple){
+      const text=String(value??'').trim();
+      const match=text.match(/^(\d{1,2}):(\d{2})/);
+      if(match) return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`;
+    }
+    const iso=[g?.kickoff_iso,g?.match_datetime,g?.datetime,g?.fixture?.date,g?.date_time,g?.match_start];
+    for(const value of iso){
+      if(!value) continue;
+      const date=new Date(value);
+      if(Number.isFinite(date.getTime())) return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
+    }
+    return '--:--';
+  }
+  function gameTime(g){ return resolveGameTimeManaus(g); }
   function gameConfidence(g,index){
     const raw=Number(g.prob??g.probabilidade??g.confidence??g.score??g.pOver95??g.p_over_95);
     if(Number.isFinite(raw)) return Math.max(51,Math.min(94,Math.round(raw)));
@@ -14291,7 +14306,29 @@ function resetDesktopMatchRailToEmpty(){
   function gameName(g,home){
     return clean(home?(g?.casa??g?.home??g?.home_name??g?.match_hometeam_name):(g?.fora??g?.away??g?.away_name??g?.match_awayteam_name)) || (home?'Mandante':'Visitante');
   }
-  function gameTime(g){ return clean(g?.hora??g?.time??g?.match_time??'--:--').slice(0,5); }
+  function resolveGameTimeManaus(g){
+    const simpleCandidates=[
+      g?.kickoff_manaus, g?.hora_manaus, g?.time_manaus,
+      g?.hora, g?.time, g?.match_time, g?.event_time, g?.horario
+    ];
+    for(const value of simpleCandidates){
+      const text=clean(value);
+      const match=text.match(/^(\d{1,2}):(\d{2})/);
+      if(match) return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`;
+    }
+
+    const isoCandidates=[g?.kickoff_iso,g?.match_datetime,g?.datetime,g?.fixture?.date,g?.date_time,g?.match_start];
+    for(const value of isoCandidates){
+      if(!value) continue;
+      const date=new Date(value);
+      if(!Number.isFinite(date.getTime())) continue;
+      return new Intl.DateTimeFormat('pt-BR',{
+        timeZone:'America/Manaus',hour:'2-digit',minute:'2-digit',hour12:false
+      }).format(date);
+    }
+    return '--:--';
+  }
+  function gameTime(g){ return resolveGameTimeManaus(g); }
   function getPathValue(obj,path){
     return String(path).split('.').reduce((acc,key)=>acc==null?undefined:acc[key],obj);
   }
