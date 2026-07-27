@@ -8114,6 +8114,9 @@ function resetDesktopMatchRailToEmpty(){
 
     if (!rows.length){
       panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Nenhum jogo real retornou da API hoje. Verifique se a rota <b>/quentes</b> está respondendo.</div>`);
+      if(typeof window.CornerProMobileHomeLoading === 'function'){
+        window.CornerProMobileHomeLoading('loaded');
+      }
       return;
     }
 
@@ -8138,7 +8141,7 @@ function resetDesktopMatchRailToEmpty(){
     setTimeout(() => {
       try{
         if(typeof window.CornerProMobileHomeLoading === 'function'){
-          window.CornerProMobileHomeLoading('done');
+          window.CornerProMobileHomeLoading('loaded');
         }
       }catch(e){}
     }, 0);
@@ -14503,10 +14506,21 @@ function resetDesktopMatchRailToEmpty(){
     }
 
     if(mode==='selected'){
+      // Trava o estado de análise para que uma renderização com os jogos
+      // antigos não devolva o botão para "VER ANÁLISE COMPLETA".
+      window.__cpMobileSelectedDateLoading = true;
       card.classList.add('is-loading-date');
       card.setAttribute('aria-busy','true');
       button.disabled=true;
       if(text)text.textContent='ANALISANDO DATA SELECIONADA...';
+      return;
+    }
+
+    if(mode==='loaded'){
+      // Somente a chegada dos novos dados libera a mensagem.
+      window.__cpMobileSelectedDateLoading = false;
+    }else if(window.__cpMobileSelectedDateLoading){
+      // Ignora chamadas prematuras de "done" feitas durante a troca.
       return;
     }
 
@@ -14579,7 +14593,11 @@ function resetDesktopMatchRailToEmpty(){
   function render(){
     const data=currentData();
     if(!data.length) return;
-    setMobileLoading('done');
+    // Durante a troca de data, os dados antigos ainda podem ser renderizados
+    // por alguns instantes. Não removemos a mensagem até a nova resposta chegar.
+    if(!window.__cpMobileSelectedDateLoading){
+      setMobileLoading('done');
+    }
     const best=data[0]; const meta=MARKET_META[activeMarket];
     home.dataset.activeMarket=activeMarket;
     $('#cpHomeBest')?.setAttribute('data-market',activeMarket);
