@@ -14578,15 +14578,38 @@ function resetDesktopMatchRailToEmpty(){
     return dots;
   }
 
+  function applyDotState(container, market, allowFocus=false){
+    if(!container)return;
+
+    container.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
+      const active=dot.dataset.cpHomeDot===market;
+
+      // Remove qualquer estado anterior antes de marcar o atual.
+      dot.classList.remove('active','is-active','current');
+      if(active) dot.classList.add('active');
+
+      dot.setAttribute('aria-selected',active?'true':'false');
+      dot.tabIndex=allowFocus && active ? 0 : -1;
+
+      // Força visualmente apenas um indicador ativo.
+      // O !important neutraliza regras antigas por nth-child no Safari.
+      dot.style.setProperty('width',active?'14px':'5px','important');
+      dot.style.setProperty(
+        'background',
+        active
+          ? (market==='cards' ? '#ffd400' : '#63f127')
+          : 'rgba(255,255,255,.23)',
+        'important'
+      );
+      dot.style.setProperty('transform',active?'scaleY(1.05)':'none','important');
+      dot.style.setProperty('opacity',active?'1':'.72','important');
+    });
+  }
+
   function updateDots(){
     const dots=ensureMarketDots();
-    // Usa o valor real do data-attribute, sem depender da posição do botão.
-    dots.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
-      const active=dot.dataset.cpHomeDot===activeMarket;
-      dot.classList.toggle('active',active);
-      dot.setAttribute('aria-selected',active?'true':'false');
-      dot.tabIndex=active?0:-1;
-    });
+    applyDotState(dots,activeMarket,true);
+
     // O CSS também usa este atributo como garantia visual no Safari.
     home.dataset.activeMarket=activeMarket;
   }
@@ -14719,13 +14742,8 @@ function resetDesktopMatchRailToEmpty(){
     if(market) market.textContent=best.market;
 
     // Cada slide mantém seus próprios 3 indicadores sincronizados.
-    // Isso evita que os pontos do clone interfiram nos pontos do card central.
-    root.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
-      const active=dot.dataset.cpHomeDot===type;
-      dot.classList.toggle('active',active);
-      dot.setAttribute('aria-selected',active?'true':'false');
-      dot.tabIndex=-1;
-    });
+    // A função também neutraliza estilos antigos que marcavam o 1º ponto.
+    applyDotState(root,type,false);
 
     const btn=root.querySelector('button');
     if(btn){
@@ -14863,9 +14881,7 @@ function resetDesktopMatchRailToEmpty(){
     const previewDirection = Math.abs(swipeDx) >= swipeWidth*.12 ? (swipeDx<0 ? 1 : -1) : 0;
     const previewIndex=(MARKETS.indexOf(activeMarket)+previewDirection+MARKETS.length)%MARKETS.length;
     const previewMarket=MARKETS[previewIndex];
-    ensureMarketDots().querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
-      dot.classList.toggle('active',dot.dataset.cpHomeDot===previewMarket);
-    });
+    applyDotState(ensureMarketDots(),previewMarket,true);
 
     if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipeTrack);
   }
