@@ -7794,3 +7794,22 @@ button.railFullBtn {
   }
   .cpMobileHome[data-active-market="cards"] .cpHomeGame small{color:#aeb3af!important}
 }
+
+/* =========================================================
+   AJUSTE FINAL MOBILE — SWIPE SEM ESPAÇO PRETO
+   O card não sai mais da tela durante o gesto.
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeBest{
+    transform-origin:center center!important;
+    transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
+    contain:paint;
+  }
+  .cpHomeBest.is-dragging{
+    transition:none!important;
+  }
+  .cpHomeBest.is-settling,
+  .cpHomeBest.is-entering{
+    transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
+  }
+}

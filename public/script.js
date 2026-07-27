@@ -14579,10 +14579,16 @@ function resetDesktopMatchRailToEmpty(){
   function paintSwipe(){
     swipeFrame=0;
     if(!swipeCard)return;
-    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
-    const resistance=Math.abs(swipeDx)>width*.58 ? .72 : 1;
-    const x=Math.max(-width*.72,Math.min(width*.72,swipeDx*resistance));
-    swipeCard.style.transform=`translate3d(${x}px,0,0)`;
+
+    // Movimento curto e resistente: o card responde ao dedo sem sair da tela.
+    // Isso evita revelar um grande espaço preto atrás do card durante o gesto.
+    const drag=Math.abs(swipeDx);
+    const direction=swipeDx<0?-1:1;
+    const eased=Math.min(46, Math.pow(drag, .82) * .72);
+    const x=direction*eased;
+    const scale=1-Math.min(drag/1800,.012);
+
+    swipeCard.style.transform=`translate3d(${x}px,0,0) scale(${scale})`;
   }
 
   function settleSwipe(direction=0){
@@ -14600,21 +14606,24 @@ function resetDesktopMatchRailToEmpty(){
       return;
     }
 
-    swipeCard.style.transform=`translate3d(${direction>0?-width:width}px,0,0)`;
+    // A troca acontece com deslocamento curto, sem jogar o card para fora da tela.
+    const exitX=direction>0?-54:54;
+    const enterX=direction>0?34:-34;
+    swipeCard.style.transform=`translate3d(${exitX}px,0,0) scale(.988)`;
     window.setTimeout(()=>{
       switchMarket(direction);
       swipeCard.classList.remove('is-settling');
       swipeCard.classList.add('is-entering');
       swipeCard.style.transition='none';
-      swipeCard.style.transform=`translate3d(${direction>0?width*.16:-width*.16}px,0,0)`;
+      swipeCard.style.transform=`translate3d(${enterX}px,0,0) scale(.992)`;
       swipeCard.getBoundingClientRect();
       swipeCard.style.transition='';
-      swipeCard.style.transform='translate3d(0,0,0)';
+      swipeCard.style.transform='translate3d(0,0,0) scale(1)';
       window.setTimeout(()=>{
         swipeCard.classList.remove('is-entering');
         swipeCard.style.transform='';
-      },300);
-    },220);
+      },280);
+    },150);
   }
 
   swipeCard?.addEventListener('touchstart',e=>{
