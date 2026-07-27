@@ -3192,6 +3192,13 @@
   
     dateInput.addEventListener("change", () => {
       ensureDateVisible();
+
+      // Ao trocar a data, mostra imediatamente o estado específico
+      // até os novos jogos terminarem de carregar.
+      if (typeof window.CornerProMobileHomeLoading === "function"){
+        window.CornerProMobileHomeLoading("selected");
+      }
+
       loadAll({ date: dateInput.value, fresh: false });
     });
   
@@ -14499,7 +14506,7 @@ function resetDesktopMatchRailToEmpty(){
       card.classList.add('is-loading-date');
       card.setAttribute('aria-busy','true');
       button.disabled=true;
-      if(text)text.textContent='ANALISANDO JOGOS DA DATA SELECIONADA...';
+      if(text)text.textContent='ANALISANDO DATA SELECIONADA...';
       return;
     }
 
