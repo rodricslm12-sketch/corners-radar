@@ -7841,3 +7841,51 @@ button.railFullBtn {
     min-height:0!important;
   }
 }
+
+
+/* =========================================================
+   CORREÇÃO DEFINITIVA — PONTOS SINCRONIZADOS + ALTURA ESTÁVEL
+   Mantém o swipe fluido tipo Nubank e corrige o Safari após refresh.
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeSwipeViewport{
+    position:relative!important;
+    overflow:hidden!important;
+    contain:layout paint!important;
+    transition:none!important;
+  }
+
+  .cpHomeSwipeTrack{
+    align-items:flex-start!important;
+    height:100%!important;
+  }
+
+  .cpHomeSwipeTrack > .cpHomeBest{
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    flex:0 0 100%!important;
+  }
+
+  .cpHomeMarketDots{
+    position:relative!important;
+    z-index:8!important;
+    min-height:5px!important;
+  }
+
+  .cpHomeMarketDots button{
+    display:block!important;
+    flex:0 0 auto!important;
+    opacity:1!important;
+  }
+
+  .cpHomeMarketDots button.active{
+    width:14px!important;
+    background:#63f127!important;
+    opacity:1!important;
+  }
+
+  .cpMobileHome[data-active-market="cards"] .cpHomeMarketDots button.active,
+  .cpHomeBest[data-market="cards"] .cpHomeMarketDots button.active{
+    background:#ffd400!important;
+  }
+}

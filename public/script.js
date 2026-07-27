@@ -14537,8 +14537,8 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function updateDots(){
-    ensureMarketDots();
-    $$('[data-cp-home-dot]',home).forEach((dot,i)=>{
+    const dots=ensureMarketDots();
+    Array.from(dots.children).forEach((dot,i)=>{
       const active=MARKETS[i]===activeMarket;
       dot.classList.toggle('active',active);
       dot.setAttribute('aria-selected',active?'true':'false');
@@ -14571,6 +14571,7 @@ function resetDesktopMatchRailToEmpty(){
     $('#cpHomeGames').innerHTML=data.slice(0,5).map((g,i)=>`<button type="button" class="cpHomeGame${i===0?' is-first':''}" data-home-market-game="${i}"><time>${g.time}</time><div class="teams"><b>${g.home}</b><i>×</i><b>${g.away}</b></div><small>${g.market}</small><strong>${g.conf}%</strong></button>`).join('');
     $('#cpHomeLastGames').innerHTML=data.slice(1,4).map((g,i)=>`<button type="button" class="cpHomeLastGame" data-home-market-game="${i+1}"><time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i></button>`).join('');
     updateDots();
+    requestAnimationFrame(()=>window.__cpSyncHomeSwipeHeight?.());
   }
   function switchMarket(direction){
     const current=MARKETS.indexOf(activeMarket);
@@ -14666,6 +14667,16 @@ function resetDesktopMatchRailToEmpty(){
     if(awayEl) awayEl.textContent=best.away;
     if(conf) conf.textContent=best.conf+'%';
     if(market) market.textContent=best.market;
+
+    // Cada slide mantém seus próprios 3 indicadores sincronizados.
+    // Isso evita que os pontos do clone interfiram nos pontos do card central.
+    root.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
+      const active=dot.dataset.cpHomeDot===type;
+      dot.classList.toggle('active',active);
+      dot.setAttribute('aria-selected',active?'true':'false');
+      dot.tabIndex=-1;
+    });
+
     const btn=root.querySelector('button');
     if(btn){
       btn.disabled=false;
@@ -14696,6 +14707,34 @@ function resetDesktopMatchRailToEmpty(){
     if(!swipeMoving&&!swipeAnimating) setTrackX(-swipeWidth,false);
   }
 
+  function syncSwipeHeight(){
+    if(!swipeViewport || !swipeCard)return;
+
+    requestAnimationFrame(()=>{
+      // Primeiro libera qualquer medida antiga para ler a altura natural do card real.
+      swipeViewport.style.height='auto';
+      swipeSlides.forEach(slide=>{
+        slide.style.height='auto';
+        slide.style.minHeight='0';
+        slide.style.maxHeight='none';
+      });
+
+      const height=Math.ceil(swipeCard.scrollHeight || swipeCard.getBoundingClientRect().height);
+      if(!Number.isFinite(height) || height<180)return;
+
+      // Trava todos os slides exatamente na mesma altura do card central.
+      // Assim o Safari não aumenta o carrossel para baixo depois do refresh.
+      swipeViewport.style.height=`${height}px`;
+      swipeSlides.forEach(slide=>{
+        slide.style.height=`${height}px`;
+        slide.style.minHeight=`${height}px`;
+        slide.style.maxHeight=`${height}px`;
+      });
+    });
+  }
+
+  window.__cpSyncHomeSwipeHeight=syncSwipeHeight;
+
   function buildSwipeTrack(){
     if(!swipeCard || !window.matchMedia('(max-width:700px)').matches) return;
 
@@ -14716,7 +14755,10 @@ function resetDesktopMatchRailToEmpty(){
     swipeTrack.insertBefore(previous,swipeCard);
     swipeTrack.appendChild(next);
     swipeSlides=[previous,swipeCard,next];
-    requestAnimationFrame(measureSwipe);
+    requestAnimationFrame(()=>{
+      measureSwipe();
+      syncSwipeHeight();
+    });
   }
 
   function paintSwipeTrack(){
@@ -14823,7 +14865,10 @@ function resetDesktopMatchRailToEmpty(){
     if(item)openItem(item);
   });
 
-  window.addEventListener('resize',()=>requestAnimationFrame(measureSwipe),{passive:true});
+  window.addEventListener('resize',()=>requestAnimationFrame(()=>{
+    measureSwipe();
+    syncSwipeHeight();
+  }),{passive:true});
 
   setMobileLoading('initial');
   let checks=0;
