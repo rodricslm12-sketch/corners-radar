@@ -14580,15 +14580,10 @@ function resetDesktopMatchRailToEmpty(){
     swipeFrame=0;
     if(!swipeCard)return;
 
-    // Movimento curto e resistente: o card responde ao dedo sem sair da tela.
-    // Isso evita revelar um grande espaço preto atrás do card durante o gesto.
-    const drag=Math.abs(swipeDx);
-    const direction=swipeDx<0?-1:1;
-    const eased=Math.min(46, Math.pow(drag, .82) * .72);
-    const x=direction*eased;
-    const scale=1-Math.min(drag/1800,.012);
-
-    swipeCard.style.transform=`translate3d(${x}px,0,0) scale(${scale})`;
+    // Resposta leve e imediata: acompanha o dedo sem curva de resistência.
+    // O limite curto impede que o card revele o fundo preto.
+    const x=Math.max(-32,Math.min(32,swipeDx*.82));
+    swipeCard.style.transform=`translate3d(${x}px,0,0)`;
   }
 
   function settleSwipe(direction=0){
@@ -14607,23 +14602,23 @@ function resetDesktopMatchRailToEmpty(){
     }
 
     // A troca acontece com deslocamento curto, sem jogar o card para fora da tela.
-    const exitX=direction>0?-54:54;
-    const enterX=direction>0?34:-34;
-    swipeCard.style.transform=`translate3d(${exitX}px,0,0) scale(.988)`;
+    const exitX=direction>0?-32:32;
+    const enterX=direction>0?22:-22;
+    swipeCard.style.transform=`translate3d(${exitX}px,0,0)`;
     window.setTimeout(()=>{
       switchMarket(direction);
       swipeCard.classList.remove('is-settling');
       swipeCard.classList.add('is-entering');
       swipeCard.style.transition='none';
-      swipeCard.style.transform=`translate3d(${enterX}px,0,0) scale(.992)`;
+      swipeCard.style.transform=`translate3d(${enterX}px,0,0)`;
       swipeCard.getBoundingClientRect();
       swipeCard.style.transition='';
-      swipeCard.style.transform='translate3d(0,0,0) scale(1)';
+      swipeCard.style.transform='translate3d(0,0,0)';
       window.setTimeout(()=>{
         swipeCard.classList.remove('is-entering');
         swipeCard.style.transform='';
-      },280);
-    },150);
+      },190);
+    },90);
   }
 
   swipeCard?.addEventListener('touchstart',e=>{
@@ -14646,8 +14641,8 @@ function resetDesktopMatchRailToEmpty(){
     swipeDx=t.clientX-touchStartX;
     swipeDy=t.clientY-touchStartY;
 
-    if(!swipeAxis && (Math.abs(swipeDx)>6 || Math.abs(swipeDy)>6)){
-      swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*1.08?'x':'y';
+    if(!swipeAxis && (Math.abs(swipeDx)>3 || Math.abs(swipeDy)>3)){
+      swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*.92?'x':'y';
     }
     if(swipeAxis!=='x')return;
 
@@ -14661,7 +14656,7 @@ function resetDesktopMatchRailToEmpty(){
     if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
 
     const width=Math.max(1,swipeCard.getBoundingClientRect().width);
-    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(72,width*.20);
+    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(48,width*.14);
     swipeCard.style.transition='';
     settleSwipe(shouldChange?(swipeDx<0?1:-1):0);
     swipeDx=0;swipeDy=0;swipeAxis='';

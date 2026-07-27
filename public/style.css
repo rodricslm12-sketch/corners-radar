@@ -7813,3 +7813,24 @@ button.railFullBtn {
     transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
   }
 }
+
+
+/* =========================================================
+   PATCH FINAL — SWIPE MAIS LEVE E IMEDIATO
+   Remove sensação de peso sem revelar o fundo preto.
+   ========================================================= */
+@media (max-width:700px){
+  .cpHomeBest{
+    touch-action:pan-y!important;
+    transition:transform .19s cubic-bezier(.2,.8,.2,1)!important;
+    will-change:transform!important;
+    contain:none!important;
+  }
+  .cpHomeBest.is-dragging{
+    transition:none!important;
+  }
+  .cpHomeBest.is-settling,
+  .cpHomeBest.is-entering{
+    transition:transform .19s cubic-bezier(.2,.8,.2,1)!important;
+  }
+}
