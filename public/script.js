@@ -14549,9 +14549,7 @@ function resetDesktopMatchRailToEmpty(){
   function switchMarket(direction){
     const current=MARKETS.indexOf(activeMarket);
     activeMarket=MARKETS[(current+direction+MARKETS.length)%MARKETS.length];
-    const card=$('#cpHomeBest');
-    card?.classList.add(direction>0?'cp-swipe-left':'cp-swipe-right');
-    setTimeout(()=>{render();card?.classList.remove('cp-swipe-left','cp-swipe-right')},120);
+    render();
   }
 
   home.addEventListener('click',e=>{
@@ -14568,13 +14566,104 @@ function resetDesktopMatchRailToEmpty(){
   });
 
   const swipeCard=$('#cpHomeBest');
+  const swipeGuide=$('.cpHomeSwipeGuide');
+  if(swipeGuide){
+    swipeGuide.innerHTML='<span aria-hidden="true">‹</span><b>Deslize</b><span aria-hidden="true">›</span>';
+  }
+
+  let swipeDx=0;
+  let swipeDy=0;
+  let swipeAxis='';
+  let swipeFrame=0;
+
+  function paintSwipe(){
+    swipeFrame=0;
+    if(!swipeCard)return;
+    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
+    const resistance=Math.abs(swipeDx)>width*.58 ? .72 : 1;
+    const x=Math.max(-width*.72,Math.min(width*.72,swipeDx*resistance));
+    swipeCard.style.transform=`translate3d(${x}px,0,0)`;
+  }
+
+  function settleSwipe(direction=0){
+    if(!swipeCard)return;
+    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
+    swipeCard.classList.remove('is-dragging');
+    swipeCard.classList.add('is-settling');
+
+    if(!direction){
+      swipeCard.style.transform='translate3d(0,0,0)';
+      window.setTimeout(()=>{
+        swipeCard.classList.remove('is-settling');
+        swipeCard.style.transform='';
+      },320);
+      return;
+    }
+
+    swipeCard.style.transform=`translate3d(${direction>0?-width:width}px,0,0)`;
+    window.setTimeout(()=>{
+      switchMarket(direction);
+      swipeCard.classList.remove('is-settling');
+      swipeCard.classList.add('is-entering');
+      swipeCard.style.transition='none';
+      swipeCard.style.transform=`translate3d(${direction>0?width*.16:-width*.16}px,0,0)`;
+      swipeCard.getBoundingClientRect();
+      swipeCard.style.transition='';
+      swipeCard.style.transform='translate3d(0,0,0)';
+      window.setTimeout(()=>{
+        swipeCard.classList.remove('is-entering');
+        swipeCard.style.transform='';
+      },300);
+    },220);
+  }
+
   swipeCard?.addEventListener('touchstart',e=>{
-    const t=e.changedTouches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchMoving=true;
+    if(e.touches.length!==1)return;
+    const t=e.touches[0];
+    touchStartX=t.clientX;
+    touchStartY=t.clientY;
+    touchMoving=true;
+    swipeDx=0;
+    swipeDy=0;
+    swipeAxis='';
+    swipeCard.classList.remove('is-settling','is-entering');
+    swipeCard.classList.add('is-dragging');
+    swipeCard.style.transition='none';
   },{passive:true});
+
+  swipeCard?.addEventListener('touchmove',e=>{
+    if(!touchMoving||e.touches.length!==1)return;
+    const t=e.touches[0];
+    swipeDx=t.clientX-touchStartX;
+    swipeDy=t.clientY-touchStartY;
+
+    if(!swipeAxis && (Math.abs(swipeDx)>6 || Math.abs(swipeDy)>6)){
+      swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*1.08?'x':'y';
+    }
+    if(swipeAxis!=='x')return;
+
+    e.preventDefault();
+    if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipe);
+  },{passive:false});
+
   swipeCard?.addEventListener('touchend',e=>{
-    if(!touchMoving)return;touchMoving=false;
-    const t=e.changedTouches[0];const dx=t.clientX-touchStartX;const dy=t.clientY-touchStartY;
-    if(Math.abs(dx)>=48&&Math.abs(dx)>Math.abs(dy)*1.25) switchMarket(dx<0?1:-1);
+    if(!touchMoving)return;
+    touchMoving=false;
+    if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
+
+    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
+    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(72,width*.20);
+    swipeCard.style.transition='';
+    settleSwipe(shouldChange?(swipeDx<0?1:-1):0);
+    swipeDx=0;swipeDy=0;swipeAxis='';
+  },{passive:true});
+
+  swipeCard?.addEventListener('touchcancel',()=>{
+    touchMoving=false;
+    if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
+    swipeCard.style.transition='';
+    settleSwipe(0);
+    swipeDx=0;swipeDy=0;swipeAxis='';
   },{passive:true});
 
   setMobileLoading('initial');

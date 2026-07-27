@@ -7700,17 +7700,70 @@ button.railFullBtn {
 @media (max-width:700px){
   .cpHomeBest{
     touch-action:pan-y;
-    transition:transform .18s ease,opacity .18s ease;
+    transform:translate3d(0,0,0);
+    transition:transform .30s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    -webkit-tap-highlight-color:transparent;
     box-shadow:none!important;
     border-color:rgba(255,255,255,.035)!important;
+    opacity:1!important;
+    filter:none!important;
   }
-  .cpHomeBest.cp-swipe-left{transform:translateX(-18px);opacity:.70}
-  .cpHomeBest.cp-swipe-right{transform:translateX(18px);opacity:.70}
-  .cpHomeSwipeGuide{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 7px;color:#9ca5a5;font-size:10px;font-weight:850;letter-spacing:.2px}
-  .cpHomeSwipeGuide span{color:var(--green);font-size:18px;line-height:1}
-  .cpHomeMarketDots{display:flex;justify-content:center;gap:8px;margin:0 0 13px}
-  .cpHomeMarketDots button{width:7px;height:7px;padding:0;border-radius:50%;background:#4e5658;opacity:.72}
-  .cpHomeMarketDots button.active{background:var(--green);opacity:1}
+  .cpHomeBest.is-dragging{
+    transition:none!important;
+    cursor:grabbing;
+  }
+  .cpHomeBest.is-settling,
+  .cpHomeBest.is-entering{
+    transition:transform .30s cubic-bezier(.22,1,.36,1)!important;
+  }
+  .cpHomeBest.cp-swipe-left,
+  .cpHomeBest.cp-swipe-right{
+    opacity:1!important;
+    filter:none!important;
+  }
+  .cpHomeSwipeGuide{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    margin:1px 0 5px;
+    color:rgba(229,235,233,.48);
+    font-size:9px;
+    font-weight:650;
+    letter-spacing:0;
+    text-transform:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .cpHomeSwipeGuide b{
+    color:inherit;
+    font:inherit;
+    font-weight:650;
+  }
+  .cpHomeSwipeGuide span{
+    color:rgba(99,241,39,.58);
+    font-size:14px;
+    line-height:1;
+    font-weight:500;
+  }
+  .cpHomeMarketDots{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
+  .cpHomeMarketDots button{
+    width:5px;
+    height:5px;
+    padding:0;
+    border-radius:999px;
+    background:rgba(255,255,255,.23);
+    opacity:1;
+    transition:width .24s cubic-bezier(.22,1,.36,1),background-color .24s ease,transform .24s ease;
+  }
+  .cpHomeMarketDots button.active{
+    width:14px;
+    background:var(--green);
+    transform:scaleY(1.05);
+  }
   .cpHomeBestTop b{max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cpMobileHome[data-active-market="cards"] .cpHomeBest{
     background:linear-gradient(180deg,#10110c,#090b09)!important;
