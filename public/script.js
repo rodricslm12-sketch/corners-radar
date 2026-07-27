@@ -14515,8 +14515,34 @@ function resetDesktopMatchRailToEmpty(){
     if(original) original.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
   }
 
+  function ensureMarketDots(){
+    let dots=home.querySelector('.cpHomeMarketDots');
+    if(!dots){
+      dots=document.createElement('div');
+      dots.className='cpHomeMarketDots';
+      dots.setAttribute('role','tablist');
+      dots.setAttribute('aria-label','Mercado exibido');
+      const guide=home.querySelector('.cpHomeSwipeGuide');
+      if(guide) guide.insertAdjacentElement('afterend',dots);
+      else home.prepend(dots);
+    }
+
+    if(dots.children.length!==MARKETS.length){
+      dots.innerHTML=MARKETS.map((market,index)=>{
+        const label=MARKET_META[market]?.label||market;
+        return `<button type="button" data-cp-home-dot="${market}" role="tab" aria-label="${label}" aria-selected="false"></button>`;
+      }).join('');
+    }
+    return dots;
+  }
+
   function updateDots(){
-    $$('[data-cp-home-dot]').forEach((dot,i)=>dot.classList.toggle('active',MARKETS[i]===activeMarket));
+    ensureMarketDots();
+    $$('[data-cp-home-dot]',home).forEach((dot,i)=>{
+      const active=MARKETS[i]===activeMarket;
+      dot.classList.toggle('active',active);
+      dot.setAttribute('aria-selected',active?'true':'false');
+    });
   }
   function render(){
     const data=currentData();
@@ -14571,233 +14597,95 @@ function resetDesktopMatchRailToEmpty(){
     swipeGuide.innerHTML='<span aria-hidden="true">‹</span><b>Deslize</b><span aria-hidden="true">›</span>';
   }
 
-  /* =======================================================
-     CARROSSEL MOBILE — TRILHO NATIVO INSPIRADO NO NUBANK
-     - Mantém o card original e todo o visual existente.
-     - Monta anterior, atual e próximo antes do gesto.
-     - Durante o arrasto move somente o trilho com translate3d.
-     - Não troca HTML, não usa fade e não recalcula o card no touchmove.
-     ======================================================= */
-  let swipeViewport=null;
-  let swipeTrack=null;
-  let swipeSlides=[];
-  let swipeWidth=0;
-  let swipeStartX=0;
-  let swipeStartY=0;
   let swipeDx=0;
   let swipeDy=0;
   let swipeAxis='';
-  let swipeMoving=false;
-  let swipeAnimating=false;
   let swipeFrame=0;
-  let swipeLastX=0;
-  let swipeLastTime=0;
-  let swipeVelocity=0;
 
-  function marketAtOffset(offset){
-    const current=MARKETS.indexOf(activeMarket);
-    return MARKETS[(current+offset+MARKETS.length)%MARKETS.length];
-  }
-
-  function dataForMarket(type){
-    buildRankings();
-    const list=[...(marketRankings[type]||[])];
-    if(getCornerOrderMode()==='time') list.sort((a,b)=>{
-      const min=t=>{const m=String(t).match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):99999};
-      return min(a.time)-min(b.time);
-    });
-    return list;
-  }
-
-  function stripCloneIds(root){
-    root.removeAttribute('id');
-    root.querySelectorAll('[id]').forEach(el=>{
-      el.dataset.cloneId=el.id;
-      el.removeAttribute('id');
-    });
-  }
-
-  function cloneField(root,id){
-    return root.querySelector(`[data-clone-id="${id}"]`);
-  }
-
-  function paintClone(root,type){
-    const data=dataForMarket(type);
-    if(!data.length) return;
-    const best=data[0];
-    const meta=MARKET_META[type];
-    root.dataset.market=type;
-    root.dataset.cloneMarket=type;
-    const title=cloneField(root,'cpHomeBestTitle');
-    const time=cloneField(root,'cpHomeBestTime');
-    const homeEl=cloneField(root,'cpHomeBestHome');
-    const awayEl=cloneField(root,'cpHomeBestAway');
-    const conf=cloneField(root,'cpHomeBestConfidence');
-    const market=cloneField(root,'cpHomeBestMarket');
-    if(title) title.textContent=`${meta.icon} MELHOR APOSTA DE ${meta.label}`;
-    if(time) time.textContent=best.time;
-    if(homeEl) homeEl.textContent=best.home;
-    if(awayEl) awayEl.textContent=best.away;
-    if(conf) conf.textContent=best.conf+'%';
-    if(market) market.textContent=best.market;
-    const btn=root.querySelector('button');
-    if(btn){
-      btn.disabled=false;
-      btn.dataset.cloneOpenMarket=type;
-      btn.querySelector('.cpHomeBestOpenText')?.replaceChildren(document.createTextNode('VER ANÁLISE COMPLETA →'));
-    }
-    root.classList.remove('is-loading-initial','is-loading-date','is-dragging','is-settling','is-entering');
-    root.setAttribute('aria-hidden','true');
-  }
-
-  function makeClone(type){
-    const clone=swipeCard.cloneNode(true);
-    stripCloneIds(clone);
-    clone.classList.add('cpHomeBestClone');
-    paintClone(clone,type);
-    return clone;
-  }
-
-  function setTrackX(x,animate=false){
-    if(!swipeTrack)return;
-    swipeTrack.style.transition=animate?'transform .32s cubic-bezier(.22,1,.36,1)':'none';
-    swipeTrack.style.transform=`translate3d(${x}px,0,0)`;
-  }
-
-  function measureSwipe(){
-    if(!swipeViewport)return;
-    swipeWidth=Math.max(1,swipeViewport.clientWidth);
-    if(!swipeMoving&&!swipeAnimating) setTrackX(-swipeWidth,false);
-  }
-
-  function buildSwipeTrack(){
-    if(!swipeCard || !window.matchMedia('(max-width:700px)').matches) return;
-
-    if(!swipeViewport){
-      swipeViewport=document.createElement('div');
-      swipeViewport.className='cpHomeSwipeViewport';
-      swipeTrack=document.createElement('div');
-      swipeTrack.className='cpHomeSwipeTrack';
-      const parent=swipeCard.parentNode;
-      parent.insertBefore(swipeViewport,swipeCard);
-      swipeViewport.appendChild(swipeTrack);
-      swipeTrack.appendChild(swipeCard);
-    }
-
-    swipeTrack.querySelectorAll('.cpHomeBestClone').forEach(el=>el.remove());
-    const previous=makeClone(marketAtOffset(-1));
-    const next=makeClone(marketAtOffset(1));
-    swipeTrack.insertBefore(previous,swipeCard);
-    swipeTrack.appendChild(next);
-    swipeSlides=[previous,swipeCard,next];
-    requestAnimationFrame(measureSwipe);
-  }
-
-  function paintSwipeTrack(){
+  function paintSwipe(){
     swipeFrame=0;
-    if(!swipeTrack)return;
-    setTrackX(-swipeWidth+swipeDx,false);
+    if(!swipeCard)return;
+
+    // Movimento 1:1 com o dedo, mas curto para nunca revelar o fundo da página.
+    // Sem resistência, escala, opacidade ou cálculo de layout durante o gesto.
+    const x=Math.max(-24,Math.min(24,swipeDx));
+    swipeCard.style.transform=`translate3d(${x}px,0,0)`;
   }
 
-  function finishSwipe(direction){
-    if(!swipeTrack)return;
-    swipeAnimating=true;
-    const destination=direction>0?-swipeWidth*2:direction<0?0:-swipeWidth;
-    setTrackX(destination,true);
+  function settleSwipe(direction=0){
+    if(!swipeCard)return;
 
-    const done=()=>{
-      swipeTrack.removeEventListener('transitionend',done);
-      if(direction){
+    // Retorna imediatamente ao centro. Não há timeout, saída de tela,
+    // entrada animada nem leitura forçada de layout.
+    swipeCard.classList.remove('is-dragging','is-entering');
+    swipeCard.classList.add('is-settling');
+    swipeCard.style.transform='translate3d(0,0,0)';
+
+    if(direction){
+      // Espera apenas o próximo frame para o navegador pintar o card centralizado.
+      // Depois troca o conteúdo sem uma segunda animação pesada.
+      requestAnimationFrame(()=>{
         switchMarket(direction);
-      }
-      swipeAnimating=false;
-      swipeDx=0;swipeDy=0;swipeAxis='';
-      buildSwipeTrack();
-    };
-    swipeTrack.addEventListener('transitionend',done,{once:true});
+        swipeCard.classList.remove('is-settling');
+        swipeCard.style.transform='';
+      });
+      return;
+    }
+
     window.setTimeout(()=>{
-      if(swipeAnimating) done();
-    },420);
+      swipeCard.classList.remove('is-settling');
+      swipeCard.style.transform='';
+    },120);
   }
 
-  function onTouchStart(e){
-    if(swipeAnimating || e.touches.length!==1)return;
+  swipeCard?.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
     const t=e.touches[0];
-    swipeStartX=t.clientX;
-    swipeStartY=t.clientY;
-    swipeLastX=t.clientX;
-    swipeLastTime=performance.now();
-    swipeVelocity=0;
-    swipeDx=0;swipeDy=0;swipeAxis='';swipeMoving=true;
-    swipeTrack?.classList.add('is-dragging');
-    setTrackX(-swipeWidth,false);
-  }
+    touchStartX=t.clientX;
+    touchStartY=t.clientY;
+    touchMoving=true;
+    swipeDx=0;
+    swipeDy=0;
+    swipeAxis='';
+    swipeCard.classList.remove('is-settling','is-entering');
+    swipeCard.classList.add('is-dragging');
+    swipeCard.style.transition='none';
+  },{passive:true});
 
-  function onTouchMove(e){
-    if(!swipeMoving || e.touches.length!==1)return;
+  swipeCard?.addEventListener('touchmove',e=>{
+    if(!touchMoving||e.touches.length!==1)return;
     const t=e.touches[0];
-    swipeDx=t.clientX-swipeStartX;
-    swipeDy=t.clientY-swipeStartY;
+    swipeDx=t.clientX-touchStartX;
+    swipeDy=t.clientY-touchStartY;
 
-    if(!swipeAxis && (Math.abs(swipeDx)>4 || Math.abs(swipeDy)>4)){
-      swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*1.08?'x':'y';
+    if(!swipeAxis && (Math.abs(swipeDx)>3 || Math.abs(swipeDy)>3)){
+      swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*.92?'x':'y';
     }
     if(swipeAxis!=='x')return;
 
     e.preventDefault();
-    const now=performance.now();
-    const dt=Math.max(1,now-swipeLastTime);
-    swipeVelocity=(t.clientX-swipeLastX)/dt;
-    swipeLastX=t.clientX;
-    swipeLastTime=now;
+    if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipe);
+  },{passive:false});
 
-    // Resistência apenas nas pontas virtuais; entre os mercados é movimento 1:1.
-    const max=swipeWidth*.92;
-    swipeDx=Math.max(-max,Math.min(max,swipeDx));
-    if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipeTrack);
-  }
+  swipeCard?.addEventListener('touchend',e=>{
+    if(!touchMoving)return;
+    touchMoving=false;
+    if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
 
-  function onTouchEnd(){
-    if(!swipeMoving)return;
-    swipeMoving=false;
-    swipeTrack?.classList.remove('is-dragging');
-    if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;paintSwipeTrack();}
-
-    if(swipeAxis!=='x'){
-      finishSwipe(0);
-      return;
-    }
-
-    const distanceTrigger=swipeWidth*.18;
-    const velocityTrigger=.42;
-    let direction=0;
-    if(Math.abs(swipeDx)>=distanceTrigger || Math.abs(swipeVelocity)>=velocityTrigger){
-      direction=swipeDx<0?1:-1;
-    }
-    finishSwipe(direction);
-  }
-
-  buildSwipeTrack();
-
-  swipeViewport?.addEventListener('touchstart',onTouchStart,{passive:true});
-  swipeViewport?.addEventListener('touchmove',onTouchMove,{passive:false});
-  swipeViewport?.addEventListener('touchend',onTouchEnd,{passive:true});
-  swipeViewport?.addEventListener('touchcancel',()=>{
-    swipeMoving=false;
-    swipeTrack?.classList.remove('is-dragging');
-    finishSwipe(0);
+    const width=Math.max(1,swipeCard.getBoundingClientRect().width);
+    const shouldChange=swipeAxis==='x' && Math.abs(swipeDx)>=Math.min(36,width*.10);
+    swipeCard.style.transition='';
+    settleSwipe(shouldChange?(swipeDx<0?1:-1):0);
+    swipeDx=0;swipeDy=0;swipeAxis='';
   },{passive:true});
 
-  home.addEventListener('click',e=>{
-    const cloneButton=e.target.closest('[data-clone-open-market]');
-    if(!cloneButton)return;
-    e.preventDefault();
-    const type=cloneButton.dataset.cloneOpenMarket;
-    const item=dataForMarket(type)[0];
-    if(item)openItem(item);
-  });
-
-  window.addEventListener('resize',()=>requestAnimationFrame(measureSwipe),{passive:true});
+  swipeCard?.addEventListener('touchcancel',()=>{
+    touchMoving=false;
+    if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;}
+    swipeCard.style.transition='';
+    settleSwipe(0);
+    swipeDx=0;swipeDy=0;swipeAxis='';
+  },{passive:true});
 
   setMobileLoading('initial');
   let checks=0;
