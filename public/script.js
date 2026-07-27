@@ -14306,6 +14306,13 @@ function resetDesktopMatchRailToEmpty(){
       .filter(el=>!el.closest('.cpMobileHome'));
   }
   function clean(s){return String(s||'').replace(/\s+/g,' ').trim()}
+  function normalizeMobileConfidence(value){
+    let n=Number(String(value??'').replace(',', '.').replace(/[^0-9.-]/g,''));
+    if(!Number.isFinite(n) || n <= 0) return 0;
+    if(n > 0 && n <= 1) n *= 100;
+    while(n > 100) n /= 10;
+    return Math.max(0, Math.min(99, Math.round(n)));
+  }
   function rowData(row,index){
     const meta=row?.querySelector('.gameMeta');
     const txt=clean(meta?.innerText||row?.innerText||'');
@@ -14327,13 +14334,14 @@ function resetDesktopMatchRailToEmpty(){
     }
     const odds=row?.querySelector('.oddBox');
     const market=clean(odds?.querySelector('b')?.textContent)||'OVER 9.5';
-    let conf=Number((row?.dataset?.confidence||'').replace(/[^0-9.]/g,''));
-    if(!Number.isFinite(conf)||!conf){
-      const pctMatch=clean(row?.innerText||'').match(/(\d{2,3})\s*%/);
-      conf=pctMatch ? Number(pctMatch[1]) : 0;
+    let conf=normalizeMobileConfidence(row?.dataset?.confidence||'');
+    if(!conf){
+      const pctMatch=clean(row?.innerText||'').match(/(\d+(?:[.,]\d+)?)\s*%/);
+      conf=normalizeMobileConfidence(pctMatch ? pctMatch[1] : 0);
     }
-    const strength=Number(row?.dataset?.cornerStrength || row?.dataset?.aiScore || conf || 0);
-    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf:Math.round(conf||0),strength};
+    const strengthRaw=Number(row?.dataset?.cornerStrength || row?.dataset?.aiScore || conf || 0);
+    const strength=Number.isFinite(strengthRaw) ? strengthRaw : conf;
+    return {row,time,home:names[0]||'Mandante',away:names[1]||'Visitante',market,conf,strength};
   }
   function minutesOf(time){
     const match=String(time||'').match(/^(\d{1,2}):(\d{2})$/);
