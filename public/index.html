@@ -60,10 +60,10 @@
   </header>
 
   <main class="main">
-    <div class="mobileGreeting">
+    <div class="mobileGreeting" id="mobileAuthArea">
       <span class="mobileGreetingIcon">♧</span>
-      <strong>Olá, Rodrigo</strong>
-      <span class="mobileGreetingChev">⌄</span>
+      <strong id="mobileAuthName">Entrar com Google</strong>
+      <button type="button" id="mobileAuthButton" class="mobileGreetingChev" aria-label="Entrar com Google">⌄</button>
     </div>
 
     <header class="topbar">
@@ -78,10 +78,22 @@
         <a>BOTS</a>
         <button type="button" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</button>
       </nav>
-      <div class="topUser">
-        <button class="bell" type="button">♧</button>
-        <div class="userText"><strong>Olá, Sr. Rodrigo</strong><small></small></div>
-        <span class="chev">⌄</span>
+      <div class="topUser" id="authAreaDesktop">
+        <button class="bell" type="button" aria-label="Notificações">♧</button>
+
+        <button type="button" id="btnGoogleLogin" class="authLoginButton">
+          <span aria-hidden="true">G</span>
+          <b>ENTRAR COM GOOGLE</b>
+        </button>
+
+        <div class="authUserProfile" id="authUserProfile" hidden>
+          <img id="authUserPhoto" class="authUserPhoto" src="" alt="Foto do usuário" referrerpolicy="no-referrer" />
+          <div class="userText">
+            <strong id="authUserName">Usuário</strong>
+            <small id="authUserPlan">PLANO GRATUITO</small>
+          </div>
+          <button type="button" id="btnGoogleLogout" class="authLogoutButton" aria-label="Sair da conta">SAIR</button>
+        </div>
       </div>
     </header>
 
@@ -208,7 +220,13 @@
     </header>
 
     <main class="cpHomeScroll">
-      <section class="cpHomeGreeting"><div><span>♧</span><strong>Olá, Rodrigo</strong></div><button type="button">Alertas <i></i></button></section>
+      <section class="cpHomeGreeting" id="cpHomeAuthArea">
+        <div>
+          <span>♧</span>
+          <strong id="cpHomeAuthName">Entrar com Google</strong>
+        </div>
+        <button type="button" id="cpHomeAuthButton">ENTRAR <i></i></button>
+      </section>
 
       <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
         <div class="cpHomeSwipeGuide" aria-hidden="true"><span>←</span><b>DESLIZE PARA OS LADOS</b><span>→</span></div>
@@ -333,8 +351,10 @@
     </div>
   </section>
 
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="auth.js"></script>
+  <!-- Login Firebase no navegador. O auth.js importa o firebase-client.js. -->
+  <script type="module" src="auth.js?v=20260728-firebase-auth-v1"></script>
+
+  <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
 
 </body>
 </html>

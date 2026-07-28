@@ -15206,3 +15206,268 @@ function resetDesktopMatchRailToEmpty(){
   });
   observer.observe(target,{childList:true,subtree:true});
 })();
+/* =========================================================
+   FIREBASE AUTH — INTEGRAÇÃO REAL COM GOOGLE
+   - Carrega public/firebase-client.js sem transformar este arquivo em módulo.
+   - Substitui o login demonstrativo por autenticação Firebase.
+   - Sincroniza o perfil com /auth/firebase e /auth/me.
+   - Mantém compatibilidade com as verificações Premium já existentes.
+   ========================================================= */
+(function firebaseGoogleAuthBridge(){
+  "use strict";
+
+  const PREMIUM_KEY = "cornersPremiumLogged";
+  const FIREBASE_MODULE = "./firebase-client.js";
+
+  let firebaseApi = null;
+  let currentProfile = null;
+  let authBusy = false;
+
+  function safeStorageSet(key, value){
+    try { localStorage.setItem(key, value); } catch (_) {}
+  }
+
+  function safeStorageRemove(key){
+    try { localStorage.removeItem(key); } catch (_) {}
+  }
+
+  function escapeAuthHtml(value){
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function removeDemoLogin(){
+    document.querySelectorAll(
+      "#premiumLoginOverlay,.premiumLoginOverlay,#premiumAuthBar"
+    ).forEach(element => element.remove());
+  }
+
+  function authHost(){
+    let host = document.getElementById("firebaseAuthBar");
+    if (host) return host;
+
+    host = document.createElement("div");
+    host.id = "firebaseAuthBar";
+    host.className = "firebaseAuthBar";
+
+    const preferredParent =
+      document.querySelector(".top-right") ||
+      document.querySelector(".topbar") ||
+      document.querySelector("header") ||
+      document.body;
+
+    preferredParent.appendChild(host);
+    return host;
+  }
+
+  function installAuthStyles(){
+    if (document.getElementById("firebaseAuthStyles")) return;
+
+    const style = document.createElement("style");
+    style.id = "firebaseAuthStyles";
+    style.textContent = `
+      #firebaseAuthBar{display:flex;align-items:center;gap:10px;position:relative;z-index:9999}
+      .firebaseGoogleBtn,.firebaseLogoutBtn{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:40px;padding:0 14px;font:800 12px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.03em;cursor:pointer;transition:.18s ease}
+      .firebaseGoogleBtn{background:#fff;color:#172033;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+      .firebaseGoogleBtn:hover{transform:translateY(-1px)}
+      .firebaseGoogleBtn:disabled,.firebaseLogoutBtn:disabled{opacity:.55;cursor:wait;transform:none}
+      .firebaseLogoutBtn{background:rgba(255,255,255,.06);color:#e7edf5}
+      .firebaseUserBox{display:flex;align-items:center;gap:9px;min-height:44px;padding:5px 8px 5px 6px;border:1px solid rgba(255,255,255,.11);border-radius:14px;background:rgba(8,13,21,.78);backdrop-filter:blur(12px)}
+      .firebaseUserPhoto{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#202938}
+      .firebaseUserText{display:grid;line-height:1.15;max-width:150px}
+      .firebaseUserText strong{font:800 12px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f3f7fb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .firebaseUserText small{font:700 10px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#8fa0b5;margin-top:3px}
+      .firebaseUserText small.is-premium{color:#24e77a}
+      .firebaseAuthError{max-width:230px;color:#ff8e8e;font:700 11px/1.25 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      @media(max-width:720px){
+        #firebaseAuthBar{gap:6px}
+        .firebaseUserText{max-width:92px}
+        .firebaseGoogleBtn,.firebaseLogoutBtn{padding:0 10px;min-height:38px}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function syncLegacyPremiumState(profile){
+    const premium = profile?.premium === true;
+
+    if (premium) safeStorageSet(PREMIUM_KEY, "1");
+    else safeStorageRemove(PREMIUM_KEY);
+
+    window.firebaseCurrentUser = profile?.user || null;
+    window.firebaseCurrentProfile = profile || null;
+    window.firebaseIsPremium = premium;
+
+    document.dispatchEvent(new CustomEvent("firebase-auth-updated", {
+      detail: { user: window.firebaseCurrentUser, profile, premium }
+    }));
+  }
+
+  function renderLoggedOut(errorMessage = ""){
+    currentProfile = null;
+    syncLegacyPremiumState(null);
+
+    const host = authHost();
+    host.innerHTML = `
+      <button type="button" class="firebaseGoogleBtn" id="firebaseGoogleLoginBtn">
+        ENTRAR COM GOOGLE
+      </button>
+      ${errorMessage ? `<span class="firebaseAuthError">${escapeAuthHtml(errorMessage)}</span>` : ""}
+    `;
+
+    host.querySelector("#firebaseGoogleLoginBtn")?.addEventListener("click", loginWithGoogle);
+  }
+
+  function renderLoggedIn(user, profile){
+    currentProfile = profile;
+    syncLegacyPremiumState(profile);
+
+    const premium = profile?.premium === true;
+    const displayName = user?.displayName || profile?.nome || user?.email || "Usuário";
+    const photoURL = user?.photoURL || profile?.foto || "";
+
+    const host = authHost();
+    host.innerHTML = `
+      <div class="firebaseUserBox">
+        ${photoURL
+          ? `<img class="firebaseUserPhoto" src="${escapeAuthHtml(photoURL)}" alt="Foto do usuário">`
+          : `<span class="firebaseUserPhoto" aria-hidden="true"></span>`}
+        <span class="firebaseUserText">
+          <strong>${escapeAuthHtml(displayName)}</strong>
+          <small class="${premium ? "is-premium" : ""}">${premium ? "PREMIUM ATIVO" : "PLANO GRATUITO"}</small>
+        </span>
+      </div>
+      <button type="button" class="firebaseLogoutBtn" id="firebaseLogoutBtn">SAIR</button>
+    `;
+
+    host.querySelector("#firebaseLogoutBtn")?.addEventListener("click", logoutFirebase);
+  }
+
+  async function serverProfile(user, forceTokenRefresh = false){
+    if (!user) return null;
+
+    const token = await user.getIdToken(forceTokenRefresh);
+
+    const loginResponse = await fetch("/auth/firebase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+
+    const loginData = await loginResponse.json().catch(() => ({}));
+    if (!loginResponse.ok){
+      throw new Error(loginData?.error || "O servidor recusou a autenticação.");
+    }
+
+    const meResponse = await fetch("/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store"
+    });
+
+    const meData = await meResponse.json().catch(() => ({}));
+    if (!meResponse.ok){
+      throw new Error(meData?.error || "Não foi possível carregar o perfil.");
+    }
+
+    return {
+      ...meData,
+      user: meData?.user || loginData?.user || {
+        uid: user.uid,
+        nome: user.displayName || "",
+        email: user.email || "",
+        foto: user.photoURL || ""
+      },
+      premium: meData?.premium === true || loginData?.user?.premium === true
+    };
+  }
+
+  async function loginWithGoogle(){
+    if (!firebaseApi || authBusy) return;
+    authBusy = true;
+
+    const button = document.getElementById("firebaseGoogleLoginBtn");
+    if (button){
+      button.disabled = true;
+      button.textContent = "ENTRANDO...";
+    }
+
+    try {
+      const result = await firebaseApi.entrarComGoogle();
+      const user = result?.usuario || firebaseApi.firebaseAuth?.currentUser;
+      const profile = await serverProfile(user, true);
+      renderLoggedIn(user, profile);
+    } catch (error){
+      console.error("Firebase login falhou:", error);
+      renderLoggedOut(error?.message || "Não foi possível entrar com o Google.");
+    } finally {
+      authBusy = false;
+    }
+  }
+
+  async function logoutFirebase(){
+    if (!firebaseApi || authBusy) return;
+    authBusy = true;
+
+    const button = document.getElementById("firebaseLogoutBtn");
+    if (button) button.disabled = true;
+
+    try {
+      await firebaseApi.sairDaConta();
+    } catch (error){
+      console.error("Firebase logout falhou:", error);
+    } finally {
+      safeStorageRemove(PREMIUM_KEY);
+      authBusy = false;
+      renderLoggedOut();
+    }
+  }
+
+  async function authenticatedFetch(url, options = {}){
+    if (!firebaseApi) throw new Error("Firebase ainda não foi inicializado.");
+    return firebaseApi.fetchAutenticado(url, options);
+  }
+
+  async function initializeFirebaseBridge(){
+    installAuthStyles();
+    removeDemoLogin();
+    renderLoggedOut();
+
+    try {
+      firebaseApi = await import(FIREBASE_MODULE);
+
+      window.firebaseAuthenticatedFetch = authenticatedFetch;
+      window.firebaseLoginWithGoogle = loginWithGoogle;
+      window.firebaseLogout = logoutFirebase;
+
+      firebaseApi.observarAutenticacao(async authState => {
+        const user = authState?.usuario || null;
+
+        if (!user){
+          renderLoggedOut();
+          return;
+        }
+
+        try {
+          const profile = await serverProfile(user);
+          renderLoggedIn(user, profile);
+        } catch (error){
+          console.error("Falha ao sincronizar usuário Firebase:", error);
+          renderLoggedOut(error?.message || "Falha ao validar sua sessão.");
+        }
+      });
+    } catch (error){
+      console.error("Não foi possível carregar firebase-client.js:", error);
+      renderLoggedOut("Configure o arquivo firebase-client.js para ativar o login.");
+    }
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", initializeFirebaseBridge, { once:true });
+  } else {
+    initializeFirebaseBridge();
+  }
+})();

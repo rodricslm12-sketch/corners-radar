@@ -5,7 +5,13 @@ import {
   getApps,
   initializeApp
 } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+
+import {
+  FieldValue,
+  getFirestore
+} from "firebase-admin/firestore";
+
+import { getAuth } from "firebase-admin/auth";
 
 function iniciarFirebase() {
   if (getApps().length > 0) {
@@ -14,26 +20,44 @@ function iniciarFirebase() {
 
   // Render: credencial guardada em variável de ambiente
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT
-    );
+    try {
+      const serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT
+      );
 
-    return initializeApp({
-      credential: cert(serviceAccount)
-    });
+      return initializeApp({
+        credential: cert(serviceAccount)
+      });
+    } catch (error) {
+      console.error(
+        "Erro ao carregar FIREBASE_SERVICE_ACCOUNT:",
+        error.message
+      );
+
+      throw error;
+    }
   }
 
   // Computador local: usa o arquivo JSON
   const caminhoLocal = "./firebase-service-account.json";
 
   if (fs.existsSync(caminhoLocal)) {
-    const serviceAccount = JSON.parse(
-      fs.readFileSync(caminhoLocal, "utf8")
-    );
+    try {
+      const serviceAccount = JSON.parse(
+        fs.readFileSync(caminhoLocal, "utf8")
+      );
 
-    return initializeApp({
-      credential: cert(serviceAccount)
-    });
+      return initializeApp({
+        credential: cert(serviceAccount)
+      });
+    } catch (error) {
+      console.error(
+        "Erro ao carregar firebase-service-account.json:",
+        error.message
+      );
+
+      throw error;
+    }
   }
 
   // Alternativa usando GOOGLE_APPLICATION_CREDENTIALS
@@ -42,6 +66,8 @@ function iniciarFirebase() {
   });
 }
 
-iniciarFirebase();
+const firebaseApp = iniciarFirebase();
 
-export const db = getFirestore();
+export const db = getFirestore(firebaseApp);
+export const auth = getAuth(firebaseApp);
+export { FieldValue };

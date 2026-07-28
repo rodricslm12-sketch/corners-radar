@@ -23,12 +23,15 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { db } from "./firebase.js";
+import { auth, db, FieldValue } from "./firebase.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Permite receber JSON nas rotas de autenticação.
+app.use(express.json({ limit: "1mb" }));
 
 // --------- Static (site) ----------
 const __filename = fileURLToPath(import.meta.url);
@@ -3231,6 +3234,171 @@ async function getLeaguesForDate(date){
 }
 
 // ---------------- Routes ----------------
+
+// =========================================================
+// FIREBASE AUTH — validação segura no servidor
+// =========================================================
+function getBearerToken(req) {
+  const header = String(req.headers.authorization || "").trim();
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+}
+
+async function verifyFirebaseToken(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        error: "Token de autenticação não enviado."
+      });
+    }
+
+    const decodedToken = await auth.verifyIdToken(token);
+    req.user = decodedToken;
+    return next();
+  } catch (err) {
+    console.warn("Firebase Auth inválido:", err?.message || err);
+    return res.status(401).json({
+      ok: false,
+      error: "Token de autenticação inválido ou expirado."
+    });
+  }
+}
+
+async function requirePremium(req, res, next) {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({
+        ok: false,
+        error: "Usuário não autenticado."
+      });
+    }
+
+    const snap = await db.collection("users").doc(req.user.uid).get();
+
+    if (!snap.exists) {
+      return res.status(403).json({
+        ok: false,
+        error: "Cadastro do usuário não encontrado."
+      });
+    }
+
+    const userData = snap.data() || {};
+    if (userData.premium !== true) {
+      return res.status(403).json({
+        ok: false,
+        error: "Esta área exige um plano Premium."
+      });
+    }
+
+    req.userProfile = userData;
+    return next();
+  } catch (err) {
+    console.error("Erro ao consultar plano Premium:", err?.message || err);
+    return res.status(500).json({
+      ok: false,
+      error: "Não foi possível verificar o plano do usuário."
+    });
+  }
+}
+
+async function saveAuthenticatedUser(decodedToken) {
+  const userRef = db.collection("users").doc(decodedToken.uid);
+  const snap = await userRef.get();
+
+  const commonData = {
+    uid: decodedToken.uid,
+    email: decodedToken.email || "",
+    nome: decodedToken.name || "",
+    foto: decodedToken.picture || "",
+    emailVerificado: decodedToken.email_verified === true,
+    provedor: decodedToken.firebase?.sign_in_provider || "firebase",
+    ultimoLogin: FieldValue.serverTimestamp(),
+    atualizadoEm: FieldValue.serverTimestamp()
+  };
+
+  if (!snap.exists) {
+    await userRef.set({
+      ...commonData,
+      premium: false,
+      criadoEm: FieldValue.serverTimestamp()
+    });
+  } else {
+    await userRef.set(commonData, { merge: true });
+  }
+
+  const updated = await userRef.get();
+  return updated.data() || { ...commonData, premium: false };
+}
+
+// Recebe o ID token gerado pelo Firebase no navegador, valida e registra o usuário.
+app.post("/auth/firebase", async (req, res) => {
+  try {
+    const bodyToken = String(req.body?.token || "").trim();
+    const token = bodyToken || getBearerToken(req);
+
+    if (!token) {
+      return res.status(400).json({
+        ok: false,
+        error: "Envie o token do Firebase."
+      });
+    }
+
+    const decodedToken = await auth.verifyIdToken(token);
+    const profile = await saveAuthenticatedUser(decodedToken);
+
+    return res.json({
+      ok: true,
+      user: {
+        uid: decodedToken.uid,
+        nome: profile.nome || decodedToken.name || "",
+        email: profile.email || decodedToken.email || "",
+        foto: profile.foto || decodedToken.picture || "",
+        premium: profile.premium === true
+      }
+    });
+  } catch (err) {
+    console.warn("Falha no login Firebase:", err?.message || err);
+    return res.status(401).json({
+      ok: false,
+      error: "Não foi possível autenticar com o Firebase."
+    });
+  }
+});
+
+// Retorna os dados atuais do usuário autenticado.
+app.get("/auth/me", verifyFirebaseToken, async (req, res) => {
+  try {
+    const profile = await saveAuthenticatedUser(req.user);
+    return res.json({
+      ok: true,
+      user: {
+        uid: req.user.uid,
+        nome: profile.nome || req.user.name || "",
+        email: profile.email || req.user.email || "",
+        foto: profile.foto || req.user.picture || "",
+        premium: profile.premium === true
+      }
+    });
+  } catch (err) {
+    console.error("Erro em /auth/me:", err?.message || err);
+    return res.status(500).json({
+      ok: false,
+      error: "Não foi possível carregar o usuário."
+    });
+  }
+});
+
+// Rota simples para o front-end confirmar se o usuário possui Premium.
+app.get(
+  "/auth/premium",
+  verifyFirebaseToken,
+  requirePremium,
+  (req, res) => res.json({ ok: true, premium: true })
+);
+
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.get("/debug/match_base", async (req, res) => {
