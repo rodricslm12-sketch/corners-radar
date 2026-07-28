@@ -14301,6 +14301,34 @@ function resetDesktopMatchRailToEmpty(){
   let touchStartY=0;
   let touchMoving=false;
 
+  // Congela a fotografia dos cards de cada mercado. O resultado da partida
+  // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
+  const MOBILE_MARKET_LOCK_VERSION='v2';
+  function mobileMarketDate(){
+    const value=String(document.getElementById('date')?.value||'').trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    try{ if(typeof todayAM_YMD==='function') return todayAM_YMD(); }catch(_){ }
+    return new Date().toISOString().slice(0,10);
+  }
+  function mobileMarketLockKey(){
+    return `cornerProMobileMarkets:${MOBILE_MARKET_LOCK_VERSION}:${mobileMarketDate()}`;
+  }
+  function readMobileMarketLock(){
+    try{
+      const data=JSON.parse(localStorage.getItem(mobileMarketLockKey())||'null');
+      if(!data||!data.rankings) return null;
+      const ok=MARKETS.every(type=>Array.isArray(data.rankings[type])&&data.rankings[type].length);
+      return ok?data.rankings:null;
+    }catch(_){ return null; }
+  }
+  function writeMobileMarketLock(rankings){
+    try{
+      localStorage.setItem(mobileMarketLockKey(),JSON.stringify({
+        date:mobileMarketDate(), lockedAt:new Date().toISOString(), rankings
+      }));
+    }catch(error){ console.warn('Não foi possível congelar os mercados do dia.',error); }
+  }
+
   function clampLocal(n,a,b){ return Math.max(a,Math.min(b,n)); }
   function numberOf(...values){
     for(const value of values){
@@ -14398,15 +14426,19 @@ function resetDesktopMatchRailToEmpty(){
   }
   function goalsLineLocal(g){
     const proj=goalsProjectionLocal(g);
-    const p35=normalizePct(pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']),35);
-    const p25=normalizePct(pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']),52);
-    if(proj>=3.45 && p35>=48) return 'OVER 3.5';
-    if(proj>=2.55 && p25>=56) return 'OVER 2.5';
+    const p45=normalizePct(pickNumber(g,['markets.prob.over45','over45_prob','prob_over45']),28);
+    const p35=normalizePct(pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']),42);
+    const p25=normalizePct(pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']),58);
+
+    // Escolhe a maior linha que ainda tenha sustentação estatística.
+    if(proj>=4.25 && p45>=52) return 'OVER 4.5';
+    if(proj>=3.35 && p35>=56) return 'OVER 3.5';
+    if(proj>=2.45 && p25>=60) return 'OVER 2.5';
     return 'OVER 1.5';
   }
   function goalsConfidenceLocal(g){
     const line=goalsLineLocal(g);
-    const key=line.includes('3.5')?'over35':line.includes('2.5')?'over25':'over15';
+    const key=line.includes('4.5')?'over45':line.includes('3.5')?'over35':line.includes('2.5')?'over25':'over15';
     let p=null;
     try{ if(typeof marketPercent==='function') p=marketPercent(g,key); }catch(_){ }
     if(!Number.isFinite(Number(p))){
@@ -14414,7 +14446,7 @@ function resetDesktopMatchRailToEmpty(){
     }
     p = p ?? pickNumber(g,[`markets.prob.${key}`,`${key}_prob`,`prob_${key}`]);
     const proj=goalsProjectionLocal(g);
-    const fallback=line.includes('3.5')?42+(proj-3.2)*16:line.includes('2.5')?52+(proj-2.4)*18:67+(proj-1.7)*13;
+    const fallback=line.includes('4.5')?34+(proj-4.0)*16:line.includes('3.5')?46+(proj-3.1)*16:line.includes('2.5')?58+(proj-2.3)*18:72+(proj-1.6)*13;
     return normalizePct(p,fallback);
   }
 
@@ -14424,13 +14456,19 @@ function resetDesktopMatchRailToEmpty(){
   }
   function cardsLineLocal(g){
     const proj=cardsProjectionLocal(g);
-    if(proj>=5.15) return 'OVER 4.5';
-    if(proj>=4.05) return 'OVER 3.5';
+    const p55=normalizePct(pickNumber(g,['markets.prob.cards55','cards55_prob','prob_cards55']),30);
+    const p45=normalizePct(pickNumber(g,['markets.prob.cards45','cards45_prob','prob_cards45']),45);
+    const p35=normalizePct(pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']),58);
+
+    // Assim como nos cantos, usa linhas diferentes conforme a força do jogo.
+    if(proj>=6.05 && p55>=52) return 'OVER 5.5';
+    if(proj>=5.05 && p45>=56) return 'OVER 4.5';
+    if(proj>=4.00 && p35>=60) return 'OVER 3.5';
     return 'OVER 2.5';
   }
   function cardsConfidenceLocal(g){
     const line=cardsLineLocal(g);
-    const key=line.includes('4.5')?'cards45':line.includes('3.5')?'cards35':'cards25';
+    const key=line.includes('5.5')?'cards55':line.includes('4.5')?'cards45':line.includes('3.5')?'cards35':'cards25';
     let p=null;
     try{ if(typeof marketPercent==='function') p=marketPercent(g,key); }catch(_){ }
     if(!Number.isFinite(Number(p))){
@@ -14461,6 +14499,12 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function buildRankings(){
+    const locked=readMobileMarketLock();
+    if(locked){
+      marketRankings=locked;
+      return locked;
+    }
+
     const games=rawGames();
     if(!games.length) return marketRankings;
     const rankings={};
@@ -14477,6 +14521,7 @@ function resetDesktopMatchRailToEmpty(){
       if(list[0]) used.add(list[0].id);
     }
     marketRankings=rankings;
+    writeMobileMarketLock(rankings);
     return rankings;
   }
 

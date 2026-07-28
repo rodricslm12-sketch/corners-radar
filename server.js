@@ -3835,6 +3835,85 @@ function rankGamesByCornerStrength(list) {
     }));
 }
 
+// ---------------- Mercado amplo (gols e cartões) ----------------
+// Diferente de /quentes, esta rota NÃO aplica o funil de Top 5 de escanteios.
+// Assim gols e cartões podem usar equipes de qualquer posição da tabela.
+function marketGameFromEvent(e, league, posHome = null, posAway = null) {
+  const casa = teamFromEvent(e, "home");
+  const fora = teamFromEvent(e, "away");
+  if (!casa || !fora) return null;
+
+  const hora = cleanText(e?.match_time ?? e?.time ?? e?.event_time ?? "—") || "—";
+  const homeGoals = Number(e?.match_hometeam_score ?? e?.home_score ?? NaN);
+  const awayGoals = Number(e?.match_awayteam_score ?? e?.away_score ?? NaN);
+
+  return {
+    mode: "market",
+    match_id: e?.match_id ?? e?.event_key ?? null,
+    casa,
+    fora,
+    liga: league?.name || cleanText(e?.league_name) || `Liga ${league?.id ?? ""}`,
+    league_id: Number(league?.id ?? e?.league_id ?? 0) || null,
+    hora,
+    match_status: cleanText(e?.match_status ?? e?.status ?? ""),
+    pos_home: Number.isFinite(posHome) ? posHome : null,
+    pos_away: Number.isFinite(posAway) ? posAway : null,
+    posicao: Number.isFinite(posHome) && Number.isFinite(posAway) ? `${posHome}º x ${posAway}º` : "—",
+    score_home: Number.isFinite(homeGoals) ? homeGoals : null,
+    score_away: Number.isFinite(awayGoals) ? awayGoals : null,
+    // Campos crus são preservados para o frontend aproveitar estatísticas
+    // que algumas ligas já devolvem diretamente em get_events.
+    event_raw: e,
+    markets_scope: "full_table"
+  };
+}
+
+async function buildMarketGamesList({ date }) {
+  if (!APIKEY) throw new Error("Falta APIFOOTBALL_KEY no .env");
+  const leagues = await getLeaguesForDate(date);
+
+  const packs = await mapLimit(leagues, CONCURRENCY, async (league) => {
+    let events = [];
+    let standings = null;
+    try { events = await getEventsByLeagueDate(league.id, date); } catch { events = []; }
+    try { standings = await getStandings(league.id); } catch { standings = null; }
+    return { league, events, standings };
+  });
+
+  const out = [];
+  const seen = new Set();
+  for (const { league, events, standings } of packs) {
+    for (const e of events || []) {
+      const casa = teamFromEvent(e, "home");
+      const fora = teamFromEvent(e, "away");
+      const posHome = findTeamPos(standings, casa);
+      const posAway = findTeamPos(standings, fora);
+      const game = marketGameFromEvent(e, league, posHome, posAway);
+      if (!game) continue;
+      const key = String(game.match_id || `${game.league_id}|${game.casa}|${game.fora}`);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(game);
+    }
+  }
+
+  return out.sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
+}
+
+app.get("/mercados", async (req, res) => {
+  const date = req.query.date || toISODate();
+  try {
+    const games = await buildMarketGamesList({ date });
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    return res.json(games);
+  } catch (err) {
+    return res.status(500).json({
+      error: "Erro ao buscar mercados do dia",
+      details: String(err?.message || err)
+    });
+  }
+});
+
 // ---------------- Endpoints ----------------
 app.get("/quentes", async (req, res) => {
   const date = req.query.date || toISODate();
