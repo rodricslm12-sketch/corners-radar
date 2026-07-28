@@ -14303,7 +14303,7 @@ function resetDesktopMatchRailToEmpty(){
 
   // Congela a fotografia dos cards de cada mercado. O resultado da partida
   // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
-  const MOBILE_MARKET_LOCK_VERSION='v2';
+  const MOBILE_MARKET_LOCK_VERSION='v3-lines';
   function mobileMarketDate(){
     const value=String(document.getElementById('date')?.value||'').trim();
     if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -14421,20 +14421,40 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function goalsProjectionLocal(g){
+    // Prioriza a projeção calculada pelo próprio bloco de mercados.
+    const direct=numberOf(
+      g?.markets?.totalExpected,
+      g?.proj_goals,
+      g?.goals_projection,
+      g?.expected_goals_total,
+      g?.totalExpected,
+      g?.real?.goalsCombinedAvg,
+      g?.avg_goals
+    );
+    if(Number.isFinite(direct)) return direct;
+    try{
+      if(typeof estimateGoalMarkets==='function'){
+        const n=Number(estimateGoalMarkets(g)?.totalExpected);
+        if(Number.isFinite(n)) return n;
+      }
+    }catch(_){ }
     try{ if(typeof projectedGoals==='function'){const n=Number(projectedGoals(g));if(Number.isFinite(n))return n;} }catch(_){ }
-    return numberOf(g?.proj_goals,g?.goals_projection,g?.expected_goals_total,g?.totalExpected,g?.markets?.totalExpected,g?.real?.goalsCombinedAvg,g?.avg_goals) ?? 2.1;
+    return 2.1;
   }
   function goalsLineLocal(g){
     const proj=goalsProjectionLocal(g);
-    const p45=normalizePct(pickNumber(g,['markets.prob.over45','over45_prob','prob_over45']),28);
-    const p35=normalizePct(pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']),42);
-    const p25=normalizePct(pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']),58);
+    const p15=normalizePct(pickNumber(g,['markets.prob.over15','over15_prob','prob_over15']),72);
+    const p25=normalizePct(pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']),46);
+    const p35=normalizePct(pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']),30);
+    const p45raw=pickNumber(g,['markets.prob.over45','over45_prob','prob_over45']);
+    const p45=normalizePct(p45raw,Math.max(12,p35-15));
 
-    // Escolhe a maior linha que ainda tenha sustentação estatística.
-    if(proj>=4.25 && p45>=52) return 'OVER 4.5';
-    if(proj>=3.35 && p35>=56) return 'OVER 3.5';
-    if(proj>=2.45 && p25>=60) return 'OVER 2.5';
-    return 'OVER 1.5';
+    // A linha é escolhida pela probabilidade da própria linha, e não pela
+    // confiança do Over 1.5. Isso impede todos os cards de ficarem em 1.5.
+    if((proj>=4.05 && p45>=45) || p45>=52) return 'OVER 4.5';
+    if((proj>=3.05 && p35>=44) || p35>=52) return 'OVER 3.5';
+    if((proj>=2.15 && p25>=43) || p25>=50) return 'OVER 2.5';
+    return p15>=50 ? 'OVER 1.5' : 'OVER 1.5';
   }
   function goalsConfidenceLocal(g){
     const line=goalsLineLocal(g);
@@ -14451,19 +14471,28 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function cardsProjectionLocal(g){
-    try{ if(typeof projectedCards==='function'){const n=Number(projectedCards(g));if(Number.isFinite(n))return n;} }catch(_){ }
-    return numberOf(g?.proj_cards,g?.cards_projection,g?.expected_cards_total,g?.total_cards_avg,g?.media_cartoes_total,g?.cartoes_media) ?? 3.6;
+    const direct=numberOf(g?.proj_cards,g?.cards_projection,g?.expected_cards_total,g?.total_cards_avg,g?.media_cartoes_total,g?.cartoes_media);
+    if(Number.isFinite(direct)) return direct;
+
+    // Quando a API não traz média direta de cartões, converte as
+    // probabilidades +2.5/+3.5 em uma projeção coerente para escolher a linha.
+    const p25=normalizePct(pickNumber(g,['markets.prob.cards25','cards25_prob','prob_cards25']),55);
+    const p35=normalizePct(pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']),Math.max(25,p25-14));
+    return clampLocal(2.7 + (p25-50)*0.045 + (p35-40)*0.025,2.5,6.5);
   }
   function cardsLineLocal(g){
     const proj=cardsProjectionLocal(g);
-    const p55=normalizePct(pickNumber(g,['markets.prob.cards55','cards55_prob','prob_cards55']),30);
-    const p45=normalizePct(pickNumber(g,['markets.prob.cards45','cards45_prob','prob_cards45']),45);
-    const p35=normalizePct(pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']),58);
+    const p25=normalizePct(pickNumber(g,['markets.prob.cards25','cards25_prob','prob_cards25']),55);
+    const p35=normalizePct(pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']),Math.max(25,p25-14));
+    const p45raw=pickNumber(g,['markets.prob.cards45','cards45_prob','prob_cards45']);
+    const p45=normalizePct(p45raw,Math.max(18,p35-13));
+    const p55raw=pickNumber(g,['markets.prob.cards55','cards55_prob','prob_cards55']);
+    const p55=normalizePct(p55raw,Math.max(10,p45-14));
 
-    // Assim como nos cantos, usa linhas diferentes conforme a força do jogo.
-    if(proj>=6.05 && p55>=52) return 'OVER 5.5';
-    if(proj>=5.05 && p45>=56) return 'OVER 4.5';
-    if(proj>=4.00 && p35>=60) return 'OVER 3.5';
+    // Escolhe a maior linha ainda sustentada pela probabilidade daquela linha.
+    if((proj>=5.75 && p55>=42) || p55>=50) return 'OVER 5.5';
+    if((proj>=4.75 && p45>=43) || p45>=51) return 'OVER 4.5';
+    if((proj>=3.55 && p35>=48) || p35>=55) return 'OVER 3.5';
     return 'OVER 2.5';
   }
   function cardsConfidenceLocal(g){
