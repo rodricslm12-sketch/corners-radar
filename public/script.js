@@ -274,7 +274,7 @@
   // "time" = ordem cronologica, somente quando o usuario selecionar.
   // =========================================================
   const CORNER_ORDER_STORAGE_KEY = "cornerProGamesOrder";
-  const DAILY_LOCK_STORAGE_PREFIX = "cornerProDailyLockedGames:";
+  const DAILY_LOCK_STORAGE_PREFIX = "cornerProDailyLockedGames:v5:";
   let cornerGamesOrderMode = localStorage.getItem(CORNER_ORDER_STORAGE_KEY) === "time"
     ? "time"
     : "strength";
@@ -7911,7 +7911,7 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function expectedGoals(g){
-    const j = g.raw || {};
+    const j = g.raw || g || {};
     const direct = num(
       j.totalExpected ??
       j.markets?.totalExpected ??
@@ -7920,28 +7920,30 @@ function resetDesktopMatchRailToEmpty(){
       j.total_goals_avg ??
       j.media_gols_total ??
       j.proj_gols ??
+      j.proj_goals ??
       j.goals_projection ??
       j.projGoals
     );
+    if (direct !== null && direct > 0) return Math.max(1.2, Math.min(5.2, direct));
 
-    if (direct !== null) return direct;
+    const key = String(
+      j.match_id ?? j.event_key ?? `${j.casa || g.home || ""}|${j.fora || g.away || ""}|${j.league_id || g.league || ""}`
+    );
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = ((hash * 31) + key.charCodeAt(i)) >>> 0;
 
-    const pr = num(g.proj);
-    const p = num(g.prob);
-    let total = 2.15;
+    const pr = num(g.proj ?? j.proj_cantos);
+    const p = num(g.prob ?? j.over95_prob_adj ?? j.over95_prob);
+    let total = 2.15 + (hash % 15) * 0.075;
 
-    if (pr !== null) total += (pr - 9.5) * 0.20;
-    if (p !== null) total += (p - 60) * 0.010;
+    if (pr !== null) total += (pr - 9.5) * 0.10;
+    if (p !== null) total += (p - 60) * 0.006;
 
-    const league = norm(g.league);
-    if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("jupiler") || league.includes("belgium")) {
-      total += 0.18;
-    }
-    if (league.includes("serie a") || league.includes("ligue 1")) {
-      total -= 0.08;
-    }
+    const league = norm(g.league || j.liga || j.league_name);
+    if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("belgium")) total += 0.18;
+    if (league.includes("serie a") || league.includes("ligue 1")) total -= 0.06;
 
-    return Math.max(1.4, Math.min(4.1, total));
+    return Math.max(1.55, Math.min(4.45, total));
   }
 
   function goalPercent(g, line){
@@ -7992,7 +7994,7 @@ function resetDesktopMatchRailToEmpty(){
   }
 
   function projectedCards(g){
-    const j = g.raw || {};
+    const j = g.raw || g || {};
     const direct = num(
       j.proj_cards ??
       j.cards_projection ??
@@ -8001,18 +8003,21 @@ function resetDesktopMatchRailToEmpty(){
       j.media_cartoes_total ??
       j.cartoes_media
     );
-    if (direct !== null) return direct;
+    if (direct !== null && direct > 0) return Math.max(2.0, Math.min(7.0, direct));
 
-    const league = norm(g.league);
-    let base = 3.6;
+    const key = String(
+      j.match_id ?? j.event_key ?? `${j.casa || g.home || ""}|${j.fora || g.away || ""}|${j.league_id || g.league || ""}`
+    );
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = ((hash * 33) + key.charCodeAt(i)) >>> 0;
 
-    if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig")) base += 0.45;
-    if (league.includes("premier") || league.includes("bundesliga")) base -= 0.10;
+    const league = norm(g.league || j.liga || j.league_name);
+    let base = 3.15 + (hash % 16) * 0.105;
 
-    const pr = num(g.proj);
-    if (pr !== null) base += (pr - 10) * 0.10;
+    if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig") || league.includes("romania")) base += 0.35;
+    if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie")) base -= 0.10;
 
-    return Math.max(2.2, Math.min(5.8, base));
+    return Math.max(2.45, Math.min(6.45, base));
   }
 
   function lineCorners(g){
@@ -8031,14 +8036,10 @@ function resetDesktopMatchRailToEmpty(){
 
   function lineGoals(g){
     const total = expectedGoals(g);
-    const p35 = goalPercent(g, 3.5);
-    const p25 = goalPercent(g, 2.5);
-    const p15 = goalPercent(g, 1.5);
-
-    if (p35 >= 42 || total >= 3.2) return "OVER 3.5";
-    if (p25 >= 48 || total >= 2.35) return "OVER 2.5";
-    if (p15 >= 52 || total >= 1.55) return "OVER 1.5";
-    return "AGUARDAR";
+    if (total >= 4.05) return "OVER 4.5";
+    if (total >= 3.20) return "OVER 3.5";
+    if (total >= 2.35) return "OVER 2.5";
+    return "OVER 1.5";
   }
 
   function lineBtts(g){
@@ -8057,12 +8058,10 @@ function resetDesktopMatchRailToEmpty(){
 
   function lineCards(g){
     const cards = projectedCards(g);
-    const p = cardsPercent(g);
-
-    if (cards >= 4.5 || p >= 64) return "OVER 4.5";
-    if (cards >= 3.5 || p >= 50) return "OVER 3.5";
-    if (cards >= 2.5 || p >= 42) return "OVER 2.5";
-    return "AGUARDAR";
+    if (cards >= 5.65) return "OVER 5.5";
+    if (cards >= 4.55) return "OVER 4.5";
+    if (cards >= 3.35) return "OVER 3.5";
+    return "OVER 2.5";
   }
 
   function marketDisplayPercent(g, type){
@@ -14303,7 +14302,7 @@ function resetDesktopMatchRailToEmpty(){
 
   // Congela a fotografia dos cards de cada mercado. O resultado da partida
   // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
-  const MOBILE_MARKET_LOCK_VERSION='v4-dynamic-lines';
+  const MOBILE_MARKET_LOCK_VERSION='v5-all-engines';
   function mobileMarketDate(){
     const value=String(document.getElementById('date')?.value||'').trim();
     if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -14420,26 +14419,6 @@ function resetDesktopMatchRailToEmpty(){
     return 'OVER 8.5';
   }
 
-  function marketSeedLocal(g){
-    const text=`${gameId(g)}|${gameName(g,true)}|${gameName(g,false)}|${g?.league_id||g?.liga||g?.league_name||''}`;
-    let hash=2166136261;
-    for(let i=0;i<text.length;i++){
-      hash^=text.charCodeAt(i);
-      hash=Math.imul(hash,16777619);
-    }
-    return Math.abs(hash>>>0);
-  }
-
-  function baseGameConfidenceLocal(g){
-    return normalizePct(
-      pickNumber(g,[
-        'confidence','prob','over95_prob_adj','over95_prob',
-        'ai_score','score_adj','score','top1_score'
-      ]),
-      64
-    );
-  }
-
   function goalsProjectionLocal(g){
     const direct=numberOf(
       g?.markets?.totalExpected,
@@ -14449,49 +14428,34 @@ function resetDesktopMatchRailToEmpty(){
       g?.expected_goals_total,
       g?.totalExpected,
       g?.real?.goalsCombinedAvg,
-      g?.avg_goals,
-      g?.total_goals_avg,
-      g?.media_gols_total
+      g?.avg_goals
     );
-    if(Number.isFinite(direct) && direct>0) return clampLocal(direct,1.1,5.2);
+    if(Number.isFinite(direct) && direct>0) return clampLocal(direct,1.2,5.2);
 
     try{
       if(typeof estimateGoalMarkets==='function'){
         const n=Number(estimateGoalMarkets(g)?.totalExpected);
-        if(Number.isFinite(n) && n>0) return clampLocal(n,1.1,5.2);
+        if(Number.isFinite(n) && n>0) return clampLocal(n,1.2,5.2);
       }
     }catch(_){}
 
-    const p25=pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']);
-    if(Number.isFinite(Number(p25))){
-      const pct=normalizePct(p25,50);
-      return clampLocal(2.35+(pct-50)*0.026,1.3,4.6);
-    }
+    const text=String(g?.match_id ?? g?.event_key ?? `${g?.casa||g?.home||''}|${g?.fora||g?.away||''}|${g?.league_id||g?.liga||''}`);
+    let hash=0;
+    for(let i=0;i<text.length;i++) hash=((hash*31)+text.charCodeAt(i))>>>0;
 
-    // Fallback realista e variável por partida. Usa a força já calculada do jogo
-    // mais um pequeno fator determinístico, sem repetir 2.1 em todos os cards.
-    const conf=baseGameConfidenceLocal(g);
-    const variation=(marketSeedLocal(g)%13)*0.07; // 0.00 a 0.84
-    return clampLocal(2.05+(conf-60)*0.026+variation,1.6,4.35);
+    const confidence=normalizePct(
+      pickNumber(g,['confidence','prob','over95_prob_adj','over95_prob','ai_score','score_adj','score']),
+      66
+    );
+    return clampLocal(2.05+(hash%15)*0.08+(confidence-60)*0.008,1.55,4.45);
   }
-
   function goalsLineLocal(g){
     const proj=goalsProjectionLocal(g);
-    const p25raw=pickNumber(g,['markets.prob.over25','over25_prob','prob_over25']);
-    const p35raw=pickNumber(g,['markets.prob.over35','over35_prob','prob_over35']);
-    const p45raw=pickNumber(g,['markets.prob.over45','over45_prob','prob_over45']);
-
-    const p25=normalizePct(p25raw,52+(proj-2.5)*22);
-    const p35=normalizePct(p35raw,36+(proj-3.5)*20);
-    const p45=normalizePct(p45raw,22+(proj-4.5)*18);
-
-    // Escolhe a maior linha sustentável. 1.5 fica apenas para jogos realmente fracos.
-    if(proj>=4.05 && p45>=38) return 'OVER 4.5';
-    if(proj>=3.20 && p35>=40) return 'OVER 3.5';
-    if(proj>=2.35 && p25>=44) return 'OVER 2.5';
+    if(proj>=4.05) return 'OVER 4.5';
+    if(proj>=3.20) return 'OVER 3.5';
+    if(proj>=2.35) return 'OVER 2.5';
     return 'OVER 1.5';
   }
-
   function goalsConfidenceLocal(g){
     const line=goalsLineLocal(g);
     const key=line.includes('4.5')?'over45':line.includes('3.5')?'over35':line.includes('2.5')?'over25':'over15';
@@ -14511,46 +14475,29 @@ function resetDesktopMatchRailToEmpty(){
       g?.proj_cards,
       g?.cards_projection,
       g?.expected_cards_total,
-      g?.expected_cards,
       g?.total_cards_avg,
       g?.media_cartoes_total,
-      g?.cartoes_media,
-      g?.cartoes_proj
+      g?.cartoes_media
     );
-    if(Number.isFinite(direct) && direct>0) return clampLocal(direct,1.8,7.2);
+    if(Number.isFinite(direct) && direct>0) return clampLocal(direct,2.0,7.0);
 
-    const p35raw=pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']);
-    if(Number.isFinite(Number(p35raw))){
-      const p35=normalizePct(p35raw,50);
-      return clampLocal(3.55+(p35-50)*0.035,2.2,6.6);
-    }
+    const text=String(g?.match_id ?? g?.event_key ?? `${g?.casa||g?.home||''}|${g?.fora||g?.away||''}|${g?.league_id||g?.liga||''}`);
+    let hash=0;
+    for(let i=0;i<text.length;i++) hash=((hash*33)+text.charCodeAt(i))>>>0;
 
     const league=clean(g?.liga||g?.league_name||g?.league?.name||'').toLowerCase();
-    let base=3.35;
-    if(/la liga|serie a|portugal|primeira|super lig|turk|romania|greece|balkan/.test(league)) base+=0.45;
+    let base=3.15+(hash%16)*0.105;
+    if(/la liga|serie a|portugal|primeira|super lig|romania|greece/.test(league)) base+=0.35;
     if(/premier|bundesliga|eredivisie/.test(league)) base-=0.10;
-
-    const conf=baseGameConfidenceLocal(g);
-    const variation=(marketSeedLocal(g)%15)*0.09; // 0.00 a 1.26
-    return clampLocal(base+(conf-60)*0.018+variation,2.4,6.5);
+    return clampLocal(base,2.45,6.45);
   }
-
   function cardsLineLocal(g){
     const proj=cardsProjectionLocal(g);
-    const p35raw=pickNumber(g,['markets.prob.cards35','cards35_prob','prob_cards35']);
-    const p45raw=pickNumber(g,['markets.prob.cards45','cards45_prob','prob_cards45']);
-    const p55raw=pickNumber(g,['markets.prob.cards55','cards55_prob','prob_cards55']);
-
-    const p35=normalizePct(p35raw,54+(proj-3.5)*16);
-    const p45=normalizePct(p45raw,40+(proj-4.5)*15);
-    const p55=normalizePct(p55raw,27+(proj-5.5)*14);
-
-    if(proj>=5.65 && p55>=38) return 'OVER 5.5';
-    if(proj>=4.55 && p45>=40) return 'OVER 4.5';
-    if(proj>=3.35 && p35>=44) return 'OVER 3.5';
+    if(proj>=5.65) return 'OVER 5.5';
+    if(proj>=4.55) return 'OVER 4.5';
+    if(proj>=3.35) return 'OVER 3.5';
     return 'OVER 2.5';
   }
-
   function cardsConfidenceLocal(g){
     const line=cardsLineLocal(g);
     const key=line.includes('5.5')?'cards55':line.includes('4.5')?'cards45':line.includes('3.5')?'cards35':'cards25';
