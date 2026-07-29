@@ -4276,15 +4276,175 @@ app.get("/mercados", async (req, res) => {
   }
 });
 
+
+// =========================================================
+// MOBILE FAST PATH
+// O carregador mobile envia o parâmetro "_mobile".
+// Em vez de executar imediatamente todo o funil pesado de ligas,
+// standings, H2H, odds e estatísticas, esta rota monta uma resposta
+// inicial com uma única consulta de eventos do dia.
+// =========================================================
+const MOBILE_FAST_TIMEOUT_MS = Number(process.env.MOBILE_FAST_TIMEOUT_MS || 12000);
+
+function withTimeout(promise, ms, label = "operação") {
+  let timer = null;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} excedeu ${ms}ms`)), ms);
+    })
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+function leagueMetaFromEvent(e) {
+  const leagueId = Number(e?.league_id ?? e?.match_league_id ?? e?.leagueId ?? 0) || null;
+  const known = LEAGUE_OVERRIDES.get(Number(leagueId));
+  if (known) return known;
+
+  return guessLeagueMeta({
+    league_id: leagueId,
+    league_name: e?.league_name ?? e?.match_league_name ?? e?.league ?? `Liga ${leagueId || ""}`,
+    country_name: e?.country_name ?? e?.country ?? ""
+  });
+}
+
+function mobileFastGameFromEvent(e) {
+  const casa = teamFromEvent(e, "home");
+  const fora = teamFromEvent(e, "away");
+  const match_id = e?.match_id ?? e?.event_key ?? e?.id ?? null;
+  if (!casa || !fora || !match_id) return null;
+
+  const league = leagueMetaFromEvent(e);
+  const hora = cleanText(e?.match_time ?? e?.time ?? e?.event_time ?? "—") || "—";
+  const bigMatch = isBigTeam(casa) || isBigTeam(fora);
+  const proj_cantos = projCornersHeuristic(league?.baseCorners ?? 9.6, bigMatch, null, null);
+  const over95_prob = probFromProjection(proj_cantos);
+  const lateralizacao = lateralizacaoIndex(
+    casa,
+    fora,
+    league?.baseCorners ?? 9.6,
+    proj_cantos
+  );
+  const perfil_laterais = perfilLaterais(lateralizacao);
+  const adjusted = aplicarAntiRed({
+    over95_prob,
+    score: (league?.importance ?? 72) + Math.round((over95_prob - 50) * 0.6),
+    perfil: perfil_laterais
+  });
+
+  return normalizeTeamsOnGame({
+    mode: "semi",
+    match_id,
+    casa,
+    fora,
+    liga: league?.name || cleanText(e?.league_name) || "Liga",
+    league_id: Number(league?.id ?? e?.league_id ?? 0) || null,
+    hora,
+    pos_home: null,
+    pos_away: null,
+    proj_cantos,
+    over95_prob,
+    over95_prob_adj: adjusted.over95_prob_adj,
+    score: adjusted.score_adj,
+    score_adj: adjusted.score_adj,
+    perfil_laterais,
+    lateralizacao_index: lateralizacao,
+    nivel: nivelFromProb(adjusted.over95_prob_adj),
+    sources: {
+      event: true,
+      h2h: false,
+      stats: false,
+      odds: false,
+      mobile_fast: true
+    },
+    flags: ["mobile_fast_initial"],
+    comment: commentLiteFrom({
+      match_id,
+      casa,
+      fora,
+      proj_cantos,
+      over95_prob: adjusted.over95_prob_adj,
+      bigMatch,
+      perfil_laterais,
+      leagueBase: league?.baseCorners
+    })
+  });
+}
+
+async function buildMobileFastList(date) {
+  const cacheKey = `mobile-fast:${date}`;
+  const cached = cacheGet(cacheKey);
+  if (Array.isArray(cached)) return cached;
+
+  const events = await withTimeout(
+    apiGetAny({
+      action: "get_events",
+      from: date,
+      to: date,
+      timezone: API_TIMEZONE
+    }),
+    MOBILE_FAST_TIMEOUT_MS,
+    "consulta rápida mobile"
+  );
+
+  const seen = new Set();
+  const out = [];
+
+  for (const e of Array.isArray(events) ? events : []) {
+    const game = mobileFastGameFromEvent(e);
+    if (!game) continue;
+
+    const key = String(game.match_id || `${game.league_id}|${game.casa}|${game.fora}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(game);
+  }
+
+  const ranked = rankGamesByCornerStrength(out)
+    .filter(game => String(game?.perfil_laterais || "") !== "TENDENCIA_CENTRAL")
+    .slice(0, 30);
+
+  cacheSet(cacheKey, ranked, 8 * 60 * 1000);
+  return ranked;
+}
+
+
 // ---------------- Endpoints ----------------
 app.get("/quentes", async (req, res) => {
   const date = req.query.date || toISODate();
   const fresh = String(req.query.fresh || "") === "1";
+  const mobileFast = Object.prototype.hasOwnProperty.call(req.query, "_mobile")
+    || String(req.query.mobile || "") === "1";
 
   const ai = String(req.query.ai || "") === "1" || (AI_DEFAULT_ON && String(req.query.ai || "") !== "0");
   const onlyTop = String(req.query.onlyTop || "") === "1";
 
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
   try {
+    // O dashboard mobile precisa de resposta rápida para remover o skeleton.
+    // A análise pesada continua disponível no desktop e nas demais rotas.
+    if (mobileFast && !ai && !onlyTop) {
+      try {
+        const persisted = !fresh
+          ? await withTimeout(readPersist(date), 2500, "cache mobile")
+          : null;
+
+        if (Array.isArray(persisted) && persisted.length) {
+          return res.json(rankGamesByCornerStrength(
+            sanitizeSelectionList(persisted).map(normalizeTeamsOnGame)
+          ));
+        }
+      } catch (cacheError) {
+        console.warn("Cache mobile indisponível:", cacheError?.message || cacheError);
+      }
+
+      const fastGames = await buildMobileFastList(date);
+      return res.json(fastGames);
+    }
+
     const out = await buildQuentesList({ date, fresh });
 
     const safeOut = rankGamesByCornerStrength(sanitizeSelectionList(out));
@@ -4309,9 +4469,30 @@ app.get("/quentes", async (req, res) => {
     return res.json([...top6_enriched, ...rest]);
 
   } catch (err) {
-    const fallback = !fresh ? await readPersist(date) : null;
-    if (fallback) return res.json(rankGamesByCornerStrength(sanitizeSelectionList(fallback)));
-    res.status(500).json({ error: "Erro ao buscar jogos quentes", details: String(err?.message || err) });
+    let fallback = null;
+    if (!fresh) {
+      try {
+        fallback = await withTimeout(readPersist(date), 2500, "fallback persistido");
+      } catch {}
+    }
+
+    if (Array.isArray(fallback) && fallback.length) {
+      return res.json(rankGamesByCornerStrength(
+        sanitizeSelectionList(fallback).map(normalizeTeamsOnGame)
+      ));
+    }
+
+    // Para o mobile, devolve lista vazia com HTTP 200. Assim o JS encerra
+    // o estado de carregamento e mostra "sem jogos", em vez de skeleton infinito.
+    if (mobileFast) {
+      console.error("Falha no carregamento mobile:", err);
+      return res.json([]);
+    }
+
+    return res.status(500).json({
+      error: "Erro ao buscar jogos quentes",
+      details: String(err?.message || err)
+    });
   }
 });
 
