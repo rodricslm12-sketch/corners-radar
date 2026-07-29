@@ -16613,3 +16613,20 @@
     window.addEventListener("pageshow", startGuard);
     window.addEventListener("resize", restoreMobileHome);
   })();
+/* =========================================================
+   AJUSTE FINAL MOBILE — VIEWPORT EM 100%
+   Garante escala correta em iPhone e Android.
+   ========================================================= */
+(() => {
+  "use strict";
+  let viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    viewport = document.createElement("meta");
+    viewport.name = "viewport";
+    document.head.prepend(viewport);
+  }
+  viewport.setAttribute(
+    "content",
+    "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+  );
+})();

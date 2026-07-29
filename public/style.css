@@ -8239,3 +8239,141 @@ button.railFullBtn {
 }
 
 @media (min-width:761px){.cpMobileHome{display:none!important}}
+/* =========================================================
+   AJUSTE FINAL MOBILE — TELA 100% / LEITURA MAIOR
+   Mantém o visual atual e amplia fontes, cards e áreas de toque.
+   ========================================================= */
+@media (max-width:760px){
+  html{
+    width:100%!important;
+    min-width:100%!important;
+    -webkit-text-size-adjust:100%!important;
+    text-size-adjust:100%!important;
+  }
+  body{
+    width:100%!important;
+    min-width:100%!important;
+    font-size:16px!important;
+  }
+  .cpMobileHome{
+    left:0!important;
+    right:0!important;
+    width:100vw!important;
+    max-width:none!important;
+    min-width:100%!important;
+  }
+
+  .cpHomeHeader{
+    height:88px!important;
+    padding:14px 18px 11px!important;
+    grid-template-columns:40px minmax(0,1fr) 52px 46px!important;
+    gap:11px!important;
+  }
+  .cpHomeMenu{width:38px!important;height:38px!important}
+  .cpHomeMenu:before{font-size:28px!important}
+  .cpHomeBrand strong{font-size:24px!important;letter-spacing:-1.2px!important}
+  .cpHomeBrand small{font-size:8px!important;margin-top:6px!important;letter-spacing:.8px!important}
+  .cpHomeCalendar{width:50px!important;height:54px!important;border-radius:11px!important}
+  .cpHomeCalendarMonth{font-size:9px!important;margin-bottom:3px!important}
+  .cpHomeCalendarDay{font-size:20px!important}
+  #cpHomeAuthButton{width:44px!important;height:44px!important}
+  #cpHomeAuthButton:before{left:14px!important;top:6px!important;font-size:14px!important}
+  #cpHomeAuthButton:after{left:10px!important;bottom:6px!important;width:22px!important;height:11px!important}
+  #cpHomeAuthButton i{width:9px!important;height:9px!important}
+
+  .cpHomeScroll{
+    height:calc(100dvh - 88px)!important;
+    padding:18px 16px calc(94px + env(safe-area-inset-bottom))!important;
+  }
+
+  .cpHomeBest{
+    min-height:250px!important;
+    padding:18px 18px 17px!important;
+    border-radius:17px!important;
+  }
+  .cpHomeSwipeGuide{top:9px!important;font-size:10px!important}
+  .cpHomeMarketDots{top:12px!important;gap:9px!important}
+  .cpHomeBest .cpHomeMarketDots button,
+  .cpHomeBestClone .cpHomeMarketDots button{width:8px!important;height:8px!important;min-width:8px!important}
+  .cpHomeBestTop{margin-top:22px!important;min-height:28px!important}
+  .cpHomeBestTop b{font-size:12px!important;letter-spacing:.025em!important}
+  .cpHomeBestTop span{font-size:11px!important}
+  .cpHomeBestBody{
+    min-height:118px!important;
+    grid-template-columns:58px minmax(0,1fr) 98px!important;
+    gap:10px!important;
+  }
+  .cpHomeBestBody time{padding-top:21px!important;font-size:15px!important}
+  .cpHomeBestTeams strong{font-size:21px!important;line-height:1.16!important}
+  .cpHomeBestTeams i{font-size:11px!important;margin:4px!important}
+  .cpHomeBestConfidence b{font-size:45px!important;line-height:1!important}
+  .cpHomeBestConfidence small{font-size:9px!important;margin-top:5px!important}
+  .cpHomeBest>button,
+  #cpHomeBestOpen{
+    height:54px!important;
+    min-height:54px!important;
+    border-radius:11px!important;
+    font-size:13px!important;
+  }
+
+  .cpHomeSection{margin-top:21px!important}
+  .cpHomeSectionHead{height:32px!important;margin-bottom:10px!important}
+  .cpHomeSectionHead h2{font-size:14px!important}
+  .cpHomeSectionHead button,.cpHomeSectionHead span{font-size:10px!important}
+
+  .cpHomeGames{gap:11px!important;padding-bottom:8px!important}
+  .cpHomeGame{
+    width:132px!important;
+    min-width:132px!important;
+    height:170px!important;
+    padding:12px 10px!important;
+    border-radius:12px!important;
+  }
+  .cpHomeGame time{font-size:11px!important}
+  .cpHomeGame .teams{height:76px!important}
+  .cpHomeGame .teams b{font-size:11px!important;line-height:1.18!important}
+  .cpHomeGame .teams i{font-size:9px!important;margin:4px!important}
+  .cpHomeGame small{font-size:9px!important}
+  .cpHomeGame strong{font-size:28px!important;margin-top:5px!important}
+  .cpHomeSkeleton{width:132px!important;min-width:132px!important;height:170px!important;border-radius:12px!important}
+
+  .cpHomeMarkets{gap:9px!important}
+  .cpHomeMarkets button{
+    height:96px!important;
+    border-radius:11px!important;
+    padding:9px 4px!important;
+    gap:3px!important;
+  }
+  .cpHomeMarkets button span{font-size:27px!important}
+  .cpHomeMarkets button b{font-size:10px!important;line-height:1.05!important}
+  .cpHomeMarkets button small{font-size:7px!important;line-height:1.15!important}
+
+  .cpHomeLast{margin-top:18px!important}
+  .cpHomeLastGames{gap:5px!important;border-radius:11px!important}
+  .cpHomeLastGame{
+    height:51px!important;
+    grid-template-columns:58px minmax(0,1fr) 63px 16px!important;
+    padding:0 12px!important;
+  }
+  .cpHomeLastGame time{font-size:11px!important}
+  .cpHomeLastGame b{font-size:10px!important;line-height:1.2!important}
+  .cpHomeLastGame strong{font-size:10px!important}
+  .cpHomeLastGame i{font-size:18px!important}
+
+  .cpHomeBottom{
+    height:78px!important;
+    padding-bottom:max(7px,env(safe-area-inset-bottom))!important;
+  }
+  .cpHomeBottom button{gap:5px!important;min-height:62px!important}
+  .cpHomeBottom button span{font-size:22px!important}
+  .cpHomeBottom button b{font-size:9px!important}
+}
+
+@media (max-width:370px){
+  .cpHomeScroll{padding-left:12px!important;padding-right:12px!important}
+  .cpHomeBestBody{grid-template-columns:50px minmax(0,1fr) 88px!important}
+  .cpHomeBestTeams strong{font-size:18px!important}
+  .cpHomeBestConfidence b{font-size:39px!important}
+  .cpHomeGame{width:122px!important;min-width:122px!important}
+  .cpHomeMarkets button b{font-size:9px!important}
+}
