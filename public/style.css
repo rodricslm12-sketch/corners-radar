@@ -8086,3 +8086,156 @@ button.railFullBtn {
     box-sizing:border-box!important;
   }
 }
+
+/* =========================================================
+   MOBILE APP V1 — HOME IGUAL À REFERÊNCIA CORNER PRO
+   Exclusivo para telas pequenas. Desktop preservado.
+   ========================================================= */
+@media (max-width: 760px){
+  :root{
+    --cp-app-green:#76ef00;
+    --cp-app-bg:#020607;
+    --cp-app-card:#071014;
+    --cp-app-card2:#09151a;
+    --cp-app-line:rgba(139,255,28,.12);
+    --cp-app-muted:#7f8b8f;
+  }
+
+  html,body{background:#000!important;overflow:hidden!important}
+  .cpMobileHome{
+    display:block!important;
+    position:fixed!important;
+    inset:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-width:500px!important;
+    margin:0 auto!important;
+    background:
+      radial-gradient(circle at 65% -10%,rgba(118,239,0,.08),transparent 30%),
+      linear-gradient(180deg,#020708 0%,#010405 100%)!important;
+    color:#f4f7f5!important;
+    z-index:10000!important;
+    overflow:hidden!important;
+  }
+  .sidebar,.main,.mobileHeader,.mobileGreeting,.mobileBottomNav{display:none!important}
+
+  .cpHomeHeader{
+    height:72px!important;
+    padding:10px 13px 8px!important;
+    display:grid!important;
+    grid-template-columns:34px 1fr 44px 38px!important;
+    gap:8px!important;
+    align-items:center!important;
+    background:rgba(2,7,9,.96)!important;
+    border-bottom:1px solid rgba(255,255,255,.055)!important;
+  }
+  .cpHomeMenu{
+    width:32px!important;height:32px!important;border:0!important;
+    font-size:0!important;position:relative!important;
+  }
+  .cpHomeMenu:before{content:"☰";font-size:22px;color:#e8eeeb}
+  .cpHomeBrand{line-height:.9!important;min-width:0}
+  .cpHomeBrand strong{font-size:17px!important;font-style:italic!important;font-weight:950!important;letter-spacing:-.8px!important}
+  .cpHomeBrand strong span{color:var(--cp-app-green)!important}
+  .cpHomeBrand small{display:block!important;margin-top:4px!important;color:#aab2af!important;font-size:6px!important;font-weight:900!important;letter-spacing:.65px!important}
+
+  .cpHomeCalendar{
+    width:42px!important;height:43px!important;border-radius:8px!important;
+    border:1px solid #172126!important;background:#050b0e!important;
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    line-height:1!important;color:#fff!important;padding:0!important;
+  }
+  .cpHomeCalendarMonth{display:block;color:var(--cp-app-green);font-size:7px;font-weight:950;margin-bottom:2px}
+  .cpHomeCalendarDay{display:block;font-size:14px;font-weight:950}
+  .cpHomeHeaderAuth{display:block!important;min-width:0}
+  .cpHomeHeaderAuth>strong{display:none!important}
+  #cpHomeAuthButton{
+    width:36px!important;height:36px!important;border-radius:50%!important;
+    border:1px solid #253038!important;background:#080e12!important;
+    color:transparent!important;font-size:0!important;position:relative!important;padding:0!important;
+  }
+  #cpHomeAuthButton:before{content:"●";position:absolute;left:11px;top:5px;color:#fff;font-size:11px}
+  #cpHomeAuthButton:after{content:"";position:absolute;left:8px;bottom:5px;width:18px;height:9px;border-radius:12px 12px 8px 8px;background:#fff}
+  #cpHomeAuthButton i{position:absolute!important;right:0!important;bottom:1px!important;width:7px!important;height:7px!important;border-radius:50%!important;background:var(--cp-app-green)!important;box-shadow:0 0 8px rgba(118,239,0,.7)!important}
+
+  .cpHomeScroll{
+    height:calc(100dvh - 72px)!important;
+    padding:10px 12px calc(80px + env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;overscroll-behavior:contain!important;
+    scrollbar-width:none!important;
+  }
+  .cpHomeScroll::-webkit-scrollbar{display:none}
+
+  .cpHomeBest{
+    min-height:181px!important;padding:13px!important;border-radius:12px!important;
+    background:radial-gradient(circle at 76% 42%,rgba(118,239,0,.08),transparent 35%),linear-gradient(145deg,#071215,#040a0d)!important;
+    border:1px solid rgba(118,239,0,.12)!important;
+    box-shadow:0 14px 34px rgba(0,0,0,.36)!important;
+  }
+  .cpHomeSwipeGuide{top:5px!important;font-size:7px!important;opacity:.65!important}
+  .cpHomeBestTop{margin-top:13px!important}
+  .cpHomeBestTop b{font-size:8px!important;letter-spacing:.05em!important;color:var(--cp-app-green)!important}
+  .cpHomeBestTop span{border:0!important;background:none!important;padding:0!important;font-size:7px!important;color:var(--cp-app-green)!important}
+  .cpHomeBestBody{min-height:82px!important;grid-template-columns:42px 1fr 74px!important;gap:6px!important}
+  .cpHomeBestBody time{padding-top:14px!important;font-size:10px!important;color:var(--cp-app-green)!important}
+  .cpHomeBestTeams strong{font-size:15px!important;line-height:1.14!important}
+  .cpHomeBestTeams i{font-size:8px!important;margin:2px!important}
+  .cpHomeBestConfidence b{font-size:31px!important;color:var(--cp-app-green)!important}
+  .cpHomeBestConfidence small{font-size:6px!important;margin-top:3px!important}
+  .cpHomeBest>button{height:38px!important;border-radius:7px!important;background:linear-gradient(90deg,#67d900,#8cff00)!important;color:#071004!important;font-size:9px!important;box-shadow:none!important}
+  .cpHomeMarketDots{top:7px!important}
+
+  .cpHomeSection{margin-top:13px!important}
+  .cpHomeSectionHead{height:24px!important;margin-bottom:5px!important}
+  .cpHomeSectionHead h2{font-size:10px!important;text-transform:uppercase!important;letter-spacing:.02em!important}
+  .cpHomeSectionHead button,.cpHomeSectionHead span{font-size:7px!important;color:var(--cp-app-green)!important;font-weight:900!important}
+  .cpHomeOrderSwitch,.cpHomeOrderHint{display:none!important}
+
+  .cpHomeGames{gap:7px!important;padding:0 0 5px!important}
+  .cpHomeGame{
+    width:99px!important;min-width:99px!important;height:128px!important;padding:8px 7px!important;
+    border-radius:8px!important;background:linear-gradient(180deg,#091318,#060d11)!important;
+    border:1px solid #132127!important;
+  }
+  .cpHomeGame.is-first{border-color:rgba(118,239,0,.68)!important;box-shadow:0 0 12px rgba(118,239,0,.08)!important}
+  .cpHomeGame time{font-size:7px!important}
+  .cpHomeGame .teams{height:57px!important}
+  .cpHomeGame .teams b{font-size:7.5px!important}
+  .cpHomeGame .teams i{font-size:7px!important;margin:2px!important}
+  .cpHomeGame small{font-size:6px!important;color:var(--cp-app-green)!important;font-weight:900!important}
+  .cpHomeGame strong{font-size:19px!important;margin-top:3px!important}
+  .cpHomeSkeleton{width:99px!important;min-width:99px!important;height:128px!important;border-radius:8px!important}
+
+  .cpHomeMarkets{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important}
+  .cpHomeMarkets button{
+    height:69px!important;border-radius:7px!important;padding:5px 2px!important;
+    background:linear-gradient(180deg,#091318,#060c10)!important;border:1px solid #122026!important;gap:1px!important;
+  }
+  .cpHomeMarkets button span{font-size:18px!important;line-height:1!important;color:var(--cp-app-green)!important;filter:grayscale(1) sepia(1) saturate(8) hue-rotate(45deg)}
+  .cpHomeMarkets button b{font-size:7px!important;line-height:1.05!important;text-align:center!important}
+  .cpHomeMarkets button small{font-size:5px!important;line-height:1.1!important;text-align:center!important;max-width:95%!important;color:#798589!important}
+
+  .cpHomeMatchMini{display:none!important}
+  .cpHomeLast{margin-top:11px!important}
+  .cpHomeLastGames{gap:3px!important;border-radius:8px!important;overflow:hidden!important;border:1px solid #122026!important}
+  .cpHomeLastGame{
+    height:35px!important;border:0!important;border-bottom:1px solid #111e23!important;border-radius:0!important;
+    background:#071014!important;grid-template-columns:42px 1fr 56px 12px!important;padding:0 8px!important;
+  }
+  .cpHomeLastGame:last-child{border-bottom:0!important}
+  .cpHomeLastGame time{font-size:7px!important}
+  .cpHomeLastGame b{font-size:7px!important;line-height:1.15!important}
+  .cpHomeLastGame strong{font-size:7px!important;color:#899497!important;text-transform:uppercase!important}
+  .cpHomeLastGame i{font-size:12px!important;color:var(--cp-app-green)!important}
+
+  .cpHomeBottom{
+    position:absolute!important;height:63px!important;padding:0 0 max(4px,env(safe-area-inset-bottom))!important;
+    background:rgba(2,7,9,.985)!important;border-top:1px solid #132126!important;
+  }
+  .cpHomeBottom button{gap:2px!important}
+  .cpHomeBottom button span{font-size:15px!important}
+  .cpHomeBottom button b{font-size:6px!important}
+  .cpHomeBottom button.active{color:var(--cp-app-green)!important}
+}
+
+@media (min-width:761px){.cpMobileHome{display:none!important}}

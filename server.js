@@ -3304,6 +3304,73 @@ async function requirePremium(req, res, next) {
   }
 }
 
+
+function getAdminEmails() {
+  return new Set(
+    String(process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map(email => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function isAdminUser(decodedToken, profile = null) {
+  const email = String(decodedToken?.email || profile?.email || "").trim().toLowerCase();
+  const adminEmails = getAdminEmails();
+  return Boolean(profile?.admin === true || (email && adminEmails.has(email)));
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ ok: false, error: "Usuário não autenticado." });
+    }
+
+    const snap = await db.collection("users").doc(req.user.uid).get();
+    const profile = snap.exists ? (snap.data() || {}) : {};
+
+    if (!isAdminUser(req.user, profile)) {
+      return res.status(403).json({
+        ok: false,
+        error: "Acesso permitido somente para administradores."
+      });
+    }
+
+    req.adminProfile = profile;
+    return next();
+  } catch (err) {
+    console.error("Erro ao validar administrador:", err?.message || err);
+    return res.status(500).json({
+      ok: false,
+      error: "Não foi possível validar o acesso administrativo."
+    });
+  }
+}
+
+function timestampToISO(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function publicUserProfile(doc) {
+  const data = doc.data() || {};
+  return {
+    uid: doc.id,
+    nome: data.nome || data.displayName || "Usuário",
+    email: data.email || "",
+    foto: data.foto || data.photoURL || "",
+    premium: data.premium === true,
+    admin: data.admin === true,
+    bloqueado: data.bloqueado === true,
+    criadoEm: timestampToISO(data.criadoEm),
+    ultimoLogin: timestampToISO(data.ultimoLogin),
+    atualizadoEm: timestampToISO(data.atualizadoEm)
+  };
+}
+
 async function saveAuthenticatedUser(decodedToken) {
   const userRef = db.collection("users").doc(decodedToken.uid);
   const snap = await userRef.get();
@@ -3356,7 +3423,8 @@ app.post("/auth/firebase", async (req, res) => {
         nome: profile.nome || decodedToken.name || "",
         email: profile.email || decodedToken.email || "",
         foto: profile.foto || decodedToken.picture || "",
-        premium: profile.premium === true
+        premium: profile.premium === true,
+        admin: isAdminUser(decodedToken, profile)
       }
     });
   } catch (err) {
@@ -3379,7 +3447,8 @@ app.get("/auth/me", verifyFirebaseToken, async (req, res) => {
         nome: profile.nome || req.user.name || "",
         email: profile.email || req.user.email || "",
         foto: profile.foto || req.user.picture || "",
-        premium: profile.premium === true
+        premium: profile.premium === true,
+        admin: isAdminUser(req.user, profile)
       }
     });
   } catch (err) {
@@ -3398,6 +3467,131 @@ app.get(
   requirePremium,
   (req, res) => res.json({ ok: true, premium: true })
 );
+
+
+
+// =========================================================
+// ADMIN — usuários e planos controlados pelo Firestore
+// Configure no Render: ADMIN_EMAILS=seuemail@gmail.com
+// =========================================================
+app.get("/admin/me", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  return res.json({
+    ok: true,
+    admin: true,
+    user: {
+      uid: req.user.uid,
+      nome: req.adminProfile?.nome || req.user.name || "Administrador",
+      email: req.adminProfile?.email || req.user.email || "",
+      foto: req.adminProfile?.foto || req.user.picture || ""
+    }
+  });
+});
+
+app.get("/admin/users", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit || 200), 1), 500);
+    const search = String(req.query.search || "").trim().toLowerCase();
+    const snap = await db.collection("users").orderBy("ultimoLogin", "desc").limit(limit).get();
+
+    let users = snap.docs.map(publicUserProfile);
+    if (search) {
+      users = users.filter(user =>
+        user.nome.toLowerCase().includes(search) ||
+        user.email.toLowerCase().includes(search) ||
+        user.uid.toLowerCase().includes(search)
+      );
+    }
+
+    return res.json({ ok: true, users });
+  } catch (err) {
+    // Se documentos antigos não tiverem ultimoLogin, evita quebrar o painel.
+    try {
+      const snap = await db.collection("users").limit(500).get();
+      return res.json({ ok: true, users: snap.docs.map(publicUserProfile) });
+    } catch (fallbackErr) {
+      console.error("Erro ao listar usuários:", fallbackErr?.message || fallbackErr);
+      return res.status(500).json({ ok: false, error: "Não foi possível listar os usuários." });
+    }
+  }
+});
+
+app.patch("/admin/users/:uid/plan", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const uid = String(req.params.uid || "").trim();
+    const premium = req.body?.premium === true;
+
+    if (!uid) {
+      return res.status(400).json({ ok: false, error: "UID do usuário não enviado." });
+    }
+
+    const ref = db.collection("users").doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      return res.status(404).json({ ok: false, error: "Usuário não encontrado." });
+    }
+
+    await ref.set({
+      premium,
+      plano: premium ? "pro" : "free",
+      planoAtualizadoEm: FieldValue.serverTimestamp(),
+      planoAtualizadoPor: req.user.email || req.user.uid,
+      atualizadoEm: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    const updated = await ref.get();
+    return res.json({ ok: true, user: publicUserProfile(updated) });
+  } catch (err) {
+    console.error("Erro ao atualizar plano:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Não foi possível atualizar o plano." });
+  }
+});
+
+app.get("/admin/stats", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const snap = await db.collection("users").get();
+    const users = snap.docs.map(publicUserProfile);
+    const premiumUsers = users.filter(user => user.premium).length;
+    const freeUsers = users.length - premiumUsers;
+
+    return res.json({
+      ok: true,
+      totalUsers: users.length,
+      premiumUsers,
+      freeUsers,
+      onlineUsers: users.filter(user => {
+        if (!user.ultimoLogin) return false;
+        return Date.now() - new Date(user.ultimoLogin).getTime() <= 15 * 60 * 1000;
+      }).length,
+      matchesToday: 0,
+      aiAccuracy: 74,
+      apiStatus: "ATIVA"
+    });
+  } catch (err) {
+    console.error("Erro em /admin/stats:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Não foi possível carregar as estatísticas." });
+  }
+});
+
+app.get("/admin/online-users", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const since = Date.now() - 15 * 60 * 1000;
+    const snap = await db.collection("users").get();
+    const users = snap.docs
+      .map(publicUserProfile)
+      .filter(user => user.ultimoLogin && new Date(user.ultimoLogin).getTime() >= since)
+      .map(user => ({
+        uid: user.uid,
+        name: user.nome,
+        device: user.nome,
+        browser: user.premium ? "PRO" : "FREE",
+        location: user.email
+      }));
+    return res.json(users);
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: "Não foi possível carregar usuários online." });
+  }
+});
+
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 

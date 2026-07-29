@@ -19,10 +19,10 @@
         </div>
 
         <nav class="sidebarMenu">
-          <button class="menuItem active"><span>🏠</span> Dashboard <em>›</em></button>
+          <button class="menuItem active" data-admin-view="dashboard"><span>🏠</span> Dashboard <em>›</em></button>
           <button class="menuItem"><span>📈</span> Analytics</button>
           <button class="menuItem"><span>⚽</span> Jogos</button>
-          <button class="menuItem"><span>👥</span> Usuários</button>
+          <button class="menuItem" data-admin-view="users"><span>👥</span> Usuários</button>
           <button class="menuItem"><span>📊</span> Estatísticas</button>
           <button class="menuItem"><span>🧠</span> IA Radar</button>
           <button class="menuItem"><span>💬</span> Mensagens <small>12</small></button>
@@ -67,6 +67,45 @@
           <button class="iconBtn">📅</button>
         </div>
       </header>
+
+      <section class="adminUsersView" id="adminUsersView" hidden>
+        <div class="panelCard usersManagerPanel">
+          <div class="panelHeader usersManagerHeader">
+            <div>
+              <div class="cardTitle">Gerenciamento de usuários</div>
+              <p>Ative ou remova o Plano PRO diretamente pelo Firestore.</p>
+            </div>
+            <div class="usersManagerTools">
+              <input id="adminUserSearch" type="search" placeholder="Buscar por nome, e-mail ou UID">
+              <button id="adminUsersRefresh" class="ghostBtn" type="button">Atualizar</button>
+            </div>
+          </div>
+
+          <div class="usersSummary">
+            <div><span>Total</span><strong id="adminTotalUsers">0</strong></div>
+            <div><span>Plano PRO</span><strong id="adminProUsers">0</strong></div>
+            <div><span>Plano FREE</span><strong id="adminFreeUsers">0</strong></div>
+          </div>
+
+          <div class="usersTableWrap">
+            <table class="usersTable">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>E-mail</th>
+                  <th>Plano</th>
+                  <th>Último acesso</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTableBody">
+                <tr><td colspan="5">Carregando usuários...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="adminUsersMessage" id="adminUsersMessage" hidden></div>
+        </div>
+      </section>
 
       <section class="statsGrid">
         <div class="statCard green">
@@ -316,6 +355,6 @@
     </main>
   </div>
 
-  <script src="admin.js"></script>
+  <script type="module" src="admin.js?v=20260728-users-pro-v1"></script>
 </body>
 </html>

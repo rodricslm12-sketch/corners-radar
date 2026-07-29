@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260727-market-time-manaus-v2" />
-  <script src="script.js?v=20260727-market-time-manaus-v2" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260729-mobile-app-v1" />
+  <script src="script.js?v=20260729-mobile-app-v1" defer></script>
 </head>
 <body class="dashboard">
   <input type="hidden" id="date" name="date" value="">
@@ -216,17 +216,14 @@
     <header class="cpHomeHeader">
       <button class="cpHomeMenu" type="button" aria-label="Menu">☰</button>
       <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
-      <button class="cpHomeCalendar" type="button" aria-label="Calendário">📅</button>
+      <button class="cpHomeCalendar" type="button" aria-label="Calendário"><span class="cpHomeCalendarMonth">JUL</span><b class="cpHomeCalendarDay">28</b></button>
+      <div class="cpHomeHeaderAuth" id="cpHomeAuthArea">
+        <strong id="cpHomeAuthName">Entrar com Google</strong>
+        <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">ENTRAR <i></i></button>
+      </div>
     </header>
 
     <main class="cpHomeScroll">
-      <section class="cpHomeGreeting" id="cpHomeAuthArea">
-        <div>
-          <span>♧</span>
-          <strong id="cpHomeAuthName">Entrar com Google</strong>
-        </div>
-        <button type="button" id="cpHomeAuthButton">ENTRAR <i></i></button>
-      </section>
 
       <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
         <div class="cpHomeSwipeGuide" aria-hidden="true"><span>←</span><b>DESLIZE PARA OS LADOS</b><span>→</span></div>
@@ -265,14 +262,16 @@
       </section>
 
       <section class="cpHomeSection">
-        <div class="cpHomeSectionHead"><h2>Mercados</h2><span>TOQUE PARA ABRIR</span></div>
+        <div class="cpHomeSectionHead"><h2>Mais análises</h2><button type="button">VER TODOS ›</button></div>
         <div class="cpHomeMarkets">
-          <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b><small>12 mercados</small></button>
-          <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b><small>18 mercados</small></button>
-          <button type="button" data-home-market="goals"><span>◎</span><b>Gols</b><small>14 mercados</small></button>
-          <button type="button" data-home-market="cards"><span>▯</span><b>Cartões</b><small>10 mercados</small></button>
-          <button type="button" data-home-market="combined"><span>▦</span><b>Combinadas</b><small>6 mercados</small></button>
-          <button type="button" data-home-market="props"><span>♞</span><b>Player Props</b><small>6 mercados</small></button>
+          <button type="button" data-home-market="pregame"><span>🏆</span><b>Resultado<br>Final</b><small>Casa • Empate • Fora</small></button>
+          <button type="button" data-home-market="pregame"><span>🛡</span><b>Dupla<br>Chance</b><small>Casa/Empate • Fora</small></button>
+          <button type="button" data-home-market="goals"><span>◎</span><b>Ambas<br>Marcam</b><small>Sim • Não</small></button>
+          <button type="button" data-home-market="goals"><span>🥅</span><b>Gols na<br>Partida</b><small>Over • Under</small></button>
+          <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios<br>por Equipe</b><small>Casa • Visitante</small></button>
+          <button type="button" data-home-market="pregame"><span>⚖</span><b>Handicap<br>Asiático</b><small>Linhas • Equilíbrio</small></button>
+          <button type="button" data-home-market="pregame"><span>⏱</span><b>1º Tempo</b><small>Gols • Cantos</small></button>
+          <button type="button" data-home-market="props"><span>♙</span><b>Estatísticas<br>do Jogador</b><small>Gols • Chutes • Passes</small></button>
         </div>
       </section>
 
@@ -282,7 +281,7 @@
       </section>
 
       <section class="cpHomeSection cpHomeLast">
-        <div class="cpHomeSectionHead"><h2>Últimos jogos analisados</h2><button type="button">VER TODOS ›</button></div>
+        <div class="cpHomeSectionHead"><h2>Próximos jogos</h2><button type="button">VER TODOS ›</button></div>
         <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
       </section>
     </main>

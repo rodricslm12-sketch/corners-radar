@@ -15471,3 +15471,35 @@ function resetDesktopMatchRailToEmpty(){
     initializeFirebaseBridge();
   }
 })();
+
+/* =========================================================
+   MOBILE APP V1 — pequenos ajustes de apresentação
+   ========================================================= */
+(function setupReferenceMobileHome(){
+  function updateMobileHeaderDate(){
+    const now=new Date();
+    const months=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    const month=document.querySelector('.cpHomeCalendarMonth');
+    const day=document.querySelector('.cpHomeCalendarDay');
+    if(month) month.textContent=months[now.getMonth()];
+    if(day) day.textContent=String(now.getDate()).padStart(2,'0');
+  }
+
+  function normalizeUpcomingRows(){
+    document.querySelectorAll('#cpHomeLastGames .cpHomeLastGame').forEach(row=>{
+      const percentage=row.querySelector('strong');
+      if(percentage){
+        const text=percentage.textContent.trim();
+        percentage.dataset.confidence=text;
+        percentage.textContent='OVER 9.5';
+      }
+    });
+  }
+
+  updateMobileHeaderDate();
+  const target=document.getElementById('cpHomeLastGames');
+  if(target){
+    new MutationObserver(normalizeUpcomingRows).observe(target,{childList:true,subtree:true});
+    normalizeUpcomingRows();
+  }
+})();
