@@ -1,4 +1,297 @@
 /* =========================================================
+   CORNER PRO — CARREGADOR MOBILE INDEPENDENTE V7
+   Executado antes de todo o script legado.
+   ========================================================= */
+/* Corner Pro — carregador mobile independente V6 */
+(() => {
+  "use strict";
+
+  if (window.__cornerProMobileLoaderV6) return;
+  window.__cornerProMobileLoaderV6 = true;
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+
+  function clean(value, fallback = "") {
+    const text = String(value ?? "").trim();
+    return text && !["undefined", "null", "NaN"].includes(text) ? text : fallback;
+  }
+
+  function numberFrom(...values) {
+    for (const value of values) {
+      const number = Number(String(value ?? "").replace("%", "").replace(",", "."));
+      if (Number.isFinite(number)) return number;
+    }
+    return null;
+  }
+
+  function manausDate() {
+    const input = $("#date");
+    if (input?.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) return input.value;
+
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Manaus",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(new Date());
+
+      const map = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${map.year}-${map.month}-${map.day}`;
+    } catch {
+      const now = new Date(Date.now() - 4 * 60 * 60 * 1000);
+      return now.toISOString().slice(0, 10);
+    }
+  }
+
+  function extractGames(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
+
+    for (const key of ["games", "jogos", "matches", "data", "items", "results", "top6", "quentes", "mercados"]) {
+      if (Array.isArray(payload[key])) return payload[key];
+    }
+    return [];
+  }
+
+  async function requestJson(url, timeoutMs = 16000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+
+      const text = await response.text();
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 160)}`);
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Resposta não é JSON: ${text.slice(0, 160)}`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchGames(date) {
+    const stamp = Date.now();
+    const endpoints = [
+      `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=7`,
+      `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}`
+    ];
+
+    let lastError = null;
+
+    for (const url of endpoints) {
+      try {
+        const payload = await requestJson(url);
+        const games = extractGames(payload);
+        if (games.length) return games;
+      } catch (error) {
+        lastError = error;
+        console.error("[Mobile Loader V6]", url, error);
+      }
+    }
+
+    if (lastError) throw lastError;
+    return [];
+  }
+
+  function homeName(game) {
+    return clean(game?.casa ?? game?.home ?? game?.home_name ?? game?.mandante, "Time da casa");
+  }
+
+  function awayName(game) {
+    return clean(game?.fora ?? game?.away ?? game?.away_name ?? game?.visitante, "Visitante");
+  }
+
+  function gameTime(game) {
+    const value = clean(game?.hora_manaus ?? game?.hora ?? game?.match_time ?? game?.time, "--:--");
+    const match = value.match(/(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "--:--";
+  }
+
+  function projection(game) {
+    return numberFrom(game?.proj_cantos, game?.projCorners, game?.projection, game?.real?.recentCombinedAvg) ?? 9.5;
+  }
+
+  function confidence(game) {
+    let value = numberFrom(
+      game?.over95_prob_adj,
+      game?.over95_prob,
+      game?.confidence,
+      game?.ai_score,
+      game?.score
+    );
+
+    if (value === null) value = 50 + (projection(game) - 9.5) * 9;
+    if (value > 0 && value <= 1) value *= 100;
+    while (value > 100) value /= 10;
+
+    return Math.max(5, Math.min(95, Math.round(value)));
+  }
+
+  function marketLine(game) {
+    const proj = projection(game);
+    if (proj >= 12.1) return "OVER 11.5";
+    if (proj >= 11.1) return "OVER 10.5";
+    if (proj >= 10.1) return "OVER 9.5";
+    return "OVER 8.5";
+  }
+
+  function normalizedGames(rawGames) {
+    const seen = new Set();
+
+    return rawGames.map((game, index) => {
+      const home = homeName(game);
+      const away = awayName(game);
+      const id = clean(game?.match_id ?? game?.fixture_id ?? game?.id, `${home}|${away}|${index}`);
+
+      return {
+        raw: game,
+        id,
+        home,
+        away,
+        time: gameTime(game),
+        confidence: confidence(game),
+        market: marketLine(game),
+        projection: projection(game)
+      };
+    }).filter(game => {
+      if (seen.has(game.id)) return false;
+      seen.add(game.id);
+      return true;
+    }).sort((a, b) => (b.confidence - a.confidence) || (b.projection - a.projection));
+  }
+
+  function setText(selector, text) {
+    const element = $(selector);
+    if (element) element.textContent = text;
+  }
+
+  function finishLoading() {
+    const card = $("#cpHomeBest");
+    card?.classList.remove("is-loading-initial", "is-loading-date");
+    card?.setAttribute("aria-busy", "false");
+    $("#cpHomeInitialLoading")?.setAttribute("hidden", "");
+    $("#cpHomeGames")?.classList.remove("is-loading");
+  }
+
+  function showMessage(title, subtitle) {
+    finishLoading();
+
+    const loading = $("#cpHomeInitialLoading");
+    if (loading) {
+      loading.removeAttribute("hidden");
+      const strong = loading.querySelector("strong");
+      const small = loading.querySelector("small");
+      if (strong) strong.textContent = title;
+      if (small) small.textContent = subtitle;
+      loading.querySelector(".cpHomeLoadingSpinner")?.remove();
+    }
+
+    const games = $("#cpHomeGames");
+    if (games) {
+      games.innerHTML = `<div class="cpHomeEmptyState"><strong>${title}</strong><small>${subtitle}</small></div>`;
+    }
+
+    const button = $("#cpHomeBestOpen");
+    if (button) {
+      button.disabled = true;
+      const text = button.querySelector(".cpHomeBestOpenText");
+      if (text) text.textContent = title;
+    }
+  }
+
+  function render(rawGames) {
+    const games = normalizedGames(rawGames);
+
+    if (!games.length) {
+      showMessage("SEM JOGOS DISPONÍVEIS", "A API respondeu, mas não retornou partidas para esta data.");
+      return;
+    }
+
+    finishLoading();
+
+    const best = games[0];
+    setText("#cpHomeBestTitle", "⚑ MELHOR APOSTA DE ESCANTEIOS");
+    setText("#cpHomeBestTime", best.time);
+    setText("#cpHomeBestHome", best.home);
+    setText("#cpHomeBestAway", best.away);
+    setText("#cpHomeBestConfidence", `${best.confidence}%`);
+    setText("#cpHomeBestMarket", best.market);
+    setText("#cpHomeMatchTeams", `${best.home} × ${best.away}`);
+
+    const button = $("#cpHomeBestOpen");
+    if (button) {
+      button.disabled = false;
+      const text = button.querySelector(".cpHomeBestOpenText");
+      if (text) text.textContent = "VER ANÁLISE COMPLETA →";
+    }
+
+    const list = $("#cpHomeGames");
+    if (list) {
+      list.innerHTML = games.slice(0, 5).map((game, index) => `
+        <button type="button" class="cpHomeGame${index === 0 ? " is-first" : ""}">
+          <time>${game.time}</time>
+          <div class="teams"><b>${game.home}</b><i>×</i><b>${game.away}</b></div>
+          <small>${game.market}</small><strong>${game.confidence}%</strong>
+        </button>
+      `).join("");
+    }
+
+    const last = $("#cpHomeLastGames");
+    if (last) {
+      last.innerHTML = games.slice(1, 4).map(game => `
+        <button type="button" class="cpHomeLastGame">
+          <time>${game.time}</time><b>${game.home}<br>${game.away}</b>
+          <strong>${game.confidence}%</strong><i>›</i>
+        </button>
+      `).join("");
+    }
+
+    window.__cornerProAllGames = games.map(game => game.raw);
+    window.__cpMobileDirectGames = games;
+  }
+
+  async function load() {
+    if (!window.matchMedia("(max-width: 980px)").matches) return;
+    if (!$("#cpMobileHome")) return;
+
+    try {
+      const date = manausDate();
+      const input = $("#date");
+      if (input && !input.value) input.value = date;
+
+      const games = await fetchGames(date);
+      render(games);
+    } catch (error) {
+      console.error("[Mobile Loader V6] Falha final:", error);
+      showMessage("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos. Verifique o log do Render.");
+    }
+  }
+
+  function start() {
+    load();
+    setTimeout(() => {
+      if ($("#cpHomeBest")?.classList.contains("is-loading-initial")) load();
+    }, 3000);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
+})();
+
+
+/* =========================================================
      HOTFIX PRIORITÁRIO — CARREGAMENTO MOBILE
      Executado antes do script legado para que eventuais erros posteriores
      não deixem a Home presa no skeleton de carregamento.

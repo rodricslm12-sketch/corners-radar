@@ -4411,6 +4411,46 @@ async function buildMobileFastList(date) {
 }
 
 
+
+// =========================================================
+// DIAGNÓSTICO DE CARREGAMENTO — MOBILE V7
+// Acesse /health e /debug-quentes?date=AAAA-MM-DD para testar o servidor.
+// =========================================================
+app.get("/health", (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json({
+    ok: true,
+    service: "Corner Pro",
+    apiKeyConfigured: Boolean(APIKEY),
+    time: new Date().toISOString()
+  });
+});
+
+app.get("/debug-quentes", async (req, res) => {
+  const date = req.query.date || toISODate();
+  const startedAt = Date.now();
+
+  try {
+    const games = await buildMobileFastList(date);
+    res.set("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      date,
+      elapsedMs: Date.now() - startedAt,
+      count: Array.isArray(games) ? games.length : 0,
+      games: Array.isArray(games) ? games.slice(0, 5) : []
+    });
+  } catch (error) {
+    console.error("[debug-quentes]", error);
+    return res.status(500).json({
+      ok: false,
+      date,
+      elapsedMs: Date.now() - startedAt,
+      error: String(error?.message || error)
+    });
+  }
+});
+
 // ---------------- Endpoints ----------------
 app.get("/quentes", async (req, res) => {
   const date = req.query.date || toISODate();
