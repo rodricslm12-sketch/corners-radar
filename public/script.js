@@ -3174,9 +3174,15 @@
     
     // ---------------- Init ----------------
     function init(){
-      if (!dateInput || !btn){
-        console.error("❌ Falta #date ou #btn no HTML");
+      if (!dateInput){
+        console.error("❌ Falta #date no HTML");
         return;
+      }
+
+      // O layout novo não possui mais o botão legado #btn.
+      // Ele agora é opcional e não pode impedir o carregamento do app.
+      if (!btn){
+        console.warn("ℹ️ #btn não existe no layout novo; carregamento automático mantido.");
       }
   
       // Ao atualizar ou abrir a página, sempre volta para o dia atual.
@@ -15807,3 +15813,75 @@
   
     window.CornerProMobileDirectReload = () => load(true);
   })();
+
+
+/* =========================================================
+   HOTFIX MOBILE V3 — PROTEÇÃO CONTRA TELA ESCURA
+   Mantém a Home mobile visível quando nenhuma camada interna
+   de mercado ou Match Center estiver realmente aberta.
+   ========================================================= */
+(function installMobileVisibilityGuard(){
+  if (window.__cpMobileVisibilityGuardInstalled) return;
+  window.__cpMobileVisibilityGuardInstalled = true;
+
+  function isMobile(){
+    return window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function layerIsOpen(el){
+    if (!el) return false;
+    return el.getAttribute("aria-hidden") === "false"
+      || el.classList.contains("is-open")
+      || el.classList.contains("active");
+  }
+
+  function restoreMobileHome(){
+    if (!isMobile()) return;
+
+    const home = document.getElementById("cpMobileHome");
+    if (!home) return;
+
+    const markets = document.getElementById("cpMobileMarketsLayer");
+    const match = document.getElementById("cpMobileMatchLayer");
+    const internalLayerOpen = layerIsOpen(markets) || layerIsOpen(match);
+
+    if (!internalLayerOpen){
+      home.hidden = false;
+      home.removeAttribute("aria-hidden");
+      home.style.removeProperty("display");
+      home.style.removeProperty("visibility");
+      home.style.removeProperty("opacity");
+      home.style.removeProperty("pointer-events");
+
+      document.documentElement.style.removeProperty("overflow");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("visibility");
+      document.body.style.removeProperty("opacity");
+      document.body.classList.remove(
+        "locked",
+        "is-loading",
+        "loading",
+        "modal-open",
+        "menu-open",
+        "cp-mobile-market-open",
+        "cp-mobile-match-open"
+      );
+    }
+  }
+
+  function startGuard(){
+    restoreMobileHome();
+    setTimeout(restoreMobileHome, 250);
+    setTimeout(restoreMobileHome, 1200);
+    setTimeout(restoreMobileHome, 4000);
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", startGuard, { once:true });
+  } else {
+    startGuard();
+  }
+
+  window.addEventListener("pageshow", startGuard);
+  window.addEventListener("resize", restoreMobileHome);
+})();
