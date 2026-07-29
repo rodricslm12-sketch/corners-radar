@@ -14388,6 +14388,10 @@ function resetDesktopMatchRailToEmpty(){
     const pools=[];
     const panel=$('.gamesPanel');
     if(Array.isArray(panel?.__cornerProGames)) pools.push(panel.__cornerProGames.map(x=>x?.raw||x));
+    // Fonte principal do novo dashboard: jogos reais carregados pelo renderGames().
+    // Sem esta leitura, o mobile permanecia eternamente no skeleton mesmo após a API responder.
+    if(Array.isArray(panel?.__cornerProAllGames)) pools.push(panel.__cornerProAllGames.map(x=>x?.raw||x));
+    if(Array.isArray(window.__cornerProAllGames)) pools.push(window.__cornerProAllGames.map(x=>x?.raw||x));
     for(const key of ['__premiumFilteredGames','__premiumMarketGames','__lastMarketGames','__lastRawGames']){
       try{ if(Array.isArray(window[key])) pools.push(window[key]); }catch(_){ }
     }
