@@ -1,9 +1,4 @@
 /* =========================================================
-   HOTFIX PRIORITÁRIO — CARREGAMENTO MOBILE
-   Executado antes do script legado para que eventuais erros posteriores
-   não deixem a Home presa no skeleton de carregamento.
-   ========================================================= */
-/* =========================================================
    HOTFIX MOBILE V2 — CARREGAMENTO INDEPENDENTE E À PROVA DE FALHAS
    - Não depende do render desktop para liberar a Home mobile.
    - Busca /quentes, /mercados e /prelive_best diretamente.
@@ -296,6 +291,14 @@
   
     window.CornerProMobileDirectReload = () => load(true);
   })();
+  
+  /* ===== CÓDIGO LEGADO ORIGINAL ===== */
+  /* =========================================================
+     HOTFIX PRIORITÁRIO — CARREGAMENTO MOBILE
+     Executado antes do script legado para que eventuais erros posteriores
+     não deixem a Home presa no skeleton de carregamento.
+     ========================================================= */
+  
   
   /* LOGIN consolidado no final do arquivo para evitar eventos duplicados. */
   
