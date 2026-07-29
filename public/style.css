@@ -8377,3 +8377,147 @@ button.railFullBtn {
   .cpHomeGame{width:122px!important;min-width:122px!important}
   .cpHomeMarkets button b{font-size:9px!important}
 }
+
+/* =========================================================
+   AJUSTE FINO MOBILE — REDUÇÃO APENAS DAS ÁREAS SOLICITADAS
+   Mantém header, calendário, mercados, menu inferior e lógica.
+   ========================================================= */
+@media (max-width:980px){
+
+  /* Card principal cerca de 12% menor */
+  .cpHomeBest,
+  .cpHomeSwipeTrack > .cpHomeBest,
+  .cpHomeSwipeTrack > .cpHomeBestClone{
+    min-height:220px!important;
+    padding:16px 16px 15px!important;
+  }
+
+  /* Menos espaço interno vertical no card principal */
+  .cpHomeBestTop{
+    margin-top:19px!important;
+    min-height:24px!important;
+  }
+
+  .cpHomeBestBody{
+    min-height:103px!important;
+    grid-template-columns:54px minmax(0,1fr) 88px!important;
+    gap:8px!important;
+  }
+
+  .cpHomeBestBody time{
+    padding-top:18px!important;
+    font-size:14px!important;
+  }
+
+  /* Nomes dos times cerca de 10% menores */
+  .cpHomeBestTeams strong{
+    font-size:19px!important;
+    line-height:1.14!important;
+  }
+
+  .cpHomeBestTeams i{
+    font-size:10px!important;
+    margin:3px!important;
+  }
+
+  /* Percentual cerca de 12% menor */
+  .cpHomeBestConfidence b{
+    font-size:39px!important;
+  }
+
+  .cpHomeBestConfidence small{
+    font-size:8px!important;
+    margin-top:4px!important;
+  }
+
+  /* Botão principal cerca de 10% menor */
+  .cpHomeBest>button,
+  #cpHomeBestOpen{
+    height:48px!important;
+    min-height:48px!important;
+    border-radius:10px!important;
+    font-size:12px!important;
+  }
+
+  /* Menor distância até Jogos em Destaque */
+  .cpHomeSection{
+    margin-top:17px!important;
+  }
+
+  .cpHomeSectionHead{
+    height:29px!important;
+    margin-bottom:8px!important;
+  }
+
+  /* Cards Jogos em Destaque cerca de 12% menores */
+  .cpHomeGames{
+    gap:9px!important;
+    padding-bottom:6px!important;
+  }
+
+  .cpHomeGame{
+    width:116px!important;
+    min-width:116px!important;
+    height:150px!important;
+    padding:10px 9px!important;
+    border-radius:11px!important;
+  }
+
+  .cpHomeGame time{
+    font-size:10px!important;
+  }
+
+  .cpHomeGame .teams{
+    height:66px!important;
+  }
+
+  .cpHomeGame .teams b{
+    font-size:10px!important;
+    line-height:1.16!important;
+  }
+
+  .cpHomeGame .teams i{
+    font-size:8px!important;
+    margin:3px!important;
+  }
+
+  .cpHomeGame small{
+    font-size:8px!important;
+  }
+
+  .cpHomeGame strong{
+    font-size:24px!important;
+    margin-top:4px!important;
+  }
+
+  .cpHomeSkeleton{
+    width:116px!important;
+    min-width:116px!important;
+    height:150px!important;
+    border-radius:11px!important;
+  }
+}
+
+@media (max-width:370px){
+  .cpHomeBestBody{
+    grid-template-columns:48px minmax(0,1fr) 80px!important;
+  }
+
+  .cpHomeBestTeams strong{
+    font-size:17px!important;
+  }
+
+  .cpHomeBestConfidence b{
+    font-size:35px!important;
+  }
+
+  .cpHomeGame{
+    width:110px!important;
+    min-width:110px!important;
+  }
+
+  .cpHomeSkeleton{
+    width:110px!important;
+    min-width:110px!important;
+  }
+}
