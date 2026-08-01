@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v11-team-history";
+const QUENTES_CACHE_VERSION = "tz-manaus-v12-corners-dynamic";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -5398,14 +5398,83 @@ function engineFallbackGoalProjection(game, oddsInfo) {
 }
 
 function engineFallbackCornersProjection(game) {
-  return engineGameNumber(game, [
+  const direct = engineGameNumber(game, [
     "proj_cantos",
-    "projection",
     "corners_projection",
     "projCorners",
     "market_projection.corners",
-    "baseCorners"
+    "projection_corners",
+    "expected_corners"
   ]);
+
+  if (Number.isFinite(direct)) {
+    return engineClamp(direct, 5.5, 16.5);
+  }
+
+  const baseCorners = engineGameNumber(game, [
+    "baseCorners",
+    "base_corners",
+    "league_base_corners",
+    "event_raw.baseCorners"
+  ]);
+
+  const aiScore = engineGameNumber(game, [
+    "ai_score",
+    "score",
+    "strength",
+    "market_score"
+  ]);
+
+  const pressureHits = engineGameNumber(game, [
+    "pressureHits",
+    "pressure_hits",
+    "pressao",
+    "pressure"
+  ]);
+
+  const over95 = engineGameNumber(game, [
+    "over95",
+    "over_95",
+    "over9_5",
+    "over95_rate"
+  ]);
+
+  let projection = Number.isFinite(baseCorners)
+    ? baseCorners
+    : 9.55;
+
+  if (Number.isFinite(aiScore)) {
+    projection += engineClamp((aiScore - 60) / 28, -0.8, 1.5);
+  }
+
+  if (Number.isFinite(pressureHits)) {
+    projection += engineClamp((pressureHits - 2) * 0.32, -0.5, 1.25);
+  }
+
+  if (Number.isFinite(over95)) {
+    const normalizedRate = over95 > 1 ? over95 / 100 : over95;
+    projection += engineClamp((normalizedRate - 0.5) * 2.4, -0.8, 1.0);
+  }
+
+  const homeCorners = engineGameNumber(game, [
+    "home_corners_avg",
+    "homeCornersAvg",
+    "casa_cantos",
+    "stats.home.corners_for_avg"
+  ]);
+
+  const awayCorners = engineGameNumber(game, [
+    "away_corners_avg",
+    "awayCornersAvg",
+    "fora_cantos",
+    "stats.away.corners_for_avg"
+  ]);
+
+  if (Number.isFinite(homeCorners) && Number.isFinite(awayCorners)) {
+    projection = (projection + homeCorners + awayCorners) / 2;
+  }
+
+  return engineClamp(projection, 6.5, 15.5);
 }
 
 function engineFallbackCardsProjection(game) {
@@ -5686,26 +5755,60 @@ function cornersEngineDecision({ game, home, away }) {
     });
   }
 
-  projection = engineClamp(projection, 5.5, 16);
+  projection = engineClamp(projection, 6.5, 16.5);
+
+  const pressureHits = engineGameNumber(game, [
+    "pressureHits",
+    "pressure_hits",
+    "pressao",
+    "pressure"
+  ]);
+
+  const over95 = engineGameNumber(game, [
+    "over95",
+    "over_95",
+    "over9_5",
+    "over95_rate"
+  ]);
+
+  const normalizedOver95 =
+    Number.isFinite(over95)
+      ? (over95 > 1 ? over95 / 100 : over95)
+      : null;
 
   let line = "SEM APOSTA";
   let edge = 0;
 
-  if (projection >= 12.0) {
+  // Escolha dinâmica por projeção.
+  if (projection >= 12.15) {
     line = "OVER 11.5";
     edge = projection - 11.5;
-  } else if (projection >= 10.95) {
+  } else if (projection >= 11.05) {
     line = "OVER 10.5";
     edge = projection - 10.5;
-  } else if (projection >= 9.85) {
+  } else if (projection >= 9.95) {
     line = "OVER 9.5";
     edge = projection - 9.5;
-  } else if (projection >= 8.8) {
+  } else if (projection >= 8.85) {
     line = "OVER 8.5";
     edge = projection - 8.5;
-  } else if (projection <= 8.15) {
-    line = "UNDER 9.5";
-    edge = 9.5 - projection;
+  } else {
+    // Under só aparece com sinais claros de jogo fraco.
+    const lowPressure =
+      !Number.isFinite(pressureHits) || pressureHits <= 1;
+
+    const poorOverHistory =
+      !Number.isFinite(normalizedOver95) ||
+      normalizedOver95 <= 0.38;
+
+    if (
+      projection <= 8.0 &&
+      lowPressure &&
+      poorOverHistory
+    ) {
+      line = "UNDER 9.5";
+      edge = 9.5 - projection;
+    }
   }
 
   if (line === "SEM APOSTA") {
@@ -5713,15 +5816,24 @@ function cornersEngineDecision({ game, home, away }) {
       market: "ESCANTEIOS",
       skip: true,
       projection,
-      reason: "A projeção ficou sem margem suficiente."
+      reason:
+        `Projeção de ${projection.toFixed(1)} cantos sem margem suficiente para uma linha segura.`
     });
   }
 
   let confidence =
-    engineExistingConfidence(game, 65) +
-    edge * (source === "recent_form" ? 8 : 5);
+    engineExistingConfidence(game, 64) +
+    edge * (source === "recent_form" ? 8 : 5) +
+    Math.max(0, quality - 2) * 0.8;
 
-  if (source === "fallback") confidence = Math.min(confidence, 74);
+  // Under recebe corte de confiança mais rigoroso.
+  if (line.startsWith("UNDER")) {
+    confidence = Math.min(confidence - 4, 72);
+  }
+
+  if (source === "fallback") {
+    confidence = Math.min(confidence, 76);
+  }
 
   confidence = engineClamp(
     confidence,
@@ -5736,12 +5848,17 @@ function cornersEngineDecision({ game, home, away }) {
     score: confidence + projection,
     projection,
     reason:
-      source === "recent_form"
-        ? `${line}: projeção de ${projection.toFixed(1)} escanteios pela forma recente.`
-        : `${line}: projeção de ${projection.toFixed(1)} escanteios do motor principal.`,
+      `${line}: projeção de ${projection.toFixed(1)} escanteios ` +
+      `${source === "recent_form" ? "pela forma recente." : "pelos indicadores do servidor."}`,
     extra: {
       data_quality: quality,
-      calculation_source: source
+      calculation_source: source,
+      pressure_hits: Number.isFinite(pressureHits)
+        ? pressureHits
+        : null,
+      over95_rate: Number.isFinite(normalizedOver95)
+        ? Number((normalizedOver95 * 100).toFixed(1))
+        : null
     }
   });
 }

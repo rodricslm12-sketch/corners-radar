@@ -14017,3 +14017,13 @@ button.railFullBtn {
     border-color:#75d92f!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V60 — ESCANTEIOS COM LINHAS DINÂMICAS
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity[data-settlement-market="corners"]
+  .cpAnalysisPick strong{
+    white-space:nowrap!important;
+  }
+}

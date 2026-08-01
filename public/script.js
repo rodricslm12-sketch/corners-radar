@@ -2026,6 +2026,13 @@
           serverLine = "SEM APOSTA";
         }
   
+        if (
+          marketType === "corners" &&
+          !/^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(serverLine)
+        ) {
+          serverLine = "SEM APOSTA";
+        }
+  
         return {
           line: serverLine,
           projection: Number(
