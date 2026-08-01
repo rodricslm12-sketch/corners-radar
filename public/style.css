@@ -10274,3 +10274,85 @@ button.railFullBtn {
     inset:10px !important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V21 — BORDAS FIXAS SEM EFEITOS OU TROCAS
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeHeader{
+    margin-bottom:0!important;
+  }
+
+  .cpHomeScroll{
+    padding-top:6px!important;
+    transform:none!important;
+  }
+
+  .cpHomeBest{
+    margin-top:0!important;
+    position:relative!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+
+    border:2px solid #69d91f!important;
+    border-color:#69d91f!important;
+    border-radius:16px!important;
+
+    outline:none!important;
+    box-shadow:none!important;
+    filter:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+
+  .cpHomeBest:hover,
+  .cpHomeBest:focus,
+  .cpHomeBest:focus-within,
+  .cpHomeBest:active,
+  .cpHomeBest.is-loading-initial,
+  .cpHomeBest.is-loading-date,
+  .cpHomeBest[data-market],
+  .cpHomeBest[data-market="corners"],
+  .cpHomeBest[data-market="goals"],
+  .cpHomeBest[data-market="cards"]{
+    border:2px solid #69d91f!important;
+    border-color:#69d91f!important;
+    outline:none!important;
+    box-shadow:none!important;
+    filter:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+
+  .cpHomeBest::before,
+  .cpHomeBest::after,
+  .cpHomeBest:hover::before,
+  .cpHomeBest:hover::after,
+  .cpHomeBest[data-market]::before,
+  .cpHomeBest[data-market]::after{
+    content:none!important;
+    display:none!important;
+    border:0!important;
+    background:none!important;
+    box-shadow:none!important;
+    filter:none!important;
+    animation:none!important;
+  }
+
+  .cpHomeBestTop > b,
+  .cpHomeBestBody time{
+    border-color:#69d91f!important;
+    box-shadow:none!important;
+    filter:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+
+  .cpHomeMarketDots button,
+  .cpHomeMarketDots button.active{
+    box-shadow:none!important;
+    filter:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+}
