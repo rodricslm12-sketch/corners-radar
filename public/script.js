@@ -561,8 +561,8 @@
         liveEntries.push({
           key: liveKey,
           game,
-          marketType,
-          line,
+          marketType: "btts",
+          line: `AMBAS ${choice}`,
           side: ""
         });
   
@@ -2069,8 +2069,8 @@
         liveEntries.push({
           key: liveKey,
           game,
-          marketType: "btts",
-          line: `AMBAS ${choice}`,
+          marketType,
+          line,
           side: ""
         });
   
@@ -2214,6 +2214,11 @@
     }
   
     function openMarkets(type = state.activeMarket) {
+      if (marketLiveTimer) {
+        clearInterval(marketLiveTimer);
+        marketLiveTimer = null;
+      }
+  
       const marketType = MARKET[type] ? type : "pregame";
       state.activeMarket = marketType;
       const layer = $("#cpMobileMarketsLayer");
@@ -2232,20 +2237,32 @@
       const body = $(".cpMobileMarketsBody", layer);
       if (body && !body.dataset.defaultHtml) body.dataset.defaultHtml = body.innerHTML;
   
-      if (marketType === "btts") {
-        renderBttsMarket(layer);
-      } else if (marketType === "handicap") {
-        renderHandicapMarket(layer, "IA");
-      } else if (["goals", "corners", "cards"].includes(marketType)) {
-        renderDetailedMarket(layer, marketType, "IA");
-      } else {
-        if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
+      try {
+        if (marketType === "btts") {
+          renderBttsMarket(layer);
+        } else if (marketType === "handicap") {
+          renderHandicapMarket(layer, "IA");
+        } else if (["goals", "corners", "cards"].includes(marketType)) {
+          renderDetailedMarket(layer, marketType, "IA");
+        } else {
+          if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
         const grid = $("#cpMobileOddsGrid");
-        if (grid) {
-          grid.innerHTML = meta.lines.map(item => `
-            <button type="button" data-v9-line="${escapeHtml(item)}">
-              <b>${escapeHtml(item)}</b><small>VER JOGOS</small>
-            </button>`).join("");
+          if (grid) {
+            grid.innerHTML = meta.lines.map(item => `
+              <button type="button" data-v9-line="${escapeHtml(item)}">
+                <b>${escapeHtml(item)}</b><small>VER JOGOS</small>
+              </button>`).join("");
+          }
+        }
+      } catch (error) {
+        console.error("[Corner Pro Markets]", error);
+  
+        if (body) {
+          body.innerHTML = `
+            <section class="cpMarketOpenError">
+              <strong>NÃO FOI POSSÍVEL ABRIR O MERCADO</strong>
+              <span>Atualize a página e tente novamente.</span>
+            </section>`;
         }
       }
   

@@ -13798,3 +13798,33 @@ button.railFullBtn {
     gap:7px!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V51 — PROTEÇÃO DE ABERTURA DOS MERCADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpMarketOpenError{
+    min-height:220px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:8px!important;
+    margin:18px!important;
+    padding:24px!important;
+    border:1px solid #2c424b!important;
+    border-radius:15px!important;
+    background:#081217!important;
+    text-align:center!important;
+  }
+
+  .cpMarketOpenError strong{
+    color:#8df23a!important;
+    font-size:13px!important;
+  }
+
+  .cpMarketOpenError span{
+    color:#9ca8aa!important;
+    font-size:10px!important;
+  }
+}
