@@ -31,9 +31,9 @@
       },
       goals: {
         label: "GOLS",
-        title: "🔥 MELHOR APOSTA DO DIA",
+        title: "⚽ ANÁLISE DE GOLS",
         icon: "⚽",
-        lines: ["OVER 1.5", "OVER 2.5", "OVER 3.5", "CASA +1.5", "FORA +1.5"]
+        lines: ["IA", "OVER 1.5", "OVER 2.5", "OVER 3.5", "UNDER 2.5", "UNDER 3.5", "AMBAS SIM", "AMBAS NÃO"]
       },
       btts: {
         label: "AMBAS MARCAM",
@@ -1033,6 +1033,450 @@
         </section>`;
     }
   
+  
+    function analysisNumber(raw, paths, fallback = null) {
+      for (const path of paths) {
+        const value = path.split(".").reduce((obj, part) => obj?.[part], raw);
+        const number = Number(String(value ?? "").replace("%", "").replace(",", "."));
+        if (Number.isFinite(number)) return number;
+      }
+      return fallback;
+    }
+  
+    function analysisLineNumber(line) {
+      const match = String(line || "").match(/\d+(?:\.\d+)?/);
+      return match ? Number(match[0]) : null;
+    }
+  
+    function analysisMarketTotal(game, marketType) {
+      const raw = game?.raw || {};
+  
+      if (marketType === "goals") {
+        const score = handicapScore(game);
+        if (Number.isFinite(score.home) && Number.isFinite(score.away)) {
+          return score.home + score.away;
+        }
+        return null;
+      }
+  
+      if (marketType === "corners") {
+        const home = analysisNumber(raw, [
+          "home_corners", "corners_home", "corners.home",
+          "statistics.home.corners", "stats.home.corners"
+        ]);
+        const away = analysisNumber(raw, [
+          "away_corners", "corners_away", "corners.away",
+          "statistics.away.corners", "stats.away.corners"
+        ]);
+        return Number.isFinite(home) && Number.isFinite(away) ? home + away : null;
+      }
+  
+      if (marketType === "cards") {
+        const home = analysisNumber(raw, [
+          "home_cards", "cards_home", "cards.home",
+          "yellow_cards.home", "statistics.home.cards"
+        ]);
+        const away = analysisNumber(raw, [
+          "away_cards", "cards_away", "cards.away",
+          "yellow_cards.away", "statistics.away.cards"
+        ]);
+        return Number.isFinite(home) && Number.isFinite(away) ? home + away : null;
+      }
+  
+      return null;
+    }
+  
+    function analysisSettlement(game, marketType, line) {
+      if (!handicapFinished(game)) return null;
+  
+      const normalized = String(line || "").toUpperCase();
+      const total = analysisMarketTotal(game, marketType);
+      const threshold = analysisLineNumber(normalized);
+  
+      if (normalized.includes("AMBAS SIM")) {
+        const score = handicapScore(game);
+        if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
+        return score.home > 0 && score.away > 0 ? "win" : "loss";
+      }
+  
+      if (normalized.includes("AMBAS NÃO")) {
+        const score = handicapScore(game);
+        if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
+        return score.home === 0 || score.away === 0 ? "win" : "loss";
+      }
+  
+      if (!Number.isFinite(total) || !Number.isFinite(threshold)) return null;
+  
+      if (normalized.includes("OVER")) return total > threshold ? "win" : "loss";
+      if (normalized.includes("UNDER")) return total < threshold ? "win" : "loss";
+  
+      return null;
+    }
+  
+    function analysisRule(marketType, line) {
+      const normalized = String(line || "").toUpperCase();
+      const threshold = analysisLineNumber(normalized);
+  
+      if (marketType === "goals") {
+        if (normalized.includes("AMBAS SIM")) {
+          return {
+            headline: "As duas equipes precisam marcar.",
+            win: "Cada time marca pelo menos um gol.",
+            lose: "Uma ou as duas equipes terminam sem marcar.",
+            reading: "Boa opção quando os dois ataques produzem e as defesas cedem oportunidades."
+          };
+        }
+  
+        if (normalized.includes("AMBAS NÃO")) {
+          return {
+            headline: "Pelo menos uma equipe precisa terminar sem marcar.",
+            win: "Uma das equipes não faz gol.",
+            lose: "As duas equipes marcam.",
+            reading: "Boa opção quando existe defesa forte ou ataque pouco produtivo."
+          };
+        }
+  
+        const isOver = normalized.includes("OVER");
+        return {
+          headline: isOver
+            ? `A partida precisa terminar com ${Math.floor(threshold) + 1} ou mais gols.`
+            : `A partida precisa terminar com no máximo ${Math.ceil(threshold) - 1} gols.`,
+          win: isOver
+            ? `Total de gols acima de ${threshold}.`
+            : `Total de gols abaixo de ${threshold}.`,
+          lose: isOver
+            ? `Total de gols igual ou abaixo de ${threshold}.`
+            : `Total de gols igual ou acima de ${threshold}.`,
+          reading: isOver
+            ? "O app procura ataques produtivos, defesas vulneráveis e jogos com ritmo ofensivo."
+            : "O app procura jogos controlados, ataques modestos e defesas consistentes."
+        };
+      }
+  
+      if (marketType === "corners") {
+        const firstHalf = normalized.includes("1ºT");
+        const isOver = normalized.includes("OVER");
+  
+        return {
+          headline: firstHalf
+            ? `O primeiro tempo precisa ter ${Math.floor(threshold) + 1} ou mais escanteios.`
+            : isOver
+              ? `A partida precisa ter ${Math.floor(threshold) + 1} ou mais escanteios.`
+              : `A partida precisa ter no máximo ${Math.ceil(threshold) - 1} escanteios.`,
+          win: isOver
+            ? `Total de escanteios acima de ${threshold}.`
+            : `Total de escanteios abaixo de ${threshold}.`,
+          lose: isOver
+            ? `Total igual ou abaixo de ${threshold}.`
+            : `Total igual ou acima de ${threshold}.`,
+          reading: "O app analisa pressão pelas laterais, cruzamentos, finalizações bloqueadas e médias recentes de cantos."
+        };
+      }
+  
+      const isOver = normalized.includes("OVER");
+      return {
+        headline: isOver
+          ? `A partida precisa ter ${Math.floor(threshold) + 1} ou mais cartões.`
+          : `A partida precisa ter no máximo ${Math.ceil(threshold) - 1} cartões.`,
+        win: isOver
+          ? `Total de cartões acima de ${threshold}.`
+          : `Total de cartões abaixo de ${threshold}.`,
+        lose: isOver
+          ? `Total igual ou abaixo de ${threshold}.`
+          : `Total igual ou acima de ${threshold}.`,
+        reading: "O app considera rivalidade, faltas, intensidade, importância da partida e média disciplinar."
+      };
+    }
+  
+    function analysisProjection(game, marketType) {
+      const raw = game?.raw || {};
+      const confidence = Number(game?.confidence || 68);
+  
+      if (marketType === "goals") {
+        const homeFor = analysisNumber(raw, [
+          "home_goals_avg", "home.avg_goals", "stats.home.goals_for_avg",
+          "home_scored_avg", "homeGoalsAvg"
+        ], 1.35);
+  
+        const awayFor = analysisNumber(raw, [
+          "away_goals_avg", "away.avg_goals", "stats.away.goals_for_avg",
+          "away_scored_avg", "awayGoalsAvg"
+        ], 1.15);
+  
+        const homeAgainst = analysisNumber(raw, [
+          "home_concedes_avg", "stats.home.goals_against_avg", "homeConcedesAvg"
+        ], 1.10);
+  
+        const awayAgainst = analysisNumber(raw, [
+          "away_concedes_avg", "stats.away.goals_against_avg", "awayConcedesAvg"
+        ], 1.30);
+  
+        const projection = Math.max(1.2, Math.min(4.4,
+          (homeFor + awayFor + homeAgainst + awayAgainst) / 2
+        ));
+  
+        let line = "OVER 1.5";
+        if (projection >= 3.15) line = "OVER 2.5";
+        if (projection >= 3.75) line = "OVER 3.5";
+        if (projection <= 2.05) line = "UNDER 2.5";
+        if (projection <= 1.55) line = "UNDER 3.5";
+  
+        const bothScore = homeFor >= 1.2 && awayFor >= 1.05 &&
+          homeAgainst >= 0.95 && awayAgainst >= 0.95;
+  
+        if (bothScore && projection >= 2.65) line = "AMBAS SIM";
+  
+        return {
+          line,
+          projection: projection.toFixed(1),
+          confidence: Math.round(Math.max(57, Math.min(89,
+            60 + Math.abs(projection - 2.5) * 8 + (confidence - 68) * .25
+          ))),
+          reason: `Projeção aproximada de ${projection.toFixed(1)} gols, considerando produção e concessão recentes.`
+        };
+      }
+  
+      if (marketType === "corners") {
+        const homeCreates = analysisNumber(raw, [
+          "home_corners_avg", "stats.home.corners_for_avg", "homeCornersAvg"
+        ], 5.1);
+  
+        const awayCreates = analysisNumber(raw, [
+          "away_corners_avg", "stats.away.corners_for_avg", "awayCornersAvg"
+        ], 4.6);
+  
+        const homeAllows = analysisNumber(raw, [
+          "home_corners_against_avg", "stats.home.corners_against_avg"
+        ], 4.5);
+  
+        const awayAllows = analysisNumber(raw, [
+          "away_corners_against_avg", "stats.away.corners_against_avg"
+        ], 4.8);
+  
+        const projection = Math.max(6.5, Math.min(14.5,
+          (homeCreates + awayCreates + homeAllows + awayAllows) / 2
+        ));
+  
+        let line = "OVER 8.5";
+        if (projection >= 10.3) line = "OVER 9.5";
+        if (projection >= 11.3) line = "OVER 10.5";
+        if (projection >= 12.3) line = "OVER 11.5";
+        if (projection <= 8.9) line = "UNDER 9.5";
+  
+        return {
+          line,
+          projection: projection.toFixed(1),
+          confidence: Math.round(Math.max(57, Math.min(89,
+            59 + Math.abs(projection - 9.5) * 5 + (confidence - 68) * .25
+          ))),
+          reason: `Projeção aproximada de ${projection.toFixed(1)} escanteios, com base em criação e concessão das equipes.`
+        };
+      }
+  
+      const homeCards = analysisNumber(raw, [
+        "home_cards_avg", "stats.home.cards_avg", "homeCardsAvg"
+      ], 2.1);
+  
+      const awayCards = analysisNumber(raw, [
+        "away_cards_avg", "stats.away.cards_avg", "awayCardsAvg"
+      ], 2.2);
+  
+      const refereeCards = analysisNumber(raw, [
+        "referee_cards_avg", "referee.cards_avg", "cardsRefAvg"
+      ], 4.4);
+  
+      const projection = Math.max(2.0, Math.min(7.5,
+        (homeCards + awayCards + refereeCards) / 2
+      ));
+  
+      let line = "OVER 2.5";
+      if (projection >= 3.8) line = "OVER 3.5";
+      if (projection >= 4.8) line = "OVER 4.5";
+      if (projection >= 5.8) line = "OVER 5.5";
+      if (projection <= 3.5) line = "UNDER 4.5";
+  
+      return {
+        line,
+        projection: projection.toFixed(1),
+        confidence: Math.round(Math.max(57, Math.min(88,
+          58 + Math.abs(projection - 4.0) * 7 + (confidence - 68) * .22
+        ))),
+        reason: `Projeção aproximada de ${projection.toFixed(1)} cartões, considerando disciplina e intensidade provável.`
+      };
+    }
+  
+    function analysisMarketName(marketType) {
+      if (marketType === "goals") return "GOLS";
+      if (marketType === "corners") return "ESCANTEIOS";
+      return "CARTÕES";
+    }
+  
+    function analysisMarketIcon(marketType) {
+      if (marketType === "goals") return "⚽";
+      if (marketType === "corners") return "⚑";
+      return "▯";
+    }
+  
+    function analysisOdd(confidence) {
+      return (1.52 + Math.max(0, 84 - confidence) / 100).toFixed(2);
+    }
+  
+    function renderDetailedMarket(layer, marketType, selectedLine = "IA") {
+      const body = $(".cpMobileMarketsBody", layer);
+      if (!body) return;
+  
+      const marketName = analysisMarketName(marketType);
+      const icon = analysisMarketIcon(marketType);
+      const requestedLine = clean(selectedLine, "IA");
+      const sourceGames = state[marketType] || [];
+  
+      const prepared = sourceGames
+        .map((game, originalIndex) => ({
+          game,
+          originalIndex,
+          recommendation: analysisProjection(game, marketType)
+        }))
+        .sort((a, b) => b.recommendation.confidence - a.recommendation.confidence)
+        .slice(0, 7);
+  
+      const rows = prepared.map(({ game, originalIndex, recommendation }) => {
+        const line = requestedLine === "IA" ? recommendation.line : requestedLine;
+        const confidence = requestedLine === "IA"
+          ? recommendation.confidence
+          : Math.max(56, recommendation.confidence - 3);
+  
+        const rule = analysisRule(marketType, line);
+        const result = analysisSettlement(game, marketType, line);
+        const resultBadge = handicapSettlementBadge(result);
+  
+        return `
+          <button type="button" class="cpAnalysisOpportunity" data-v9-game="${originalIndex}">
+            <div class="cpAnalysisMatch">
+              <div class="cpAnalysisMeta">
+                <time>${escapeHtml(game.time)}</time>
+                <small>${icon} Liga principal</small>
+              </div>
+              <div class="cpAnalysisTeams">
+                <span>${escapeHtml((game.home || "C").slice(0,2).toUpperCase())}</span>
+                <section><b>${escapeHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}</b></section>
+                <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
+              </div>
+            </div>
+  
+            <div class="cpAnalysisPick">
+              ${requestedLine === "IA" ? '<span class="cpAnalysisAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>' : ""}
+              <strong>${escapeHtml(line)}</strong>
+              <p>${escapeHtml(rule.headline)}</p>
+              <small>${escapeHtml(recommendation.reason)}</small>
+              ${resultBadge}
+            </div>
+  
+            <div class="cpAnalysisOdd">
+              <small>Odd estimada</small>
+              <b>${analysisOdd(confidence)}</b>
+            </div>
+  
+            <div class="cpAnalysisGauge" style="--analysis:${confidence}">
+              <span>${confidence}%</span>
+              <small>CONFIANÇA</small>
+            </div>
+  
+            <i class="cpAnalysisArrow">›</i>
+          </button>`;
+      }).join("");
+  
+      const explanationLine = requestedLine === "IA"
+        ? (prepared[0]?.recommendation.line || MARKET[marketType].lines[1])
+        : requestedLine;
+  
+      const explainRule = analysisRule(marketType, explanationLine);
+  
+      body.innerHTML = `
+        <section class="cpAnalysisIntro">
+          <div class="cpAnalysisIntroIcon">${icon}</div>
+          <p>Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente a melhor leitura pré-jogo de ${marketName.toLowerCase()}.</p>
+        </section>
+  
+        <div class="cpAnalysisLines">
+          ${MARKET[marketType].lines.map(item => `
+            <button type="button" class="${item === requestedLine ? "active" : ""}"
+              data-analysis-market="${marketType}"
+              data-analysis-line="${escapeHtml(item)}">
+              ${item === "IA" ? "✦ IA" : escapeHtml(item)}
+            </button>
+          `).join("")}
+        </div>
+  
+        <section class="cpAnalysisExplain">
+          <h3>${requestedLine === "IA"
+            ? `COMO FUNCIONA A IA DE ${marketName}?`
+            : `COMO FUNCIONA ${escapeHtml(requestedLine)}?`
+          }</h3>
+  
+          <div class="cpAnalysisExplainGrid">
+            <p>${requestedLine === "IA"
+              ? escapeHtml(explainRule.reading)
+              : escapeHtml(explainRule.headline)
+            }</p>
+  
+            <article>
+              <i>✓</i>
+              <section><b>APOSTA GANHA</b><span>${escapeHtml(explainRule.win)}</span></section>
+            </article>
+  
+            <article>
+              <i>×</i>
+              <section><b>APOSTA PERDIDA</b><span>${escapeHtml(explainRule.lose)}</span></section>
+            </article>
+  
+            <article>
+              <i>✦</i>
+              <section><b>LEITURA DO APP</b><span>${escapeHtml(explainRule.reading)}</span></section>
+            </article>
+          </div>
+        </section>
+  
+        <div class="cpAnalysisTabs">
+          <button type="button" class="active">TODOS</button>
+          <button type="button">${marketType === "goals" ? "OVERS" : "LINHAS ALTAS"}</button>
+          <button type="button">${marketType === "goals" ? "UNDERS" : "LINHAS SEGURAS"}</button>
+        </div>
+  
+        <div class="cpAnalysisTitle">
+          <h2>${requestedLine === "IA" ? "SUGESTÕES PRÉ-JOGO" : "MELHORES OPORTUNIDADES"}</h2>
+          <button type="button">VER TODOS ›</button>
+        </div>
+  
+        <div class="cpAnalysisNotice">
+          <b>Análise estatística:</b> o app cruza médias recentes, contexto e força das equipes. Não representa garantia de resultado.
+        </div>
+  
+        <div class="cpAnalysisList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
+  
+        <button type="button" class="cpAnalysisAllGames">
+          <span>☷</span>
+          <b>${requestedLine === "IA"
+            ? `VER TODAS AS SUGESTÕES DE ${marketName}`
+            : `VER TODOS OS JOGOS EM ${escapeHtml(requestedLine)}`
+          }</b>
+          <i>›</i>
+        </button>
+  
+        <section class="cpAnalysisBottomExplain">
+          <h3>GUIA DAS LINHAS DE ${marketName}</h3>
+          <div>
+            ${MARKET[marketType].lines.filter(item => item !== "IA").map(item => {
+              const rule = analysisRule(marketType, item);
+              return `
+                <article>
+                  <b>${escapeHtml(item)}</b>
+                  <p>${escapeHtml(rule.headline)} ${escapeHtml(rule.win)}</p>
+                </article>`;
+            }).join("")}
+          </div>
+        </section>`;
+    }
+  
     function openMarkets(type = state.activeMarket) {
       const marketType = MARKET[type] ? type : "pregame";
       state.activeMarket = marketType;
@@ -1056,6 +1500,8 @@
         renderBttsMarket(layer);
       } else if (marketType === "handicap") {
         renderHandicapMarket(layer, "IA");
+      } else if (["goals", "corners", "cards"].includes(marketType)) {
+        renderDetailedMarket(layer, marketType, "IA");
       } else {
         if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
         const grid = $("#cpMobileOddsGrid");
@@ -1613,7 +2059,7 @@
   
           const marketType = homeMarket.dataset.homeMarket;
   
-          if (marketType === "handicap" || marketType === "btts") {
+          if (["handicap","btts","goals","corners","cards"].includes(marketType)) {
             openMarkets(marketType);
           }
           return;
@@ -1630,6 +2076,17 @@
         if (lineButton) {
           event.preventDefault();
           showRecommended(lineButton.dataset.v9Line || lineButton.dataset.v8Line);
+          return;
+        }
+  
+        const analysisLine = event.target.closest("[data-analysis-line]");
+        if (analysisLine) {
+          event.preventDefault();
+          renderDetailedMarket(
+            $("#cpMobileMarketsLayer"),
+            analysisLine.dataset.analysisMarket,
+            analysisLine.dataset.analysisLine
+          );
           return;
         }
   
@@ -16481,7 +16938,7 @@
   
             const marketType=market.dataset.homeMarket;
   
-            if(marketType==='handicap' || marketType==='btts'){
+            if(['handicap','btts','goals','corners','cards'].includes(marketType)){
               openMarkets(marketType);
             }else{
               openMarket(marketType);
