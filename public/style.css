@@ -9750,3 +9750,22 @@ button.railFullBtn {
     font-size:7.5px!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V13 — SETA DOS CARDS MENORES
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeGame::after{
+    right:9px!important;
+    bottom:9px!important;
+    font-size:20px!important;
+    line-height:1!important;
+    font-weight:700!important;
+  }
+
+  .cpHomeLastGame i{
+    right:11px!important;
+    font-size:20px!important;
+    line-height:1!important;
+  }
+}
