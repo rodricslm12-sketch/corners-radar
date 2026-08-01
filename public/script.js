@@ -539,15 +539,32 @@
       if (!body) return;
   
       const games = (state.btts || state.goals || []).slice(0, 5);
+      const settlementEntries = [];
+  
       const rows = games.map((game, index) => {
         const choice = index % 3 === 1 ? "NÃO" : "SIM";
         const confidence = Math.max(63, Math.min(89, Number(game.confidence || 72)));
         const odd = (1.48 + ((100 - confidence) / 100)).toFixed(2);
         const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
+        const settlementKey = `btts-${index}`;
+  
+        settlementEntries.push({
+          key: settlementKey,
+          game,
+          marketType: "btts",
+          line: `AMBAS ${choice}`
+        });
   
         return `
-          <button type="button" class="cpBttsOpportunity" data-v9-game="${index}">
+          <button
+            type="button"
+            class="cpBttsOpportunity"
+            data-v9-game="${index}"
+            data-settlement-key="${settlementKey}"
+            data-settlement-market="btts"
+            data-settlement-line="AMBAS ${choice}"
+          >
             <div class="cpBttsMatch">
               <time>${escapeHtml(game.time)}</time>
               <small>⚽ Liga principal</small>
@@ -563,6 +580,7 @@
               <strong>AMBAS MARCAM – ${choice}</strong>
               <small>Odd média</small>
               <b>${odd}</b>
+              <span class="cpSettlementSlot"></span>
             </div>
             <div class="cpBttsGauge" style="--btts:${confidence}">
               <span>${confidence}%</span>
@@ -616,6 +634,8 @@
             <article><i>×</i><p><b>AMBAS MARCAM – NÃO</b><br>Pelo menos uma das equipes termina a partida sem marcar.</p></article>
           </div>
         </section>`;
+  
+      settlementRefreshCards(body, settlementEntries);
     }
   
   
@@ -897,7 +917,9 @@
         .sort((a, b) => b.recommendation.score - a.recommendation.score)
         .slice(0, 7);
   
-      const rows = preparedGames.map(({ game, originalIndex, recommendation }) => {
+      const settlementEntries = [];
+  
+      const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
         const side = recommendation.side;
         const sideLabel = side === "home" ? "CASA" : "FORA";
@@ -906,16 +928,31 @@
           ? recommendation.confidence
           : Math.max(57, Math.min(88, recommendation.confidence - 2));
   
-        const result = handicapSettlement(game, side, line);
-        const resultHtml = handicapSettlementBadge(result);
+        const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
         const rule = handicapLineRule(line, sideLabel);
+  
+        settlementEntries.push({
+          key: settlementKey,
+          game,
+          marketType: "handicap",
+          line,
+          side
+        });
   
         const recommendationBadge = requestedLine === "IA"
           ? `<span class="cpHandicapAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>`
           : "";
   
         return `
-          <button type="button" class="cpHandicapOpportunity" data-v9-game="${originalIndex}">
+          <button
+            type="button"
+            class="cpHandicapOpportunity"
+            data-v9-game="${originalIndex}"
+            data-settlement-key="${settlementKey}"
+            data-settlement-market="handicap"
+            data-settlement-line="${escapeHtml(line)}"
+            data-settlement-side="${side}"
+          >
             <div class="cpHandicapMatch">
               <div class="cpHandicapMeta">
                 <time>${escapeHtml(game.time)}</time>
@@ -933,7 +970,7 @@
               <strong>${sideLabel} ${escapeHtml(line)}</strong>
               <p>${escapeHtml(rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
-              ${resultHtml}
+              <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpHandicapOdd">
@@ -1031,6 +1068,8 @@
             }).join("")}
           </div>
         </section>`;
+  
+      settlementRefreshCards(body, settlementEntries);
     }
   
   
@@ -1098,6 +1137,132 @@
       }
   
       return null;
+    }
+  
+  
+    function settlementMatchId(game) {
+      const raw = game?.raw || {};
+  
+      return clean(
+        raw.match_id ??
+        raw.fixture_id ??
+        raw.event_id ??
+        raw.event_key ??
+        raw.id ??
+        game?.id,
+        ""
+      );
+    }
+  
+    function settlementResponseData(response) {
+      return response?.data ?? response?.result ?? response?.match ?? response?.game ?? response ?? {};
+    }
+  
+    function settlementMergeGame(game, stats) {
+      const raw = game?.raw || {};
+      const score = stats?.score || {};
+      const goals = stats?.goals || {};
+      const corners = stats?.corners || {};
+      const cards = stats?.cards || {};
+      const yellowCards = stats?.yellow_cards || {};
+      const statistics = stats?.statistics || {};
+  
+      return {
+        ...game,
+        raw: {
+          ...raw,
+          ...stats,
+          status: stats?.status ?? stats?.status_raw ?? stats?.match_status ?? raw.status ?? raw.match_status,
+          match_status: stats?.match_status ?? stats?.status ?? stats?.status_raw ?? raw.match_status,
+          finished: Boolean(stats?.finished) || Boolean(raw.finished),
+  
+          home_score: stats?.home_score ?? stats?.score_home ?? goals?.home ?? score?.home ?? raw.home_score ?? raw.score_home,
+          away_score: stats?.away_score ?? stats?.score_away ?? goals?.away ?? score?.away ?? raw.away_score ?? raw.score_away,
+  
+          home_corners: stats?.home_corners ?? stats?.corners_home ?? corners?.home ?? statistics?.home?.corners ?? raw.home_corners ?? raw.corners_home,
+          away_corners: stats?.away_corners ?? stats?.corners_away ?? corners?.away ?? statistics?.away?.corners ?? raw.away_corners ?? raw.corners_away,
+  
+          home_cards: stats?.home_cards ?? stats?.cards_home ?? cards?.home ?? yellowCards?.home ?? statistics?.home?.cards ?? raw.home_cards ?? raw.cards_home,
+          away_cards: stats?.away_cards ?? stats?.cards_away ?? cards?.away ?? yellowCards?.away ?? statistics?.away?.cards ?? raw.away_cards ?? raw.cards_away
+        }
+      };
+    }
+  
+    async function settlementFreshGame(game) {
+      const matchId = settlementMatchId(game);
+      if (!matchId) return game;
+  
+      try {
+        const response = await getJson(
+          `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
+          16000
+        );
+  
+        const stats = settlementResponseData(response);
+        if (!stats || typeof stats !== "object" || stats.error) return game;
+  
+        return settlementMergeGame(game, stats);
+      } catch (error) {
+        console.warn("[Corner Pro Settlement]", error);
+        return game;
+      }
+    }
+  
+    function settlementBadgeHtml(result) {
+      const map = {
+        win: ["green", "✓ GREEN"],
+        loss: ["red", "× RED"],
+        push: ["push", "↔ DEVOLVIDA"],
+        half_win: ["half-win", "½ GREEN"],
+        half_loss: ["half-loss", "½ RED"]
+      };
+  
+      const item = map[result];
+      if (!item) return "";
+  
+      return `<span class="cpSettlementBadge ${item[0]}">${item[1]}</span>`;
+    }
+  
+    function settlementCalculate(game, marketType, line, side = "") {
+      if (marketType === "handicap") {
+        return handicapSettlement(game, side || "home", line);
+      }
+  
+      if (marketType === "btts") {
+        const normalized = String(line || "").toUpperCase();
+        return analysisSettlement(
+          game,
+          "goals",
+          normalized.includes("NÃO") ? "AMBAS NÃO" : "AMBAS SIM"
+        );
+      }
+  
+      return analysisSettlement(game, marketType, line);
+    }
+  
+    async function settlementRefreshCard(card, game, marketType, line, side = "") {
+      if (!card || !game) return;
+  
+      const slot = card.querySelector(".cpSettlementSlot");
+      if (!slot) return;
+  
+      const freshGame = await settlementFreshGame(game);
+      const result = settlementCalculate(freshGame, marketType, line, side);
+  
+      slot.innerHTML = settlementBadgeHtml(result);
+  
+      card.classList.toggle("is-settlement-green", result === "win" || result === "half_win");
+      card.classList.toggle("is-settlement-red", result === "loss" || result === "half_loss");
+      card.classList.toggle("is-settlement-push", result === "push");
+    }
+  
+    function settlementRefreshCards(container, entries) {
+      if (!container || !Array.isArray(entries)) return;
+  
+      for (const entry of entries) {
+        const card = container.querySelector(`[data-settlement-key="${entry.key}"]`);
+        settlementRefreshCard(card, entry.game, entry.marketType, entry.line, entry.side || "");
+      }
     }
   
     function analysisSettlement(game, marketType, line) {
@@ -1730,18 +1895,34 @@
         }
       }
   
-      const rows = prepared.map(({ game, originalIndex, recommendation }) => {
+      const settlementEntries = [];
+  
+      const rows = prepared.map(({ game, originalIndex, recommendation }, rowIndex) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
         const confidence = requestedLine === "IA"
           ? recommendation.confidence
           : Math.max(56, recommendation.confidence - 3);
   
         const rule = analysisRule(marketType, line);
-        const result = analysisSettlement(game, marketType, line);
-        const resultBadge = handicapSettlementBadge(result);
+        const settlementKey = `analysis-${marketType}-${originalIndex}-${rowIndex}`;
+  
+        settlementEntries.push({
+          key: settlementKey,
+          game,
+          marketType,
+          line,
+          side: ""
+        });
   
         return `
-          <button type="button" class="cpAnalysisOpportunity" data-v9-game="${originalIndex}">
+          <button
+            type="button"
+            class="cpAnalysisOpportunity"
+            data-v9-game="${originalIndex}"
+            data-settlement-key="${settlementKey}"
+            data-settlement-market="${marketType}"
+            data-settlement-line="${escapeHtml(line)}"
+          >
             <div class="cpAnalysisMatch">
               <div class="cpAnalysisMeta">
                 <time>${escapeHtml(game.time)}</time>
@@ -1759,7 +1940,7 @@
               <strong>${escapeHtml(line)}</strong>
               <p>${escapeHtml(rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
-              ${resultBadge}
+              <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpAnalysisOdd">
@@ -1866,6 +2047,8 @@
             }).join("")}
           </div>
         </section>`;
+  
+      settlementRefreshCards(body, settlementEntries);
     }
   
     function openMarkets(type = state.activeMarket) {
@@ -2242,6 +2425,23 @@
             ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
             : escapeHtml(game.time);
   
+        const settlementGame = settlementMergeGame(game, stats);
+        const selectedMarket = game.selectedMarket || "";
+        const selectedLine = game.selectedLine || game.line || "";
+        const selectedSide = game.selectedSide || "";
+  
+        const settlementResult =
+          phase.finished && selectedMarket
+            ? settlementCalculate(
+                settlementGame,
+                selectedMarket,
+                selectedLine,
+                selectedSide
+              )
+            : null;
+  
+        const settlementHeroBadge = settlementBadgeHtml(settlementResult);
+  
         const homeName = stats.home || game.home;
         const awayName = stats.away || game.away;
         const homeColor = teamColor(homeName, "home");
@@ -2259,8 +2459,9 @@
               <i>${phase.live || phase.finished ? `${homeScore} × ${awayScore}` : "×"}</i>
               <strong class="cpV8AwayTeam">${escapeHtml(awayName)}</strong>
             </div>
-            <span>${escapeHtml(game.line)}</span>
+            <span>${escapeHtml(selectedLine || game.line)}</span>
             <b>${escapeHtml(phase.statusText.toUpperCase())}</b>
+            ${settlementHeroBadge ? `<div class="cpMatchSettlement">${settlementHeroBadge}</div>` : ""}
           </section>
   
           <section class="cpV8MatchTabs">
@@ -2515,8 +2716,43 @@
         const gameButton = event.target.closest("[data-v9-game], [data-v8-game]");
         if (gameButton) {
           event.preventDefault();
-          const index = Number(gameButton.dataset.v9Game ?? gameButton.dataset.v8Game);
-          openMatch(activeList()[index]);
+  
+          const index = Number(
+            gameButton.dataset.v9Game ??
+            gameButton.dataset.v8Game
+          );
+  
+          const selectedMarket =
+            gameButton.dataset.settlementMarket ||
+            state.activeMarket;
+  
+          const selectedLine =
+            gameButton.dataset.settlementLine ||
+            "";
+  
+          const selectedSide =
+            gameButton.dataset.settlementSide ||
+            "";
+  
+          const source =
+            state[selectedMarket] ||
+            (selectedMarket === "btts" ? state.btts : null) ||
+            activeList();
+  
+          const selectedGame =
+            source?.[index] ||
+            activeList()[index];
+  
+          if (selectedGame) {
+            openMatch({
+              ...selectedGame,
+              line: selectedLine || selectedGame.line,
+              selectedMarket,
+              selectedLine,
+              selectedSide
+            });
+          }
+  
           return;
         }
   

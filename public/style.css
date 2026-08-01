@@ -13359,3 +13359,85 @@ button.railFullBtn {
     background:linear-gradient(180deg,#9cf542,#6ed71e)!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V47 — GREEN / RED COM DADOS FINAIS REAIS
+   ========================================================= */
+@media (max-width:980px){
+  .cpSettlementSlot{
+    display:block!important;
+    min-height:20px!important;
+    margin-top:6px!important;
+  }
+
+  .cpSettlementBadge{
+    display:inline-flex!important;
+    min-height:20px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:max-content!important;
+    padding:0 8px!important;
+    border-radius:999px!important;
+    font-size:7px!important;
+    font-weight:950!important;
+    white-space:nowrap!important;
+  }
+
+  .cpSettlementBadge.green{
+    color:#8df23a!important;
+    border:1px solid rgba(141,242,58,.52)!important;
+    background:rgba(141,242,58,.09)!important;
+  }
+
+  .cpSettlementBadge.red{
+    color:#f07880!important;
+    border:1px solid rgba(240,120,128,.48)!important;
+    background:rgba(240,120,128,.08)!important;
+  }
+
+  .cpSettlementBadge.push{
+    color:#9bcbd2!important;
+    border:1px solid rgba(155,203,210,.46)!important;
+    background:rgba(155,203,210,.08)!important;
+  }
+
+  .cpSettlementBadge.half-win{
+    color:#b8f584!important;
+    border:1px solid rgba(184,245,132,.48)!important;
+    background:rgba(184,245,132,.08)!important;
+  }
+
+  .cpSettlementBadge.half-loss{
+    color:#eda1a7!important;
+    border:1px solid rgba(237,161,167,.46)!important;
+    background:rgba(237,161,167,.08)!important;
+  }
+
+  .cpAnalysisOpportunity.is-settlement-green,
+  .cpHandicapOpportunity.is-settlement-green,
+  .cpBttsOpportunity.is-settlement-green{
+    border-color:rgba(141,242,58,.50)!important;
+  }
+
+  .cpAnalysisOpportunity.is-settlement-red,
+  .cpHandicapOpportunity.is-settlement-red,
+  .cpBttsOpportunity.is-settlement-red{
+    border-color:rgba(240,120,128,.40)!important;
+  }
+
+  .cpMatchSettlement{
+    position:relative!important;
+    z-index:2!important;
+    display:flex!important;
+    justify-content:center!important;
+    margin-top:10px!important;
+  }
+
+  .cpMatchSettlement .cpSettlementBadge{
+    min-height:28px!important;
+    padding:0 14px!important;
+    font-size:10px!important;
+  }
+}
