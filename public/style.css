@@ -9994,3 +9994,16 @@ button.railFullBtn {
     border-color:rgba(140,255,0,.48)!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V16 — CARD PRINCIPAL MAIS ALTO
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeScroll{
+    padding-top:0!important;
+  }
+
+  .cpHomeBest{
+    margin-top:-10px!important;
+  }
+}
