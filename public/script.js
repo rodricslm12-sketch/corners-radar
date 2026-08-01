@@ -25,19 +25,19 @@
       },
       corners: {
         label: "ESCANTEIOS",
-        title: "⚑ MELHOR APOSTA DE ESCANTEIOS",
+        title: "🔥 MELHOR APOSTA DO DIA",
         icon: "⚑",
         lines: ["OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "OVER 12.5", "1º TEMPO 4.5"]
       },
       goals: {
         label: "GOLS",
-        title: "⚽ MELHOR APOSTA DE GOLS",
+        title: "🔥 MELHOR APOSTA DO DIA",
         icon: "⚽",
         lines: ["OVER 1.5", "OVER 2.5", "OVER 3.5", "AMBAS MARCAM", "CASA +1.5", "FORA +1.5"]
       },
       cards: {
         label: "CARTÕES",
-        title: "▯ MELHOR APOSTA DE CARTÕES",
+        title: "🔥 MELHOR APOSTA DO DIA",
         icon: "▯",
         lines: ["OVER 2.5", "OVER 3.5", "OVER 4.5", "OVER 5.5", "CASA 1.5", "FORA 1.5"]
       },
