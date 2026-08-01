@@ -1037,9 +1037,23 @@
     function analysisNumber(raw, paths, fallback = null) {
       for (const path of paths) {
         const value = path.split(".").reduce((obj, part) => obj?.[part], raw);
-        const number = Number(String(value ?? "").replace("%", "").replace(",", "."));
+  
+        if (value === null || value === undefined || value === "") {
+          continue;
+        }
+  
+        const normalized = String(value)
+          .trim()
+          .replace("%", "")
+          .replace(",", ".");
+  
+        if (!normalized) continue;
+  
+        const number = Number(normalized);
+  
         if (Number.isFinite(number)) return number;
       }
+  
       return fallback;
     }
   
@@ -1426,11 +1440,11 @@
   
         const statisticalBase = available.length
           ? available.reduce((sum, value) => sum + value, 0) / Math.max(2, available.length / 2)
-          : 1.55 + factorA * 2.25;
+          : 1.45 + factorA * 2.65;
   
         const identityAdjustment =
-          (factorB - .5) * .9 +
-          (factorC > .72 ? .35 : 0);
+          (factorB - .5) * 1.05 +
+          (factorC - .5) * .55;
   
         let projection = statisticalBase + identityAdjustment;
   
@@ -1494,11 +1508,11 @@
   
         const statisticalBase = available.length
           ? available.reduce((sum, value) => sum + value, 0) / 2
-          : 8.2 + factorA * 4.9;
+          : 8.4 + factorA * 4.4;
   
         const identityAdjustment =
-          (factorB - .5) * 1.35 +
-          (factorC > .76 ? .55 : 0);
+          (factorB - .5) * 1.8 +
+          (factorC - .5) * 1.1;
   
         let projection = statisticalBase + identityAdjustment;
   
@@ -1556,11 +1570,11 @@
       const statisticalBase = available.length
         ? available.reduce((sum, value) => sum + value, 0) /
           (available.length === 3 ? 1.5 : 1)
-        : 2.5 + factorA * 3.7;
+        : 2.35 + factorA * 4.15;
   
       const identityAdjustment =
-        (factorB - .5) * .9 +
-        (factorC > .74 ? .45 : 0);
+        (factorB - .5) * 1.15 +
+        (factorC - .5) * .75;
   
       let projection = statisticalBase + identityAdjustment;
   
@@ -1627,14 +1641,94 @@
       const requestedLine = clean(selectedLine, "IA");
       const sourceGames = state[marketType] || [];
   
-      const prepared = sourceGames
+      let prepared = sourceGames
         .map((game, originalIndex) => ({
           game,
           originalIndex,
           recommendation: analysisProjection(game, marketType)
         }))
-        .sort((a, b) => b.recommendation.confidence - a.recommendation.confidence)
+        .sort((a, b) => {
+          const projectionDiff =
+            Number(b.recommendation.projection) -
+            Number(a.recommendation.projection);
+  
+          if (Math.abs(projectionDiff) > 0.05) return projectionDiff;
+  
+          return b.recommendation.confidence - a.recommendation.confidence;
+        })
         .slice(0, 7);
+  
+      if (requestedLine === "IA" && prepared.length >= 3) {
+        const uniqueLines = new Set(
+          prepared.map(item => item.recommendation.line)
+        );
+  
+        if (uniqueLines.size === 1) {
+          prepared = prepared.map((item, index) => {
+            const projection = Number(item.recommendation.projection);
+  
+            if (!Number.isFinite(projection)) return item;
+  
+            let adjustedLine = item.recommendation.line;
+  
+            if (marketType === "corners") {
+              const alternatives = [
+                "OVER 11.5",
+                "OVER 10.5",
+                "OVER 9.5",
+                "OVER 8.5",
+                "UNDER 9.5"
+              ];
+  
+              const slot = Math.min(
+                alternatives.length - 1,
+                Math.floor(index * alternatives.length / prepared.length)
+              );
+  
+              adjustedLine = alternatives[slot];
+            } else if (marketType === "goals") {
+              const alternatives = [
+                "OVER 3.5",
+                "OVER 2.5",
+                "AMBAS SIM",
+                "OVER 1.5",
+                "UNDER 2.5"
+              ];
+  
+              const slot = Math.min(
+                alternatives.length - 1,
+                Math.floor(index * alternatives.length / prepared.length)
+              );
+  
+              adjustedLine = alternatives[slot];
+            } else if (marketType === "cards") {
+              const alternatives = [
+                "OVER 5.5",
+                "OVER 4.5",
+                "OVER 3.5",
+                "OVER 2.5",
+                "UNDER 4.5"
+              ];
+  
+              const slot = Math.min(
+                alternatives.length - 1,
+                Math.floor(index * alternatives.length / prepared.length)
+              );
+  
+              adjustedLine = alternatives[slot];
+            }
+  
+            return {
+              ...item,
+              recommendation: {
+                ...item.recommendation,
+                line: adjustedLine,
+                reason: `${item.recommendation.reason} A linha foi calibrada dentro do ranking deste mercado.`
+              }
+            };
+          });
+        }
+      }
   
       const rows = prepared.map(({ game, originalIndex, recommendation }) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
