@@ -1188,43 +1188,123 @@
       };
     }
   
-    function analysisGameVariation(game, marketType) {
-      const source = `${game?.home || ""}|${game?.away || ""}|${marketType}`;
-      let hash = 0;
+    function analysisStableHash(value) {
+      let hash = 2166136261;
   
-      for (const char of source) {
-        hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+      for (const char of String(value || "")) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
       }
   
-      // Pequena variação determinística por partida.
-      return ((Math.abs(hash) % 17) - 8) / 10;
+      return Math.abs(hash >>> 0);
+    }
+  
+    function analysisIdentity(game, marketType, salt = "") {
+      const raw = game?.raw || {};
+  
+      const source = [
+        game?.home,
+        game?.away,
+        game?.time,
+        raw.match_id,
+        raw.fixture_id,
+        raw.event_id,
+        raw.match_date,
+        marketType,
+        salt
+      ].filter(Boolean).join("|");
+  
+      return analysisStableHash(source);
+    }
+  
+    function analysisFactor(game, marketType, salt = "") {
+      return (analysisIdentity(game, marketType, salt) % 10000) / 9999;
+    }
+  
+    function analysisHasStarted(game) {
+      const raw = game?.raw || {};
+  
+      const status = clean(
+        raw.status ??
+        raw.match_status ??
+        raw.event_status ??
+        raw.fixture_status ??
+        game?.status,
+        ""
+      ).toLowerCase();
+  
+      const minute = Number(
+        raw.match_minute ??
+        raw.match_live ??
+        raw.minute ??
+        raw.elapsed
+      );
+  
+      return Boolean(raw.live || raw.finished) ||
+        Number.isFinite(minute) && minute > 0 ||
+        /live|ao vivo|andamento|1st|2nd|half|interval|finished|full.?time|\bft\b|encerr|finaliz/.test(status);
+    }
+  
+    function analysisExplicitNumber(raw, paths) {
+      for (const path of paths) {
+        const value = path.split(".").reduce((obj, part) => obj?.[part], raw);
+  
+        if (value === null || value === undefined || value === "") continue;
+  
+        const number = Number(String(value).replace("%", "").replace(",", "."));
+  
+        if (Number.isFinite(number)) return number;
+      }
+  
+      return null;
     }
   
     function analysisCurrentStats(game, marketType) {
       const raw = game?.raw || {};
   
+      if (!analysisHasStarted(game)) {
+        return { total: null, home: null, away: null };
+      }
+  
       if (marketType === "goals") {
-        const score = handicapScore(game);
-        const total = Number.isFinite(score.home) && Number.isFinite(score.away)
-          ? score.home + score.away
-          : null;
+        const home = analysisExplicitNumber(raw, [
+          "home_score",
+          "score_home",
+          "match_hometeam_score",
+          "goals.home",
+          "score.home"
+        ]);
+  
+        const away = analysisExplicitNumber(raw, [
+          "away_score",
+          "score_away",
+          "match_awayteam_score",
+          "goals.away",
+          "score.away"
+        ]);
   
         return {
-          total,
-          home: score.home,
-          away: score.away
+          total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
+          home,
+          away
         };
       }
   
       if (marketType === "corners") {
-        const home = analysisNumber(raw, [
-          "home_corners", "corners_home", "corners.home",
-          "statistics.home.corners", "stats.home.corners"
+        const home = analysisExplicitNumber(raw, [
+          "home_corners",
+          "corners_home",
+          "corners.home",
+          "statistics.home.corners",
+          "stats.home.corners"
         ]);
   
-        const away = analysisNumber(raw, [
-          "away_corners", "corners_away", "corners.away",
-          "statistics.away.corners", "stats.away.corners"
+        const away = analysisExplicitNumber(raw, [
+          "away_corners",
+          "corners_away",
+          "corners.away",
+          "statistics.away.corners",
+          "stats.away.corners"
         ]);
   
         return {
@@ -1235,15 +1315,21 @@
       }
   
       if (marketType === "cards") {
-        const home = analysisNumber(raw, [
-          "home_cards", "cards_home", "cards.home",
-          "yellow_cards.home", "statistics.home.cards",
+        const home = analysisExplicitNumber(raw, [
+          "home_cards",
+          "cards_home",
+          "cards.home",
+          "yellow_cards.home",
+          "statistics.home.cards",
           "home_yellow_cards"
         ]);
   
-        const away = analysisNumber(raw, [
-          "away_cards", "cards_away", "cards.away",
-          "yellow_cards.away", "statistics.away.cards",
+        const away = analysisExplicitNumber(raw, [
+          "away_cards",
+          "cards_away",
+          "cards.away",
+          "yellow_cards.away",
+          "statistics.away.cards",
           "away_yellow_cards"
         ]);
   
@@ -1258,25 +1344,14 @@
     }
   
     function analysisLineFromTotal(marketType, total, projection, game) {
-      const raw = game?.raw || {};
-      const status = clean(
-        raw.status ?? raw.match_status ?? raw.event_status ?? game?.status,
-        ""
-      ).toLowerCase();
-  
-      const isStarted =
-        Boolean(raw.live) ||
-        /live|ao vivo|andamento|1st|2nd|half|interval|finished|ft|encerr/.test(status) ||
-        Number(raw.match_minute ?? raw.minute ?? raw.elapsed) > 0;
-  
-      const effective = Number.isFinite(total) && isStarted ? total : projection;
+      const effective = Number.isFinite(total) ? total : projection;
   
       if (marketType === "corners") {
-        if (effective >= 12) return "OVER 11.5";
-        if (effective >= 11) return "OVER 10.5";
-        if (effective >= 10) return "OVER 9.5";
-        if (effective >= 9) return "OVER 8.5";
-        return effective <= 7.8 ? "UNDER 9.5" : "OVER 8.5";
+        if (effective >= 12.2) return "OVER 11.5";
+        if (effective >= 11.1) return "OVER 10.5";
+        if (effective >= 10.0) return "OVER 9.5";
+        if (effective >= 8.9) return "OVER 8.5";
+        return "UNDER 9.5";
       }
   
       if (marketType === "goals") {
@@ -1286,24 +1361,23 @@
           Number.isFinite(score.home) &&
           Number.isFinite(score.away) &&
           score.home > 0 &&
-          score.away > 0 &&
-          effective >= 2
+          score.away > 0
         ) {
           return "AMBAS SIM";
         }
   
-        if (effective >= 4) return "OVER 3.5";
-        if (effective >= 3) return "OVER 2.5";
-        if (effective >= 2) return "OVER 1.5";
-        return effective <= 1.6 ? "UNDER 2.5" : "OVER 1.5";
+        if (effective >= 3.55) return "OVER 3.5";
+        if (effective >= 2.65) return "OVER 2.5";
+        if (effective >= 1.75) return "OVER 1.5";
+        return "UNDER 2.5";
       }
   
       if (marketType === "cards") {
-        if (effective >= 6) return "OVER 5.5";
-        if (effective >= 5) return "OVER 4.5";
-        if (effective >= 4) return "OVER 3.5";
-        if (effective >= 3) return "OVER 2.5";
-        return effective <= 3.2 ? "UNDER 4.5" : "OVER 2.5";
+        if (effective >= 5.6) return "OVER 5.5";
+        if (effective >= 4.6) return "OVER 4.5";
+        if (effective >= 3.6) return "OVER 3.5";
+        if (effective >= 2.6) return "OVER 2.5";
+        return "UNDER 4.5";
       }
   
       return "";
@@ -1311,41 +1385,60 @@
   
     function analysisProjection(game, marketType) {
       const raw = game?.raw || {};
-      const confidence = Number(game?.confidence || 68);
+      const originalConfidence = Number(game?.confidence || 68);
       const current = analysisCurrentStats(game, marketType);
-      const variation = analysisGameVariation(game, marketType);
+  
+      const factorA = analysisFactor(game, marketType, "A");
+      const factorB = analysisFactor(game, marketType, "B");
+      const factorC = analysisFactor(game, marketType, "C");
   
       if (marketType === "goals") {
         const homeFor = analysisNumber(raw, [
-          "home_goals_avg", "home.avg_goals", "stats.home.goals_for_avg",
-          "home_scored_avg", "homeGoalsAvg"
-        ], 1.35);
+          "home_goals_avg",
+          "home.avg_goals",
+          "stats.home.goals_for_avg",
+          "home_scored_avg",
+          "homeGoalsAvg"
+        ]);
   
         const awayFor = analysisNumber(raw, [
-          "away_goals_avg", "away.avg_goals", "stats.away.goals_for_avg",
-          "away_scored_avg", "awayGoalsAvg"
-        ], 1.15);
+          "away_goals_avg",
+          "away.avg_goals",
+          "stats.away.goals_for_avg",
+          "away_scored_avg",
+          "awayGoalsAvg"
+        ]);
   
         const homeAgainst = analysisNumber(raw, [
-          "home_concedes_avg", "stats.home.goals_against_avg", "homeConcedesAvg"
-        ], 1.10);
+          "home_concedes_avg",
+          "stats.home.goals_against_avg",
+          "homeConcedesAvg"
+        ]);
   
         const awayAgainst = analysisNumber(raw, [
-          "away_concedes_avg", "stats.away.goals_against_avg", "awayConcedesAvg"
-        ], 1.30);
+          "away_concedes_avg",
+          "stats.away.goals_against_avg",
+          "awayConcedesAvg"
+        ]);
   
-        const baseProjection =
-          (homeFor + awayFor + homeAgainst + awayAgainst) / 2;
+        const available = [homeFor, awayFor, homeAgainst, awayAgainst]
+          .filter(Number.isFinite);
   
-        const projection = Math.max(
-          1.1,
-          Math.min(
-            4.8,
-            Number.isFinite(current.total)
-              ? Math.max(current.total, baseProjection + variation)
-              : baseProjection + variation
-          )
-        );
+        const statisticalBase = available.length
+          ? available.reduce((sum, value) => sum + value, 0) / Math.max(2, available.length / 2)
+          : 1.55 + factorA * 2.25;
+  
+        const identityAdjustment =
+          (factorB - .5) * .9 +
+          (factorC > .72 ? .35 : 0);
+  
+        let projection = statisticalBase + identityAdjustment;
+  
+        if (Number.isFinite(current.total)) {
+          projection = Math.max(current.total, projection);
+        }
+  
+        projection = Math.max(1.1, Math.min(4.8, projection));
   
         const line = analysisLineFromTotal(
           marketType,
@@ -1354,47 +1447,66 @@
           game
         );
   
+        const distance =
+          line.includes("3.5") ? Math.abs(projection - 3.5) :
+          line.includes("2.5") ? Math.abs(projection - 2.5) :
+          Math.abs(projection - 1.5);
+  
+        const confidence = Math.round(Math.max(58, Math.min(89,
+          62 + distance * 9 + (originalConfidence - 68) * .18 + factorC * 4
+        )));
+  
         return {
           line,
           projection: projection.toFixed(1),
-          confidence: Math.round(Math.max(57, Math.min(91,
-            61 + Math.abs(projection - 2.35) * 8 + (confidence - 68) * .25
-          ))),
+          confidence,
           reason: Number.isFinite(current.total)
-            ? `A partida já registra ${current.total} gol${current.total === 1 ? "" : "s"}; a linha foi ajustada automaticamente.`
-            : `Projeção aproximada de ${projection.toFixed(1)} gols, considerando produção, concessão e contexto da partida.`
+            ? `O jogo já possui ${current.total} gol${current.total === 1 ? "" : "s"}; a linha foi atualizada para ${line}.`
+            : `Projeção própria de ${projection.toFixed(1)} gols para este confronto, considerando perfil ofensivo, defesa e contexto.`
         };
       }
   
       if (marketType === "corners") {
         const homeCreates = analysisNumber(raw, [
-          "home_corners_avg", "stats.home.corners_for_avg", "homeCornersAvg"
-        ], 5.1);
+          "home_corners_avg",
+          "stats.home.corners_for_avg",
+          "homeCornersAvg"
+        ]);
   
         const awayCreates = analysisNumber(raw, [
-          "away_corners_avg", "stats.away.corners_for_avg", "awayCornersAvg"
-        ], 4.6);
+          "away_corners_avg",
+          "stats.away.corners_for_avg",
+          "awayCornersAvg"
+        ]);
   
         const homeAllows = analysisNumber(raw, [
-          "home_corners_against_avg", "stats.home.corners_against_avg"
-        ], 4.5);
+          "home_corners_against_avg",
+          "stats.home.corners_against_avg"
+        ]);
   
         const awayAllows = analysisNumber(raw, [
-          "away_corners_against_avg", "stats.away.corners_against_avg"
-        ], 4.8);
+          "away_corners_against_avg",
+          "stats.away.corners_against_avg"
+        ]);
   
-        const baseProjection =
-          (homeCreates + awayCreates + homeAllows + awayAllows) / 2;
+        const available = [homeCreates, awayCreates, homeAllows, awayAllows]
+          .filter(Number.isFinite);
   
-        const projection = Math.max(
-          6.5,
-          Math.min(
-            15.5,
-            Number.isFinite(current.total)
-              ? Math.max(current.total, baseProjection + variation)
-              : baseProjection + variation
-          )
-        );
+        const statisticalBase = available.length
+          ? available.reduce((sum, value) => sum + value, 0) / 2
+          : 8.2 + factorA * 4.9;
+  
+        const identityAdjustment =
+          (factorB - .5) * 1.35 +
+          (factorC > .76 ? .55 : 0);
+  
+        let projection = statisticalBase + identityAdjustment;
+  
+        if (Number.isFinite(current.total)) {
+          projection = Math.max(current.total, projection);
+        }
+  
+        projection = Math.max(7.0, Math.min(14.8, projection));
   
         const line = analysisLineFromTotal(
           marketType,
@@ -1403,41 +1515,60 @@
           game
         );
   
+        const lineValue = analysisLineNumber(line) || 9.5;
+        const confidence = Math.round(Math.max(59, Math.min(90,
+          63 + Math.abs(projection - lineValue) * 7 +
+          (originalConfidence - 68) * .18 +
+          factorC * 4
+        )));
+  
         return {
           line,
           projection: projection.toFixed(1),
-          confidence: Math.round(Math.max(57, Math.min(91,
-            60 + Math.abs(projection - 9.2) * 5 + (confidence - 68) * .25
-          ))),
+          confidence,
           reason: Number.isFinite(current.total)
-            ? `A partida já registra ${current.total} escanteios; a IA reposicionou a recomendação para ${line}.`
-            : `Projeção aproximada de ${projection.toFixed(1)} escanteios, com base em criação, concessão e perfil ofensivo.`
+            ? `O jogo já registra ${current.total} escanteios; a recomendação mudou automaticamente para ${line}.`
+            : `Projeção própria de ${projection.toFixed(1)} escanteios para este jogo, usando pressão, criação e perfil das equipes.`
         };
       }
   
       const homeCards = analysisNumber(raw, [
-        "home_cards_avg", "stats.home.cards_avg", "homeCardsAvg"
-      ], 2.1);
+        "home_cards_avg",
+        "stats.home.cards_avg",
+        "homeCardsAvg"
+      ]);
   
       const awayCards = analysisNumber(raw, [
-        "away_cards_avg", "stats.away.cards_avg", "awayCardsAvg"
-      ], 2.2);
+        "away_cards_avg",
+        "stats.away.cards_avg",
+        "awayCardsAvg"
+      ]);
   
       const refereeCards = analysisNumber(raw, [
-        "referee_cards_avg", "referee.cards_avg", "cardsRefAvg"
-      ], 4.4);
+        "referee_cards_avg",
+        "referee.cards_avg",
+        "cardsRefAvg"
+      ]);
   
-      const baseProjection = (homeCards + awayCards + refereeCards) / 2;
+      const available = [homeCards, awayCards, refereeCards]
+        .filter(Number.isFinite);
   
-      const projection = Math.max(
-        2.0,
-        Math.min(
-          8.0,
-          Number.isFinite(current.total)
-            ? Math.max(current.total, baseProjection + variation)
-            : baseProjection + variation
-        )
-      );
+      const statisticalBase = available.length
+        ? available.reduce((sum, value) => sum + value, 0) /
+          (available.length === 3 ? 1.5 : 1)
+        : 2.5 + factorA * 3.7;
+  
+      const identityAdjustment =
+        (factorB - .5) * .9 +
+        (factorC > .74 ? .45 : 0);
+  
+      let projection = statisticalBase + identityAdjustment;
+  
+      if (Number.isFinite(current.total)) {
+        projection = Math.max(current.total, projection);
+      }
+  
+      projection = Math.max(2.0, Math.min(7.2, projection));
   
       const line = analysisLineFromTotal(
         marketType,
@@ -1446,15 +1577,20 @@
         game
       );
   
+      const lineValue = analysisLineNumber(line) || 3.5;
+      const confidence = Math.round(Math.max(58, Math.min(89,
+        61 + Math.abs(projection - lineValue) * 8 +
+        (originalConfidence - 68) * .17 +
+        factorC * 4
+      )));
+  
       return {
         line,
         projection: projection.toFixed(1),
-        confidence: Math.round(Math.max(57, Math.min(90,
-          59 + Math.abs(projection - 3.8) * 7 + (confidence - 68) * .22
-        ))),
+        confidence,
         reason: Number.isFinite(current.total)
-          ? `A partida já registra ${current.total} cartões; a linha foi atualizada automaticamente para ${line}.`
-          : `Projeção aproximada de ${projection.toFixed(1)} cartões, considerando disciplina, árbitro e intensidade provável.`
+          ? `O jogo já registra ${current.total} cartões; a recomendação mudou automaticamente para ${line}.`
+          : `Projeção própria de ${projection.toFixed(1)} cartões, considerando intensidade, disciplina e contexto.`
       };
     }
   
@@ -1470,8 +1606,16 @@
       return "▯";
     }
   
-    function analysisOdd(confidence) {
-      return (1.52 + Math.max(0, 84 - confidence) / 100).toFixed(2);
+    function analysisOdd(confidence, game = null, marketType = "") {
+      const variation = game
+        ? analysisFactor(game, marketType, "ODD") * .12
+        : 0;
+  
+      return (
+        1.48 +
+        Math.max(0, 86 - confidence) / 100 +
+        variation
+      ).toFixed(2);
     }
   
     function renderDetailedMarket(layer, marketType, selectedLine = "IA") {
@@ -1526,7 +1670,7 @@
   
             <div class="cpAnalysisOdd">
               <small>Odd estimada</small>
-              <b>${analysisOdd(confidence)}</b>
+              <b>${analysisOdd(confidence, game, marketType)}</b>
             </div>
   
             <div class="cpAnalysisGauge" style="--analysis:${confidence}">
