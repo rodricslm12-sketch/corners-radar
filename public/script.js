@@ -2602,36 +2602,243 @@
       const button = $(".cpHomeCalendar");
       if (!button) return;
   
-      let input = $("#cpV9DateInput");
-      if (!input) {
-        input = document.createElement("input");
-        input.type = "date";
-        input.id = "cpV9DateInput";
-        input.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:50%;top:70px;width:1px;height:1px";
-        document.body.appendChild(input);
+      const months = [
+        "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+        "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+      ];
+  
+      const week = ["D", "S", "T", "Q", "Q", "S", "S"];
+  
+      const pad = value => String(value).padStart(2, "0");
+  
+      const toYMD = date =>
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  
+      const parseYMD = value => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
+          return new Date();
+        }
+  
+        const [year, month, day] = value.split("-").map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0);
+      };
+  
+      const sameDay = (first, second) =>
+        first.getFullYear() === second.getFullYear() &&
+        first.getMonth() === second.getMonth() &&
+        first.getDate() === second.getDate();
+  
+      let overlay = $("#cpAppCalendarOverlay");
+  
+      if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "cpAppCalendarOverlay";
+        overlay.className = "cpAppCalendarOverlay";
+        overlay.setAttribute("aria-hidden", "true");
+  
+        overlay.innerHTML = `
+          <section class="cpAppCalendarPanel" role="dialog" aria-modal="true" aria-label="Escolher data">
+            <header class="cpAppCalendarHeader">
+              <button type="button" data-app-cal-close aria-label="Fechar calendário">‹</button>
+              <div>
+                <small>ESCOLHA UMA DATA</small>
+                <strong data-app-cal-title>CALENDÁRIO</strong>
+              </div>
+              <button type="button" data-app-cal-today>HOJE</button>
+            </header>
+  
+            <div class="cpAppCalendarNavigation">
+              <button type="button" data-app-cal-prev aria-label="Mês anterior">‹</button>
+              <strong data-app-cal-month></strong>
+              <button type="button" data-app-cal-next aria-label="Próximo mês">›</button>
+            </div>
+  
+            <div class="cpAppCalendarWeek">
+              ${week.map(day => `<span>${day}</span>`).join("")}
+            </div>
+  
+            <div class="cpAppCalendarGrid" data-app-cal-grid></div>
+  
+            <footer class="cpAppCalendarFooter">
+              <span>Você pode consultar jogos passados e futuros.</span>
+              <button type="button" data-app-cal-cancel>FECHAR</button>
+            </footer>
+          </section>
+        `;
+  
+        document.body.appendChild(overlay);
       }
   
-      input.value = state.date;
-      paintDate();
+      let viewDate = parseYMD(state.date);
   
-      button.addEventListener("click", () => {
-        input.value = state.date;
-        if (typeof input.showPicker === "function") input.showPicker();
-        else input.click();
-      });
+      const title = $("[data-app-cal-title]", overlay);
+      const monthTitle = $("[data-app-cal-month]", overlay);
+      const grid = $("[data-app-cal-grid]", overlay);
   
-      input.addEventListener("change", async () => {
-        if (!input.value || input.value === state.date) return;
-        state.date = input.value;
+      const render = () => {
+        const selected = parseYMD(state.date);
+        const today = new Date();
+  
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+  
+        if (title) {
+          title.textContent = `${pad(selected.getDate())} DE ${months[selected.getMonth()]}`;
+        }
+  
+        if (monthTitle) {
+          monthTitle.textContent = `${months[month]} ${year}`;
+        }
+  
+        const firstDay = new Date(year, month, 1, 12, 0, 0);
+        const start = new Date(firstDay);
+        start.setDate(firstDay.getDate() - firstDay.getDay());
+  
+        if (grid) {
+          grid.innerHTML = Array.from({ length: 42 }, (_, index) => {
+            const current = new Date(start);
+            current.setDate(start.getDate() + index);
+  
+            const classes = ["cpAppCalendarDay"];
+  
+            if (current.getMonth() !== month) classes.push("is-muted");
+            if (sameDay(current, today)) classes.push("is-today");
+            if (sameDay(current, selected)) classes.push("is-selected");
+  
+            const ymd = toYMD(current);
+  
+            return `
+              <button
+                type="button"
+                class="${classes.join(" ")}"
+                data-app-cal-day="${ymd}"
+                aria-label="${current.getDate()} de ${months[current.getMonth()].toLowerCase()} de ${current.getFullYear()}"
+              >
+                ${current.getDate()}
+              </button>
+            `;
+          }).join("");
+        }
+      };
+  
+      const open = () => {
+        viewDate = parseYMD(state.date);
+        render();
+        overlay.classList.add("is-open");
+        overlay.setAttribute("aria-hidden", "false");
+        document.body.classList.add("cpAppCalendarOpen");
+      };
+  
+      const close = () => {
+        overlay.classList.remove("is-open");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("cpAppCalendarOpen");
+      };
+  
+      const selectDate = async ymd => {
+        if (!ymd || ymd === state.date) {
+          close();
+          return;
+        }
+  
+        state.date = ymd;
+  
         const hidden = $("#date");
         if (hidden) hidden.value = state.date;
+  
         paintDate();
+        close();
         stopAutoSlide();
+  
         try {
           await loadData();
         } catch (error) {
-          console.error("[Mobile V9]", error);
-          showEmpty("FALHA AO CARREGAR", "Confira as rotas /quentes e /mercados no servidor.");
+          console.error("[Mobile Calendar]", error);
+          showEmpty(
+            "FALHA AO CARREGAR",
+            "Não foi possível buscar os jogos desta data."
+          );
+        }
+      };
+  
+      paintDate();
+  
+      button.setAttribute("type", "button");
+      button.setAttribute("aria-label", "Abrir calendário de jogos");
+  
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        open();
+      });
+  
+      overlay.addEventListener("click", event => {
+        const closeButton = event.target.closest(
+          "[data-app-cal-close], [data-app-cal-cancel]"
+        );
+  
+        if (closeButton) {
+          event.preventDefault();
+          close();
+          return;
+        }
+  
+        const todayButton = event.target.closest("[data-app-cal-today]");
+  
+        if (todayButton) {
+          event.preventDefault();
+          selectDate(todayManaus());
+          return;
+        }
+  
+        const previousButton = event.target.closest("[data-app-cal-prev]");
+  
+        if (previousButton) {
+          event.preventDefault();
+          viewDate = new Date(
+            viewDate.getFullYear(),
+            viewDate.getMonth() - 1,
+            1,
+            12,
+            0,
+            0
+          );
+          render();
+          return;
+        }
+  
+        const nextButton = event.target.closest("[data-app-cal-next]");
+  
+        if (nextButton) {
+          event.preventDefault();
+          viewDate = new Date(
+            viewDate.getFullYear(),
+            viewDate.getMonth() + 1,
+            1,
+            12,
+            0,
+            0
+          );
+          render();
+          return;
+        }
+  
+        const dayButton = event.target.closest("[data-app-cal-day]");
+  
+        if (dayButton) {
+          event.preventDefault();
+          selectDate(dayButton.dataset.appCalDay);
+          return;
+        }
+  
+        if (event.target === overlay) {
+          close();
+        }
+      });
+  
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && overlay.classList.contains("is-open")) {
+          close();
         }
       });
     }
