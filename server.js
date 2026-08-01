@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v7-all-market-engines";
+const QUENTES_CACHE_VERSION = "tz-manaus-v9-handicap-fallback";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -4493,6 +4493,99 @@ function handicapOddsProfile(oddsInfo) {
   };
 }
 
+
+function handicapOddsFromGame(game) {
+  const raw = game?.event_raw || game || {};
+
+  const homeOdd = handicapSafeNumber(
+    game?.odds?.odd1 ??
+    game?.odd1 ??
+    game?.home_od ??
+    game?.home_odd ??
+    raw?.odd1 ??
+    raw?.home_od ??
+    raw?.home_odd ??
+    raw?.match_hometeam_odd
+  );
+
+  const drawOdd = handicapSafeNumber(
+    game?.odds?.oddX ??
+    game?.oddX ??
+    game?.draw_od ??
+    game?.draw_odd ??
+    raw?.oddX ??
+    raw?.draw_od ??
+    raw?.draw_odd ??
+    raw?.match_draw_odd
+  );
+
+  const awayOdd = handicapSafeNumber(
+    game?.odds?.odd2 ??
+    game?.odd2 ??
+    game?.away_od ??
+    game?.away_odd ??
+    raw?.odd2 ??
+    raw?.away_od ??
+    raw?.away_odd ??
+    raw?.match_awayteam_odd
+  );
+
+  if (!Number.isFinite(homeOdd) || !Number.isFinite(awayOdd)) {
+    return null;
+  }
+
+  return handicapOddsProfile({
+    odd1: homeOdd,
+    oddX: drawOdd,
+    odd2: awayOdd
+  });
+}
+
+function handicapTableFallback({ game, posHome, posAway }) {
+  if (!Number.isFinite(posHome) || !Number.isFinite(posAway)) {
+    return null;
+  }
+
+  const gap = Math.abs(posAway - posHome);
+  if (gap < 4) return null;
+
+  const side = posHome < posAway ? "HOME" : "AWAY";
+  const team = side === "HOME" ? game.casa : game.fora;
+
+  let line = "+0.25";
+  let confidence = 61;
+
+  if (gap >= 11) {
+    line = "-0.5";
+    confidence = 68;
+  } else if (gap >= 7) {
+    line = "-0.25";
+    confidence = 65;
+  }
+
+  return {
+    skip: false,
+    market: "HANDICAP ASIÁTICO",
+    line,
+    side,
+    side_key: side === "HOME" ? "home" : "away",
+    team,
+    confidence,
+    score: Number((gap * 2.2).toFixed(2)),
+    reason:
+      `${side === "HOME" ? "Casa" : "Fora"} ${line}: ` +
+      `leitura conservadora pela diferença de ${gap} posições na tabela.`,
+    data_quality: 2,
+    calculation_source: "table_fallback",
+    factors: {
+      odds: false,
+      table: true,
+      home_form: false,
+      away_form: false
+    }
+  };
+}
+
 function handicapLineFromEdge({ side, edge, favoriteProb, drawProb, dataQuality }) {
   // Linhas agressivas exigem vantagem clara, odds e forma.
   if (edge >= 30 && favoriteProb >= 0.66 && dataQuality >= 8) return "-1.0";
@@ -4525,8 +4618,14 @@ function handicapDecision({
     h2hBlock?.secondTeam_lastResults
   );
 
-  const odds = handicapOddsProfile(oddsInfo);
-  const hasTable = Number.isFinite(posHome) && Number.isFinite(posAway);
+  const odds =
+    handicapOddsProfile(oddsInfo) ||
+    handicapOddsFromGame(game);
+
+  const hasTable =
+    Number.isFinite(posHome) &&
+    Number.isFinite(posAway);
+
   const hasBothForm = Boolean(homeRecent && awayRecent);
 
   let dataQuality = 0;
@@ -4535,7 +4634,80 @@ function handicapDecision({
   if (homeRecent) dataQuality += 2;
   if (awayRecent) dataQuality += 2;
 
-  if (dataQuality < HANDICAP_ENGINE.MIN_DATA_QUALITY) {
+  // Quando só existe tabela, ainda permite uma leitura muito conservadora.
+  if (!odds && !homeRecent && !awayRecent && hasTable) {
+    const fallback = handicapTableFallback({
+      game,
+      posHome,
+      posAway
+    });
+
+    if (fallback) return fallback;
+  }
+
+  // Odds reais sozinhas já são suficientes para uma linha cautelosa.
+  if (odds && dataQuality === 4) {
+    const side =
+      odds.homeProb >= odds.awayProb
+        ? "HOME"
+        : "AWAY";
+
+    const favoriteProb =
+      side === "HOME"
+        ? odds.homeProb
+        : odds.awayProb;
+
+    const probabilityGap =
+      Math.abs(odds.homeProb - odds.awayProb);
+
+    let line = "SEM APOSTA";
+    let confidence = 0;
+
+    if (favoriteProb >= 0.62 && probabilityGap >= 0.22) {
+      line = "-0.5";
+      confidence = 69;
+    } else if (favoriteProb >= 0.55 && probabilityGap >= 0.14) {
+      line = "-0.25";
+      confidence = 66;
+    } else if (favoriteProb >= 0.48 && probabilityGap >= 0.08) {
+      line = "+0.25";
+      confidence = 63;
+    }
+
+    if (line !== "SEM APOSTA") {
+      return {
+        skip: false,
+        market: "HANDICAP ASIÁTICO",
+        line,
+        side,
+        side_key: side === "HOME" ? "home" : "away",
+        team: side === "HOME" ? game.casa : game.fora,
+        confidence,
+        score: Number((probabilityGap * 100).toFixed(2)),
+        reason:
+          `${side === "HOME" ? "Casa" : "Fora"} ${line}: ` +
+          `linha conservadora baseada nas probabilidades reais das odds.`,
+        data_quality: dataQuality,
+        calculation_source: "odds_fallback",
+        odds: {
+          home: odds.homeOdd,
+          draw: odds.drawOdd,
+          away: odds.awayOdd,
+          home_prob: Number((odds.homeProb * 100).toFixed(1)),
+          draw_prob: Number((odds.drawProb * 100).toFixed(1)),
+          away_prob: Number((odds.awayProb * 100).toFixed(1))
+        },
+        factors: {
+          odds: true,
+          table: false,
+          home_form: false,
+          away_form: false
+        }
+      };
+    }
+  }
+
+  if (dataQuality < 4) {
     return {
       skip: true,
       market: "HANDICAP ASIÁTICO",
@@ -4544,7 +4716,7 @@ function handicapDecision({
       team: null,
       confidence: 0,
       score: 0,
-      reason: "Dados reais insuficientes: a IA não recomenda entrada.",
+      reason: "Dados insuficientes para uma recomendação confiável.",
       factors: {
         odds: Boolean(odds),
         table: hasTable,
@@ -4559,31 +4731,56 @@ function handicapDecision({
   const reasons = [];
 
   if (odds) {
-    const oddsEdge = (odds.homeProb - odds.awayProb) * 100;
+    const oddsEdge =
+      (odds.homeProb - odds.awayProb) * 100;
+
     homeScore += oddsEdge * 1.05;
     awayScore -= oddsEdge * 1.05;
     reasons.push("probabilidade das odds");
   }
 
   if (hasTable) {
-    const positionEdge = clamp((posAway - posHome) * 1.35, -20, 20);
+    const positionEdge = clamp(
+      (posAway - posHome) * 1.35,
+      -20,
+      20
+    );
+
     homeScore += positionEdge;
     awayScore -= positionEdge;
     reasons.push("posição na tabela");
   }
 
   if (hasBothForm) {
-    const ppgEdge = (homeRecent.pointsPerGame - awayRecent.pointsPerGame) * 10;
-    const goalEdge = (homeRecent.goalDiffAvg - awayRecent.goalDiffAvg) * 12;
-    const attackEdge = (homeRecent.goalsForAvg - awayRecent.goalsForAvg) * 5;
-    const defenseEdge = (awayRecent.goalsAgainstAvg - homeRecent.goalsAgainstAvg) * 5;
+    const ppgEdge =
+      (homeRecent.pointsPerGame -
+        awayRecent.pointsPerGame) * 10;
 
-    homeScore += ppgEdge + goalEdge + attackEdge + defenseEdge;
-    awayScore -= ppgEdge + goalEdge + attackEdge + defenseEdge;
+    const goalEdge =
+      (homeRecent.goalDiffAvg -
+        awayRecent.goalDiffAvg) * 12;
+
+    const attackEdge =
+      (homeRecent.goalsForAvg -
+        awayRecent.goalsForAvg) * 5;
+
+    const defenseEdge =
+      (awayRecent.goalsAgainstAvg -
+        homeRecent.goalsAgainstAvg) * 5;
+
+    const formEdge =
+      ppgEdge +
+      goalEdge +
+      attackEdge +
+      defenseEdge;
+
+    homeScore += formEdge;
+    awayScore -= formEdge;
     reasons.push("forma recente e saldo de gols");
   } else if (homeRecent || awayRecent) {
     const profile = homeRecent || awayRecent;
     const sign = homeRecent ? 1 : -1;
+
     const partial =
       (profile.pointsPerGame - 1.35) * 7 +
       profile.goalDiffAvg * 8;
@@ -4593,11 +4790,19 @@ function handicapDecision({
     reasons.push("forma recente parcial");
   }
 
-  const side = homeScore >= awayScore ? "HOME" : "AWAY";
+  const side =
+    homeScore >= awayScore
+      ? "HOME"
+      : "AWAY";
+
   const edge = Math.abs(homeScore - awayScore);
+
   const favoriteProb = odds
-    ? side === "HOME" ? odds.homeProb : odds.awayProb
+    ? side === "HOME"
+      ? odds.homeProb
+      : odds.awayProb
     : 0.50;
+
   const drawProb = odds?.drawProb ?? 0.28;
 
   const line = handicapLineFromEdge({
@@ -4628,23 +4833,21 @@ function handicapDecision({
   }
 
   let confidence =
-    56 +
+    57 +
     Math.min(18, edge * 0.55) +
     Math.min(6, dataQuality * 0.65);
 
-  // Reduz confiança quando a linha é agressiva.
   if (line === "-1.0") confidence -= 5;
   else if (line === "-0.75") confidence -= 3;
   else if (line === "+0.25") confidence -= 1;
 
   confidence = clamp(
     Math.round(confidence),
-    60,
+    61,
     HANDICAP_ENGINE.MAX_CONFIDENCE
   );
 
-  // Corte final conservador.
-  if (confidence < 64) {
+  if (confidence < 63) {
     return {
       skip: true,
       market: "HANDICAP ASIÁTICO",
@@ -4672,8 +4875,11 @@ function handicapDecision({
     team: side === "HOME" ? game.casa : game.fora,
     confidence,
     score: Number((edge + dataQuality * 3).toFixed(2)),
-    reason: `${side === "HOME" ? "Casa" : "Fora"} ${line}: vantagem baseada em ${reasons.join(", ")}.`,
+    reason:
+      `${side === "HOME" ? "Casa" : "Fora"} ${line}: ` +
+      `vantagem baseada em ${reasons.join(", ")}.`,
     data_quality: dataQuality,
+    calculation_source: "full_engine",
     odds: odds ? {
       home: odds.homeOdd,
       draw: odds.drawOdd,
@@ -4968,6 +5174,110 @@ function engineDataQuality(home, away, fields, oddsInfo = null) {
   return quality;
 }
 
+
+function engineGameNumber(game, keys, fallback = null) {
+  for (const key of keys) {
+    const value = key
+      .split(".")
+      .reduce((obj, part) => obj?.[part], game);
+
+    const number = handicapSafeNumber(value);
+    if (Number.isFinite(number)) return number;
+  }
+
+  return fallback;
+}
+
+function engineExistingConfidence(game, fallback = 64) {
+  return engineClamp(
+    engineGameNumber(game, [
+      "confidence",
+      "confianca",
+      "ai_confidence",
+      "score_confidence",
+      "handicap_confidence"
+    ], fallback),
+    55,
+    82
+  );
+}
+
+function engineOddsGoalProjection(oddsInfo) {
+  const homeOdd = handicapSafeNumber(oddsInfo?.odd1);
+  const drawOdd = handicapSafeNumber(oddsInfo?.oddX);
+  const awayOdd = handicapSafeNumber(oddsInfo?.odd2);
+
+  if (!Number.isFinite(homeOdd) || !Number.isFinite(awayOdd)) {
+    return null;
+  }
+
+  const favoriteOdd = Math.min(homeOdd, awayOdd);
+  const draw = Number.isFinite(drawOdd) ? drawOdd : 3.35;
+
+  let projection = 2.25;
+
+  if (favoriteOdd <= 1.35) projection += 0.75;
+  else if (favoriteOdd <= 1.55) projection += 0.48;
+  else if (favoriteOdd <= 1.80) projection += 0.25;
+
+  if (draw >= 4.0) projection += 0.25;
+  if (draw <= 3.0) projection -= 0.18;
+
+  return engineClamp(projection, 1.65, 3.65);
+}
+
+function engineFallbackGoalProjection(game, oddsInfo) {
+  const direct = engineGameNumber(game, [
+    "proj_gols",
+    "goals_projection",
+    "projection_goals",
+    "expected_goals",
+    "xg_total",
+    "market_projection.goals"
+  ]);
+
+  if (Number.isFinite(direct)) {
+    return engineClamp(direct, 0.8, 5.5);
+  }
+
+  const oddsProjection = engineOddsGoalProjection(oddsInfo);
+  if (Number.isFinite(oddsProjection)) return oddsProjection;
+
+  const score = engineGameNumber(game, [
+    "ai_score",
+    "score",
+    "strength",
+    "market_score"
+  ]);
+
+  if (Number.isFinite(score)) {
+    return engineClamp(1.8 + ((score % 35) / 35) * 1.45, 1.8, 3.25);
+  }
+
+  return null;
+}
+
+function engineFallbackCornersProjection(game) {
+  return engineGameNumber(game, [
+    "proj_cantos",
+    "projection",
+    "corners_projection",
+    "projCorners",
+    "market_projection.corners",
+    "baseCorners"
+  ]);
+}
+
+function engineFallbackCardsProjection(game) {
+  return engineGameNumber(game, [
+    "proj_cartoes",
+    "cards_projection",
+    "projection_cards",
+    "market_projection.cards",
+    "cards_avg"
+  ]);
+}
+
 function goalsEngineDecision({ game, home, away, oddsInfo }) {
   const quality = engineDataQuality(
     home,
@@ -4976,40 +5286,51 @@ function goalsEngineDecision({ game, home, away, oddsInfo }) {
     oddsInfo
   );
 
-  if (quality < 5) {
+  const completeProfile =
+    Number.isFinite(home?.goalsForAvg) &&
+    Number.isFinite(home?.goalsAgainstAvg) &&
+    Number.isFinite(away?.goalsForAvg) &&
+    Number.isFinite(away?.goalsAgainstAvg);
+
+  let projection = null;
+  let homeExpected = null;
+  let awayExpected = null;
+  let source = "fallback";
+
+  if (completeProfile) {
+    homeExpected =
+      (home.goalsForAvg + away.goalsAgainstAvg) / 2;
+
+    awayExpected =
+      (away.goalsForAvg + home.goalsAgainstAvg) / 2;
+
+    projection = homeExpected + awayExpected;
+    source = "recent_form";
+  } else {
+    projection = engineFallbackGoalProjection(game, oddsInfo);
+  }
+
+  if (!Number.isFinite(projection)) {
     return engineDecision({
       market: "GOLS",
       skip: true,
-      reason: "Dados recentes insuficientes para o mercado de gols."
+      reason: "Não há projeção confiável disponível para este confronto."
     });
   }
-
-  const homeExpected =
-    ((home?.goalsForAvg ?? 1.15) +
-      (away?.goalsAgainstAvg ?? 1.15)) / 2;
-
-  const awayExpected =
-    ((away?.goalsForAvg ?? 1.05) +
-      (home?.goalsAgainstAvg ?? 1.05)) / 2;
-
-  const projection = homeExpected + awayExpected;
-  const averageBtts =
-    ((home?.bttsRate ?? 0.5) +
-      (away?.bttsRate ?? 0.5)) / 2;
 
   let line = "SEM APOSTA";
   let edge = 0;
 
-  if (projection >= 3.55) {
+  if (projection >= 3.45) {
     line = "OVER 3.5";
     edge = projection - 3.5;
-  } else if (projection >= 2.78) {
+  } else if (projection >= 2.68) {
     line = "OVER 2.5";
     edge = projection - 2.5;
-  } else if (projection >= 2.05) {
+  } else if (projection >= 1.92) {
     line = "OVER 1.5";
     edge = projection - 1.5;
-  } else if (projection <= 1.95) {
+  } else if (projection <= 2.05) {
     line = "UNDER 2.5";
     edge = 2.5 - projection;
   }
@@ -5019,18 +5340,20 @@ function goalsEngineDecision({ game, home, away, oddsInfo }) {
       market: "GOLS",
       skip: true,
       projection,
-      reason: "A projeção ficou muito próxima das linhas principais."
+      reason: "A projeção ficou próxima demais da linha principal."
     });
   }
 
   let confidence =
-    60 +
-    edge * 13 +
-    Math.max(0, quality - 5) * 1.2;
+    engineExistingConfidence(game, 63) +
+    edge * (source === "recent_form" ? 10 : 6) +
+    Math.max(0, quality - 2) * 0.8;
+
+  if (source === "fallback") confidence = Math.min(confidence, 72);
 
   confidence = engineClamp(
     confidence,
-    60,
+    62,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
@@ -5041,13 +5364,18 @@ function goalsEngineDecision({ game, home, away, oddsInfo }) {
     score: confidence + projection,
     projection,
     reason:
-      `${line}: projeção de ${projection.toFixed(1)} gols, ` +
-      `com produção estimada de ${homeExpected.toFixed(1)} x ${awayExpected.toFixed(1)}.`,
+      source === "recent_form"
+        ? `${line}: projeção de ${projection.toFixed(1)} gols com base na forma recente.`
+        : `${line}: projeção de ${projection.toFixed(1)} gols usando odds e indicadores do servidor.`,
     extra: {
-      home_expected: Number(homeExpected.toFixed(2)),
-      away_expected: Number(awayExpected.toFixed(2)),
-      btts_index: Number((averageBtts * 100).toFixed(1)),
-      data_quality: quality
+      home_expected: Number.isFinite(homeExpected)
+        ? Number(homeExpected.toFixed(2))
+        : null,
+      away_expected: Number.isFinite(awayExpected)
+        ? Number(awayExpected.toFixed(2))
+        : null,
+      data_quality: quality,
+      calculation_source: source
     }
   });
 }
@@ -5065,56 +5393,85 @@ function bttsEngineDecision({ game, home, away, oddsInfo }) {
     oddsInfo
   );
 
-  if (quality < 6) {
+  const hasBtts =
+    Number.isFinite(home?.bttsRate) &&
+    Number.isFinite(away?.bttsRate);
+
+  const fallbackProjection = engineFallbackGoalProjection(game, oddsInfo);
+
+  let yesIndex = null;
+  let noIndex = null;
+  let source = "fallback";
+
+  if (hasBtts) {
+    const homeAttack = home?.goalsForAvg ?? 1;
+    const awayAttack = away?.goalsForAvg ?? 1;
+    const homeConcedes = home?.goalsAgainstAvg ?? 1;
+    const awayConcedes = away?.goalsAgainstAvg ?? 1;
+
+    yesIndex =
+      ((home.bttsRate + away.bttsRate) / 2) * 50 +
+      engineClamp(homeAttack / 1.6, 0, 1) * 12.5 +
+      engineClamp(awayAttack / 1.6, 0, 1) * 12.5 +
+      engineClamp(homeConcedes / 1.5, 0, 1) * 12.5 +
+      engineClamp(awayConcedes / 1.5, 0, 1) * 12.5;
+
+    noIndex =
+      ((home?.cleanSheetRate ?? 0.2) +
+        (away?.cleanSheetRate ?? 0.2)) / 2 * 55 +
+      (100 - yesIndex) * 0.45;
+
+    source = "recent_form";
+  } else if (Number.isFinite(fallbackProjection)) {
+    const drawOdd = handicapSafeNumber(oddsInfo?.oddX);
+    const homeOdd = handicapSafeNumber(oddsInfo?.odd1);
+    const awayOdd = handicapSafeNumber(oddsInfo?.odd2);
+    const balancedOdds =
+      Number.isFinite(homeOdd) &&
+      Number.isFinite(awayOdd) &&
+      Math.abs(homeOdd - awayOdd) <= 0.9;
+
+    yesIndex =
+      48 +
+      (fallbackProjection - 2.2) * 15 +
+      (balancedOdds ? 7 : 0) +
+      (Number.isFinite(drawOdd) && drawOdd >= 3.4 ? 4 : 0);
+
+    yesIndex = engineClamp(yesIndex, 35, 78);
+    noIndex = 100 - yesIndex;
+  }
+
+  if (!Number.isFinite(yesIndex) || !Number.isFinite(noIndex)) {
     return engineDecision({
       market: "AMBAS MARCAM",
       skip: true,
-      reason: "Dados insuficientes para avaliar Ambas Marcam."
+      reason: "Não há dados suficientes para definir SIM ou NÃO."
     });
   }
-
-  const homeAttack = home?.goalsForAvg ?? 0;
-  const awayAttack = away?.goalsForAvg ?? 0;
-  const homeConcedes = home?.goalsAgainstAvg ?? 0;
-  const awayConcedes = away?.goalsAgainstAvg ?? 0;
-
-  const yesIndex =
-    ((home?.bttsRate ?? 0.5) +
-      (away?.bttsRate ?? 0.5)) / 2 * 45 +
-    engineClamp(homeAttack / 1.6, 0, 1) * 15 +
-    engineClamp(awayAttack / 1.6, 0, 1) * 15 +
-    engineClamp(homeConcedes / 1.5, 0, 1) * 12.5 +
-    engineClamp(awayConcedes / 1.5, 0, 1) * 12.5;
-
-  const noIndex =
-    ((home?.cleanSheetRate ?? 0) +
-      (away?.cleanSheetRate ?? 0)) / 2 * 45 +
-    engineClamp((1.0 - Math.min(homeAttack, 1.0)), 0, 1) * 27.5 +
-    engineClamp((1.0 - Math.min(awayAttack, 1.0)), 0, 1) * 27.5;
 
   let line = "SEM APOSTA";
   let confidence = 0;
 
-  if (yesIndex >= 63 && yesIndex - noIndex >= 9) {
+  if (yesIndex >= 58 && yesIndex - noIndex >= 10) {
     line = "AMBAS SIM";
-    confidence = 58 + (yesIndex - 50) * 0.75;
-  } else if (noIndex >= 61 && noIndex - yesIndex >= 8) {
+    confidence = 58 + (yesIndex - 50) * 0.65;
+  } else if (noIndex >= 58 && noIndex - yesIndex >= 10) {
     line = "AMBAS NÃO";
-    confidence = 58 + (noIndex - 50) * 0.75;
+    confidence = 58 + (noIndex - 50) * 0.65;
   }
 
   if (line === "SEM APOSTA") {
     return engineDecision({
       market: "AMBAS MARCAM",
       skip: true,
-      reason: "Os indicadores de SIM e NÃO ficaram equilibrados."
+      reason: "Os indicadores de SIM e NÃO ficaram muito próximos."
     });
   }
 
   confidence = engineClamp(
-    confidence,
+    confidence + Math.max(0, quality - 2) * 0.7,
     62,
-    MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+    source === "fallback" ? 72 : MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
   return engineDecision({
@@ -5123,12 +5480,12 @@ function bttsEngineDecision({ game, home, away, oddsInfo }) {
     confidence,
     score: confidence + Math.abs(yesIndex - noIndex),
     reason:
-      `${line}: índice SIM ${yesIndex.toFixed(0)} e ` +
-      `índice NÃO ${noIndex.toFixed(0)}.`,
+      `${line}: índice SIM ${yesIndex.toFixed(0)} e índice NÃO ${noIndex.toFixed(0)}.`,
     extra: {
       yes_index: Number(yesIndex.toFixed(1)),
       no_index: Number(noIndex.toFixed(1)),
-      data_quality: quality
+      data_quality: quality,
+      calculation_source: source
     }
   });
 }
@@ -5140,37 +5497,51 @@ function cornersEngineDecision({ game, home, away }) {
     ["cornersForAvg", "cornersAgainstAvg"]
   );
 
-  if (quality < 4) {
+  const completeProfile =
+    Number.isFinite(home?.cornersForAvg) &&
+    Number.isFinite(home?.cornersAgainstAvg) &&
+    Number.isFinite(away?.cornersForAvg) &&
+    Number.isFinite(away?.cornersAgainstAvg);
+
+  let projection = null;
+  let source = "fallback";
+
+  if (completeProfile) {
+    const homeExpected =
+      (home.cornersForAvg + away.cornersAgainstAvg) / 2;
+
+    const awayExpected =
+      (away.cornersForAvg + home.cornersAgainstAvg) / 2;
+
+    projection = homeExpected + awayExpected;
+    source = "recent_form";
+  } else {
+    projection = engineFallbackCornersProjection(game);
+  }
+
+  if (!Number.isFinite(projection)) {
     return engineDecision({
       market: "ESCANTEIOS",
       skip: true,
-      reason: "Dados recentes de escanteios insuficientes."
+      reason: "Não há projeção de escanteios disponível."
     });
   }
 
-  const homeExpected =
-    ((home?.cornersForAvg ?? 4.5) +
-      (away?.cornersAgainstAvg ?? 4.5)) / 2;
-
-  const awayExpected =
-    ((away?.cornersForAvg ?? 4.3) +
-      (home?.cornersAgainstAvg ?? 4.3)) / 2;
-
-  const projection = homeExpected + awayExpected;
+  projection = engineClamp(projection, 5.5, 16);
 
   let line = "SEM APOSTA";
   let edge = 0;
 
-  if (projection >= 12.25) {
+  if (projection >= 12.0) {
     line = "OVER 11.5";
     edge = projection - 11.5;
-  } else if (projection >= 11.15) {
+  } else if (projection >= 10.95) {
     line = "OVER 10.5";
     edge = projection - 10.5;
-  } else if (projection >= 10.05) {
+  } else if (projection >= 9.85) {
     line = "OVER 9.5";
     edge = projection - 9.5;
-  } else if (projection >= 9.05) {
+  } else if (projection >= 8.8) {
     line = "OVER 8.5";
     edge = projection - 8.5;
   } else if (projection <= 8.15) {
@@ -5183,18 +5554,19 @@ function cornersEngineDecision({ game, home, away }) {
       market: "ESCANTEIOS",
       skip: true,
       projection,
-      reason: "A projeção de cantos não oferece margem suficiente."
+      reason: "A projeção ficou sem margem suficiente."
     });
   }
 
   let confidence =
-    60 +
-    edge * 10 +
-    Math.max(0, quality - 4) * 1.5;
+    engineExistingConfidence(game, 65) +
+    edge * (source === "recent_form" ? 8 : 5);
+
+  if (source === "fallback") confidence = Math.min(confidence, 74);
 
   confidence = engineClamp(
     confidence,
-    60,
+    62,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
@@ -5205,12 +5577,12 @@ function cornersEngineDecision({ game, home, away }) {
     score: confidence + projection,
     projection,
     reason:
-      `${line}: projeção de ${projection.toFixed(1)} escanteios, ` +
-      `${homeExpected.toFixed(1)} da casa e ${awayExpected.toFixed(1)} do visitante.`,
+      source === "recent_form"
+        ? `${line}: projeção de ${projection.toFixed(1)} escanteios pela forma recente.`
+        : `${line}: projeção de ${projection.toFixed(1)} escanteios do motor principal.`,
     extra: {
-      home_expected: Number(homeExpected.toFixed(2)),
-      away_expected: Number(awayExpected.toFixed(2)),
-      data_quality: quality
+      data_quality: quality,
+      calculation_source: source
     }
   });
 }
@@ -5222,61 +5594,67 @@ function cardsEngineDecision({ game, home, away }) {
     ["cardsForAvg", "cardsAgainstAvg"]
   );
 
-  if (quality < 4) {
+  const completeProfile =
+    Number.isFinite(home?.cardsForAvg) &&
+    Number.isFinite(home?.cardsAgainstAvg) &&
+    Number.isFinite(away?.cardsForAvg) &&
+    Number.isFinite(away?.cardsAgainstAvg);
+
+  let projection = null;
+  let source = "fallback";
+
+  if (completeProfile) {
+    const homeExpected =
+      (home.cardsForAvg + away.cardsAgainstAvg) / 2;
+
+    const awayExpected =
+      (away.cardsForAvg + home.cardsAgainstAvg) / 2;
+
+    projection = homeExpected + awayExpected;
+    source = "recent_form";
+  } else {
+    projection = engineFallbackCardsProjection(game);
+  }
+
+  if (!Number.isFinite(projection)) {
     return engineDecision({
       market: "CARTÕES",
       skip: true,
-      reason: "Dados disciplinares insuficientes."
+      reason: "Dados disciplinares ainda não estão disponíveis."
     });
   }
 
-  const homeExpected =
-    ((home?.cardsForAvg ?? 2.0) +
-      (away?.cardsAgainstAvg ?? 2.0)) / 2;
-
-  const awayExpected =
-    ((away?.cardsForAvg ?? 2.0) +
-      (home?.cardsAgainstAvg ?? 2.0)) / 2;
-
-  const projection = homeExpected + awayExpected;
+  projection = engineClamp(projection, 1.5, 9);
 
   let line = "SEM APOSTA";
   let edge = 0;
 
-  if (projection >= 5.75) {
+  if (projection >= 5.65) {
     line = "OVER 5.5";
     edge = projection - 5.5;
-  } else if (projection >= 4.75) {
+  } else if (projection >= 4.65) {
     line = "OVER 4.5";
     edge = projection - 4.5;
-  } else if (projection >= 3.75) {
+  } else if (projection >= 3.65) {
     line = "OVER 3.5";
     edge = projection - 3.5;
-  } else if (projection >= 2.8) {
+  } else if (projection >= 2.7) {
     line = "OVER 2.5";
     edge = projection - 2.5;
-  } else if (projection <= 3.7) {
+  } else if (projection <= 3.65) {
     line = "UNDER 4.5";
     edge = 4.5 - projection;
   }
 
-  if (line === "SEM APOSTA") {
-    return engineDecision({
-      market: "CARTÕES",
-      skip: true,
-      projection,
-      reason: "A projeção de cartões ficou sem margem segura."
-    });
-  }
-
   let confidence =
-    60 +
-    edge * 10 +
-    Math.max(0, quality - 4) * 1.4;
+    engineExistingConfidence(game, 62) +
+    edge * (source === "recent_form" ? 7 : 4);
+
+  if (source === "fallback") confidence = Math.min(confidence, 70);
 
   confidence = engineClamp(
     confidence,
-    60,
+    62,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
@@ -5287,12 +5665,10 @@ function cardsEngineDecision({ game, home, away }) {
     score: confidence + projection,
     projection,
     reason:
-      `${line}: projeção de ${projection.toFixed(1)} cartões, ` +
-      `considerando disciplina recente das duas equipes.`,
+      `${line}: projeção de ${projection.toFixed(1)} cartões.`,
     extra: {
-      home_expected: Number(homeExpected.toFixed(2)),
-      away_expected: Number(awayExpected.toFixed(2)),
-      data_quality: quality
+      data_quality: quality,
+      calculation_source: source
     }
   });
 }

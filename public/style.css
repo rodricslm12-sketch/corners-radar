@@ -13940,3 +13940,41 @@ button.railFullBtn {
     max-width:155px!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V56 — MOTORES COM FALLBACK DE DADOS REAIS
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity.is-no-bet .cpSettlementSlot,
+  .cpBttsOpportunity.is-no-bet .cpSettlementSlot{
+    display:none!important;
+  }
+
+  .cpAnalysisOpportunity:not(.is-no-bet),
+  .cpBttsOpportunity:not(.is-no-bet){
+    opacity:1!important;
+    filter:none!important;
+  }
+
+  .cpAnalysisOpportunity.is-no-bet,
+  .cpBttsOpportunity.is-no-bet{
+    opacity:.72!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V57 — HANDICAP COM FALLBACK CONSERVADOR
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapOpportunity:not(.is-no-bet){
+    opacity:1!important;
+    filter:none!important;
+  }
+
+  .cpHandicapOpportunity:not(.is-no-bet)
+  .cpHandicapAutoBadge{
+    color:#8df23a!important;
+    border-color:rgba(141,242,58,.38)!important;
+    background:rgba(141,242,58,.07)!important;
+  }
+}

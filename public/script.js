@@ -652,7 +652,7 @@
               <strong>${isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
               <small>${isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
               <b>${odd}</b>
-              <span class="cpSettlementSlot"></span>
+              <span class="cpSettlementSlot">${isNoBet ? "" : ""}</span>
             </div>
             <div class="cpBttsGauge ${isNoBet ? "is-disabled" : ""}" style="--btts:${confidence}">
               <span>${isNoBet ? "—" : `${confidence}%`}</span>
@@ -949,6 +949,67 @@
           ),
           source: "server"
         };
+      }
+  
+      const homePosFallback = handicapRawNumber(raw, [
+        "pos_home",
+        "home_position",
+        "table.home.position",
+        "standings.home.position",
+        "posHome"
+      ]);
+  
+      const awayPosFallback = handicapRawNumber(raw, [
+        "pos_away",
+        "away_position",
+        "table.away.position",
+        "standings.away.position",
+        "posAway"
+      ]);
+  
+      if (
+        Number.isFinite(homePosFallback) &&
+        Number.isFinite(awayPosFallback)
+      ) {
+        const gap = Math.abs(
+          awayPosFallback - homePosFallback
+        );
+  
+        if (gap >= 4) {
+          const side =
+            homePosFallback < awayPosFallback
+              ? "home"
+              : "away";
+  
+          const teamName =
+            side === "home"
+              ? game.home
+              : game.away;
+  
+          const line =
+            gap >= 11
+              ? "-0.5"
+              : gap >= 7
+                ? "-0.25"
+                : "+0.25";
+  
+          return {
+            skip: false,
+            side,
+            line,
+            confidence:
+              gap >= 11
+                ? 68
+                : gap >= 7
+                  ? 65
+                  : 62,
+            score: gap * 2,
+            teamName,
+            reason:
+              `${teamName} ${line}: leitura conservadora pela diferença de ${gap} posições.`,
+            source: "table"
+          };
+        }
       }
   
       const homeOdds = handicapRawNumber(raw, [
@@ -2278,7 +2339,7 @@
               recommendation: {
                 ...item.recommendation,
                 line: adjustedLine,
-                reason: `${item.recommendation.reason} A linha foi calibrada dentro do ranking deste mercado.`
+                reason: `${item.recommendation.reason}`
               }
             };
           });
@@ -2349,7 +2410,11 @@
   
             <div class="cpAnalysisPick">
               ${requestedLine === "IA"
-                ? `<span class="cpAnalysisAutoBadge">${recommendation.source === "server" ? "✦ IA DO SERVIDOR" : "✦ SUGESTÃO AUTOMÁTICA"}</span>`
+                ? `<span class="cpAnalysisAutoBadge">${recommendation.source === "server"
+                ? "✦ IA DO SERVIDOR"
+                : recommendation.source === "table"
+                  ? "✦ IA CONSERVADORA"
+                  : "✦ SUGESTÃO AUTOMÁTICA"}</span>`
                 : ""}
               <strong>${isNoBet ? "SEM APOSTA" : escapeHtml(line)}</strong>
               <p>${escapeHtml(isNoBet ? recommendation.reason : rule.headline)}</p>
