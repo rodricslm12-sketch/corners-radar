@@ -13828,3 +13828,20 @@ button.railFullBtn {
     font-size:10px!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V52 — HANDICAP IA COM LINHAS VARIADAS
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapPick strong{
+    display:block!important;
+    min-height:20px!important;
+    color:#8df23a!important;
+    font-size:10.5px!important;
+    font-weight:950!important;
+  }
+
+  .cpHandicapPick p{
+    max-width:155px!important;
+  }
+}

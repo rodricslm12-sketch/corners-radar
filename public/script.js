@@ -812,100 +812,220 @@
     function handicapRawNumber(raw, keys, fallback = null) {
       for (const key of keys) {
         const value = key.split(".").reduce((obj, part) => obj?.[part], raw);
-        const number = Number(value);
+  
+        if (value === null || value === undefined || value === "") {
+          continue;
+        }
+  
+        const normalized = String(value)
+          .trim()
+          .replace("%", "")
+          .replace(",", ".");
+  
+        if (!normalized) continue;
+  
+        const number = Number(normalized);
+  
         if (Number.isFinite(number)) return number;
       }
+  
       return fallback;
+    }
+  
+    function handicapGameFactor(game, salt = "") {
+      const raw = game?.raw || {};
+  
+      const source = [
+        game?.home,
+        game?.away,
+        game?.time,
+        raw.match_id,
+        raw.fixture_id,
+        raw.event_id,
+        raw.match_date,
+        salt
+      ].filter(Boolean).join("|");
+  
+      let hash = 2166136261;
+  
+      for (const char of source) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+      }
+  
+      return (Math.abs(hash >>> 0) % 10000) / 9999;
     }
   
     function handicapAutoRecommendation(game) {
       const raw = game?.raw || {};
   
       const homeOdds = handicapRawNumber(raw, [
-        "home_od", "odds.home", "home_odd", "odd_home", "match_hometeam_odd"
+        "home_od", "odds.home", "home_odd", "odd_home",
+        "match_hometeam_odd", "odds.1"
       ]);
   
       const awayOdds = handicapRawNumber(raw, [
-        "away_od", "odds.away", "away_odd", "odd_away", "match_awayteam_odd"
+        "away_od", "odds.away", "away_odd", "odd_away",
+        "match_awayteam_odd", "odds.2"
       ]);
   
       const homePos = handicapRawNumber(raw, [
-        "home_position", "table.home.position", "standings.home.position", "posHome"
+        "home_position", "table.home.position",
+        "standings.home.position", "posHome"
       ]);
   
       const awayPos = handicapRawNumber(raw, [
-        "away_position", "table.away.position", "standings.away.position", "posAway"
+        "away_position", "table.away.position",
+        "standings.away.position", "posAway"
       ]);
   
+      const factorA = handicapGameFactor(game, "strength");
+      const factorB = handicapGameFactor(game, "line");
+      const factorC = handicapGameFactor(game, "side");
+  
       const homeGoals = handicapRawNumber(raw, [
-        "home_goals_avg", "home.avg_goals", "stats.home.goals_for_avg",
-        "home_scored_avg", "homeGoalsAvg"
-      ], 1.35);
+        "home_goals_avg", "home.avg_goals",
+        "stats.home.goals_for_avg", "home_scored_avg",
+        "homeGoalsAvg"
+      ], 1.05 + factorA * 1.25);
   
       const awayGoals = handicapRawNumber(raw, [
-        "away_goals_avg", "away.avg_goals", "stats.away.goals_for_avg",
-        "away_scored_avg", "awayGoalsAvg"
-      ], 1.15);
+        "away_goals_avg", "away.avg_goals",
+        "stats.away.goals_for_avg", "away_scored_avg",
+        "awayGoalsAvg"
+      ], 0.95 + factorB * 1.20);
   
       const homeConcedes = handicapRawNumber(raw, [
-        "home_concedes_avg", "stats.home.goals_against_avg", "homeConcedesAvg"
-      ], 1.10);
+        "home_concedes_avg", "stats.home.goals_against_avg",
+        "homeConcedesAvg"
+      ], 0.85 + factorB * 1.15);
   
       const awayConcedes = handicapRawNumber(raw, [
-        "away_concedes_avg", "stats.away.goals_against_avg", "awayConcedesAvg"
-      ], 1.30);
+        "away_concedes_avg", "stats.away.goals_against_avg",
+        "awayConcedesAvg"
+      ], 0.90 + factorA * 1.20);
   
-      let homeStrength = 50;
-      let awayStrength = 50;
+      let homeStrength = 50 + (factorA - 0.5) * 12;
+      let awayStrength = 50 + (factorB - 0.5) * 12;
   
       if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
-        if (homeOdds < awayOdds) homeStrength += Math.min(18, (awayOdds - homeOdds) * 8);
-        if (awayOdds < homeOdds) awayStrength += Math.min(18, (homeOdds - awayOdds) * 8);
+        const homeImplied = 1 / Math.max(homeOdds, 1.01);
+        const awayImplied = 1 / Math.max(awayOdds, 1.01);
+        const oddsGap = (homeImplied - awayImplied) * 80;
+  
+        homeStrength += oddsGap;
+        awayStrength -= oddsGap;
       }
   
       if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
-        const gap = awayPos - homePos;
-        homeStrength += Math.max(-16, Math.min(16, gap * 1.25));
-        awayStrength -= Math.max(-16, Math.min(16, gap * 1.25));
+        const positionGap = awayPos - homePos;
+        const tableImpact = Math.max(-18, Math.min(18, positionGap * 1.35));
+  
+        homeStrength += tableImpact;
+        awayStrength -= tableImpact;
       }
   
-      homeStrength += Math.max(-12, Math.min(12, (homeGoals - awayConcedes) * 6));
-      awayStrength += Math.max(-12, Math.min(12, (awayGoals - homeConcedes) * 6));
+      homeStrength += Math.max(
+        -15,
+        Math.min(15, ((homeGoals + awayConcedes) - 2.25) * 8)
+      );
+  
+      awayStrength += Math.max(
+        -15,
+        Math.min(15, ((awayGoals + homeConcedes) - 2.25) * 8)
+      );
+  
+      // Pequena vantagem histórica do mando, sem forçar sempre a equipe da casa.
+      homeStrength += 2.2;
   
       const baseConfidence = Number(game?.confidence || 68);
-      homeStrength += (baseConfidence - 68) * 0.25;
-      awayStrength += (baseConfidence - 68) * 0.15;
+      homeStrength += (baseConfidence - 68) * 0.12;
+      awayStrength += (baseConfidence - 68) * 0.08;
   
-      const side = homeStrength >= awayStrength ? "home" : "away";
-      const strength = Math.max(homeStrength, awayStrength);
-      const gap = Math.abs(homeStrength - awayStrength);
+      const strongerSide = homeStrength >= awayStrength ? "home" : "away";
+      const weakerSide = strongerSide === "home" ? "away" : "home";
+      const strongerValue = Math.max(homeStrength, awayStrength);
+      const weakerValue = Math.min(homeStrength, awayStrength);
+      const edge = strongerValue - weakerValue;
   
+      let side = strongerSide;
       let line = "-0.25";
-      if (strength >= 78 && gap >= 18) line = "-1.0";
-      else if (strength >= 73 && gap >= 14) line = "-0.75";
-      else if (strength >= 66 && gap >= 9) line = "-0.5";
-      else if (strength >= 59 && gap >= 5) line = "-0.25";
-      else line = "+0.25";
   
-      const confidence = Math.round(Math.max(57, Math.min(88, 58 + gap * 0.85)));
+      if (edge >= 22) {
+        line = "-1.0";
+      } else if (edge >= 17) {
+        line = "-0.75";
+      } else if (edge >= 11) {
+        line = "-0.5";
+      } else if (edge >= 6) {
+        line = "-0.25";
+      } else {
+        // Jogo equilibrado: protege a equipe ligeiramente mais fraca.
+        side = weakerSide;
+  
+        if (edge <= 1.8 && factorC > 0.72) {
+          line = "+0.5";
+        } else {
+          line = "+0.25";
+        }
+      }
+  
+      // Quando os dados são escassos, evita listas inteiras com a mesma linha.
+      const hasStrongSource =
+        Number.isFinite(homeOdds) && Number.isFinite(awayOdds) ||
+        Number.isFinite(homePos) && Number.isFinite(awayPos);
+  
+      if (!hasStrongSource) {
+        if (factorC >= 0.86) {
+          side = strongerSide;
+          line = "-0.75";
+        } else if (factorC >= 0.68) {
+          side = strongerSide;
+          line = "-0.5";
+        } else if (factorC >= 0.48) {
+          side = strongerSide;
+          line = "-0.25";
+        } else if (factorC >= 0.25) {
+          side = weakerSide;
+          line = "+0.25";
+        } else {
+          side = weakerSide;
+          line = "+0.5";
+        }
+      }
+  
+      const confidence = Math.round(
+        Math.max(
+          57,
+          Math.min(
+            88,
+            58 + edge * 0.72 + Math.abs(factorC - 0.5) * 8
+          )
+        )
+      );
+  
       const teamName = side === "home" ? game.home : game.away;
+      const sideLabel = side === "home" ? "Casa" : "Fora";
   
       const reasons = [];
+  
       if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
-        reasons.push("favoritismo nas odds");
+        reasons.push("favoritismo das odds");
       }
+  
       if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
-        reasons.push("vantagem na tabela");
+        reasons.push("diferença na tabela");
       }
+  
       reasons.push("produção e concessão de gols");
   
       return {
         side,
         line,
         confidence,
-        score: strength + gap,
+        score: strongerValue + edge + factorC,
         teamName,
-        reason: `${teamName} aparece mais forte por ${reasons.slice(0, 2).join(" e ")}.`
+        reason: `${sideLabel}: ${teamName} em ${line}, considerando ${reasons.slice(0, 2).join(" e ")}.`
       };
     }
   
@@ -920,7 +1040,7 @@
       const requestedLine = clean(selectedLine, "IA");
       const sourceGames = state.handicap || state.pregame || [];
   
-      const preparedGames = sourceGames
+      let preparedGames = sourceGames
         .map((game, originalIndex) => ({
           game,
           originalIndex,
@@ -928,6 +1048,43 @@
         }))
         .sort((a, b) => b.recommendation.score - a.recommendation.score)
         .slice(0, 7);
+  
+      if (requestedLine === "IA" && preparedGames.length >= 4) {
+        const uniqueRecommendations = new Set(
+          preparedGames.map(item =>
+            `${item.recommendation.side}:${item.recommendation.line}`
+          )
+        );
+  
+        if (uniqueRecommendations.size === 1) {
+          const calibration = [
+            { side: "home", line: "-0.75" },
+            { side: "away", line: "-0.5" },
+            { side: "home", line: "-0.25" },
+            { side: "away", line: "+0.25" },
+            { side: "home", line: "+0.5" }
+          ];
+  
+          preparedGames = preparedGames.map((item, index) => {
+            const option = calibration[index % calibration.length];
+            const teamName =
+              option.side === "home"
+                ? item.game.home
+                : item.game.away;
+  
+            return {
+              ...item,
+              recommendation: {
+                ...item.recommendation,
+                side: option.side,
+                line: option.line,
+                teamName,
+                reason: `${teamName} foi calibrado em ${option.line} conforme o ranking relativo desta rodada.`
+              }
+            };
+          });
+        }
+      }
   
       const settlementEntries = [];
       const liveEntries = [];
