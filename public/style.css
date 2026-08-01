@@ -9189,3 +9189,330 @@ button.railFullBtn {
   .cpHomeBestTeams strong{font-size:23px!important;padding:0 10px!important}
   .cpHomeBestTop > b{font-size:11px!important}
 }
+
+/* =========================================================
+   CORNER PRO V11 — AJUSTE FINAL DE PROPORÇÃO MOBILE
+   ========================================================= */
+@media (max-width:980px){
+  .cpMobileHome{
+    max-width:430px!important;
+    min-height:100dvh!important;
+  }
+
+  .cpHomeHeader{
+    height:104px!important;
+    padding:14px 14px 10px!important;
+    grid-template-columns:40px minmax(0,1fr) 52px 46px!important;
+    gap:9px!important;
+  }
+
+  .cpHomeMenu{
+    width:38px!important;
+    height:38px!important;
+  }
+
+  .cpHomeMenu::before{
+    font-size:30px!important;
+  }
+
+  .cpHomeBrand strong{
+    font-size:21px!important;
+    letter-spacing:-.8px!important;
+  }
+
+  .cpHomeBrand small{
+    margin-top:4px!important;
+    font-size:8px!important;
+  }
+
+  .cpHomeCalendar{
+    width:50px!important;
+    height:58px!important;
+    border-radius:9px!important;
+  }
+
+  .cpHomeCalendarMonth{font-size:12px!important}
+  .cpHomeCalendarDay{font-size:22px!important}
+
+  .cpHomeHeaderAuth{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+  }
+
+  .cpHomeHeaderAuth::before{
+    font-size:23px!important;
+  }
+
+  .cpHomeHeaderAuth::after{
+    width:9px!important;
+    height:9px!important;
+  }
+
+  .cpHomeScroll{
+    padding:10px 8px 18px!important;
+  }
+
+  .cpHomeBest{
+    width:100%!important;
+    height:350px!important;
+    min-height:350px!important;
+    max-height:350px!important;
+    margin:0 0 10px!important;
+    padding:13px 13px 12px!important;
+    border-radius:15px!important;
+    background:
+      linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.12) 45%,rgba(0,0,0,.92) 100%),
+      radial-gradient(ellipse at 50% 77%,rgba(42,97,7,.5),transparent 38%),
+      linear-gradient(180deg,#031014 0%,#061014 43%,#071008 66%,#010202 100%)!important;
+  }
+
+  .cpHomeBest::before,
+  .cpHomeBest::after{
+    top:60px!important;
+    width:88px!important;
+    height:50px!important;
+    background:
+      radial-gradient(circle,rgba(255,255,255,.92) 0 1.4px,transparent 2px) 0 0/9px 9px!important;
+    opacity:.64!important;
+  }
+
+  .cpHomeBest::before{left:54px!important}
+  .cpHomeBest::after{right:54px!important}
+
+  .cpHomeBestTop > b{
+    min-height:29px!important;
+    max-width:72%!important;
+    padding:0 9px!important;
+    border-radius:7px!important;
+    font-size:10.5px!important;
+  }
+
+  .cpHomeBestTop > span{
+    font-size:11px!important;
+  }
+
+  .cpHomeBestBody{
+    min-height:0!important;
+    height:240px!important;
+    padding:36px 0 46px!important;
+  }
+
+  .cpHomeBestBody time{
+    left:0!important;
+    top:16px!important;
+    min-width:58px!important;
+    height:34px!important;
+    border-radius:7px!important;
+    font-size:13px!important;
+  }
+
+  .cpHomeBestTeams{
+    margin-top:21px!important;
+    gap:1px!important;
+  }
+
+  .cpHomeBestTeams strong{
+    padding:0 6px!important;
+    font-size:22px!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+    overflow:visible!important;
+  }
+
+  .cpHomeBestTeams i{
+    font-size:17px!important;
+    margin:3px 0!important;
+  }
+
+  .cpHomeMarketDots{
+    bottom:72px!important;
+    gap:8px!important;
+  }
+
+  .cpHomeMarketDots button{
+    width:9px!important;
+    height:9px!important;
+    min-width:9px!important;
+  }
+
+  #cpHomeBestOpen{
+    left:12px!important;
+    right:12px!important;
+    bottom:11px!important;
+    height:49px!important;
+    border-radius:8px!important;
+    font-size:13px!important;
+  }
+
+  .cpHomeSection{
+    margin-bottom:10px!important;
+    padding:11px 9px 10px!important;
+    border-radius:14px!important;
+  }
+
+  .cpHomeSectionHead{
+    align-items:flex-start!important;
+    margin-bottom:9px!important;
+  }
+
+  .cpHomeSectionHead > div{
+    min-width:0!important;
+  }
+
+  .cpHomeSectionHead h2{
+    font-size:13px!important;
+    line-height:1.15!important;
+  }
+
+  .cpHomeSectionHead h2::before{
+    font-size:16px!important;
+    margin-right:7px!important;
+  }
+
+  .cpHomeSectionHead small{
+    display:block!important;
+    margin:4px 0 0 23px!important;
+    color:#9fa7a9!important;
+    font-size:8px!important;
+    line-height:1.2!important;
+  }
+
+  .cpHomeSectionHead button{
+    padding-top:2px!important;
+    font-size:9px!important;
+    white-space:nowrap!important;
+  }
+
+  .cpHomeMarkets{
+    gap:6px!important;
+    padding:1px 1px 5px!important;
+  }
+
+  .cpHomeMarkets > button{
+    flex:0 0 103px!important;
+    width:103px!important;
+    min-width:103px!important;
+    height:191px!important;
+    padding:13px 6px 8px!important;
+    border-radius:10px!important;
+  }
+
+  .cpHomeMarkets > button:first-child::before{
+    top:6px!important;
+    left:6px!important;
+    padding:2px 5px!important;
+    font-size:7px!important;
+  }
+
+  .cpHomeMarkets > button span{
+    height:48px!important;
+    font-size:34px!important;
+  }
+
+  .cpHomeMarkets > button b{
+    margin-top:4px!important;
+    font-size:11px!important;
+    line-height:1.1!important;
+  }
+
+  .cpHomeMarkets > button small{
+    margin-top:6px!important;
+    font-size:8px!important;
+    line-height:1.1!important;
+  }
+
+  .cpHomeMarkets > button em{
+    display:block!important;
+    margin-top:8px!important;
+    color:#c1c6c7!important;
+    font-size:7.5px!important;
+    line-height:1!important;
+    font-style:normal!important;
+    font-weight:700!important;
+  }
+
+  .cpHomeMarkets > button::after{
+    height:31px!important;
+    border-radius:7px!important;
+    font-size:8px!important;
+  }
+
+  .cpHomeCarouselDots{
+    display:flex!important;
+    justify-content:center!important;
+    gap:7px!important;
+    margin-top:6px!important;
+  }
+
+  .cpHomeCarouselDots i{
+    width:7px!important;
+    height:7px!important;
+    border-radius:50%!important;
+    background:#64696a!important;
+  }
+
+  .cpHomeCarouselDots i.active{
+    background:var(--cp-v9-green)!important;
+  }
+
+  .cpHomeGame{
+    flex:0 0 123px!important;
+    width:123px!important;
+    min-width:123px!important;
+    height:163px!important;
+    padding:10px 8px!important;
+  }
+
+  .cpHomeGame time{
+    min-width:48px!important;
+    height:24px!important;
+    font-size:10px!important;
+  }
+
+  .cpHomeGame .teams b{
+    font-size:10.5px!important;
+  }
+
+  .cpHomeGame small{
+    font-size:9px!important;
+  }
+
+  .cpHomeLastGame{
+    min-height:46px!important;
+    grid-template-columns:49px minmax(0,1fr) 64px!important;
+  }
+
+  .cpHomeLastGame time,
+  .cpHomeLastGame strong{
+    font-size:10px!important;
+  }
+
+  .cpHomeLastGame b{
+    font-size:9.5px!important;
+  }
+
+  .cpHomeBottom{
+    width:min(100%,430px)!important;
+    height:72px!important;
+    padding:5px 4px max(5px,env(safe-area-inset-bottom))!important;
+    border-radius:13px 13px 0 0!important;
+  }
+
+  .cpHomeBottom button{
+    height:58px!important;
+    gap:3px!important;
+  }
+
+  .cpHomeBottom button span{
+    font-size:23px!important;
+  }
+
+  .cpHomeBottom button b{
+    font-size:8.5px!important;
+  }
+
+  .cpHomeBottom button.active::after{
+    height:2px!important;
+  }
+}
