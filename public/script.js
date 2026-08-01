@@ -1188,9 +1188,132 @@
       };
     }
   
+    function analysisGameVariation(game, marketType) {
+      const source = `${game?.home || ""}|${game?.away || ""}|${marketType}`;
+      let hash = 0;
+  
+      for (const char of source) {
+        hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+      }
+  
+      // Pequena variação determinística por partida.
+      return ((Math.abs(hash) % 17) - 8) / 10;
+    }
+  
+    function analysisCurrentStats(game, marketType) {
+      const raw = game?.raw || {};
+  
+      if (marketType === "goals") {
+        const score = handicapScore(game);
+        const total = Number.isFinite(score.home) && Number.isFinite(score.away)
+          ? score.home + score.away
+          : null;
+  
+        return {
+          total,
+          home: score.home,
+          away: score.away
+        };
+      }
+  
+      if (marketType === "corners") {
+        const home = analysisNumber(raw, [
+          "home_corners", "corners_home", "corners.home",
+          "statistics.home.corners", "stats.home.corners"
+        ]);
+  
+        const away = analysisNumber(raw, [
+          "away_corners", "corners_away", "corners.away",
+          "statistics.away.corners", "stats.away.corners"
+        ]);
+  
+        return {
+          total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
+          home,
+          away
+        };
+      }
+  
+      if (marketType === "cards") {
+        const home = analysisNumber(raw, [
+          "home_cards", "cards_home", "cards.home",
+          "yellow_cards.home", "statistics.home.cards",
+          "home_yellow_cards"
+        ]);
+  
+        const away = analysisNumber(raw, [
+          "away_cards", "cards_away", "cards.away",
+          "yellow_cards.away", "statistics.away.cards",
+          "away_yellow_cards"
+        ]);
+  
+        return {
+          total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
+          home,
+          away
+        };
+      }
+  
+      return { total: null, home: null, away: null };
+    }
+  
+    function analysisLineFromTotal(marketType, total, projection, game) {
+      const raw = game?.raw || {};
+      const status = clean(
+        raw.status ?? raw.match_status ?? raw.event_status ?? game?.status,
+        ""
+      ).toLowerCase();
+  
+      const isStarted =
+        Boolean(raw.live) ||
+        /live|ao vivo|andamento|1st|2nd|half|interval|finished|ft|encerr/.test(status) ||
+        Number(raw.match_minute ?? raw.minute ?? raw.elapsed) > 0;
+  
+      const effective = Number.isFinite(total) && isStarted ? total : projection;
+  
+      if (marketType === "corners") {
+        if (effective >= 12) return "OVER 11.5";
+        if (effective >= 11) return "OVER 10.5";
+        if (effective >= 10) return "OVER 9.5";
+        if (effective >= 9) return "OVER 8.5";
+        return effective <= 7.8 ? "UNDER 9.5" : "OVER 8.5";
+      }
+  
+      if (marketType === "goals") {
+        const score = analysisCurrentStats(game, "goals");
+  
+        if (
+          Number.isFinite(score.home) &&
+          Number.isFinite(score.away) &&
+          score.home > 0 &&
+          score.away > 0 &&
+          effective >= 2
+        ) {
+          return "AMBAS SIM";
+        }
+  
+        if (effective >= 4) return "OVER 3.5";
+        if (effective >= 3) return "OVER 2.5";
+        if (effective >= 2) return "OVER 1.5";
+        return effective <= 1.6 ? "UNDER 2.5" : "OVER 1.5";
+      }
+  
+      if (marketType === "cards") {
+        if (effective >= 6) return "OVER 5.5";
+        if (effective >= 5) return "OVER 4.5";
+        if (effective >= 4) return "OVER 3.5";
+        if (effective >= 3) return "OVER 2.5";
+        return effective <= 3.2 ? "UNDER 4.5" : "OVER 2.5";
+      }
+  
+      return "";
+    }
+  
     function analysisProjection(game, marketType) {
       const raw = game?.raw || {};
       const confidence = Number(game?.confidence || 68);
+      const current = analysisCurrentStats(game, marketType);
+      const variation = analysisGameVariation(game, marketType);
   
       if (marketType === "goals") {
         const homeFor = analysisNumber(raw, [
@@ -1211,28 +1334,35 @@
           "away_concedes_avg", "stats.away.goals_against_avg", "awayConcedesAvg"
         ], 1.30);
   
-        const projection = Math.max(1.2, Math.min(4.4,
-          (homeFor + awayFor + homeAgainst + awayAgainst) / 2
-        ));
+        const baseProjection =
+          (homeFor + awayFor + homeAgainst + awayAgainst) / 2;
   
-        let line = "OVER 1.5";
-        if (projection >= 3.15) line = "OVER 2.5";
-        if (projection >= 3.75) line = "OVER 3.5";
-        if (projection <= 2.05) line = "UNDER 2.5";
-        if (projection <= 1.55) line = "UNDER 3.5";
+        const projection = Math.max(
+          1.1,
+          Math.min(
+            4.8,
+            Number.isFinite(current.total)
+              ? Math.max(current.total, baseProjection + variation)
+              : baseProjection + variation
+          )
+        );
   
-        const bothScore = homeFor >= 1.2 && awayFor >= 1.05 &&
-          homeAgainst >= 0.95 && awayAgainst >= 0.95;
-  
-        if (bothScore && projection >= 2.65) line = "AMBAS SIM";
+        const line = analysisLineFromTotal(
+          marketType,
+          current.total,
+          projection,
+          game
+        );
   
         return {
           line,
           projection: projection.toFixed(1),
-          confidence: Math.round(Math.max(57, Math.min(89,
-            60 + Math.abs(projection - 2.5) * 8 + (confidence - 68) * .25
+          confidence: Math.round(Math.max(57, Math.min(91,
+            61 + Math.abs(projection - 2.35) * 8 + (confidence - 68) * .25
           ))),
-          reason: `Projeção aproximada de ${projection.toFixed(1)} gols, considerando produção e concessão recentes.`
+          reason: Number.isFinite(current.total)
+            ? `A partida já registra ${current.total} gol${current.total === 1 ? "" : "s"}; a linha foi ajustada automaticamente.`
+            : `Projeção aproximada de ${projection.toFixed(1)} gols, considerando produção, concessão e contexto da partida.`
         };
       }
   
@@ -1253,23 +1383,35 @@
           "away_corners_against_avg", "stats.away.corners_against_avg"
         ], 4.8);
   
-        const projection = Math.max(6.5, Math.min(14.5,
-          (homeCreates + awayCreates + homeAllows + awayAllows) / 2
-        ));
+        const baseProjection =
+          (homeCreates + awayCreates + homeAllows + awayAllows) / 2;
   
-        let line = "OVER 8.5";
-        if (projection >= 10.3) line = "OVER 9.5";
-        if (projection >= 11.3) line = "OVER 10.5";
-        if (projection >= 12.3) line = "OVER 11.5";
-        if (projection <= 8.9) line = "UNDER 9.5";
+        const projection = Math.max(
+          6.5,
+          Math.min(
+            15.5,
+            Number.isFinite(current.total)
+              ? Math.max(current.total, baseProjection + variation)
+              : baseProjection + variation
+          )
+        );
+  
+        const line = analysisLineFromTotal(
+          marketType,
+          current.total,
+          projection,
+          game
+        );
   
         return {
           line,
           projection: projection.toFixed(1),
-          confidence: Math.round(Math.max(57, Math.min(89,
-            59 + Math.abs(projection - 9.5) * 5 + (confidence - 68) * .25
+          confidence: Math.round(Math.max(57, Math.min(91,
+            60 + Math.abs(projection - 9.2) * 5 + (confidence - 68) * .25
           ))),
-          reason: `Projeção aproximada de ${projection.toFixed(1)} escanteios, com base em criação e concessão das equipes.`
+          reason: Number.isFinite(current.total)
+            ? `A partida já registra ${current.total} escanteios; a IA reposicionou a recomendação para ${line}.`
+            : `Projeção aproximada de ${projection.toFixed(1)} escanteios, com base em criação, concessão e perfil ofensivo.`
         };
       }
   
@@ -1285,23 +1427,34 @@
         "referee_cards_avg", "referee.cards_avg", "cardsRefAvg"
       ], 4.4);
   
-      const projection = Math.max(2.0, Math.min(7.5,
-        (homeCards + awayCards + refereeCards) / 2
-      ));
+      const baseProjection = (homeCards + awayCards + refereeCards) / 2;
   
-      let line = "OVER 2.5";
-      if (projection >= 3.8) line = "OVER 3.5";
-      if (projection >= 4.8) line = "OVER 4.5";
-      if (projection >= 5.8) line = "OVER 5.5";
-      if (projection <= 3.5) line = "UNDER 4.5";
+      const projection = Math.max(
+        2.0,
+        Math.min(
+          8.0,
+          Number.isFinite(current.total)
+            ? Math.max(current.total, baseProjection + variation)
+            : baseProjection + variation
+        )
+      );
+  
+      const line = analysisLineFromTotal(
+        marketType,
+        current.total,
+        projection,
+        game
+      );
   
       return {
         line,
         projection: projection.toFixed(1),
-        confidence: Math.round(Math.max(57, Math.min(88,
-          58 + Math.abs(projection - 4.0) * 7 + (confidence - 68) * .22
+        confidence: Math.round(Math.max(57, Math.min(90,
+          59 + Math.abs(projection - 3.8) * 7 + (confidence - 68) * .22
         ))),
-        reason: `Projeção aproximada de ${projection.toFixed(1)} cartões, considerando disciplina e intensidade provável.`
+        reason: Number.isFinite(current.total)
+          ? `A partida já registra ${current.total} cartões; a linha foi atualizada automaticamente para ${line}.`
+          : `Projeção aproximada de ${projection.toFixed(1)} cartões, considerando disciplina, árbitro e intensidade provável.`
       };
     }
   
