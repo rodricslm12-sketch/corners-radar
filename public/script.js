@@ -25,9 +25,9 @@
       },
       corners: {
         label: "ESCANTEIOS",
-        title: "🔥 MELHOR APOSTA DO DIA",
+        title: "⚑ ANÁLISE DE ESCANTEIOS",
         icon: "⚑",
-        lines: ["OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "OVER 12.5", "1º TEMPO 4.5"]
+        lines: ["IA", "OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
       },
       goals: {
         label: "GOLS",
@@ -49,9 +49,9 @@
       },
       cards: {
         label: "CARTÕES",
-        title: "🔥 MELHOR APOSTA DO DIA",
+        title: "▯ ANÁLISE DE CARTÕES",
         icon: "▯",
-        lines: ["OVER 2.5", "OVER 3.5", "OVER 4.5", "OVER 5.5", "CASA 1.5", "FORA 1.5"]
+        lines: ["IA", "OVER 2.5", "OVER 3.5", "OVER 4.5", "OVER 5.5", "UNDER 4.5", "CASA 1.5+", "FORA 1.5+"]
       },
       combined: {
         label: "COMBINADAS",

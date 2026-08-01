@@ -13335,3 +13335,27 @@ button.railFullBtn {
     display:none!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V43 — BOTÃO IA VISÍVEL EM CANTOS E CARTÕES
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisLines{
+    scroll-padding-left:0!important;
+  }
+
+  .cpAnalysisLines button:first-child{
+    order:-1!important;
+    flex:0 0 70px!important;
+    min-width:70px!important;
+    color:#8df23a!important;
+    border-color:rgba(141,242,58,.58)!important;
+    background:rgba(141,242,58,.07)!important;
+  }
+
+  .cpAnalysisLines button:first-child.active{
+    color:#071006!important;
+    border-color:#8df23a!important;
+    background:linear-gradient(180deg,#9cf542,#6ed71e)!important;
+  }
+}
