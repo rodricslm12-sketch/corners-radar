@@ -279,6 +279,40 @@
       const homeEl = card.querySelector("#cpHomeBestHome, [data-clone-id='cpHomeBestHome']");
       const awayEl = card.querySelector("#cpHomeBestAway, [data-clone-id='cpHomeBestAway']");
   
+      const initials = (name) => String(name || "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0])
+        .join("")
+        .toUpperCase();
+  
+      const teams = card.querySelector(".cpHomeBestTeams");
+      if (teams) {
+        teams.classList.add("cpBestTeamsProfessional");
+  
+        let homeBadge = teams.querySelector(".cpBestTeamBadge.home");
+        let awayBadge = teams.querySelector(".cpBestTeamBadge.away");
+  
+        if (!homeBadge) {
+          homeBadge = document.createElement("span");
+          homeBadge.className = "cpBestTeamBadge home";
+          teams.insertBefore(homeBadge, homeEl || teams.firstChild);
+        }
+  
+        if (!awayBadge) {
+          awayBadge = document.createElement("span");
+          awayBadge.className = "cpBestTeamBadge away";
+          if (awayEl) teams.insertBefore(awayBadge, awayEl);
+          else teams.appendChild(awayBadge);
+        }
+  
+        homeBadge.textContent = initials(game.home);
+        awayBadge.textContent = initials(game.away);
+        homeBadge.style.setProperty("--team-accent", homeColor);
+        awayBadge.style.setProperty("--team-accent", awayColor);
+      }
+  
       if (homeEl) homeEl.style.setProperty("--team-accent", homeColor);
       if (awayEl) awayEl.style.setProperty("--team-accent", awayColor);
     }
