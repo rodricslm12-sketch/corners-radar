@@ -10922,35 +10922,274 @@ button.railFullBtn {
 }
 
 /* =========================================================
-   CORNER PRO V25 — MATCH CENTER MOBILE DINÂMICO
+   CORNER PRO V29 — MATCH CENTER DASHBOARD NAS CORES DOS TIMES
    ========================================================= */
 @media (max-width:980px){
-  #cpMobileMatchLayer{
-    background:#020506!important;
+  #cpMobileMatchContent{
+    --mc-home:#2e75c7;
+    --mc-away:#d8424d;
+    padding:12px 12px 96px!important;
+    background:
+      radial-gradient(circle at 0% 4%,color-mix(in srgb,var(--mc-home) 10%,transparent),transparent 32%),
+      radial-gradient(circle at 100% 5%,color-mix(in srgb,var(--mc-away) 10%,transparent),transparent 32%),
+      #020506!important;
   }
 
-  #cpMobileMatchLayer .cpMobileMatchContent{
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding-bottom:28px!important;
+  .cpV8MatchHero{
+    position:relative!important;
+    overflow:hidden!important;
+    padding:18px 16px 16px!important;
+    border:1px solid #24343c!important;
+    border-radius:17px!important;
+    background:
+      linear-gradient(110deg,
+        color-mix(in srgb,var(--mc-home) 22%,#071014) 0%,
+        #071014 43%,
+        #071014 57%,
+        color-mix(in srgb,var(--mc-away) 22%,#071014) 100%)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.04),
+      0 14px 32px rgba(0,0,0,.22)!important;
   }
 
-  #cpMobileMatchLayer .cpMobileRailClone{
-    width:100%!important;
-    display:flex!important;
-    flex-direction:column!important;
+  .cpV8MatchHero::before{
+    content:""!important;
+    position:absolute!important;
+    inset:0!important;
+    background:
+      linear-gradient(90deg,var(--mc-home),transparent 32%,transparent 68%,var(--mc-away))!important;
+    opacity:.14!important;
+    pointer-events:none!important;
+  }
+
+  .cpV8MatchHero time{
+    position:relative!important;
+    z-index:1!important;
+    display:inline-flex!important;
+    min-height:30px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0 12px!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    border-radius:999px!important;
+    color:#f2f5f4!important;
+    background:rgba(2,7,9,.72)!important;
+    font-size:12px!important;
+    letter-spacing:.3px!important;
+  }
+
+  #cpMobileMatchContent[data-phase="finished"] .cpV8MatchHero time{
+    color:#fff!important;
+    border-color:color-mix(in srgb,var(--mc-away) 55%,#fff 10%)!important;
+    background:color-mix(in srgb,var(--mc-away) 34%,#080d10)!important;
+  }
+
+  .cpV8ScoreRow{
+    position:relative!important;
+    z-index:1!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
     gap:10px!important;
-    padding:12px!important;
-    overflow:visible!important;
+    align-items:center!important;
+    margin:20px 0 14px!important;
   }
 
-  #cpMobileMatchLayer .cpMobileRailClone .railCard{
-    width:100%!important;
+  .cpV8ScoreRow strong{
+    min-width:0!important;
+    font-size:21px!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+  }
+
+  .cpV8HomeTeam{
+    color:color-mix(in srgb,var(--mc-home) 58%,#fff)!important;
+    text-align:left!important;
+  }
+
+  .cpV8AwayTeam{
+    color:color-mix(in srgb,var(--mc-away) 58%,#fff)!important;
+    text-align:right!important;
+  }
+
+  .cpV8ScoreRow i{
+    min-width:74px!important;
+    color:#fff!important;
+    font-size:26px!important;
+    font-style:normal!important;
+    font-weight:900!important;
+    text-align:center!important;
+  }
+
+  .cpV8MatchHero > span{
+    position:relative!important;
+    z-index:1!important;
+    display:inline-flex!important;
+    min-height:34px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0 16px!important;
+    border:1px solid rgba(255,255,255,.14)!important;
+    border-radius:999px!important;
+    background:#091217!important;
+    color:#e7ecea!important;
+    font-size:13px!important;
+  }
+
+  .cpV8MatchHero > b{
+    position:relative!important;
+    z-index:1!important;
+    margin-top:9px!important;
+    color:#8d9a9c!important;
+    font-size:10px!important;
+    letter-spacing:.8px!important;
+  }
+
+  .cpV8MatchTabs{
+    gap:7px!important;
+    margin:12px 0!important;
+    padding:4px!important;
+    border:1px solid #1c2b32!important;
+    border-radius:13px!important;
+    background:#071014!important;
+  }
+
+  .cpV8MatchTabs button{
+    min-height:45px!important;
+    padding:8px!important;
+    border:0!important;
+    border-radius:9px!important;
+    background:transparent!important;
+    color:#7f8c8f!important;
+    font-size:12px!important;
+  }
+
+  .cpV8MatchTabs button.active{
+    color:#fff!important;
+    background:
+      linear-gradient(90deg,
+        color-mix(in srgb,var(--mc-home) 40%,#091217),
+        color-mix(in srgb,var(--mc-away) 40%,#091217))!important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)!important;
+  }
+
+  .cpV8MatchStats{
+    gap:9px!important;
+  }
+
+  .cpV8MatchStats > div{
+    position:relative!important;
+    min-height:132px!important;
+    display:grid!important;
+    grid-template-columns:39px minmax(0,1fr)!important;
+    grid-template-rows:auto auto 1fr!important;
+    gap:2px 10px!important;
+    align-items:center!important;
+    padding:13px!important;
+    overflow:hidden!important;
+    border:1px solid #203039!important;
+    border-radius:15px!important;
+    background:
+      linear-gradient(145deg,#0a151a,#071014)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.03),
+      0 9px 20px rgba(0,0,0,.15)!important;
+  }
+
+  .cpV8MatchStats > div::after{
+    content:""!important;
+    position:absolute!important;
+    left:13px!important;
+    right:13px!important;
+    bottom:10px!important;
+    height:3px!important;
+    border-radius:999px!important;
+    background:linear-gradient(90deg,var(--mc-home) 0 49%,#354147 49% 51%,var(--mc-away) 51% 100%)!important;
+    opacity:.92!important;
+  }
+
+  .cpV8StatIcon{
+    grid-row:1 / span 2!important;
+    width:38px!important;
+    height:38px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:11px!important;
+    color:#fff!important;
+    background:
+      linear-gradient(145deg,
+        color-mix(in srgb,var(--mc-home) 42%,#0a151a),
+        color-mix(in srgb,var(--mc-away) 28%,#0a151a))!important;
+    font-size:20px!important;
+    font-style:normal!important;
+  }
+
+  .cpV8MatchStats small{
+    color:#9ca8aa!important;
+    font-size:9px!important;
+    letter-spacing:.25px!important;
+  }
+
+  .cpV8MatchStats strong{
     margin:0!important;
+    color:#fff!important;
+    font-size:18px!important;
+    line-height:1.1!important;
   }
 
-  #cpMobileMatchLayer .cpMobileRailClone .railFullBtn,
-  #cpMobileMatchLayer .cpMobileRailClone .railFullBtnDisabled{
-    display:none!important;
+  .cpV8MatchStats em{
+    grid-column:1 / -1!important;
+    align-self:end!important;
+    display:flex!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    padding:9px 1px 8px!important;
+    color:#98a4a6!important;
+    font-size:8px!important;
+    font-style:normal!important;
+  }
+
+  .cpV8MatchStats em span:first-child{
+    color:color-mix(in srgb,var(--mc-home) 72%,#fff)!important;
+  }
+
+  .cpV8MatchStats em span:last-child{
+    color:color-mix(in srgb,var(--mc-away) 72%,#fff)!important;
+    text-align:right!important;
+  }
+
+  .cpV8MatchRead{
+    position:relative!important;
+    min-height:116px!important;
+    margin-top:10px!important;
+    padding:17px 17px 17px 20px!important;
+    overflow:hidden!important;
+    border:1px solid #25343b!important;
+    border-left:4px solid var(--mc-home)!important;
+    border-right:4px solid var(--mc-away)!important;
+    border-radius:15px!important;
+    background:
+      linear-gradient(115deg,
+        color-mix(in srgb,var(--mc-home) 9%,#081114),
+        #081114 48%,
+        color-mix(in srgb,var(--mc-away) 9%,#081114))!important;
+  }
+
+  .cpV8MatchRead h3{
+    margin:0 0 10px!important;
+    color:#fff!important;
+    font-size:15px!important;
+  }
+
+  .cpV8MatchRead p{
+    margin:0!important;
+    color:#aeb8b9!important;
+    font-size:11px!important;
+    line-height:1.5!important;
+  }
+
+  @media (max-width:390px){
+    .cpV8ScoreRow strong{font-size:18px!important}
+    .cpV8ScoreRow i{min-width:62px!important;font-size:23px!important}
+    .cpV8MatchStats > div{min-height:124px!important;padding:11px!important}
   }
 }

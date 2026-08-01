@@ -657,6 +657,53 @@
         };
       };
   
+      const teamColor = (teamName, side = "home") => {
+        const name = String(teamName || "").toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+  
+        const known = [
+          { keys: ["hacken", "bk hacken"], colors: ["#d5a928", "#111318"] },
+          { keys: ["kalmar"], colors: ["#1769d2", "#de3340"] },
+          { keys: ["wisla"], colors: ["#d72735", "#1d5fba"] },
+          { keys: ["piast gliwice"], colors: ["#1b62aa", "#cf2534"] },
+          { keys: ["fredrikstad"], colors: ["#d72f3d", "#f4f5f6"] },
+          { keys: ["sandefjord"], colors: ["#195ca8", "#d62d37"] },
+          { keys: ["falkirk"], colors: ["#263e8c", "#d43735"] },
+          { keys: ["st. mirren", "st mirren"], colors: ["#d72f3d", "#111318"] },
+          { keys: ["arsenal"], colors: ["#e3272d", "#f3f3f3"] },
+          { keys: ["chelsea"], colors: ["#1454b8", "#f3f3f3"] },
+          { keys: ["liverpool"], colors: ["#c8212b", "#20a56a"] },
+          { keys: ["manchester city"], colors: ["#63aee0", "#f4f4f4"] },
+          { keys: ["manchester united"], colors: ["#d92d2f", "#f4c542"] },
+          { keys: ["real madrid"], colors: ["#edeef1", "#5f51b5"] },
+          { keys: ["barcelona"], colors: ["#154f9c", "#a82434"] },
+          { keys: ["inter"], colors: ["#1768c7", "#10141a"] },
+          { keys: ["milan"], colors: ["#d42d38", "#111318"] },
+          { keys: ["juventus"], colors: ["#e8e9eb", "#111318"] },
+          { keys: ["palmeiras"], colors: ["#147844", "#f3f4f2"] },
+          { keys: ["flamengo"], colors: ["#d42832", "#111318"] },
+          { keys: ["corinthians"], colors: ["#e8e8e8", "#16191d"] }
+        ];
+  
+        const found = known.find(item => item.keys.some(key => name.includes(key)));
+        if (found) return found.colors[side === "home" ? 0 : 1];
+  
+        const palettes = [
+          ["#2e75c7", "#d8424d"],
+          ["#15876f", "#bd8538"],
+          ["#6656b8", "#d75b7a"],
+          ["#287f9e", "#c45142"],
+          ["#4065a8", "#b17b32"],
+          ["#28775d", "#a94455"]
+        ];
+  
+        let hash = 0;
+        for (const char of name) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+        const palette = palettes[Math.abs(hash) % palettes.length];
+        return palette[side === "home" ? 0 : 1];
+      };
+  
       const render = (stats = {}) => {
         const phase = resolvePhase(stats);
   
@@ -802,13 +849,22 @@
             ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
             : escapeHtml(game.time);
   
+        const homeName = stats.home || game.home;
+        const awayName = stats.away || game.away;
+        const homeColor = teamColor(homeName, "home");
+        const awayColor = teamColor(awayName, "away");
+  
+        content.style.setProperty("--mc-home", homeColor);
+        content.style.setProperty("--mc-away", awayColor);
+        content.dataset.phase = phase.finished ? "finished" : phase.live ? "live" : "pregame";
+  
         content.innerHTML = `
           <section class="cpV8MatchHero">
             <time>${minuteLabel}</time>
-            <div>
-              <strong>${escapeHtml(stats.home || game.home)}</strong>
+            <div class="cpV8ScoreRow">
+              <strong class="cpV8HomeTeam">${escapeHtml(homeName)}</strong>
               <i>${phase.live || phase.finished ? `${homeScore} × ${awayScore}` : "×"}</i>
-              <strong>${escapeHtml(stats.away || game.away)}</strong>
+              <strong class="cpV8AwayTeam">${escapeHtml(awayName)}</strong>
             </div>
             <span>${escapeHtml(game.line)}</span>
             <b>${escapeHtml(phase.statusText.toUpperCase())}</b>
@@ -821,12 +877,36 @@
           </section>
   
           <section class="cpV8MatchStats">
-            <div><small>ESCANTEIOS</small><strong>${homeCorners} × ${awayCorners}</strong></div>
-            <div><small>CARTÕES</small><strong>${homeCards} × ${awayCards}</strong></div>
-            <div><small>CHUTES</small><strong>${homeShots} × ${awayShots}</strong></div>
-            <div><small>NO ALVO</small><strong>${homeShotsTarget} × ${awayShotsTarget}</strong></div>
-            <div><small>POSSE</small><strong>${homePossession}${homePossession !== "—" ? "%" : ""} × ${awayPossession}${awayPossession !== "—" ? "%" : ""}</strong></div>
-            <div><small>ATAQUES PERIGOSOS</small><strong>${homeAttacks} × ${awayAttacks}</strong></div>
+            <div data-stat="corners">
+              <span class="cpV8StatIcon">⚑</span><small>ESCANTEIOS</small>
+              <strong>${homeCorners} × ${awayCorners}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
+            <div data-stat="cards">
+              <span class="cpV8StatIcon">▯</span><small>CARTÕES</small>
+              <strong>${homeCards} × ${awayCards}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
+            <div data-stat="shots">
+              <span class="cpV8StatIcon">◎</span><small>CHUTES</small>
+              <strong>${homeShots} × ${awayShots}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
+            <div data-stat="target">
+              <span class="cpV8StatIcon">◉</span><small>NO ALVO</small>
+              <strong>${homeShotsTarget} × ${awayShotsTarget}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
+            <div data-stat="possession">
+              <span class="cpV8StatIcon">◔</span><small>POSSE DE BOLA</small>
+              <strong>${homePossession}${homePossession !== "—" ? "%" : ""} × ${awayPossession}${awayPossession !== "—" ? "%" : ""}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
+            <div data-stat="danger">
+              <span class="cpV8StatIcon">ϟ</span><small>ATAQUES PERIGOSOS</small>
+              <strong>${homeAttacks} × ${awayAttacks}</strong>
+              <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
+            </div>
           </section>
   
           <section class="cpV8MatchRead">
