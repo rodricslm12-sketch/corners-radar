@@ -11655,3 +11655,205 @@ button.railFullBtn {
     }
   }
 }
+
+/* =========================================================
+   CORNER PRO V32 — BORDAS VERDES FIXAS NO CARD PRINCIPAL
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeBest,
+  .cpHomeBestClone,
+  .cpHomeBest:hover,
+  .cpHomeBest:focus,
+  .cpHomeBest:active,
+  .cpHomeBest[data-market],
+  .cpHomeBestClone:hover,
+  .cpHomeBestClone:focus,
+  .cpHomeBestClone:active{
+    border:2px solid #79e52f!important;
+    border-left:2px solid #79e52f!important;
+    border-right:2px solid #79e52f!important;
+    border-top:2px solid #79e52f!important;
+    border-bottom:2px solid #79e52f!important;
+    border-radius:17px!important;
+    outline:none!important;
+    box-shadow:none!important;
+    transition:none!important;
+    animation:none!important;
+  }
+
+  .cpHomeBestTop > b,
+  .cpHomeBestBody time{
+    border-color:rgba(121,229,47,.62)!important;
+  }
+
+  #cpHomeBestOpen{
+    border:1px solid rgba(121,229,47,.42)!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V33 — CARD FINAL NAS CORES DOS TIMES
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeBest,
+  .cpHomeBestClone,
+  .cpHomeBest:hover,
+  .cpHomeBest:focus,
+  .cpHomeBest:active,
+  .cpHomeBest[data-market],
+  .cpHomeBestClone:hover,
+  .cpHomeBestClone:focus,
+  .cpHomeBestClone:active{
+    position:relative!important;
+    height:244px!important;
+    min-height:244px!important;
+    max-height:244px!important;
+
+    border:2px solid transparent!important;
+    border-radius:17px!important;
+
+    background:
+      linear-gradient(#071015,#071015) padding-box,
+      linear-gradient(
+        105deg,
+        var(--best-home) 0%,
+        color-mix(in srgb,var(--best-home) 68%,#56636a) 34%,
+        #324047 50%,
+        color-mix(in srgb,var(--best-away) 68%,#56636a) 66%,
+        var(--best-away) 100%
+      ) border-box!important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.025),
+      0 10px 24px rgba(0,0,0,.18)!important;
+
+    transition:none!important;
+    animation:none!important;
+    overflow:hidden!important;
+  }
+
+  .cpHomeBest{
+    margin-top:0!important;
+  }
+
+  .cpHomeBestTop{
+    min-height:32px!important;
+  }
+
+  .cpHomeBestTop > b{
+    min-height:29px!important;
+    max-width:69%!important;
+    padding:0 9px!important;
+    border:1px solid color-mix(in srgb,var(--best-home) 58%,#35454c)!important;
+    border-radius:9px!important;
+    background:rgba(8,17,22,.90)!important;
+    color:#dce2e2!important;
+    font-size:9px!important;
+  }
+
+  .cpHomeBestTop > span{
+    color:#dce3e2!important;
+    font-size:9.5px!important;
+  }
+
+  .cpHomeBestBody{
+    height:151px!important;
+    min-height:151px!important;
+  }
+
+  .cpHomeBestBody time{
+    top:9px!important;
+    min-width:54px!important;
+    height:29px!important;
+    padding:0 9px!important;
+    border-color:color-mix(in srgb,var(--best-home) 62%,#35454c)!important;
+    background:rgba(7,15,20,.92)!important;
+    color:#f0f3f2!important;
+    font-size:10.5px!important;
+  }
+
+  .cpHomeMarketDots{
+    top:49px!important;
+    gap:7px!important;
+  }
+
+  .cpHomeBestTeams.cpBestTeamsProfessional{
+    top:63px!important;
+    height:82px!important;
+    grid-template-rows:43px 28px!important;
+    column-gap:10px!important;
+  }
+
+  .cpBestTeamBadge{
+    width:40px!important;
+    height:40px!important;
+    border-radius:12px 12px 16px 16px!important;
+    font-size:10.5px!important;
+  }
+
+  .cpHomeBestTeams strong{
+    max-width:140px!important;
+    padding-bottom:6px!important;
+    font-size:11.5px!important;
+  }
+
+  .cpHomeBestTeams strong::after{
+    left:10%!important;
+    right:10%!important;
+    background:var(--team-accent,#6b7b82)!important;
+  }
+
+  .cpHomeBestTeams i{
+    font-size:18px!important;
+  }
+
+  #cpHomeBestOpen{
+    left:12px!important;
+    right:12px!important;
+    bottom:9px!important;
+    height:37px!important;
+
+    border:1px solid rgba(121,229,47,.55)!important;
+    border-radius:9px!important;
+
+    background:linear-gradient(180deg,#92f544,#6ed421)!important;
+    color:#081005!important;
+
+    font-size:10px!important;
+    font-weight:950!important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.24),
+      0 5px 14px rgba(0,0,0,.14)!important;
+  }
+
+  #cpHomeBestOpen::after{
+    color:#081005!important;
+  }
+
+  @media (max-width:390px){
+    .cpHomeBest,
+    .cpHomeBestClone{
+      height:236px!important;
+      min-height:236px!important;
+      max-height:236px!important;
+    }
+
+    .cpHomeBestTeams.cpBestTeamsProfessional{
+      top:61px!important;
+      padding-left:4px!important;
+      padding-right:4px!important;
+      column-gap:6px!important;
+    }
+
+    .cpHomeBestTeams strong{
+      max-width:118px!important;
+      font-size:10.8px!important;
+    }
+
+    .cpBestTeamBadge{
+      width:38px!important;
+      height:38px!important;
+    }
+  }
+}
