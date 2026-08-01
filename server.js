@@ -4754,32 +4754,44 @@ function mcKickoffDate(event) {
 }
 
 function mcStatusInfo(event) {
-  const raw = cleanText(mcFirst(event, [
+  const statusFields = [
     "match_status", "status", "event_status", "fixture_status",
-    "status_long", "status_short", "match_state", "state"
-  ], ""));
-
-  const s = raw.toLowerCase().trim();
-
-  const minuteRaw = cleanText(mcFirst(event, [
+    "status_long", "status_short", "match_state", "state",
     "match_live", "match_minute", "minute", "elapsed",
     "time_live", "match_elapsed", "fixture_elapsed"
-  ], ""));
+  ];
 
-  const minuteMatch = String(minuteRaw || raw).match(/\d+/);
-  const minute = minuteMatch ? Number(minuteMatch[0]) : null;
+  const statusValues = statusFields
+    .map(key => cleanText(event?.[key]))
+    .filter(Boolean);
+
+  const combinedStatus = statusValues.join(" | ");
+  const s = combinedStatus.toLowerCase().trim();
+
+  const minuteCandidates = statusValues
+    .flatMap(value => String(value).match(/\d+/g) || [])
+    .map(Number)
+    .filter(Number.isFinite);
+
+  const minute = minuteCandidates.length
+    ? Math.max(...minuteCandidates)
+    : null;
 
   const explicitFinished = [
     "finished", "match finished", "ft", "full time", "full-time",
     "after penalties", "after penalty", "aet", "after extra time",
-    "penalties", "pen", "ended", "end", "encerrado", "finalizado",
-    "resultado final", "final"
-  ].some(value => s === value || s.includes(value));
+    "penalties", "ended", "encerrado", "finalizado",
+    "resultado final"
+  ].some(value => s.includes(value));
+
+  const has90Plus =
+    /(^|\D)90\+?(\D|$)/.test(s) ||
+    /(^|\D)90\s*min/.test(s);
 
   const cancelled = [
     "postponed", "cancelled", "canceled", "abandoned",
     "suspended", "interrupted", "adiado", "cancelado", "suspenso"
-  ].some(value => s === value || s.includes(value));
+  ].some(value => s.includes(value));
 
   const explicitNotStarted = !s || [
     "not started", "ns", "scheduled", "time to be defined",
@@ -4790,17 +4802,24 @@ function mcStatusInfo(event) {
     "live", "1st half", "first half", "2nd half", "second half",
     "half time", "halftime", "ht", "extra time", "break",
     "in progress", "in play", "playing", "ao vivo", "intervalo"
-  ].some(value => s === value || s.includes(value));
+  ].some(value => s.includes(value));
 
   const kickoff = mcKickoffDate(event);
   const elapsedMinutes = kickoff
     ? Math.floor((Date.now() - kickoff.getTime()) / 60000)
     : null;
 
+  /*
+   * Regra de segurança:
+   * - 90+ com mais de 110 minutos desde o início => encerrado.
+   * - minuto >= 90 e mais de 125 minutos => encerrado.
+   * - qualquer partida com mais de 195 minutos => encerrada.
+   */
   const finishedByClock =
     !cancelled &&
     Number.isFinite(elapsedMinutes) &&
     (
+      (has90Plus && elapsedMinutes >= 110) ||
       (Number.isFinite(minute) && minute >= 90 && elapsedMinutes >= 125) ||
       elapsedMinutes >= 195
     );
@@ -4827,14 +4846,14 @@ function mcStatusInfo(event) {
   const resolvedRaw = finished
     ? "Finished"
     : live
-      ? (raw || "Live")
+      ? (combinedStatus || "Live")
       : cancelled
-        ? (raw || "Cancelled")
-        : (raw || "Not Started");
+        ? (combinedStatus || "Cancelled")
+        : (combinedStatus || "Not Started");
 
   return {
     raw: resolvedRaw,
-    original_raw: raw,
+    original_raw: combinedStatus,
     finished,
     live,
     not_started: notStarted,
@@ -4847,7 +4866,8 @@ function mcStatusInfo(event) {
           ? Math.max(1, Math.min(120, elapsedMinutes))
           : null,
     elapsed_since_kickoff: Number.isFinite(elapsedMinutes) ? elapsedMinutes : null,
-    inferred_by_clock: Boolean(finishedByClock)
+    inferred_by_clock: Boolean(finishedByClock),
+    has_90_plus: has90Plus
   };
 }
 

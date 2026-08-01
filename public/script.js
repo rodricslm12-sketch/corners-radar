@@ -596,7 +596,51 @@
           raw.match_minute
         );
   
+        const rawStatusBundle = [
+          stats.status,
+          stats.status_raw,
+          stats.original_raw,
+          stats.match_status,
+          raw.status,
+          raw.match_status,
+          raw.match_live,
+          raw.match_minute,
+          game.status
+        ].filter(Boolean).join(" ").toLowerCase();
+  
+        const has90Plus = /(^|\D)90\+?(\D|$)/.test(rawStatusBundle);
+  
+        const gameDate = clean(
+          raw.match_date ??
+          raw.date ??
+          raw.event_date,
+          ""
+        );
+  
+        const gameTime = clean(
+          raw.match_time ??
+          raw.time ??
+          game.time,
+          ""
+        );
+  
+        let elapsedFromKickoff = null;
+        if (gameDate && /^\d{1,2}:\d{2}/.test(gameTime)) {
+          const kickoff = new Date(`${gameDate}T${gameTime.slice(0,5)}:00-04:00`);
+          if (!Number.isNaN(kickoff.getTime())) {
+            elapsedFromKickoff = Math.floor((Date.now() - kickoff.getTime()) / 60000);
+          }
+        }
+  
+        const finishedByClock =
+          Number.isFinite(elapsedFromKickoff) &&
+          (
+            (has90Plus && elapsedFromKickoff >= 110) ||
+            elapsedFromKickoff >= 195
+          );
+  
         const finished = Boolean(stats.finished) ||
+          finishedByClock ||
           /finished|match finished|full.?time|\bft\b|encerr|finaliz|after pen|after extra|aet|ended/.test(normalized);
   
         const live = !finished && (
