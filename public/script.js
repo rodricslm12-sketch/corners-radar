@@ -1356,7 +1356,12 @@
         const homeMarket = event.target.closest("[data-home-market]");
         if (homeMarket) {
           event.preventDefault();
-          openMarkets(homeMarket.dataset.homeMarket);
+  
+          const marketType = homeMarket.dataset.homeMarket;
+  
+          if (marketType === "handicap" || marketType === "btts") {
+            openMarkets(marketType);
+          }
           return;
         }
   
@@ -16216,7 +16221,19 @@
           const orderButton=e.target.closest('[data-corner-order]');
           if(orderButton){e.preventDefault();setCornerOrderMode(orderButton.dataset.cornerOrder);render();return;}
           const market=e.target.closest('[data-home-market]');
-          if(market){e.preventDefault();openMarket(market.dataset.homeMarket);return;}
+          if(market){
+            e.preventDefault();
+            e.stopImmediatePropagation();
+  
+            const marketType=market.dataset.homeMarket;
+  
+            if(marketType==='handicap' || marketType==='btts'){
+              openMarkets(marketType);
+            }else{
+              openMarket(marketType);
+            }
+            return;
+          }
           const game=e.target.closest('[data-home-market-game]');
           if(game){e.preventDefault();openItem(currentData()[Number(game.dataset.homeMarketGame)]);return;}
           if(e.target.closest('#cpHomeBestOpen')){e.preventDefault();openItem(currentData()[0]);return;}
