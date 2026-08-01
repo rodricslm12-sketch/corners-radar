@@ -540,6 +540,7 @@
   
       const games = (state.btts || state.goals || []).slice(0, 5);
       const settlementEntries = [];
+      const liveEntries = [];
   
       const rows = games.map((game, index) => {
         const choice = index % 3 === 1 ? "NÃO" : "SIM";
@@ -556,6 +557,15 @@
           line: `AMBAS ${choice}`
         });
   
+        const liveKey = `live-btts-${index}`;
+        liveEntries.push({
+          key: liveKey,
+          game,
+          marketType,
+          line,
+          side: ""
+        });
+  
         return `
           <button
             type="button"
@@ -564,6 +574,7 @@
             data-settlement-key="${settlementKey}"
             data-settlement-market="btts"
             data-settlement-line="AMBAS ${choice}"
+            data-live-key="${liveKey}"
           >
             <div class="cpBttsMatch">
               <time>${escapeHtml(game.time)}</time>
@@ -636,6 +647,7 @@
         </section>`;
   
       settlementRefreshCards(body, settlementEntries);
+      marketStartLiveRefresh(body, liveEntries);
     }
   
   
@@ -918,6 +930,7 @@
         .slice(0, 7);
   
       const settlementEntries = [];
+      const liveEntries = [];
   
       const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
@@ -939,6 +952,15 @@
           side
         });
   
+        const liveKey = `live-handicap-${originalIndex}-${rowIndex}`;
+        liveEntries.push({
+          key: liveKey,
+          game,
+          marketType: "handicap",
+          line,
+          side
+        });
+  
         const recommendationBadge = requestedLine === "IA"
           ? `<span class="cpHandicapAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>`
           : "";
@@ -952,10 +974,11 @@
             data-settlement-market="handicap"
             data-settlement-line="${escapeHtml(line)}"
             data-settlement-side="${side}"
+            data-live-key="${liveKey}"
           >
             <div class="cpHandicapMatch">
               <div class="cpHandicapMeta">
-                <time>${escapeHtml(game.time)}</time>
+                ${marketLiveBadgeHtml(game)}
                 <small>⚽ Liga principal</small>
               </div>
               <div class="cpHandicapTeams">
@@ -1139,6 +1162,133 @@
       return null;
     }
   
+  
+  
+    let marketLiveTimer = null;
+  
+    function marketLiveStatus(stats = {}, game = {}) {
+      const raw = stats?.raw || stats || {};
+      const status = clean(
+        raw.status ?? raw.status_raw ?? raw.match_status ??
+        raw.event_status ?? game?.status ?? "",
+        ""
+      ).toLowerCase();
+  
+      const minuteValue =
+        raw.minute ?? raw.match_minute ?? raw.match_live ??
+        raw.elapsed ?? raw.timer ?? "";
+  
+      const minute = Number(String(minuteValue).replace(/[^\d]/g, ""));
+  
+      const finished =
+        Boolean(raw.finished) ||
+        /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
+  
+      const live =
+        !finished && (
+          Boolean(raw.live) ||
+          Number.isFinite(minute) && minute > 0 ||
+          /live|ao vivo|andamento|1st|2nd|half|interval|ht/.test(status)
+        );
+  
+      return {
+        live,
+        finished,
+        minute: live
+          ? (Number.isFinite(minute) && minute > 0 ? `${minute}'` : "AO VIVO")
+          : ""
+      };
+    }
+  
+    function marketLiveBadgeHtml(game) {
+      const info = marketLiveStatus(game?.raw || {}, game);
+  
+      if (info.live) {
+        return `
+          <span class="cpMarketLiveSlot is-live">
+            <i></i>
+            <b>AO VIVO</b>
+            <strong>${info.minute}</strong>
+          </span>`;
+      }
+  
+      if (info.finished) {
+        return `
+          <span class="cpMarketLiveSlot is-finished">
+            <b>ENCERRADO</b>
+          </span>`;
+      }
+  
+      return `
+        <span class="cpMarketLiveSlot is-scheduled">
+          <i>◷</i>
+          <b>${escapeHtml(game?.time || "—")}</b>
+        </span>`;
+    }
+  
+    async function marketRefreshLiveCard(card, game) {
+      if (!card || !game) return;
+  
+      const slot = card.querySelector(".cpMarketLiveSlot");
+      if (!slot) return;
+  
+      const matchId = settlementMatchId(game);
+      if (!matchId) return;
+  
+      try {
+        const response = await getJson(
+          `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
+          12000
+        );
+  
+        const stats = settlementResponseData(response);
+        const info = marketLiveStatus(stats, game);
+  
+        slot.classList.toggle("is-live", info.live);
+        slot.classList.toggle("is-finished", info.finished);
+  
+        if (info.live) {
+          slot.classList.remove("is-scheduled", "is-finished");
+          slot.classList.add("is-live");
+          slot.innerHTML = `<i></i><b>AO VIVO</b><strong>${info.minute}</strong>`;
+        } else if (info.finished) {
+          slot.classList.remove("is-scheduled", "is-live");
+          slot.classList.add("is-finished");
+          slot.innerHTML = `<b>ENCERRADO</b>`;
+        } else {
+          slot.classList.remove("is-live", "is-finished");
+          slot.classList.add("is-scheduled");
+          slot.innerHTML = `<i>◷</i><b>${escapeHtml(game?.time || "—")}</b>`;
+        }
+      } catch (error) {
+        console.warn("[Corner Pro Live Market]", error);
+      }
+    }
+  
+    function marketStartLiveRefresh(container, entries) {
+      if (marketLiveTimer) clearInterval(marketLiveTimer);
+  
+      const refresh = () => {
+        for (const entry of entries || []) {
+          const card = container?.querySelector(`[data-live-key="${entry.key}"]`);
+  
+          marketRefreshLiveCard(card, entry.game);
+  
+          if (entry.marketType && entry.line) {
+            settlementRefreshCard(
+              card,
+              entry.game,
+              entry.marketType,
+              entry.line,
+              entry.side || ""
+            );
+          }
+        }
+      };
+  
+      refresh();
+      marketLiveTimer = setInterval(refresh, 30000);
+    }
   
     function settlementMatchId(game) {
       const raw = game?.raw || {};
@@ -1896,6 +2046,7 @@
       }
   
       const settlementEntries = [];
+      const liveEntries = [];
   
       const rows = prepared.map(({ game, originalIndex, recommendation }, rowIndex) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
@@ -1914,6 +2065,15 @@
           side: ""
         });
   
+        const liveKey = `live-${marketType}-${originalIndex}-${rowIndex}`;
+        liveEntries.push({
+          key: liveKey,
+          game,
+          marketType: "btts",
+          line: `AMBAS ${choice}`,
+          side: ""
+        });
+  
         return `
           <button
             type="button"
@@ -1922,10 +2082,11 @@
             data-settlement-key="${settlementKey}"
             data-settlement-market="${marketType}"
             data-settlement-line="${escapeHtml(line)}"
+            data-live-key="${liveKey}"
           >
             <div class="cpAnalysisMatch">
               <div class="cpAnalysisMeta">
-                <time>${escapeHtml(game.time)}</time>
+                ${marketLiveBadgeHtml(game)}
                 <small>${icon} Liga principal</small>
               </div>
               <div class="cpAnalysisTeams">
@@ -2049,6 +2210,7 @@
         </section>`;
   
       settlementRefreshCards(body, settlementEntries);
+      marketStartLiveRefresh(body, liveEntries);
     }
   
     function openMarkets(type = state.activeMarket) {

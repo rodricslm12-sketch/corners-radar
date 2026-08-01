@@ -13658,3 +13658,143 @@ button.railFullBtn {
     font-weight:900!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V49 — AO VIVO E MINUTO NOS MERCADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisMeta,
+  .cpHandicapMeta,
+  .cpBttsMeta{
+    flex-wrap:wrap!important;
+  }
+
+  .cpMarketLiveSlot{
+    min-height:19px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    margin-left:auto!important;
+    padding:0 6px!important;
+    border-radius:999px!important;
+    font-size:6.5px!important;
+    font-weight:900!important;
+    white-space:nowrap!important;
+  }
+
+  .cpMarketLiveSlot:empty{display:none!important}
+
+  .cpMarketLiveSlot.is-live{
+    border:1px solid rgba(255,78,92,.52)!important;
+    background:rgba(255,78,92,.09)!important;
+    color:#ff6977!important;
+  }
+
+  .cpMarketLiveSlot.is-live i{
+    width:5px!important;
+    height:5px!important;
+    border-radius:50%!important;
+    background:#ff5262!important;
+    box-shadow:0 0 0 3px rgba(255,82,98,.12)!important;
+    animation:cpMarketLivePulse 1.2s ease-in-out infinite!important;
+  }
+
+  .cpMarketLiveSlot.is-live b,
+  .cpMarketLiveSlot.is-live strong{
+    color:#ff7380!important;
+    font-size:6.5px!important;
+    font-weight:950!important;
+  }
+
+  .cpMarketLiveSlot.is-finished{
+    border:1px solid #34464e!important;
+    background:#0a151a!important;
+    color:#94a0a2!important;
+  }
+
+  @keyframes cpMarketLivePulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.45;transform:scale(.82)}
+  }
+}
+
+/* =========================================================
+   CORNER PRO V50 — FUTURO / AO VIVO / ENCERRADO
+   ========================================================= */
+@media (max-width:980px){
+  .cpMarketLiveSlot{
+    margin-left:0!important;
+  }
+
+  .cpMarketLiveSlot.is-scheduled{
+    border:1px solid #3b4d55!important;
+    background:#152128!important;
+    color:#d5dcda!important;
+  }
+
+  .cpMarketLiveSlot.is-scheduled i{
+    color:#aeb8b9!important;
+    font-size:8px!important;
+    font-style:normal!important;
+  }
+
+  .cpMarketLiveSlot.is-scheduled b{
+    color:#dce3e1!important;
+    font-size:8px!important;
+  }
+
+  .cpMarketLiveSlot.is-live{
+    border:1px solid rgba(255,77,90,.70)!important;
+    background:linear-gradient(180deg,#ff584f,#d72f35)!important;
+    color:#fff!important;
+  }
+
+  .cpMarketLiveSlot.is-live b,
+  .cpMarketLiveSlot.is-live strong{
+    color:#fff!important;
+  }
+
+  .cpMarketLiveSlot.is-live strong{
+    margin-left:2px!important;
+    padding-left:5px!important;
+    border-left:1px solid rgba(255,255,255,.36)!important;
+  }
+
+  .cpMarketLiveSlot.is-finished{
+    border:1px solid rgba(116,223,52,.52)!important;
+    background:linear-gradient(180deg,#68c932,#3d9321)!important;
+    color:#fff!important;
+  }
+
+  .cpMarketLiveSlot.is-finished b{
+    color:#fff!important;
+    font-size:7px!important;
+  }
+
+  .cpAnalysisOpportunity.is-settlement-green,
+  .cpHandicapOpportunity.is-settlement-green,
+  .cpBttsOpportunity.is-settlement-green{
+    border:1px solid rgba(125,238,48,.58)!important;
+  }
+
+  .cpAnalysisOpportunity.is-settlement-red,
+  .cpHandicapOpportunity.is-settlement-red,
+  .cpBttsOpportunity.is-settlement-red{
+    border:1px solid rgba(239,71,82,.56)!important;
+  }
+
+  .cpAnalysisOpportunity:not(.is-settlement-green):not(.is-settlement-red),
+  .cpHandicapOpportunity:not(.is-settlement-green):not(.is-settlement-red),
+  .cpBttsOpportunity:not(.is-settlement-green):not(.is-settlement-red){
+    border-color:#31434b!important;
+  }
+
+  .cpAnalysisMeta,
+  .cpHandicapMeta,
+  .cpBttsMeta{
+    align-items:center!important;
+    gap:7px!important;
+  }
+}
