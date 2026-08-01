@@ -4736,36 +4736,118 @@ function mcFirst(obj, keys, fallback = null) {
   return fallback;
 }
 
+function mcKickoffDate(event) {
+  const date = cleanText(mcFirst(event, [
+    "match_date", "date", "event_date", "fixture_date"
+  ], ""));
+
+  const time = cleanText(mcFirst(event, [
+    "match_time", "time", "event_time", "fixture_time"
+  ], ""));
+
+  if (!date) return null;
+
+  const normalizedTime = /^\d{1,2}:\d{2}/.test(time) ? time.slice(0, 5) : "00:00";
+  const parsed = new Date(`${date}T${normalizedTime}:00-04:00`);
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function mcStatusInfo(event) {
   const raw = cleanText(mcFirst(event, [
-    "match_status", "status", "event_status", "fixture_status", "status_long", "status_short"
+    "match_status", "status", "event_status", "fixture_status",
+    "status_long", "status_short", "match_state", "state"
   ], ""));
-  const s = raw.toLowerCase();
 
-  const finished = [
-    "finished", "ft", "after penalties", "aet", "penalties", "encerrado", "finalizado"
-  ].some(x => s === x || s.includes(x));
+  const s = raw.toLowerCase().trim();
 
-  const notStarted = !s || [
-    "not started", "ns", "scheduled", "time to be defined", "tbd", "postponed", "cancelled", "canceled"
-  ].some(x => s === x || s.includes(x));
+  const minuteRaw = cleanText(mcFirst(event, [
+    "match_live", "match_minute", "minute", "elapsed",
+    "time_live", "match_elapsed", "fixture_elapsed"
+  ], ""));
 
-  const liveByText = !finished && !notStarted && [
-    "live", "1st half", "2nd half", "half time", "halftime", "extra time", "break", "in progress"
-  ].some(x => s.includes(x));
-
-  const minuteRaw = mcFirst(event, [
-    "match_live", "match_minute", "minute", "elapsed", "time_live"
-  ], "");
-  const minuteMatch = String(minuteRaw).match(/\d+/);
+  const minuteMatch = String(minuteRaw || raw).match(/\d+/);
   const minute = minuteMatch ? Number(minuteMatch[0]) : null;
-  const live = !finished && (liveByText || (Number.isFinite(minute) && minute > 0));
+
+  const explicitFinished = [
+    "finished", "match finished", "ft", "full time", "full-time",
+    "after penalties", "after penalty", "aet", "after extra time",
+    "penalties", "pen", "ended", "end", "encerrado", "finalizado",
+    "resultado final", "final"
+  ].some(value => s === value || s.includes(value));
+
+  const cancelled = [
+    "postponed", "cancelled", "canceled", "abandoned",
+    "suspended", "interrupted", "adiado", "cancelado", "suspenso"
+  ].some(value => s === value || s.includes(value));
+
+  const explicitNotStarted = !s || [
+    "not started", "ns", "scheduled", "time to be defined",
+    "tbd", "aguardando", "pré-jogo", "pre-game", "pregame"
+  ].some(value => s === value || s.includes(value));
+
+  const explicitLive = [
+    "live", "1st half", "first half", "2nd half", "second half",
+    "half time", "halftime", "ht", "extra time", "break",
+    "in progress", "in play", "playing", "ao vivo", "intervalo"
+  ].some(value => s === value || s.includes(value));
+
+  const kickoff = mcKickoffDate(event);
+  const elapsedMinutes = kickoff
+    ? Math.floor((Date.now() - kickoff.getTime()) / 60000)
+    : null;
+
+  const finishedByClock =
+    !cancelled &&
+    Number.isFinite(elapsedMinutes) &&
+    (
+      (Number.isFinite(minute) && minute >= 90 && elapsedMinutes >= 125) ||
+      elapsedMinutes >= 195
+    );
+
+  const finished = explicitFinished || finishedByClock;
+
+  const startedByClock =
+    !cancelled &&
+    Number.isFinite(elapsedMinutes) &&
+    elapsedMinutes >= -5 &&
+    elapsedMinutes < 195;
+
+  const live = !finished && !cancelled && (
+    explicitLive ||
+    (Number.isFinite(minute) && minute > 0) ||
+    (!explicitNotStarted && startedByClock)
+  );
+
+  const notStarted = !finished && !live && (
+    explicitNotStarted ||
+    (Number.isFinite(elapsedMinutes) && elapsedMinutes < 0)
+  );
+
+  const resolvedRaw = finished
+    ? "Finished"
+    : live
+      ? (raw || "Live")
+      : cancelled
+        ? (raw || "Cancelled")
+        : (raw || "Not Started");
 
   return {
-    raw: raw || (finished ? "Finished" : live ? "Live" : "Not Started"),
+    raw: resolvedRaw,
+    original_raw: raw,
     finished,
     live,
-    minute: Number.isFinite(minute) ? minute : (finished ? 90 : null)
+    not_started: notStarted,
+    cancelled,
+    minute: finished
+      ? 90
+      : Number.isFinite(minute)
+        ? minute
+        : live && Number.isFinite(elapsedMinutes)
+          ? Math.max(1, Math.min(120, elapsedMinutes))
+          : null,
+    elapsed_since_kickoff: Number.isFinite(elapsedMinutes) ? elapsedMinutes : null,
+    inferred_by_clock: Boolean(finishedByClock)
   };
 }
 
@@ -5030,7 +5112,11 @@ app.get("/match_center", async (req, res) => {
       status_raw: status.raw,
       live: status.live,
       finished: status.finished,
+      not_started: status.not_started,
+      cancelled: status.cancelled,
       minute: status.minute,
+      status_inferred_by_clock: status.inferred_by_clock,
+      elapsed_since_kickoff: status.elapsed_since_kickoff,
       goals: { home: homeScore, away: awayScore },
       score: { home: homeScore, away: awayScore },
       corners,
@@ -5180,7 +5266,7 @@ app.get("/match_result", (req, res) => {
     }
   }
 
-  if (!params.has("fresh")) params.set("fresh", "1");
+  params.set("fresh", "1");
   return res.redirect(307, `/match_center?${params.toString()}`);
 });
 

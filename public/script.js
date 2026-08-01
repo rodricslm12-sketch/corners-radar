@@ -74,6 +74,7 @@
       activeMarket: "corners",
       selected: null,
       autoTimer: null,
+      matchPollTimer: null,
       touchStartX: 0,
       touchStartY: 0,
       loading: false
@@ -554,72 +555,105 @@
   
       if (!layer || !content) return;
   
+      if (state.matchPollTimer) {
+        clearInterval(state.matchPollTimer);
+        state.matchPollTimer = null;
+      }
+  
       layer.classList.add("is-open");
       layer.setAttribute("aria-hidden", "false");
       document.body.classList.add("cpMobileLayerOpen");
       stopAutoSlide();
   
       const raw = game.raw || {};
-      const statusText = clean(
-        raw.status ??
-        raw.match_status ??
-        raw.status_raw ??
-        raw.event_status ??
-        game.status,
-        "Pré-jogo"
-      );
-  
-      const statusLower = statusText.toLowerCase();
-      const finished = /finish|finished|encerr|ft|final|ended|after match/.test(statusLower);
-      const live = !finished && /live|andamento|1h|2h|interval|halftime|in play|playing/.test(statusLower);
-  
-      if (title) {
-        title.textContent = finished
-          ? "ESTATÍSTICAS FINAIS"
-          : live
-            ? "MATCH CENTER AO VIVO"
-            : "ANÁLISE PRÉ-JOGO";
-      }
-  
-      if (subtitle) {
-        subtitle.textContent = finished
-          ? "Resultado e números completos da partida"
-          : live
-            ? "Placar, eventos e estatísticas em tempo real"
-            : "Projeções, histórico e dados antes da partida";
-      }
   
       const value = (...items) => {
         for (const item of items) {
-          const number = Number(item);
+          if (item === null || item === undefined || item === "") continue;
+          const number = Number(String(item).replace("%", "").replace(",", "."));
           if (Number.isFinite(number)) return number;
         }
         return "—";
       };
   
+      const resolvePhase = (stats = {}) => {
+        const statusText = clean(
+          stats.status ??
+          stats.status_raw ??
+          stats.match_status ??
+          raw.status ??
+          raw.match_status ??
+          game.status,
+          ""
+        );
+  
+        const normalized = statusText.toLowerCase();
+        const minute = value(
+          stats.minute,
+          stats.elapsed,
+          stats.match_minute,
+          raw.match_live,
+          raw.match_minute
+        );
+  
+        const finished = Boolean(stats.finished) ||
+          /finished|match finished|full.?time|\bft\b|encerr|finaliz|after pen|after extra|aet|ended/.test(normalized);
+  
+        const live = !finished && (
+          Boolean(stats.live) ||
+          /live|ao vivo|andamento|1st half|2nd half|half.?time|interval|in play|playing/.test(normalized) ||
+          (minute !== "—" && Number(minute) > 0)
+        );
+  
+        return {
+          statusText: statusText || (finished ? "Finished" : live ? "Live" : "Not Started"),
+          finished,
+          live,
+          minute
+        };
+      };
+  
       const render = (stats = {}) => {
+        const phase = resolvePhase(stats);
+  
+        if (title) {
+          title.textContent = phase.finished
+            ? "ESTATÍSTICAS FINAIS"
+            : phase.live
+              ? "MATCH CENTER AO VIVO"
+              : "ANÁLISE PRÉ-JOGO";
+        }
+  
+        if (subtitle) {
+          subtitle.textContent = phase.finished
+            ? "Resultado, cartões, escanteios, chutes e números completos"
+            : phase.live
+              ? "Placar, eventos e estatísticas atualizadas"
+              : "Projeções, histórico e dados antes da partida";
+        }
+  
         const homeScore = value(
           stats.home_score,
           stats.score_home,
-          stats.goals_home,
+          stats.goals?.home,
+          stats.score?.home,
           raw.home_score,
-          raw.score_home,
-          raw.goals_home
+          raw.score_home
         );
   
         const awayScore = value(
           stats.away_score,
           stats.score_away,
-          stats.goals_away,
+          stats.goals?.away,
+          stats.score?.away,
           raw.away_score,
-          raw.score_away,
-          raw.goals_away
+          raw.score_away
         );
   
         const homeCorners = value(
           stats.home_corners,
           stats.corners_home,
-          stats.home?.corners,
+          stats.corners?.home,
           stats.statistics?.home?.corners,
           raw.home_corners,
           raw.corners_home
@@ -628,7 +662,7 @@
         const awayCorners = value(
           stats.away_corners,
           stats.corners_away,
-          stats.away?.corners,
+          stats.corners?.away,
           stats.statistics?.away?.corners,
           raw.away_corners,
           raw.corners_away
@@ -637,7 +671,8 @@
         const homeCards = value(
           stats.home_cards,
           stats.cards_home,
-          stats.home?.cards,
+          stats.cards?.home,
+          stats.yellow_cards?.home,
           stats.statistics?.home?.cards,
           raw.home_cards,
           raw.cards_home
@@ -646,7 +681,8 @@
         const awayCards = value(
           stats.away_cards,
           stats.cards_away,
-          stats.away?.cards,
+          stats.cards?.away,
+          stats.yellow_cards?.away,
           stats.statistics?.away?.cards,
           raw.away_cards,
           raw.cards_away
@@ -655,7 +691,7 @@
         const homeShots = value(
           stats.home_shots,
           stats.shots_home,
-          stats.home?.shots,
+          stats.shots?.home,
           stats.statistics?.home?.shots,
           raw.home_shots,
           raw.shots_home
@@ -664,7 +700,7 @@
         const awayShots = value(
           stats.away_shots,
           stats.shots_away,
-          stats.away?.shots,
+          stats.shots?.away,
           stats.statistics?.away?.shots,
           raw.away_shots,
           raw.shots_away
@@ -673,47 +709,71 @@
         const homeShotsTarget = value(
           stats.home_shots_on_target,
           stats.shots_on_target_home,
-          stats.home?.shots_on_target,
+          stats.shots_on_target?.home,
+          stats.statistics?.home?.shots_on_target,
           raw.home_shots_on_target
         );
   
         const awayShotsTarget = value(
           stats.away_shots_on_target,
           stats.shots_on_target_away,
-          stats.away?.shots_on_target,
+          stats.shots_on_target?.away,
+          stats.statistics?.away?.shots_on_target,
           raw.away_shots_on_target
         );
   
         const homePossession = value(
           stats.home_possession,
           stats.possession_home,
-          stats.home?.possession,
+          stats.possession?.home,
+          stats.statistics?.home?.possession,
           raw.home_possession
         );
   
         const awayPossession = value(
           stats.away_possession,
           stats.possession_away,
-          stats.away?.possession,
+          stats.possession?.away,
+          stats.statistics?.away?.possession,
           raw.away_possession
         );
   
+        const homeAttacks = value(
+          stats.home_dangerous_attacks,
+          stats.dangerous_attacks?.home,
+          stats.home_attacks,
+          stats.attacks?.home
+        );
+  
+        const awayAttacks = value(
+          stats.away_dangerous_attacks,
+          stats.dangerous_attacks?.away,
+          stats.away_attacks,
+          stats.attacks?.away
+        );
+  
+        const minuteLabel = phase.finished
+          ? "ENCERRADO"
+          : phase.live
+            ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
+            : escapeHtml(game.time);
+  
         content.innerHTML = `
           <section class="cpV8MatchHero">
-            <time>${escapeHtml(game.time)}</time>
+            <time>${minuteLabel}</time>
             <div>
-              <strong>${escapeHtml(game.home)}</strong>
-              <i>${live || finished ? `${homeScore} × ${awayScore}` : "×"}</i>
-              <strong>${escapeHtml(game.away)}</strong>
+              <strong>${escapeHtml(stats.home || game.home)}</strong>
+              <i>${phase.live || phase.finished ? `${homeScore} × ${awayScore}` : "×"}</i>
+              <strong>${escapeHtml(stats.away || game.away)}</strong>
             </div>
             <span>${escapeHtml(game.line)}</span>
-            <b>${escapeHtml(statusText.toUpperCase())}</b>
+            <b>${escapeHtml(phase.statusText.toUpperCase())}</b>
           </section>
   
           <section class="cpV8MatchTabs">
-            <button class="${!live && !finished ? "active" : ""}" type="button">ANTES</button>
-            <button class="${live ? "active" : ""}" type="button">AO VIVO</button>
-            <button class="${finished ? "active" : ""}" type="button">DEPOIS</button>
+            <button class="${!phase.live && !phase.finished ? "active" : ""}" type="button">ANTES</button>
+            <button class="${phase.live ? "active" : ""}" type="button">AO VIVO</button>
+            <button class="${phase.finished ? "active" : ""}" type="button">DEPOIS</button>
           </section>
   
           <section class="cpV8MatchStats">
@@ -722,51 +782,86 @@
             <div><small>CHUTES</small><strong>${homeShots} × ${awayShots}</strong></div>
             <div><small>NO ALVO</small><strong>${homeShotsTarget} × ${awayShotsTarget}</strong></div>
             <div><small>POSSE</small><strong>${homePossession}${homePossession !== "—" ? "%" : ""} × ${awayPossession}${awayPossession !== "—" ? "%" : ""}</strong></div>
-            <div><small>CONFIANÇA</small><strong>${game.confidence}%</strong></div>
+            <div><small>ATAQUES PERIGOSOS</small><strong>${homeAttacks} × ${awayAttacks}</strong></div>
           </section>
   
           <section class="cpV8MatchRead">
-            <h3>${finished ? "RESUMO DA PARTIDA" : live ? "LEITURA AO VIVO" : "LEITURA PRÉ-JOGO"}</h3>
+            <h3>${phase.finished ? "RESUMO DA PARTIDA" : phase.live ? "LEITURA AO VIVO" : "LEITURA PRÉ-JOGO"}</h3>
             <p>${
-              finished
-                ? "Partida encerrada. Acima estão as estatísticas finais disponíveis."
-                : live
-                  ? "Partida em andamento. Os dados são atualizados conforme o servidor disponibiliza novos eventos."
-                  : "A partida ainda não começou. Confira mercado, projeção, confiança e contexto pré-jogo."
+              phase.finished
+                ? "Partida encerrada. Os números finais disponíveis aparecem acima."
+                : phase.live
+                  ? "A partida está em andamento. Esta tela atualiza automaticamente a cada 25 segundos."
+                  : "A partida ainda não começou. Assim que iniciar, o Match Center mudará para AO VIVO."
             }</p>
           </section>`;
+  
+        return phase;
       };
   
-      // Mostra o conteúdo imediatamente para nunca deixar a tela vazia.
       render(raw);
   
       const matchId = clean(
         raw.match_id ??
         raw.fixture_id ??
         raw.event_id ??
+        raw.event_key ??
         raw.id ??
         game.id,
         ""
       );
   
-      if (!matchId || (!live && !finished)) return;
+      if (!matchId) return;
   
-      try {
-        const response = await getJson(`/match_result?match_id=${encodeURIComponent(matchId)}&_=${Date.now()}`, 14000);
-        const stats =
-          response?.data ??
-          response?.result ??
-          response?.match ??
-          response?.game ??
-          response;
+      const fetchMatchCenter = async () => {
+        try {
+          const response = await getJson(
+            `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
+            16000
+          );
   
-        if (stats && typeof stats === "object") render(stats);
-      } catch (error) {
-        console.warn("[Corner Pro Match Center] Estatísticas não disponíveis:", error);
+          const stats =
+            response?.data ??
+            response?.result ??
+            response?.match ??
+            response?.game ??
+            response;
+  
+          if (!stats || typeof stats !== "object" || stats.error) return null;
+  
+          const phase = render(stats);
+  
+          if (phase.finished && state.matchPollTimer) {
+            clearInterval(state.matchPollTimer);
+            state.matchPollTimer = null;
+          }
+  
+          return phase;
+        } catch (error) {
+          console.warn("[Corner Pro Match Center] Falha ao atualizar:", error);
+          return null;
+        }
+      };
+  
+      const firstPhase = await fetchMatchCenter();
+  
+      if (!firstPhase?.finished) {
+        state.matchPollTimer = setInterval(async () => {
+          if (!layer.classList.contains("is-open")) {
+            clearInterval(state.matchPollTimer);
+            state.matchPollTimer = null;
+            return;
+          }
+          await fetchMatchCenter();
+        }, 25000);
       }
     }
   
     function closeLayer(layer) {
+      if (layer?.id === "cpMobileMatchLayer" && state.matchPollTimer) {
+        clearInterval(state.matchPollTimer);
+        state.matchPollTimer = null;
+      }
       layer?.classList.remove("is-open");
       layer?.setAttribute("aria-hidden", "true");
       const anyOpen = $("#cpMobileMarketsLayer")?.classList.contains("is-open") || $("#cpMobileMatchLayer")?.classList.contains("is-open");
