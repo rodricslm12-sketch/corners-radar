@@ -11193,3 +11193,190 @@ button.railFullBtn {
     .cpV8MatchStats > div{min-height:124px!important;padding:11px!important}
   }
 }
+
+/* =========================================================
+   CORNER PRO V30 — CARD PRINCIPAL NAS CORES DOS TIMES
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeBest,
+  .cpHomeBestClone{
+    --best-home:#d8b323;
+    --best-away:#2378d6;
+
+    border:1px solid #26363d!important;
+    border-left:4px solid var(--best-home)!important;
+    border-right:4px solid var(--best-away)!important;
+    border-radius:17px!important;
+
+    background:
+      radial-gradient(circle at 3% 52%,color-mix(in srgb,var(--best-home) 13%,transparent),transparent 30%),
+      radial-gradient(circle at 97% 52%,color-mix(in srgb,var(--best-away) 13%,transparent),transparent 30%),
+      linear-gradient(180deg,#071116 0%,#060d11 60%,#040708 100%)!important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.025),
+      0 10px 25px rgba(0,0,0,.20)!important;
+  }
+
+  .cpHomeBest::before,
+  .cpHomeBest::after,
+  .cpHomeBestClone::before,
+  .cpHomeBestClone::after{
+    content:""!important;
+    display:block!important;
+    position:absolute!important;
+    top:0!important;
+    bottom:0!important;
+    width:1px!important;
+    height:auto!important;
+    opacity:.28!important;
+    pointer-events:none!important;
+    filter:none!important;
+    background:linear-gradient(180deg,transparent,currentColor 24%,currentColor 76%,transparent)!important;
+  }
+
+  .cpHomeBest::before,
+  .cpHomeBestClone::before{
+    left:12px!important;
+    right:auto!important;
+    color:var(--best-home)!important;
+  }
+
+  .cpHomeBest::after,
+  .cpHomeBestClone::after{
+    right:12px!important;
+    left:auto!important;
+    color:var(--best-away)!important;
+  }
+
+  .cpHomeBestTop{
+    align-items:center!important;
+    gap:12px!important;
+  }
+
+  .cpHomeBestTop > b{
+    min-height:28px!important;
+    max-width:72%!important;
+    padding:0 10px!important;
+    border:1px solid #35454c!important;
+    border-radius:8px!important;
+    background:rgba(7,14,18,.82)!important;
+    color:#d7ddde!important;
+    font-size:9.5px!important;
+    letter-spacing:.15px!important;
+    box-shadow:none!important;
+  }
+
+  .cpHomeBestTop > span{
+    color:#dce4e5!important;
+    font-size:10px!important;
+    text-shadow:none!important;
+  }
+
+  .cpHomeBestBody{
+    padding-top:22px!important;
+  }
+
+  .cpHomeBestBody time{
+    border:1px solid #35454c!important;
+    background:rgba(7,14,18,.88)!important;
+    color:#e5ebea!important;
+    box-shadow:none!important;
+  }
+
+  .cpHomeBestTeams{
+    position:relative!important;
+    margin-top:20px!important;
+    padding:32px 24px 0!important;
+    gap:8px!important;
+  }
+
+  .cpHomeBestTeams strong{
+    position:relative!important;
+    width:100%!important;
+    max-width:280px!important;
+    padding:0 10px 8px!important;
+    color:#fff!important;
+    font-size:18px!important;
+    line-height:1.08!important;
+    text-align:center!important;
+    text-shadow:0 2px 10px rgba(0,0,0,.30)!important;
+  }
+
+  .cpHomeBestTeams strong::after{
+    content:""!important;
+    position:absolute!important;
+    left:18%!important;
+    right:18%!important;
+    bottom:0!important;
+    height:2px!important;
+    border-radius:999px!important;
+    background:var(--team-accent,#6b7b82)!important;
+    opacity:.90!important;
+  }
+
+  .cpHomeBestTeams i{
+    margin:1px 0!important;
+    color:#7f8b8e!important;
+    font-size:15px!important;
+    font-style:normal!important;
+  }
+
+  /* Os indicadores ficam acima dos nomes, sem encostar no texto. */
+  .cpHomeMarketDots{
+    top:78px!important;
+    bottom:auto!important;
+    left:50%!important;
+    transform:translateX(-50%)!important;
+    z-index:5!important;
+    gap:8px!important;
+    padding:4px 7px!important;
+    border-radius:999px!important;
+    background:rgba(4,9,12,.56)!important;
+    backdrop-filter:blur(5px)!important;
+  }
+
+  .cpHomeMarketDots button{
+    width:6px!important;
+    height:6px!important;
+    min-width:6px!important;
+    border-radius:50%!important;
+    background:rgba(255,255,255,.25)!important;
+  }
+
+  .cpHomeMarketDots button.active{
+    width:13px!important;
+    border-radius:999px!important;
+    background:linear-gradient(90deg,var(--best-home),var(--best-away))!important;
+  }
+
+  #cpHomeBestOpen{
+    border:1px solid #35454c!important;
+    background:
+      linear-gradient(90deg,
+        color-mix(in srgb,var(--best-home) 13%,#091216),
+        #091216 48%,
+        color-mix(in srgb,var(--best-away) 13%,#091216))!important;
+    color:#dfe6e5!important;
+    box-shadow:none!important;
+  }
+
+  #cpHomeBestOpen::after{
+    color:color-mix(in srgb,var(--best-away) 72%,#fff)!important;
+  }
+
+  @media (max-width:390px){
+    .cpHomeBestTeams{
+      padding-left:16px!important;
+      padding-right:16px!important;
+    }
+
+    .cpHomeBestTeams strong{
+      font-size:16.5px!important;
+    }
+
+    .cpHomeMarketDots{
+      top:74px!important;
+    }
+  }
+}

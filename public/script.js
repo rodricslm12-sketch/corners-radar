@@ -225,6 +225,66 @@
       return state[state.activeMarket] || state.corners || [];
     }
   
+    function cpBestTeamColor(teamName, fallback = "#5f7f91") {
+      const name = String(teamName || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+  
+      const known = [
+        [["fredrikstad"], "#d8b323"],
+        [["sandefjord"], "#2378d6"],
+        [["hacken", "bk hacken"], "#d2aa27"],
+        [["kalmar"], "#1769d2"],
+        [["piast gliwice"], "#286eb8"],
+        [["wisla"], "#cf2f3b"],
+        [["falkirk"], "#3150a3"],
+        [["st mirren", "st. mirren"], "#d23542"],
+        [["arsenal"], "#df2d36"],
+        [["chelsea"], "#1f5fc1"],
+        [["liverpool"], "#c92834"],
+        [["manchester city"], "#68b6e6"],
+        [["manchester united"], "#d52c34"],
+        [["real madrid"], "#dddfe5"],
+        [["barcelona"], "#24539b"],
+        [["inter"], "#2470ca"],
+        [["milan"], "#cb3039"],
+        [["juventus"], "#d9dde1"],
+        [["palmeiras"], "#16804a"],
+        [["flamengo"], "#cf2e37"],
+        [["corinthians"], "#d8dbdd"]
+      ];
+  
+      for (const [keys, color] of known) {
+        if (keys.some(key => name.includes(key))) return color;
+      }
+  
+      const palette = ["#3d7fbd", "#b3525e", "#3e8c72", "#a87838", "#6b5bb1", "#397c91"];
+      let hash = 0;
+      for (const char of name) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+      return name ? palette[Math.abs(hash) % palette.length] : fallback;
+    }
+  
+    function cpPaintBestTeamColors(card, game) {
+      if (!card || !game) return;
+  
+      const homeColor = cpBestTeamColor(game.home, "#d8b323");
+      const awayColor = cpBestTeamColor(game.away, "#2378d6");
+  
+      card.style.setProperty("--best-home", homeColor);
+      card.style.setProperty("--best-away", awayColor);
+      card.dataset.homeTeam = String(game.home || "");
+      card.dataset.awayTeam = String(game.away || "");
+  
+      const homeEl = card.querySelector("#cpHomeBestHome, [data-clone-id='cpHomeBestHome']");
+      const awayEl = card.querySelector("#cpHomeBestAway, [data-clone-id='cpHomeBestAway']");
+  
+      if (homeEl) homeEl.style.setProperty("--team-accent", homeColor);
+      if (awayEl) awayEl.style.setProperty("--team-accent", awayColor);
+    }
+  
+    window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
+  
     function setLoading(active) {
       state.loading = active;
       const card = $("#cpHomeBest");
@@ -294,7 +354,10 @@
       setText("#cpHomeMatchTeams", `${best.home} × ${best.away}`);
   
       const card = $("#cpHomeBest");
-      if (card) card.dataset.market = state.activeMarket;
+      if (card) {
+        card.dataset.market = state.activeMarket;
+        cpPaintBestTeamColors(card, best);
+      }
   
       const open = $("#cpHomeBestOpen");
       if (open) {
@@ -15867,6 +15930,7 @@
           $('#cpHomeBestConfidence').textContent=best.conf+'%';
           $('#cpHomeBestMarket').textContent=best.market;
           $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
+          window.__cpPaintBestTeamColors?.($('#cpHomeBest'),best);
           const orderSwitch=$('.cpHomeOrderSwitch');
           const forceBtn=orderSwitch?.querySelector('[data-corner-order="strength"]');
           const timeBtn=orderSwitch?.querySelector('[data-corner-order="time"]');
@@ -15976,6 +16040,7 @@
           if(awayEl) awayEl.textContent=best.away;
           if(conf) conf.textContent=best.conf+'%';
           if(market) market.textContent=best.market;
+          window.__cpPaintBestTeamColors?.(root,best);
   
           // Cada slide mantém seus próprios 3 indicadores sincronizados.
           // A função também neutraliza estilos antigos que marcavam o 1º ponto.
