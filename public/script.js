@@ -41,6 +41,12 @@
         icon: "◎",
         lines: ["TODOS", "SIM", "NÃO"]
       },
+      handicap: {
+        label: "HANDICAP ASIÁTICO",
+        title: "⚖ MELHOR HANDICAP ASIÁTICO",
+        icon: "⚖",
+        lines: ["-1.0", "-0.75", "-0.5", "-0.25", "+0.25", "+0.5", "+0.75", "+1.0"]
+      },
       cards: {
         label: "CARTÕES",
         title: "🔥 MELHOR APOSTA DO DIA",
@@ -67,6 +73,7 @@
       corners: [],
       goals: [],
       btts: [],
+      handicap: [],
       cards: [],
       pregame: [],
       combined: [],
@@ -514,6 +521,7 @@
       state.corners = buildMarket(hotGames.length ? hotGames : raw, "corners");
       state.goals = buildMarket(raw, "goals");
       state.btts = buildMarket(raw, "goals");
+      state.handicap = buildMarket(raw, "pregame");
       state.cards = buildMarket(raw, "cards");
       state.pregame = buildMarket(raw, "pregame");
       state.combined = buildMarket(raw, "combined");
@@ -610,6 +618,167 @@
         </section>`;
     }
   
+  
+    function handicapScore(game) {
+      const raw = game?.raw || {};
+      const home = numberFrom(
+        raw.home_score, raw.score_home, raw.match_hometeam_score,
+        raw.goals?.home, raw.score?.home
+      );
+      const away = numberFrom(
+        raw.away_score, raw.score_away, raw.match_awayteam_score,
+        raw.goals?.away, raw.score?.away
+      );
+      return { home, away };
+    }
+  
+    function handicapFinished(game) {
+      const raw = game?.raw || {};
+      const status = clean(
+        raw.status ?? raw.match_status ?? raw.event_status ?? game?.status,
+        ""
+      ).toLowerCase();
+  
+      return Boolean(raw.finished) ||
+        /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
+    }
+  
+    function handicapWon(game, side, line) {
+      if (!handicapFinished(game)) return null;
+  
+      const score = handicapScore(game);
+      if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
+  
+      const adjustment = Number(line);
+      if (!Number.isFinite(adjustment)) return null;
+  
+      const selected = side === "home"
+        ? score.home + adjustment
+        : score.away + adjustment;
+  
+      const opponent = side === "home" ? score.away : score.home;
+  
+      if (selected > opponent) return true;
+      if (selected < opponent) return false;
+      return "push";
+    }
+  
+    function handicapOdd(confidence) {
+      return (1.53 + Math.max(0, 82 - confidence) / 100).toFixed(2);
+    }
+  
+    function renderHandicapMarket(layer, selectedLine = "-0.5") {
+      const body = $(".cpMobileMarketsBody", layer);
+      if (!body) return;
+  
+      const line = clean(selectedLine, "-0.5");
+      const games = (state.handicap || state.pregame || []).slice(0, 6);
+  
+      const rows = games.map((game, index) => {
+        const side = index % 3 === 1 ? "away" : "home";
+        const sideLabel = side === "home" ? "CASA" : "FORA";
+        const teamName = side === "home" ? game.home : game.away;
+        const confidence = Math.max(61, Math.min(89, Number(game.confidence || 72)));
+        const result = handicapWon(game, side, line);
+        const resultHtml = result === true
+          ? '<span class="cpHandicapResult green">✓ GREEN</span>'
+          : result === false
+            ? '<span class="cpHandicapResult red">× RED</span>'
+            : result === "push"
+              ? '<span class="cpHandicapResult push">↔ DEVOLVIDA</span>'
+              : "";
+  
+        return `
+          <button type="button" class="cpHandicapOpportunity" data-v9-game="${index}">
+            <div class="cpHandicapMatch">
+              <div class="cpHandicapMeta">
+                <time>${escapeHtml(game.time)}</time>
+                <small>⚽ Liga principal</small>
+              </div>
+              <div class="cpHandicapTeams">
+                <span>${escapeHtml((game.home || "C").slice(0,2).toUpperCase())}</span>
+                <section><b>${escapeHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}</b></section>
+                <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
+              </div>
+            </div>
+  
+            <div class="cpHandicapPick">
+              <strong>${sideLabel} ${escapeHtml(line)}</strong>
+              <p>${escapeHtml(teamName)} precisa vencer.<br>Empate ou derrota = aposta perdida.</p>
+              ${resultHtml}
+            </div>
+  
+            <div class="cpHandicapOdd">
+              <small>Odd média</small>
+              <b>${handicapOdd(confidence)}</b>
+            </div>
+  
+            <div class="cpHandicapGauge" style="--handicap:${confidence}">
+              <span>${confidence}%</span>
+              <small>CONFIANÇA</small>
+            </div>
+  
+            <i class="cpHandicapArrow">›</i>
+          </button>`;
+      }).join("");
+  
+      const explain = line === "-0.5"
+        ? "-0.5 é uma aposta sem devolução. O time selecionado precisa vencer. Empate ou derrota significam aposta perdida."
+        : `Na linha ${line}, o placar é ajustado antes de definir o resultado da aposta.`;
+  
+      body.innerHTML = `
+        <section class="cpHandicapIntro">
+          <div class="cpHandicapIntroIcon">⚖</div>
+          <p>Escolha a linha desejada para ver os melhores jogos com base na nossa análise.</p>
+        </section>
+  
+        <div class="cpHandicapLines">
+          ${MARKET.handicap.lines.map(item => `
+            <button type="button" class="${item === line ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
+          `).join("")}
+        </div>
+  
+        <section class="cpHandicapExplain">
+          <h3>COMO FUNCIONA ${escapeHtml(line)}?</h3>
+          <div>
+            <p>${escapeHtml(explain)}</p>
+            <article><i>⌂</i><section><b>CASA ${escapeHtml(line)}</b><span>Casa precisa vencer.<br>Empate ou derrota = aposta perdida.</span></section></article>
+            <article><i>✈</i><section><b>FORA ${escapeHtml(line)}</b><span>Fora precisa vencer.<br>Empate ou derrota = aposta perdida.</span></section></article>
+          </div>
+        </section>
+  
+        <div class="cpHandicapTabs">
+          <button type="button" class="active" data-handicap-side="all">TODOS</button>
+          <button type="button" data-handicap-side="home">CASA ${escapeHtml(line)}</button>
+          <button type="button" data-handicap-side="away">FORA ${escapeHtml(line)}</button>
+        </div>
+  
+        <div class="cpHandicapTitle">
+          <h2>MELHORES OPORTUNIDADES</h2>
+          <button type="button">VER TODOS ›</button>
+        </div>
+  
+        <div class="cpHandicapList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
+  
+        <button type="button" class="cpHandicapAllGames">
+          <span>☷</span><b>VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(line)})</b><i>›</i>
+        </button>
+  
+        <section class="cpHandicapBottomExplain">
+          <h3>EXPLICAÇÃO DAS LINHAS</h3>
+          <div>
+            <p><b>-1.0</b><br>Precisa vencer por 2 ou mais gols.</p>
+            <p><b>-0.75</b><br>Vitória por 2+ ganha tudo; por 1 ganha metade.</p>
+            <p><b>-0.5</b><br>Precisa vencer.</p>
+            <p><b>-0.25</b><br>Vitória ganha; empate devolve metade.</p>
+            <p><b>0.0</b><br>Empate devolve.</p>
+            <p><b>+0.25</b><br>Empate ganha metade.</p>
+            <p><b>+0.5</b><br>Empate ou vitória ganha.</p>
+            <p><b>+1.0</b><br>Perder por 1 devolve; por 2+ perde.</p>
+          </div>
+        </section>`;
+    }
+  
     function openMarkets(type = state.activeMarket) {
       const marketType = MARKET[type] ? type : "pregame";
       state.activeMarket = marketType;
@@ -631,6 +800,8 @@
   
       if (marketType === "btts") {
         renderBttsMarket(layer);
+      } else if (marketType === "handicap") {
+        renderHandicapMarket(layer, "-0.5");
       } else {
         if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
         const grid = $("#cpMobileOddsGrid");
@@ -1200,6 +1371,25 @@
         if (lineButton) {
           event.preventDefault();
           showRecommended(lineButton.dataset.v9Line || lineButton.dataset.v8Line);
+          return;
+        }
+  
+        const handicapLine = event.target.closest("[data-handicap-line]");
+        if (handicapLine) {
+          event.preventDefault();
+          renderHandicapMarket($("#cpMobileMarketsLayer"), handicapLine.dataset.handicapLine);
+          return;
+        }
+  
+        const handicapSide = event.target.closest("[data-handicap-side]");
+        if (handicapSide) {
+          event.preventDefault();
+          $$(".cpHandicapTabs button").forEach(button => button.classList.toggle("active", button === handicapSide));
+          const mode = handicapSide.dataset.handicapSide;
+          $$(".cpHandicapOpportunity").forEach((card, index) => {
+            const isAway = index % 3 === 1;
+            card.hidden = mode === "home" ? isAway : mode === "away" ? !isAway : false;
+          });
           return;
         }
   
