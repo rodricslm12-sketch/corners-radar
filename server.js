@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v12-corners-dynamic";
+const QUENTES_CACHE_VERSION = "tz-manaus-v13-corners-sample-fix";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -5719,43 +5719,71 @@ function bttsEngineDecision({ game, home, away, oddsInfo, goalsDecision }) {
 }
 
 function cornersEngineDecision({ game, home, away }) {
-  const quality = engineDataQuality(
-    home,
-    away,
-    ["cornersForAvg", "cornersAgainstAvg"]
-  );
+  const homeGames = Number(home?.cornerGames || 0);
+  const awayGames = Number(away?.cornerGames || 0);
+  const sampleGames = Math.min(homeGames, awayGames);
 
-  const completeProfile =
+  const hasCornerAverages =
     Number.isFinite(home?.cornersForAvg) &&
     Number.isFinite(home?.cornersAgainstAvg) &&
     Number.isFinite(away?.cornersForAvg) &&
     Number.isFinite(away?.cornersAgainstAvg);
 
-  let projection = null;
-  let source = "fallback";
+  const leagueBase = engineClamp(
+    engineGameNumber(game, [
+      "baseCorners",
+      "base_corners",
+      "league_base_corners",
+      "event_raw.baseCorners"
+    ], 9.8),
+    8.6,
+    11.4
+  );
 
-  if (completeProfile) {
+  const fallbackProjection =
+    engineFallbackCornersProjection(game);
+
+  let rawRecentProjection = null;
+
+  if (hasCornerAverages) {
     const homeExpected =
       (home.cornersForAvg + away.cornersAgainstAvg) / 2;
 
     const awayExpected =
       (away.cornersForAvg + home.cornersAgainstAvg) / 2;
 
-    projection = homeExpected + awayExpected;
+    rawRecentProjection = homeExpected + awayExpected;
+  }
+
+  let projection = null;
+  let source = "fallback";
+
+  if (
+    Number.isFinite(rawRecentProjection) &&
+    sampleGames >= 3
+  ) {
+    // Regressão à média: histórico curto nunca domina sozinho.
+    const recentWeight =
+      sampleGames >= 5
+        ? 0.72
+        : sampleGames === 4
+          ? 0.62
+          : 0.52;
+
+    projection =
+      rawRecentProjection * recentWeight +
+      leagueBase * (1 - recentWeight);
+
     source = "recent_form";
+  } else if (Number.isFinite(fallbackProjection)) {
+    projection =
+      fallbackProjection * 0.68 +
+      leagueBase * 0.32;
   } else {
-    projection = engineFallbackCornersProjection(game);
+    projection = leagueBase;
   }
 
-  if (!Number.isFinite(projection)) {
-    return engineDecision({
-      market: "ESCANTEIOS",
-      skip: true,
-      reason: "Não há projeção de escanteios disponível."
-    });
-  }
-
-  projection = engineClamp(projection, 6.5, 16.5);
+  projection = engineClamp(projection, 7.2, 15.8);
 
   const pressureHits = engineGameNumber(game, [
     "pressureHits",
@@ -5765,6 +5793,8 @@ function cornersEngineDecision({ game, home, away }) {
   ]);
 
   const over95 = engineGameNumber(game, [
+    "over95_prob_adj",
+    "over95_prob",
     "over95",
     "over_95",
     "over9_5",
@@ -5779,30 +5809,35 @@ function cornersEngineDecision({ game, home, away }) {
   let line = "SEM APOSTA";
   let edge = 0;
 
-  // Escolha dinâmica por projeção.
-  if (projection >= 12.15) {
+  if (projection >= 12.05) {
     line = "OVER 11.5";
     edge = projection - 11.5;
-  } else if (projection >= 11.05) {
+  } else if (projection >= 10.95) {
     line = "OVER 10.5";
     edge = projection - 10.5;
-  } else if (projection >= 9.95) {
+  } else if (projection >= 9.85) {
     line = "OVER 9.5";
     edge = projection - 9.5;
-  } else if (projection >= 8.85) {
+  } else if (projection >= 8.75) {
     line = "OVER 8.5";
     edge = projection - 8.5;
   } else {
-    // Under só aparece com sinais claros de jogo fraco.
+    // Under somente com amostra realmente robusta.
+    const robustSample =
+      homeGames >= 4 &&
+      awayGames >= 4;
+
     const lowPressure =
-      !Number.isFinite(pressureHits) || pressureHits <= 1;
+      Number.isFinite(pressureHits) &&
+      pressureHits <= 1;
 
     const poorOverHistory =
-      !Number.isFinite(normalizedOver95) ||
-      normalizedOver95 <= 0.38;
+      Number.isFinite(normalizedOver95) &&
+      normalizedOver95 <= 0.34;
 
     if (
-      projection <= 8.0 &&
+      projection <= 7.65 &&
+      robustSample &&
       lowPressure &&
       poorOverHistory
     ) {
@@ -5817,22 +5852,25 @@ function cornersEngineDecision({ game, home, away }) {
       skip: true,
       projection,
       reason:
-        `Projeção de ${projection.toFixed(1)} cantos sem margem suficiente para uma linha segura.`
+        `Projeção de ${projection.toFixed(1)} cantos sem margem segura para entrada.`,
+      extra: {
+        sample_games: sampleGames,
+        calculation_source: source
+      }
     });
   }
 
   let confidence =
-    engineExistingConfidence(game, 64) +
-    edge * (source === "recent_form" ? 8 : 5) +
-    Math.max(0, quality - 2) * 0.8;
-
-  // Under recebe corte de confiança mais rigoroso.
-  if (line.startsWith("UNDER")) {
-    confidence = Math.min(confidence - 4, 72);
-  }
+    61 +
+    edge * 7 +
+    Math.min(6, sampleGames * 0.9);
 
   if (source === "fallback") {
-    confidence = Math.min(confidence, 76);
+    confidence = Math.min(confidence, 72);
+  }
+
+  if (line.startsWith("UNDER")) {
+    confidence = Math.min(confidence - 5, 68);
   }
 
   confidence = engineClamp(
@@ -5849,16 +5887,26 @@ function cornersEngineDecision({ game, home, away }) {
     projection,
     reason:
       `${line}: projeção de ${projection.toFixed(1)} escanteios ` +
-      `${source === "recent_form" ? "pela forma recente." : "pelos indicadores do servidor."}`,
+      `${source === "recent_form"
+        ? `com amostra de ${sampleGames} jogos e ajuste pela média da liga.`
+        : "com base no motor principal e na média da liga."}`,
     extra: {
-      data_quality: quality,
+      data_quality: hasCornerAverages ? 4 : 1,
       calculation_source: source,
-      pressure_hits: Number.isFinite(pressureHits)
-        ? pressureHits
-        : null,
-      over95_rate: Number.isFinite(normalizedOver95)
-        ? Number((normalizedOver95 * 100).toFixed(1))
-        : null
+      sample_games: sampleGames,
+      raw_recent_projection:
+        Number.isFinite(rawRecentProjection)
+          ? Number(rawRecentProjection.toFixed(2))
+          : null,
+      league_base: Number(leagueBase.toFixed(2)),
+      pressure_hits:
+        Number.isFinite(pressureHits)
+          ? pressureHits
+          : null,
+      over95_rate:
+        Number.isFinite(normalizedOver95)
+          ? Number((normalizedOver95 * 100).toFixed(1))
+          : null
     }
   });
 }
@@ -6065,6 +6113,84 @@ async function buildAllMarketEngines({ date }) {
     }
   );
 
+  function stabilizeCornerDecisions(items) {
+    const valid = items.filter(
+      item => !item?.corners_ai?.skip
+    );
+
+    if (valid.length < 4) return items;
+
+    const counts = new Map();
+
+    for (const item of valid) {
+      const line = item.corners_ai.line;
+      counts.set(line, (counts.get(line) || 0) + 1);
+    }
+
+    const dominant = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])[0];
+
+    if (!dominant) return items;
+
+    const [line, count] = dominant;
+    const ratio = count / valid.length;
+
+    // Caso anormal: quase todos Under 9.5.
+    if (line === "UNDER 9.5" && ratio >= 0.55) {
+      return items.map(item => {
+        const ai = item.corners_ai;
+
+        if (!ai || ai.skip || ai.line !== "UNDER 9.5") {
+          return item;
+        }
+
+        const projection = Number(ai.projection || 0);
+
+        if (projection >= 9.85) {
+          return {
+            ...item,
+            corners_ai: {
+              ...ai,
+              line: "OVER 9.5",
+              confidence: Math.min(70, ai.confidence || 64),
+              reason:
+                `OVER 9.5: projeção revisada de ${projection.toFixed(1)} cantos.`
+            }
+          };
+        }
+
+        if (projection >= 8.75) {
+          return {
+            ...item,
+            corners_ai: {
+              ...ai,
+              line: "OVER 8.5",
+              confidence: Math.min(68, ai.confidence || 63),
+              reason:
+                `OVER 8.5: projeção revisada de ${projection.toFixed(1)} cantos.`
+            }
+          };
+        }
+
+        return {
+          ...item,
+          corners_ai: {
+            ...ai,
+            skip: true,
+            line: "SEM APOSTA",
+            confidence: 0,
+            reason:
+              "Under bloqueado por falta de evidência estatística robusta."
+          }
+        };
+      });
+    }
+
+    return items;
+  }
+
+  const stabilized = stabilizeCornerDecisions(analyzed);
+
   const rank = (items, field) =>
     items
       .slice()
@@ -6083,7 +6209,7 @@ async function buildAllMarketEngines({ date }) {
   return {
     date,
     generated_at: new Date().toISOString(),
-    corners: rank(analyzed, "corners_ai"),
+    corners: rank(stabilized, "corners_ai"),
     goals: rank(analyzed, "goals_ai"),
     cards: rank(analyzed, "cards_ai"),
     btts: rank(analyzed, "btts_ai"),
