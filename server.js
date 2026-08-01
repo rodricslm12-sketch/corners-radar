@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v5-all-market-engines";
+const QUENTES_CACHE_VERSION = "tz-manaus-v7-all-market-engines";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -4362,6 +4362,1093 @@ async function buildMarketGamesList({ date }) {
 
   return out.sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
 }
+
+
+/* =========================================================
+   HANDICAP ASIÁTICO — MOTOR PRÓPRIO, CONSERVADOR E PRÉ-JOGO
+   ========================================================= */
+
+const HANDICAP_ENGINE = {
+  MAX_GAMES: Number(process.env.HANDICAP_MAX_GAMES || 30),
+  RECENT_N: Number(process.env.HANDICAP_RECENT_N || 5),
+  MIN_DATA_QUALITY: 5,
+  MIN_EDGE: 7.5,
+  MAX_CONFIDENCE: 84,
+  HOME_ADVANTAGE: 2.4
+};
+
+function handicapSafeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const normalized = String(value).trim().replace("%", "").replace(",", ".");
+  if (!normalized) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
+function handicapScoreFromMatch(match) {
+  const home = handicapSafeNumber(
+    match?.match_hometeam_score ??
+    match?.home_score ??
+    match?.score_home ??
+    match?.goals?.home
+  );
+
+  const away = handicapSafeNumber(
+    match?.match_awayteam_score ??
+    match?.away_score ??
+    match?.score_away ??
+    match?.goals?.away
+  );
+
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
+  return { home, away };
+}
+
+function handicapRecentProfile(teamName, matches, limit = HANDICAP_ENGINE.RECENT_N) {
+  const teamKey = normTeamKey(teamName);
+  const list = Array.isArray(matches) ? matches.slice(0, limit) : [];
+
+  let games = 0;
+  let points = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+  let awayGames = 0;
+  let homeGames = 0;
+
+  for (const match of list) {
+    const score = handicapScoreFromMatch(match);
+    if (!score) continue;
+
+    const homeName = teamFromEvent(match, "home");
+    const awayName = teamFromEvent(match, "away");
+    const isHome = normTeamKey(homeName) === teamKey;
+    const isAway = normTeamKey(awayName) === teamKey;
+
+    if (!isHome && !isAway) continue;
+
+    const scored = isHome ? score.home : score.away;
+    const conceded = isHome ? score.away : score.home;
+
+    games++;
+    goalsFor += scored;
+    goalsAgainst += conceded;
+
+    if (isHome) homeGames++;
+    if (isAway) awayGames++;
+
+    if (scored > conceded) {
+      wins++;
+      points += 3;
+    } else if (scored === conceded) {
+      draws++;
+      points += 1;
+    } else {
+      losses++;
+    }
+  }
+
+  if (!games) return null;
+
+  return {
+    games,
+    pointsPerGame: points / games,
+    goalsForAvg: goalsFor / games,
+    goalsAgainstAvg: goalsAgainst / games,
+    goalDiffAvg: (goalsFor - goalsAgainst) / games,
+    winRate: wins / games,
+    drawRate: draws / games,
+    lossRate: losses / games,
+    homeGames,
+    awayGames
+  };
+}
+
+function handicapOddsProfile(oddsInfo) {
+  const homeOdd = handicapSafeNumber(oddsInfo?.odd1);
+  const drawOdd = handicapSafeNumber(oddsInfo?.oddX);
+  const awayOdd = handicapSafeNumber(oddsInfo?.odd2);
+
+  if (!Number.isFinite(homeOdd) || !Number.isFinite(awayOdd)) {
+    return null;
+  }
+
+  const homeRaw = 1 / Math.max(1.01, homeOdd);
+  const drawRaw = Number.isFinite(drawOdd) ? 1 / Math.max(1.01, drawOdd) : 0;
+  const awayRaw = 1 / Math.max(1.01, awayOdd);
+  const total = homeRaw + drawRaw + awayRaw;
+
+  if (!(total > 0)) return null;
+
+  return {
+    homeOdd,
+    drawOdd,
+    awayOdd,
+    homeProb: homeRaw / total,
+    drawProb: drawRaw / total,
+    awayProb: awayRaw / total,
+    favorite: homeRaw >= awayRaw ? "HOME" : "AWAY"
+  };
+}
+
+function handicapLineFromEdge({ side, edge, favoriteProb, drawProb, dataQuality }) {
+  // Linhas agressivas exigem vantagem clara, odds e forma.
+  if (edge >= 30 && favoriteProb >= 0.66 && dataQuality >= 8) return "-1.0";
+  if (edge >= 24 && favoriteProb >= 0.61 && dataQuality >= 7) return "-0.75";
+  if (edge >= 17 && favoriteProb >= 0.55 && dataQuality >= 6) return "-0.5";
+  if (edge >= 11 && favoriteProb >= 0.49) return "-0.25";
+
+  // Em jogos mais equilibrados, protege o lado com melhor sustentação.
+  if (edge >= HANDICAP_ENGINE.MIN_EDGE) {
+    return drawProb >= 0.29 ? "+0.25" : "-0.25";
+  }
+
+  return "SEM APOSTA";
+}
+
+function handicapDecision({
+  game,
+  oddsInfo,
+  h2hBlock,
+  posHome,
+  posAway
+}) {
+  const homeRecent = handicapRecentProfile(
+    game.casa,
+    h2hBlock?.firstTeam_lastResults
+  );
+
+  const awayRecent = handicapRecentProfile(
+    game.fora,
+    h2hBlock?.secondTeam_lastResults
+  );
+
+  const odds = handicapOddsProfile(oddsInfo);
+  const hasTable = Number.isFinite(posHome) && Number.isFinite(posAway);
+  const hasBothForm = Boolean(homeRecent && awayRecent);
+
+  let dataQuality = 0;
+  if (odds) dataQuality += 4;
+  if (hasTable) dataQuality += 2;
+  if (homeRecent) dataQuality += 2;
+  if (awayRecent) dataQuality += 2;
+
+  if (dataQuality < HANDICAP_ENGINE.MIN_DATA_QUALITY) {
+    return {
+      skip: true,
+      market: "HANDICAP ASIÁTICO",
+      line: "SEM APOSTA",
+      side: null,
+      team: null,
+      confidence: 0,
+      score: 0,
+      reason: "Dados reais insuficientes: a IA não recomenda entrada.",
+      factors: {
+        odds: Boolean(odds),
+        table: hasTable,
+        home_form: Boolean(homeRecent),
+        away_form: Boolean(awayRecent)
+      }
+    };
+  }
+
+  let homeScore = HANDICAP_ENGINE.HOME_ADVANTAGE;
+  let awayScore = 0;
+  const reasons = [];
+
+  if (odds) {
+    const oddsEdge = (odds.homeProb - odds.awayProb) * 100;
+    homeScore += oddsEdge * 1.05;
+    awayScore -= oddsEdge * 1.05;
+    reasons.push("probabilidade das odds");
+  }
+
+  if (hasTable) {
+    const positionEdge = clamp((posAway - posHome) * 1.35, -20, 20);
+    homeScore += positionEdge;
+    awayScore -= positionEdge;
+    reasons.push("posição na tabela");
+  }
+
+  if (hasBothForm) {
+    const ppgEdge = (homeRecent.pointsPerGame - awayRecent.pointsPerGame) * 10;
+    const goalEdge = (homeRecent.goalDiffAvg - awayRecent.goalDiffAvg) * 12;
+    const attackEdge = (homeRecent.goalsForAvg - awayRecent.goalsForAvg) * 5;
+    const defenseEdge = (awayRecent.goalsAgainstAvg - homeRecent.goalsAgainstAvg) * 5;
+
+    homeScore += ppgEdge + goalEdge + attackEdge + defenseEdge;
+    awayScore -= ppgEdge + goalEdge + attackEdge + defenseEdge;
+    reasons.push("forma recente e saldo de gols");
+  } else if (homeRecent || awayRecent) {
+    const profile = homeRecent || awayRecent;
+    const sign = homeRecent ? 1 : -1;
+    const partial =
+      (profile.pointsPerGame - 1.35) * 7 +
+      profile.goalDiffAvg * 8;
+
+    homeScore += partial * sign;
+    awayScore -= partial * sign;
+    reasons.push("forma recente parcial");
+  }
+
+  const side = homeScore >= awayScore ? "HOME" : "AWAY";
+  const edge = Math.abs(homeScore - awayScore);
+  const favoriteProb = odds
+    ? side === "HOME" ? odds.homeProb : odds.awayProb
+    : 0.50;
+  const drawProb = odds?.drawProb ?? 0.28;
+
+  const line = handicapLineFromEdge({
+    side,
+    edge,
+    favoriteProb,
+    drawProb,
+    dataQuality
+  });
+
+  if (line === "SEM APOSTA") {
+    return {
+      skip: true,
+      market: "HANDICAP ASIÁTICO",
+      line,
+      side,
+      team: side === "HOME" ? game.casa : game.fora,
+      confidence: 0,
+      score: Number(edge.toFixed(2)),
+      reason: "Confronto sem vantagem estatística suficiente para entrada.",
+      factors: {
+        odds: Boolean(odds),
+        table: hasTable,
+        home_form: Boolean(homeRecent),
+        away_form: Boolean(awayRecent)
+      }
+    };
+  }
+
+  let confidence =
+    56 +
+    Math.min(18, edge * 0.55) +
+    Math.min(6, dataQuality * 0.65);
+
+  // Reduz confiança quando a linha é agressiva.
+  if (line === "-1.0") confidence -= 5;
+  else if (line === "-0.75") confidence -= 3;
+  else if (line === "+0.25") confidence -= 1;
+
+  confidence = clamp(
+    Math.round(confidence),
+    60,
+    HANDICAP_ENGINE.MAX_CONFIDENCE
+  );
+
+  // Corte final conservador.
+  if (confidence < 64) {
+    return {
+      skip: true,
+      market: "HANDICAP ASIÁTICO",
+      line: "SEM APOSTA",
+      side,
+      team: side === "HOME" ? game.casa : game.fora,
+      confidence,
+      score: Number(edge.toFixed(2)),
+      reason: "A confiança ficou abaixo do limite mínimo de segurança.",
+      factors: {
+        odds: Boolean(odds),
+        table: hasTable,
+        home_form: Boolean(homeRecent),
+        away_form: Boolean(awayRecent)
+      }
+    };
+  }
+
+  return {
+    skip: false,
+    market: "HANDICAP ASIÁTICO",
+    line,
+    side,
+    side_key: side === "HOME" ? "home" : "away",
+    team: side === "HOME" ? game.casa : game.fora,
+    confidence,
+    score: Number((edge + dataQuality * 3).toFixed(2)),
+    reason: `${side === "HOME" ? "Casa" : "Fora"} ${line}: vantagem baseada em ${reasons.join(", ")}.`,
+    data_quality: dataQuality,
+    odds: odds ? {
+      home: odds.homeOdd,
+      draw: odds.drawOdd,
+      away: odds.awayOdd,
+      home_prob: Number((odds.homeProb * 100).toFixed(1)),
+      draw_prob: Number((odds.drawProb * 100).toFixed(1)),
+      away_prob: Number((odds.awayProb * 100).toFixed(1))
+    } : null,
+    form: {
+      home: homeRecent,
+      away: awayRecent
+    },
+    factors: {
+      odds: Boolean(odds),
+      table: hasTable,
+      home_form: Boolean(homeRecent),
+      away_form: Boolean(awayRecent)
+    }
+  };
+}
+
+async function buildHandicapGamesList({ date }) {
+  const baseGames = await buildMarketGamesList({ date });
+  const candidates = baseGames.slice(0, HANDICAP_ENGINE.MAX_GAMES);
+
+  const analyzed = await mapLimit(candidates, CONCURRENCY, async game => {
+    let oddsInfo = null;
+    let h2hBlock = null;
+
+    try {
+      if (game.match_id) oddsInfo = await getOdds1x2(game.match_id);
+    } catch {}
+
+    try {
+      h2hBlock = await getH2H(game.casa, game.fora);
+    } catch {}
+
+    const handicap_ai = handicapDecision({
+      game,
+      oddsInfo,
+      h2hBlock,
+      posHome: game.pos_home,
+      posAway: game.pos_away
+    });
+
+    return {
+      ...game,
+      handicap_ai,
+      handicap_line: handicap_ai.line,
+      handicap_side: handicap_ai.side_key || null,
+      handicap_confidence: handicap_ai.confidence,
+      handicap_skip: Boolean(handicap_ai.skip)
+    };
+  });
+
+  return analyzed.sort((a, b) => {
+    const aSkip = Boolean(a?.handicap_ai?.skip);
+    const bSkip = Boolean(b?.handicap_ai?.skip);
+
+    if (aSkip !== bSkip) return aSkip ? 1 : -1;
+
+    return Number(b?.handicap_ai?.score || 0) -
+      Number(a?.handicap_ai?.score || 0);
+  });
+}
+
+
+/* =========================================================
+   MOTORES INDEPENDENTES — GOLS, CANTOS, CARTÕES E BTTS
+   ========================================================= */
+
+const MULTI_MARKET_ENGINE = {
+  MAX_GAMES: Number(process.env.MARKET_ENGINE_MAX_GAMES || 20),
+  RECENT_N: Number(process.env.MARKET_ENGINE_RECENT_N || 4),
+  MIN_CONFIDENCE: Number(process.env.MARKET_ENGINE_MIN_CONFIDENCE || 62),
+  MAX_CONFIDENCE: Number(process.env.MARKET_ENGINE_MAX_CONFIDENCE || 86)
+};
+
+function engineClamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function engineDecision({
+  market,
+  line = "SEM APOSTA",
+  confidence = 0,
+  score = 0,
+  reason = "",
+  projection = null,
+  skip = false,
+  extra = {}
+}) {
+  const finalSkip =
+    Boolean(skip) ||
+    !line ||
+    line === "SEM APOSTA" ||
+    confidence < MULTI_MARKET_ENGINE.MIN_CONFIDENCE;
+
+  return {
+    market,
+    line: finalSkip ? "SEM APOSTA" : line,
+    confidence: finalSkip ? 0 : Math.round(confidence),
+    score: Number(Number(score || 0).toFixed(2)),
+    projection:
+      Number.isFinite(Number(projection))
+        ? Number(Number(projection).toFixed(2))
+        : null,
+    skip: finalSkip,
+    reason: finalSkip
+      ? reason || "A IA não encontrou vantagem estatística suficiente."
+      : reason,
+    source: "server",
+    ...extra
+  };
+}
+
+function enginePairFromStats(statsMap, keys) {
+  if (!statsMap || typeof statsMap.get !== "function") {
+    return { home: null, away: null };
+  }
+
+  for (const key of keys) {
+    const row = statsMap.get(key);
+    if (!row) continue;
+
+    const home = numFromStat(row.home);
+    const away = numFromStat(row.away);
+
+    if (home !== null || away !== null) {
+      return { home, away };
+    }
+  }
+
+  return { home: null, away: null };
+}
+
+async function engineRecentProfile(teamName, matches, limit = MULTI_MARKET_ENGINE.RECENT_N) {
+  const teamKey = normTeamKey(teamName);
+  const list = Array.isArray(matches) ? matches.slice(0, limit) : [];
+
+  let games = 0;
+  let points = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+  let cornersFor = 0;
+  let cornersAgainst = 0;
+  let cardsFor = 0;
+  let cardsAgainst = 0;
+
+  let goalGames = 0;
+  let cornerGames = 0;
+  let cardGames = 0;
+  let bttsCount = 0;
+  let cleanSheetCount = 0;
+
+  for (const match of list) {
+    const homeName = teamFromEvent(match, "home");
+    const awayName = teamFromEvent(match, "away");
+    const isHome = normTeamKey(homeName) === teamKey;
+    const isAway = normTeamKey(awayName) === teamKey;
+
+    if (!isHome && !isAway) continue;
+
+    games++;
+
+    const score = handicapScoreFromMatch(match);
+
+    if (score) {
+      const scored = isHome ? score.home : score.away;
+      const conceded = isHome ? score.away : score.home;
+
+      goalsFor += scored;
+      goalsAgainst += conceded;
+      goalGames++;
+
+      if (scored > conceded) points += 3;
+      else if (scored === conceded) points += 1;
+
+      if (score.home > 0 && score.away > 0) bttsCount++;
+      if (conceded === 0) cleanSheetCount++;
+    }
+
+    const matchId = match?.match_id ?? match?.event_key ?? null;
+    if (!matchId) continue;
+
+    let statsMap = null;
+    try {
+      statsMap = await getStats(matchId);
+    } catch {
+      statsMap = null;
+    }
+
+    if (!statsMap) continue;
+
+    const metrics = extractMatchMetrics(statsMap);
+
+    if (
+      metrics &&
+      metrics.cornersHome !== null &&
+      metrics.cornersAway !== null
+    ) {
+      cornersFor += isHome
+        ? metrics.cornersHome
+        : metrics.cornersAway;
+
+      cornersAgainst += isHome
+        ? metrics.cornersAway
+        : metrics.cornersHome;
+
+      cornerGames++;
+    }
+
+    const yellow = enginePairFromStats(statsMap, [
+      "yellow cards",
+      "yellow card",
+      "yellowcards",
+      "bookings"
+    ]);
+
+    const red = enginePairFromStats(statsMap, [
+      "red cards",
+      "red card",
+      "redcards",
+      "sendings off"
+    ]);
+
+    if (
+      yellow.home !== null ||
+      yellow.away !== null ||
+      red.home !== null ||
+      red.away !== null
+    ) {
+      const homeCards =
+        (yellow.home ?? 0) +
+        (red.home ?? 0) * 2;
+
+      const awayCards =
+        (yellow.away ?? 0) +
+        (red.away ?? 0) * 2;
+
+      cardsFor += isHome ? homeCards : awayCards;
+      cardsAgainst += isHome ? awayCards : homeCards;
+      cardGames++;
+    }
+  }
+
+  if (!games) return null;
+
+  return {
+    games,
+    pointsPerGame: points / games,
+
+    goalGames,
+    goalsForAvg: goalGames ? goalsFor / goalGames : null,
+    goalsAgainstAvg: goalGames ? goalsAgainst / goalGames : null,
+    goalDiffAvg: goalGames
+      ? (goalsFor - goalsAgainst) / goalGames
+      : null,
+    bttsRate: goalGames ? bttsCount / goalGames : null,
+    cleanSheetRate: goalGames
+      ? cleanSheetCount / goalGames
+      : null,
+
+    cornerGames,
+    cornersForAvg: cornerGames
+      ? cornersFor / cornerGames
+      : null,
+    cornersAgainstAvg: cornerGames
+      ? cornersAgainst / cornerGames
+      : null,
+
+    cardGames,
+    cardsForAvg: cardGames
+      ? cardsFor / cardGames
+      : null,
+    cardsAgainstAvg: cardGames
+      ? cardsAgainst / cardGames
+      : null
+  };
+}
+
+function engineDataQuality(home, away, fields, oddsInfo = null) {
+  let quality = 0;
+
+  if (oddsInfo) quality += 2;
+
+  for (const field of fields) {
+    if (Number.isFinite(home?.[field])) quality++;
+    if (Number.isFinite(away?.[field])) quality++;
+  }
+
+  return quality;
+}
+
+function goalsEngineDecision({ game, home, away, oddsInfo }) {
+  const quality = engineDataQuality(
+    home,
+    away,
+    ["goalsForAvg", "goalsAgainstAvg", "bttsRate"],
+    oddsInfo
+  );
+
+  if (quality < 5) {
+    return engineDecision({
+      market: "GOLS",
+      skip: true,
+      reason: "Dados recentes insuficientes para o mercado de gols."
+    });
+  }
+
+  const homeExpected =
+    ((home?.goalsForAvg ?? 1.15) +
+      (away?.goalsAgainstAvg ?? 1.15)) / 2;
+
+  const awayExpected =
+    ((away?.goalsForAvg ?? 1.05) +
+      (home?.goalsAgainstAvg ?? 1.05)) / 2;
+
+  const projection = homeExpected + awayExpected;
+  const averageBtts =
+    ((home?.bttsRate ?? 0.5) +
+      (away?.bttsRate ?? 0.5)) / 2;
+
+  let line = "SEM APOSTA";
+  let edge = 0;
+
+  if (projection >= 3.55) {
+    line = "OVER 3.5";
+    edge = projection - 3.5;
+  } else if (projection >= 2.78) {
+    line = "OVER 2.5";
+    edge = projection - 2.5;
+  } else if (projection >= 2.05) {
+    line = "OVER 1.5";
+    edge = projection - 1.5;
+  } else if (projection <= 1.95) {
+    line = "UNDER 2.5";
+    edge = 2.5 - projection;
+  }
+
+  if (line === "SEM APOSTA") {
+    return engineDecision({
+      market: "GOLS",
+      skip: true,
+      projection,
+      reason: "A projeção ficou muito próxima das linhas principais."
+    });
+  }
+
+  let confidence =
+    60 +
+    edge * 13 +
+    Math.max(0, quality - 5) * 1.2;
+
+  confidence = engineClamp(
+    confidence,
+    60,
+    MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+  );
+
+  return engineDecision({
+    market: "GOLS",
+    line,
+    confidence,
+    score: confidence + projection,
+    projection,
+    reason:
+      `${line}: projeção de ${projection.toFixed(1)} gols, ` +
+      `com produção estimada de ${homeExpected.toFixed(1)} x ${awayExpected.toFixed(1)}.`,
+    extra: {
+      home_expected: Number(homeExpected.toFixed(2)),
+      away_expected: Number(awayExpected.toFixed(2)),
+      btts_index: Number((averageBtts * 100).toFixed(1)),
+      data_quality: quality
+    }
+  });
+}
+
+function bttsEngineDecision({ game, home, away, oddsInfo }) {
+  const quality = engineDataQuality(
+    home,
+    away,
+    [
+      "goalsForAvg",
+      "goalsAgainstAvg",
+      "bttsRate",
+      "cleanSheetRate"
+    ],
+    oddsInfo
+  );
+
+  if (quality < 6) {
+    return engineDecision({
+      market: "AMBAS MARCAM",
+      skip: true,
+      reason: "Dados insuficientes para avaliar Ambas Marcam."
+    });
+  }
+
+  const homeAttack = home?.goalsForAvg ?? 0;
+  const awayAttack = away?.goalsForAvg ?? 0;
+  const homeConcedes = home?.goalsAgainstAvg ?? 0;
+  const awayConcedes = away?.goalsAgainstAvg ?? 0;
+
+  const yesIndex =
+    ((home?.bttsRate ?? 0.5) +
+      (away?.bttsRate ?? 0.5)) / 2 * 45 +
+    engineClamp(homeAttack / 1.6, 0, 1) * 15 +
+    engineClamp(awayAttack / 1.6, 0, 1) * 15 +
+    engineClamp(homeConcedes / 1.5, 0, 1) * 12.5 +
+    engineClamp(awayConcedes / 1.5, 0, 1) * 12.5;
+
+  const noIndex =
+    ((home?.cleanSheetRate ?? 0) +
+      (away?.cleanSheetRate ?? 0)) / 2 * 45 +
+    engineClamp((1.0 - Math.min(homeAttack, 1.0)), 0, 1) * 27.5 +
+    engineClamp((1.0 - Math.min(awayAttack, 1.0)), 0, 1) * 27.5;
+
+  let line = "SEM APOSTA";
+  let confidence = 0;
+
+  if (yesIndex >= 63 && yesIndex - noIndex >= 9) {
+    line = "AMBAS SIM";
+    confidence = 58 + (yesIndex - 50) * 0.75;
+  } else if (noIndex >= 61 && noIndex - yesIndex >= 8) {
+    line = "AMBAS NÃO";
+    confidence = 58 + (noIndex - 50) * 0.75;
+  }
+
+  if (line === "SEM APOSTA") {
+    return engineDecision({
+      market: "AMBAS MARCAM",
+      skip: true,
+      reason: "Os indicadores de SIM e NÃO ficaram equilibrados."
+    });
+  }
+
+  confidence = engineClamp(
+    confidence,
+    62,
+    MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+  );
+
+  return engineDecision({
+    market: "AMBAS MARCAM",
+    line,
+    confidence,
+    score: confidence + Math.abs(yesIndex - noIndex),
+    reason:
+      `${line}: índice SIM ${yesIndex.toFixed(0)} e ` +
+      `índice NÃO ${noIndex.toFixed(0)}.`,
+    extra: {
+      yes_index: Number(yesIndex.toFixed(1)),
+      no_index: Number(noIndex.toFixed(1)),
+      data_quality: quality
+    }
+  });
+}
+
+function cornersEngineDecision({ game, home, away }) {
+  const quality = engineDataQuality(
+    home,
+    away,
+    ["cornersForAvg", "cornersAgainstAvg"]
+  );
+
+  if (quality < 4) {
+    return engineDecision({
+      market: "ESCANTEIOS",
+      skip: true,
+      reason: "Dados recentes de escanteios insuficientes."
+    });
+  }
+
+  const homeExpected =
+    ((home?.cornersForAvg ?? 4.5) +
+      (away?.cornersAgainstAvg ?? 4.5)) / 2;
+
+  const awayExpected =
+    ((away?.cornersForAvg ?? 4.3) +
+      (home?.cornersAgainstAvg ?? 4.3)) / 2;
+
+  const projection = homeExpected + awayExpected;
+
+  let line = "SEM APOSTA";
+  let edge = 0;
+
+  if (projection >= 12.25) {
+    line = "OVER 11.5";
+    edge = projection - 11.5;
+  } else if (projection >= 11.15) {
+    line = "OVER 10.5";
+    edge = projection - 10.5;
+  } else if (projection >= 10.05) {
+    line = "OVER 9.5";
+    edge = projection - 9.5;
+  } else if (projection >= 9.05) {
+    line = "OVER 8.5";
+    edge = projection - 8.5;
+  } else if (projection <= 8.15) {
+    line = "UNDER 9.5";
+    edge = 9.5 - projection;
+  }
+
+  if (line === "SEM APOSTA") {
+    return engineDecision({
+      market: "ESCANTEIOS",
+      skip: true,
+      projection,
+      reason: "A projeção de cantos não oferece margem suficiente."
+    });
+  }
+
+  let confidence =
+    60 +
+    edge * 10 +
+    Math.max(0, quality - 4) * 1.5;
+
+  confidence = engineClamp(
+    confidence,
+    60,
+    MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+  );
+
+  return engineDecision({
+    market: "ESCANTEIOS",
+    line,
+    confidence,
+    score: confidence + projection,
+    projection,
+    reason:
+      `${line}: projeção de ${projection.toFixed(1)} escanteios, ` +
+      `${homeExpected.toFixed(1)} da casa e ${awayExpected.toFixed(1)} do visitante.`,
+    extra: {
+      home_expected: Number(homeExpected.toFixed(2)),
+      away_expected: Number(awayExpected.toFixed(2)),
+      data_quality: quality
+    }
+  });
+}
+
+function cardsEngineDecision({ game, home, away }) {
+  const quality = engineDataQuality(
+    home,
+    away,
+    ["cardsForAvg", "cardsAgainstAvg"]
+  );
+
+  if (quality < 4) {
+    return engineDecision({
+      market: "CARTÕES",
+      skip: true,
+      reason: "Dados disciplinares insuficientes."
+    });
+  }
+
+  const homeExpected =
+    ((home?.cardsForAvg ?? 2.0) +
+      (away?.cardsAgainstAvg ?? 2.0)) / 2;
+
+  const awayExpected =
+    ((away?.cardsForAvg ?? 2.0) +
+      (home?.cardsAgainstAvg ?? 2.0)) / 2;
+
+  const projection = homeExpected + awayExpected;
+
+  let line = "SEM APOSTA";
+  let edge = 0;
+
+  if (projection >= 5.75) {
+    line = "OVER 5.5";
+    edge = projection - 5.5;
+  } else if (projection >= 4.75) {
+    line = "OVER 4.5";
+    edge = projection - 4.5;
+  } else if (projection >= 3.75) {
+    line = "OVER 3.5";
+    edge = projection - 3.5;
+  } else if (projection >= 2.8) {
+    line = "OVER 2.5";
+    edge = projection - 2.5;
+  } else if (projection <= 3.7) {
+    line = "UNDER 4.5";
+    edge = 4.5 - projection;
+  }
+
+  if (line === "SEM APOSTA") {
+    return engineDecision({
+      market: "CARTÕES",
+      skip: true,
+      projection,
+      reason: "A projeção de cartões ficou sem margem segura."
+    });
+  }
+
+  let confidence =
+    60 +
+    edge * 10 +
+    Math.max(0, quality - 4) * 1.4;
+
+  confidence = engineClamp(
+    confidence,
+    60,
+    MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+  );
+
+  return engineDecision({
+    market: "CARTÕES",
+    line,
+    confidence,
+    score: confidence + projection,
+    projection,
+    reason:
+      `${line}: projeção de ${projection.toFixed(1)} cartões, ` +
+      `considerando disciplina recente das duas equipes.`,
+    extra: {
+      home_expected: Number(homeExpected.toFixed(2)),
+      away_expected: Number(awayExpected.toFixed(2)),
+      data_quality: quality
+    }
+  });
+}
+
+async function buildAllMarketEngines({ date }) {
+  const baseGames = await buildMarketGamesList({ date });
+  const candidates = baseGames.slice(0, MULTI_MARKET_ENGINE.MAX_GAMES);
+
+  const analyzed = await mapLimit(
+    candidates,
+    CONCURRENCY,
+    async game => {
+      let oddsInfo = null;
+      let h2hBlock = null;
+
+      try {
+        if (game.match_id) {
+          oddsInfo = await getOdds1x2(game.match_id);
+        }
+      } catch {
+        oddsInfo = null;
+      }
+
+      try {
+        h2hBlock = await getH2H(game.casa, game.fora);
+      } catch {
+        h2hBlock = null;
+      }
+
+      const [homeProfile, awayProfile] = await Promise.all([
+        engineRecentProfile(
+          game.casa,
+          h2hBlock?.firstTeam_lastResults
+        ),
+        engineRecentProfile(
+          game.fora,
+          h2hBlock?.secondTeam_lastResults
+        )
+      ]);
+
+      const handicap_ai = handicapDecision({
+        game,
+        oddsInfo,
+        h2hBlock,
+        posHome: game.pos_home,
+        posAway: game.pos_away
+      });
+
+      const goals_ai = goalsEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile,
+        oddsInfo
+      });
+
+      const btts_ai = bttsEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile,
+        oddsInfo
+      });
+
+      const corners_ai = cornersEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile
+      });
+
+      const cards_ai = cardsEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile
+      });
+
+      return {
+        ...game,
+        goals_ai,
+        btts_ai,
+        corners_ai,
+        cards_ai,
+        handicap_ai,
+        engine_profiles: {
+          home: homeProfile,
+          away: awayProfile
+        }
+      };
+    }
+  );
+
+  const rank = (items, field) =>
+    items
+      .slice()
+      .sort((a, b) => {
+        const aiA = a?.[field] || {};
+        const aiB = b?.[field] || {};
+
+        if (Boolean(aiA.skip) !== Boolean(aiB.skip)) {
+          return aiA.skip ? 1 : -1;
+        }
+
+        return Number(aiB.score || 0) -
+          Number(aiA.score || 0);
+      });
+
+  return {
+    date,
+    generated_at: new Date().toISOString(),
+    corners: rank(analyzed, "corners_ai"),
+    goals: rank(analyzed, "goals_ai"),
+    cards: rank(analyzed, "cards_ai"),
+    btts: rank(analyzed, "btts_ai"),
+    handicap: rank(analyzed, "handicap_ai")
+  };
+}
+
+app.get("/market_engines", async (req, res) => {
+  const date = req.query.date || toISODate();
+
+  try {
+    const payload = await buildAllMarketEngines({ date });
+
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+
+    return res.json(payload);
+  } catch (err) {
+    return res.status(500).json({
+      error: "Erro ao calcular os motores dos mercados",
+      details: String(err?.message || err)
+    });
+  }
+});
+
+
+app.get("/handicap_ai", async (req, res) => {
+  const date = req.query.date || toISODate();
+
+  try {
+    const games = await buildHandicapGamesList({ date });
+
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+
+    return res.json(games);
+  } catch (err) {
+    return res.status(500).json({
+      error: "Erro ao calcular Handicap Asiático",
+      details: String(err?.message || err)
+    });
+  }
+});
+
 
 app.get("/mercados", async (req, res) => {
   const date = req.query.date || toISODate();

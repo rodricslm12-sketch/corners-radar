@@ -503,13 +503,30 @@
   
       const stamp = Date.now();
       const date = state.date;
-      const [hotResult, marketResult] = await Promise.allSettled([
-        getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=9`),
-        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=9`)
+      const [hotResult, marketResult, enginesResult] = await Promise.allSettled([
+        getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=11`),
+        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`),
+        getJson(`/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`)
       ]);
   
-      const hotGames = hotResult.status === "fulfilled" ? extract(hotResult.value) : [];
-      const marketGames = marketResult.status === "fulfilled" ? extract(marketResult.value) : [];
+      const hotGames = hotResult.status === "fulfilled"
+        ? extract(hotResult.value)
+        : [];
+  
+      const marketGames = marketResult.status === "fulfilled"
+        ? extract(marketResult.value)
+        : [];
+  
+      const enginePayload = enginesResult.status === "fulfilled"
+        ? (enginesResult.value || {})
+        : {};
+  
+      const cornerEngineGames = extract(enginePayload.corners);
+      const goalEngineGames = extract(enginePayload.goals);
+      const cardEngineGames = extract(enginePayload.cards);
+      const bttsEngineGames = extract(enginePayload.btts);
+      const handicapEngineGames = extract(enginePayload.handicap);
+  
       const raw = marketGames.length ? marketGames : hotGames;
   
       if (!raw.length && !hotGames.length) {
@@ -518,11 +535,37 @@
       }
   
       state.all = raw;
-      state.corners = buildMarket(hotGames.length ? hotGames : raw, "corners");
-      state.goals = buildMarket(raw, "goals");
-      state.btts = buildMarket(raw, "goals");
-      state.handicap = buildMarket(raw, "pregame");
-      state.cards = buildMarket(raw, "cards");
+  
+      state.corners = buildMarket(
+        cornerEngineGames.length
+          ? cornerEngineGames
+          : hotGames.length
+            ? hotGames
+            : raw,
+        "corners"
+      );
+  
+      state.goals = buildMarket(
+        goalEngineGames.length ? goalEngineGames : raw,
+        "goals"
+      );
+  
+      state.btts = buildMarket(
+        bttsEngineGames.length ? bttsEngineGames : raw,
+        "goals"
+      );
+  
+      state.handicap = buildMarket(
+        handicapEngineGames.length
+          ? handicapEngineGames
+          : raw,
+        "pregame"
+      );
+  
+      state.cards = buildMarket(
+        cardEngineGames.length ? cardEngineGames : raw,
+        "cards"
+      );
       state.pregame = buildMarket(raw, "pregame");
       state.combined = buildMarket(raw, "combined");
       state.props = buildMarket(raw, "props");
@@ -543,33 +586,50 @@
       const liveEntries = [];
   
       const rows = games.map((game, index) => {
-        const choice = index % 3 === 1 ? "NÃO" : "SIM";
-        const confidence = Math.max(63, Math.min(89, Number(game.confidence || 72)));
-        const odd = (1.48 + ((100 - confidence) / 100)).toFixed(2);
+        const decision = game?.raw?.btts_ai || {};
+        const decisionLine = clean(decision.line, "SEM APOSTA").toUpperCase();
+        const isNoBet = Boolean(decision.skip) || decisionLine === "SEM APOSTA";
+  
+        const choice = decisionLine.includes("NÃO")
+          ? "NÃO"
+          : "SIM";
+  
+        const confidence = isNoBet
+          ? 0
+          : Math.max(
+              62,
+              Math.min(89, Number(decision.confidence || game.confidence || 72))
+            );
+  
+        const odd = isNoBet
+          ? "—"
+          : (1.48 + ((100 - confidence) / 100)).toFixed(2);
         const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
         const settlementKey = `btts-${index}`;
   
-        settlementEntries.push({
-          key: settlementKey,
-          game,
-          marketType: "btts",
-          line: `AMBAS ${choice}`
-        });
+        if (!isNoBet) {
+          settlementEntries.push({
+            key: settlementKey,
+            game,
+            marketType: "btts",
+            line: `AMBAS ${choice}`
+          });
+        }
   
         const liveKey = `live-btts-${index}`;
         liveEntries.push({
           key: liveKey,
           game,
-          marketType: "btts",
-          line: `AMBAS ${choice}`,
+          marketType: isNoBet ? "" : "btts",
+          line: isNoBet ? "" : `AMBAS ${choice}`,
           side: ""
         });
   
         return `
           <button
             type="button"
-            class="cpBttsOpportunity"
+            class="cpBttsOpportunity ${isNoBet ? "is-no-bet" : ""}"
             data-v9-game="${index}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="btts"
@@ -588,14 +648,15 @@
               </div>
             </div>
             <div class="cpBttsPick">
-              <strong>AMBAS MARCAM – ${choice}</strong>
-              <small>Odd média</small>
+              <span class="cpBttsEngineBadge">✦ IA DO SERVIDOR</span>
+              <strong>${isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
+              <small>${isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
               <b>${odd}</b>
               <span class="cpSettlementSlot"></span>
             </div>
-            <div class="cpBttsGauge" style="--btts:${confidence}">
-              <span>${confidence}%</span>
-              <small>CONFIANÇA</small>
+            <div class="cpBttsGauge ${isNoBet ? "is-disabled" : ""}" style="--btts:${confidence}">
+              <span>${isNoBet ? "—" : `${confidence}%`}</span>
+              <small>${isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
             <i class="cpBttsArrow">›</i>
           </button>`;
@@ -858,6 +919,37 @@
   
     function handicapAutoRecommendation(game) {
       const raw = game?.raw || {};
+      const serverDecision = raw?.handicap_ai;
+  
+      if (serverDecision && typeof serverDecision === "object") {
+        const sideKey = String(
+          serverDecision.side_key ??
+          serverDecision.side ??
+          ""
+        ).toLowerCase();
+  
+        const side =
+          sideKey === "away" || sideKey === "fora"
+            ? "away"
+            : "home";
+  
+        return {
+          skip: Boolean(serverDecision.skip),
+          side,
+          line: clean(serverDecision.line, "SEM APOSTA"),
+          confidence: Number(serverDecision.confidence || 0),
+          score: Number(serverDecision.score || 0),
+          teamName: clean(
+            serverDecision.team,
+            side === "home" ? game.home : game.away
+          ),
+          reason: clean(
+            serverDecision.reason,
+            "Decisão calculada pelo servidor."
+          ),
+          source: "server"
+        };
+      }
   
       const homeOdds = handicapRawNumber(raw, [
         "home_od", "odds.home", "home_odd", "odd_home",
@@ -879,153 +971,143 @@
         "standings.away.position", "posAway"
       ]);
   
-      const factorA = handicapGameFactor(game, "strength");
-      const factorB = handicapGameFactor(game, "line");
-      const factorC = handicapGameFactor(game, "side");
-  
       const homeGoals = handicapRawNumber(raw, [
         "home_goals_avg", "home.avg_goals",
         "stats.home.goals_for_avg", "home_scored_avg",
         "homeGoalsAvg"
-      ], 1.05 + factorA * 1.25);
+      ]);
   
       const awayGoals = handicapRawNumber(raw, [
         "away_goals_avg", "away.avg_goals",
         "stats.away.goals_for_avg", "away_scored_avg",
         "awayGoalsAvg"
-      ], 0.95 + factorB * 1.20);
+      ]);
   
       const homeConcedes = handicapRawNumber(raw, [
         "home_concedes_avg", "stats.home.goals_against_avg",
         "homeConcedesAvg"
-      ], 0.85 + factorB * 1.15);
+      ]);
   
       const awayConcedes = handicapRawNumber(raw, [
         "away_concedes_avg", "stats.away.goals_against_avg",
         "awayConcedesAvg"
-      ], 0.90 + factorA * 1.20);
+      ]);
   
-      let homeStrength = 50 + (factorA - 0.5) * 12;
-      let awayStrength = 50 + (factorB - 0.5) * 12;
+      const hasOdds = Number.isFinite(homeOdds) && Number.isFinite(awayOdds);
+      const hasTable = Number.isFinite(homePos) && Number.isFinite(awayPos);
+      const hasGoals = [homeGoals, awayGoals, homeConcedes, awayConcedes]
+        .filter(Number.isFinite).length >= 3;
   
-      if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
-        const homeImplied = 1 / Math.max(homeOdds, 1.01);
-        const awayImplied = 1 / Math.max(awayOdds, 1.01);
-        const oddsGap = (homeImplied - awayImplied) * 80;
+      const dataQuality =
+        (hasOdds ? 2 : 0) +
+        (hasTable ? 1 : 0) +
+        (hasGoals ? 2 : 0);
   
-        homeStrength += oddsGap;
-        awayStrength -= oddsGap;
+      if (dataQuality < 3) {
+        return {
+          skip: true,
+          side: "home",
+          line: "SEM APOSTA",
+          confidence: 0,
+          score: -999,
+          teamName: "",
+          reason: "Dados insuficientes para uma recomendação confiável."
+        };
       }
   
-      if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
-        const positionGap = awayPos - homePos;
-        const tableImpact = Math.max(-18, Math.min(18, positionGap * 1.35));
-  
-        homeStrength += tableImpact;
-        awayStrength -= tableImpact;
-      }
-  
-      homeStrength += Math.max(
-        -15,
-        Math.min(15, ((homeGoals + awayConcedes) - 2.25) * 8)
-      );
-  
-      awayStrength += Math.max(
-        -15,
-        Math.min(15, ((awayGoals + homeConcedes) - 2.25) * 8)
-      );
-  
-      // Pequena vantagem histórica do mando, sem forçar sempre a equipe da casa.
-      homeStrength += 2.2;
-  
-      const baseConfidence = Number(game?.confidence || 68);
-      homeStrength += (baseConfidence - 68) * 0.12;
-      awayStrength += (baseConfidence - 68) * 0.08;
-  
-      const strongerSide = homeStrength >= awayStrength ? "home" : "away";
-      const weakerSide = strongerSide === "home" ? "away" : "home";
-      const strongerValue = Math.max(homeStrength, awayStrength);
-      const weakerValue = Math.min(homeStrength, awayStrength);
-      const edge = strongerValue - weakerValue;
-  
-      let side = strongerSide;
-      let line = "-0.25";
-  
-      if (edge >= 22) {
-        line = "-1.0";
-      } else if (edge >= 17) {
-        line = "-0.75";
-      } else if (edge >= 11) {
-        line = "-0.5";
-      } else if (edge >= 6) {
-        line = "-0.25";
-      } else {
-        // Jogo equilibrado: protege a equipe ligeiramente mais fraca.
-        side = weakerSide;
-  
-        if (edge <= 1.8 && factorC > 0.72) {
-          line = "+0.5";
-        } else {
-          line = "+0.25";
-        }
-      }
-  
-      // Quando os dados são escassos, evita listas inteiras com a mesma linha.
-      const hasStrongSource =
-        Number.isFinite(homeOdds) && Number.isFinite(awayOdds) ||
-        Number.isFinite(homePos) && Number.isFinite(awayPos);
-  
-      if (!hasStrongSource) {
-        if (factorC >= 0.86) {
-          side = strongerSide;
-          line = "-0.75";
-        } else if (factorC >= 0.68) {
-          side = strongerSide;
-          line = "-0.5";
-        } else if (factorC >= 0.48) {
-          side = strongerSide;
-          line = "-0.25";
-        } else if (factorC >= 0.25) {
-          side = weakerSide;
-          line = "+0.25";
-        } else {
-          side = weakerSide;
-          line = "+0.5";
-        }
-      }
-  
-      const confidence = Math.round(
-        Math.max(
-          57,
-          Math.min(
-            88,
-            58 + edge * 0.72 + Math.abs(factorC - 0.5) * 8
-          )
-        )
-      );
-  
-      const teamName = side === "home" ? game.home : game.away;
-      const sideLabel = side === "home" ? "Casa" : "Fora";
-  
+      let homeScore = 0;
+      let awayScore = 0;
       const reasons = [];
   
-      if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
-        reasons.push("favoritismo das odds");
+      if (hasOdds) {
+        const homeProbability = 1 / Math.max(1.01, homeOdds);
+        const awayProbability = 1 / Math.max(1.01, awayOdds);
+        const oddsEdge = (homeProbability - awayProbability) * 100;
+  
+        homeScore += oddsEdge;
+        awayScore -= oddsEdge;
+        reasons.push("odds");
       }
   
-      if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
-        reasons.push("diferença na tabela");
+      if (hasTable) {
+        const tableEdge = (awayPos - homePos) * 1.5;
+        homeScore += tableEdge;
+        awayScore -= tableEdge;
+        reasons.push("classificação");
       }
   
-      reasons.push("produção e concessão de gols");
+      if (hasGoals) {
+        const homeExpected =
+          ((homeGoals ?? 1.2) + (awayConcedes ?? 1.2)) / 2;
+        const awayExpected =
+          ((awayGoals ?? 1.1) + (homeConcedes ?? 1.1)) / 2;
+  
+        homeScore += (homeExpected - awayExpected) * 14;
+        awayScore += (awayExpected - homeExpected) * 14;
+        reasons.push("médias de gols");
+      }
+  
+      homeScore += 2;
+  
+      const side = homeScore >= awayScore ? "home" : "away";
+      const edge = Math.abs(homeScore - awayScore);
+      const teamName = side === "home" ? game.home : game.away;
+  
+      let line = "";
+      let confidence = 0;
+  
+      if (edge >= 30 && hasOdds && hasGoals) {
+        line = "-1.0";
+        confidence = 78;
+      } else if (edge >= 23 && hasOdds && hasGoals) {
+        line = "-0.75";
+        confidence = 74;
+      } else if (edge >= 16) {
+        line = "-0.5";
+        confidence = 70;
+      } else if (edge >= 10) {
+        line = "-0.25";
+        confidence = 66;
+      } else if (edge >= 5) {
+        line = "+0.25";
+        confidence = 62;
+      } else {
+        return {
+          skip: true,
+          side,
+          line: "SEM APOSTA",
+          confidence: 0,
+          score: edge,
+          teamName,
+          reason: "Confronto equilibrado: não há vantagem suficiente."
+        };
+      }
+  
+      confidence = Math.min(
+        82,
+        Math.round(confidence + Math.min(4, dataQuality - 3))
+      );
+  
+      if (confidence < 64) {
+        return {
+          skip: true,
+          side,
+          line: "SEM APOSTA",
+          confidence,
+          score: edge,
+          teamName,
+          reason: "A vantagem calculada ficou abaixo do limite de segurança."
+        };
+      }
   
       return {
+        skip: false,
         side,
         line,
         confidence,
-        score: strongerValue + edge + factorC,
+        score: edge + dataQuality * 5,
         teamName,
-        reason: `${sideLabel}: ${teamName} em ${line}, considerando ${reasons.slice(0, 2).join(" e ")}.`
+        reason: `${teamName} ${line}: vantagem baseada em ${reasons.join(", ")}.`
       };
     }
   
@@ -1046,45 +1128,14 @@
           originalIndex,
           recommendation: handicapAutoRecommendation(game)
         }))
-        .sort((a, b) => b.recommendation.score - a.recommendation.score)
+        .sort((a, b) => {
+          if (a.recommendation.skip !== b.recommendation.skip) {
+            return a.recommendation.skip ? 1 : -1;
+          }
+  
+          return b.recommendation.score - a.recommendation.score;
+        })
         .slice(0, 7);
-  
-      if (requestedLine === "IA" && preparedGames.length >= 4) {
-        const uniqueRecommendations = new Set(
-          preparedGames.map(item =>
-            `${item.recommendation.side}:${item.recommendation.line}`
-          )
-        );
-  
-        if (uniqueRecommendations.size === 1) {
-          const calibration = [
-            { side: "home", line: "-0.75" },
-            { side: "away", line: "-0.5" },
-            { side: "home", line: "-0.25" },
-            { side: "away", line: "+0.25" },
-            { side: "home", line: "+0.5" }
-          ];
-  
-          preparedGames = preparedGames.map((item, index) => {
-            const option = calibration[index % calibration.length];
-            const teamName =
-              option.side === "home"
-                ? item.game.home
-                : item.game.away;
-  
-            return {
-              ...item,
-              recommendation: {
-                ...item.recommendation,
-                side: option.side,
-                line: option.line,
-                teamName,
-                reason: `${teamName} foi calibrado em ${option.line} conforme o ranking relativo desta rodada.`
-              }
-            };
-          });
-        }
-      }
   
       const settlementEntries = [];
       const liveEntries = [];
@@ -1092,29 +1143,46 @@
       const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
         const line = requestedLine === "IA" ? recommendation.line : requestedLine;
         const side = recommendation.side;
-        const sideLabel = side === "home" ? "CASA" : "FORA";
+        const sideLabel = recommendation.skip
+          ? "IA"
+          : side === "home"
+            ? "CASA"
+            : "FORA";
         const teamName = side === "home" ? game.home : game.away;
-        const confidence = requestedLine === "IA"
-          ? recommendation.confidence
-          : Math.max(57, Math.min(88, recommendation.confidence - 2));
+        const confidence = recommendation.skip
+          ? 0
+          : requestedLine === "IA"
+            ? recommendation.confidence
+            : Math.max(57, Math.min(88, recommendation.confidence - 2));
   
         const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
-        const rule = handicapLineRule(line, sideLabel);
+        const rule = recommendation.skip
+          ? {
+              headline: recommendation.reason,
+              details: [
+                "O app não identificou vantagem segura.",
+                "A partida permanece apenas para acompanhamento.",
+                "Nenhuma entrada é recomendada."
+              ]
+            }
+          : handicapLineRule(line, sideLabel);
   
-        settlementEntries.push({
-          key: settlementKey,
-          game,
-          marketType: "handicap",
-          line,
-          side
-        });
+        if (!recommendation.skip) {
+          settlementEntries.push({
+            key: settlementKey,
+            game,
+            marketType: "handicap",
+            line,
+            side
+          });
+        }
   
         const liveKey = `live-handicap-${originalIndex}-${rowIndex}`;
         liveEntries.push({
           key: liveKey,
           game,
-          marketType: "handicap",
-          line,
+          marketType: recommendation.skip ? "" : "handicap",
+          line: recommendation.skip ? "" : line,
           side
         });
   
@@ -1125,7 +1193,7 @@
         return `
           <button
             type="button"
-            class="cpHandicapOpportunity"
+            class="cpHandicapOpportunity ${recommendation.skip ? "is-no-bet" : ""}"
             data-v9-game="${originalIndex}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="handicap"
@@ -1147,20 +1215,20 @@
   
             <div class="cpHandicapPick">
               ${recommendationBadge}
-              <strong>${sideLabel} ${escapeHtml(line)}</strong>
+              <strong>${recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
               <p>${escapeHtml(rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpHandicapOdd">
-              <small>Odd estimada</small>
-              <b>${handicapOdd(confidence)}</b>
+              <small>${recommendation.skip ? "Decisão" : "Odd estimada"}</small>
+              <b>${recommendation.skip ? "—" : handicapOdd(confidence)}</b>
             </div>
   
-            <div class="cpHandicapGauge" style="--handicap:${confidence}">
-              <span>${confidence}%</span>
-              <small>CONFIANÇA</small>
+            <div class="cpHandicapGauge ${recommendation.skip ? "is-disabled" : ""}" style="--handicap:${confidence}">
+              <span>${recommendation.skip ? "—" : `${confidence}%`}</span>
+              <small>${recommendation.skip ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
   
             <i class="cpHandicapArrow">›</i>
@@ -1871,6 +1939,21 @@
   
     function analysisProjection(game, marketType) {
       const raw = game?.raw || {};
+      const serverDecision = raw?.[`${marketType}_ai`];
+  
+      if (serverDecision && typeof serverDecision === "object") {
+        return {
+          line: clean(serverDecision.line, "SEM APOSTA"),
+          projection: Number(serverDecision.projection || 0).toFixed(1),
+          confidence: Number(serverDecision.confidence || 0),
+          reason: clean(
+            serverDecision.reason,
+            "Decisão calculada pelo motor do servidor."
+          ),
+          skip: Boolean(serverDecision.skip),
+          source: "server"
+        };
+      }
       const originalConfidence = Number(game?.confidence || 68);
       const current = analysisCurrentStats(game, marketType);
   
@@ -2206,21 +2289,32 @@
       const liveEntries = [];
   
       const rows = prepared.map(({ game, originalIndex, recommendation }, rowIndex) => {
-        const line = requestedLine === "IA" ? recommendation.line : requestedLine;
-        const confidence = requestedLine === "IA"
-          ? recommendation.confidence
-          : Math.max(56, recommendation.confidence - 3);
+        const line = requestedLine === "IA"
+          ? recommendation.line
+          : requestedLine;
+  
+        const isNoBet =
+          requestedLine === "IA" &&
+          (recommendation.skip || line === "SEM APOSTA");
+  
+        const confidence = isNoBet
+          ? 0
+          : requestedLine === "IA"
+            ? recommendation.confidence
+            : Math.max(56, recommendation.confidence - 3);
   
         const rule = analysisRule(marketType, line);
         const settlementKey = `analysis-${marketType}-${originalIndex}-${rowIndex}`;
   
-        settlementEntries.push({
-          key: settlementKey,
-          game,
-          marketType,
-          line,
-          side: ""
-        });
+        if (!isNoBet) {
+          settlementEntries.push({
+            key: settlementKey,
+            game,
+            marketType,
+            line,
+            side: ""
+          });
+        }
   
         const liveKey = `live-${marketType}-${originalIndex}-${rowIndex}`;
         liveEntries.push({
@@ -2234,7 +2328,7 @@
         return `
           <button
             type="button"
-            class="cpAnalysisOpportunity"
+            class="cpAnalysisOpportunity ${isNoBet ? "is-no-bet" : ""}"
             data-v9-game="${originalIndex}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="${marketType}"
@@ -2254,21 +2348,23 @@
             </div>
   
             <div class="cpAnalysisPick">
-              ${requestedLine === "IA" ? '<span class="cpAnalysisAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>' : ""}
-              <strong>${escapeHtml(line)}</strong>
-              <p>${escapeHtml(rule.headline)}</p>
+              ${requestedLine === "IA"
+                ? `<span class="cpAnalysisAutoBadge">${recommendation.source === "server" ? "✦ IA DO SERVIDOR" : "✦ SUGESTÃO AUTOMÁTICA"}</span>`
+                : ""}
+              <strong>${isNoBet ? "SEM APOSTA" : escapeHtml(line)}</strong>
+              <p>${escapeHtml(isNoBet ? recommendation.reason : rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpAnalysisOdd">
-              <small>Odd estimada</small>
-              <b>${analysisOdd(confidence, game, marketType)}</b>
+              <small>${isNoBet ? "Decisão" : "Odd estimada"}</small>
+              <b>${isNoBet ? "—" : analysisOdd(confidence, game, marketType)}</b>
             </div>
   
-            <div class="cpAnalysisGauge" style="--analysis:${confidence}">
-              <span>${confidence}%</span>
-              <small>CONFIANÇA</small>
+            <div class="cpAnalysisGauge ${isNoBet ? "is-disabled" : ""}" style="--analysis:${confidence}">
+              <span>${isNoBet ? "—" : `${confidence}%`}</span>
+              <small>${isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
   
             <i class="cpAnalysisArrow">›</i>

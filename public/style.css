@@ -13845,3 +13845,98 @@ button.railFullBtn {
     max-width:155px!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V53 — HANDICAP CONSERVADOR
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapOpportunity.is-no-bet{
+    border-color:#34464e!important;
+    opacity:.82!important;
+  }
+
+  .cpHandicapOpportunity.is-no-bet .cpHandicapPick strong{
+    color:#aeb9ba!important;
+  }
+
+  .cpHandicapOpportunity.is-no-bet .cpHandicapAutoBadge{
+    color:#9da9aa!important;
+    border-color:#3b4d54!important;
+    background:#101b20!important;
+  }
+
+  .cpHandicapGauge.is-disabled::before{
+    background:conic-gradient(from 270deg,#344248 0 50%,transparent 50%)!important;
+  }
+
+  .cpHandicapGauge.is-disabled span,
+  .cpHandicapGauge.is-disabled small{
+    color:#869395!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V54 — HANDICAP CALCULADO PELO SERVIDOR
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapAutoBadge{
+    max-width:150px!important;
+  }
+
+  .cpHandicapOpportunity:not(.is-no-bet) .cpHandicapAutoBadge{
+    border-color:rgba(141,242,58,.32)!important;
+    background:rgba(141,242,58,.07)!important;
+  }
+
+  .cpHandicapOpportunity.is-no-bet{
+    filter:saturate(.72)!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V55 — UM MOTOR PARA CADA MERCADO
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity.is-no-bet,
+  .cpBttsOpportunity.is-no-bet{
+    border-color:#34464e!important;
+    opacity:.82!important;
+    filter:saturate(.72)!important;
+  }
+
+  .cpAnalysisOpportunity.is-no-bet .cpAnalysisPick strong,
+  .cpBttsOpportunity.is-no-bet .cpBttsPick strong{
+    color:#aeb9ba!important;
+  }
+
+  .cpAnalysisGauge.is-disabled::before,
+  .cpBttsGauge.is-disabled::before{
+    background:conic-gradient(from 270deg,#344248 0 50%,transparent 50%)!important;
+  }
+
+  .cpAnalysisGauge.is-disabled span,
+  .cpAnalysisGauge.is-disabled small,
+  .cpBttsGauge.is-disabled span,
+  .cpBttsGauge.is-disabled small{
+    color:#869395!important;
+  }
+
+  .cpBttsEngineBadge{
+    display:inline-flex!important;
+    width:max-content!important;
+    margin-bottom:5px!important;
+    padding:3px 6px!important;
+    border:1px solid rgba(141,242,58,.38)!important;
+    border-radius:999px!important;
+    background:rgba(141,242,58,.07)!important;
+    color:#8df23a!important;
+    font-size:6.2px!important;
+    font-weight:950!important;
+  }
+
+  .cpAnalysisAutoBadge{
+    max-width:155px!important;
+  }
+}
