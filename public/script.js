@@ -45,7 +45,7 @@
         label: "HANDICAP ASIÁTICO",
         title: "⚖ MELHOR HANDICAP ASIÁTICO",
         icon: "⚖",
-        lines: ["-1.0", "-0.75", "-0.5", "-0.25", "+0.25", "+0.5", "+0.75", "+1.0"]
+        lines: ["IA", "-1.0", "-0.75", "-0.5", "-0.25", "+0.25", "+0.5", "+0.75", "+1.0"]
       },
       cards: {
         label: "CARTÕES",
@@ -643,53 +643,279 @@
         /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
     }
   
-    function handicapWon(game, side, line) {
+    function handicapSingleSettlement(goalDifference, line) {
+      const adjusted = goalDifference + Number(line);
+  
+      if (adjusted > 0) return "win";
+      if (adjusted < 0) return "loss";
+      return "push";
+    }
+  
+    function handicapSplitLines(line) {
+      const value = Number(line);
+  
+      if (value === -0.75) return [-0.5, -1.0];
+      if (value === -0.25) return [0.0, -0.5];
+      if (value === 0.25) return [0.0, 0.5];
+      if (value === 0.75) return [0.5, 1.0];
+  
+      return [value];
+    }
+  
+    function handicapSettlement(game, side, line) {
       if (!handicapFinished(game)) return null;
   
       const score = handicapScore(game);
       if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
   
-      const adjustment = Number(line);
-      if (!Number.isFinite(adjustment)) return null;
+      const difference = side === "home"
+        ? score.home - score.away
+        : score.away - score.home;
   
-      const selected = side === "home"
-        ? score.home + adjustment
-        : score.away + adjustment;
+      const results = handicapSplitLines(line)
+        .map(part => handicapSingleSettlement(difference, part));
   
-      const opponent = side === "home" ? score.away : score.home;
+      if (results.length === 1) return results[0];
   
-      if (selected > opponent) return true;
-      if (selected < opponent) return false;
-      return "push";
+      if (results.every(result => result === "win")) return "win";
+      if (results.every(result => result === "loss")) return "loss";
+      if (results.every(result => result === "push")) return "push";
+      if (results.includes("win") && results.includes("push")) return "half_win";
+      if (results.includes("loss") && results.includes("push")) return "half_loss";
+  
+      return results.includes("win") ? "half_win" : "half_loss";
+    }
+  
+    function handicapSettlementBadge(result) {
+      const badges = {
+        win: '<span class="cpHandicapResult green">✓ GREEN</span>',
+        loss: '<span class="cpHandicapResult red">× RED</span>',
+        push: '<span class="cpHandicapResult push">↔ DEVOLVIDA</span>',
+        half_win: '<span class="cpHandicapResult half-win">½ GREEN</span>',
+        half_loss: '<span class="cpHandicapResult half-loss">½ RED</span>'
+      };
+  
+      return badges[result] || "";
+    }
+  
+    function handicapLineRule(line, sideLabel = "TIME") {
+      const rules = {
+        "-1.0": {
+          short: `${sideLabel} -1.0`,
+          headline: "Vitória por 2+ gols = aposta ganha.",
+          details: [
+            "Vence por 2 ou mais: ganha tudo.",
+            "Vence por exatamente 1: valor devolvido.",
+            "Empata ou perde: aposta perdida."
+          ]
+        },
+        "-0.75": {
+          short: `${sideLabel} -0.75`,
+          headline: "A aposta é dividida entre -0.5 e -1.0.",
+          details: [
+            "Vence por 2+: ganha tudo.",
+            "Vence por 1: ganha metade e recebe metade de volta.",
+            "Empata ou perde: perde tudo."
+          ]
+        },
+        "-0.5": {
+          short: `${sideLabel} -0.5`,
+          headline: "O time precisa vencer.",
+          details: [
+            "Qualquer vitória: aposta ganha.",
+            "Empate ou derrota: aposta perdida.",
+            "Não existe devolução."
+          ]
+        },
+        "-0.25": {
+          short: `${sideLabel} -0.25`,
+          headline: "A aposta é dividida entre 0.0 e -0.5.",
+          details: [
+            "Vitória: ganha tudo.",
+            "Empate: perde metade e recebe metade de volta.",
+            "Derrota: perde tudo."
+          ]
+        },
+        "+0.25": {
+          short: `${sideLabel} +0.25`,
+          headline: "A aposta é dividida entre 0.0 e +0.5.",
+          details: [
+            "Vitória: ganha tudo.",
+            "Empate: ganha metade e recebe metade de volta.",
+            "Derrota: perde tudo."
+          ]
+        },
+        "+0.5": {
+          short: `${sideLabel} +0.5`,
+          headline: "O time pode vencer ou empatar.",
+          details: [
+            "Vitória ou empate: aposta ganha.",
+            "Derrota: aposta perdida.",
+            "Não existe devolução."
+          ]
+        },
+        "+0.75": {
+          short: `${sideLabel} +0.75`,
+          headline: "A aposta é dividida entre +0.5 e +1.0.",
+          details: [
+            "Vitória ou empate: ganha tudo.",
+            "Perde por 1: perde metade e recebe metade de volta.",
+            "Perde por 2+: perde tudo."
+          ]
+        },
+        "+1.0": {
+          short: `${sideLabel} +1.0`,
+          headline: "O time recebe um gol de vantagem.",
+          details: [
+            "Vitória ou empate: aposta ganha.",
+            "Perde por exatamente 1: valor devolvido.",
+            "Perde por 2 ou mais: aposta perdida."
+          ]
+        }
+      };
+  
+      return rules[line] || rules["-0.5"];
+    }
+  
+    function handicapRawNumber(raw, keys, fallback = null) {
+      for (const key of keys) {
+        const value = key.split(".").reduce((obj, part) => obj?.[part], raw);
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+      }
+      return fallback;
+    }
+  
+    function handicapAutoRecommendation(game) {
+      const raw = game?.raw || {};
+  
+      const homeOdds = handicapRawNumber(raw, [
+        "home_od", "odds.home", "home_odd", "odd_home", "match_hometeam_odd"
+      ]);
+  
+      const awayOdds = handicapRawNumber(raw, [
+        "away_od", "odds.away", "away_odd", "odd_away", "match_awayteam_odd"
+      ]);
+  
+      const homePos = handicapRawNumber(raw, [
+        "home_position", "table.home.position", "standings.home.position", "posHome"
+      ]);
+  
+      const awayPos = handicapRawNumber(raw, [
+        "away_position", "table.away.position", "standings.away.position", "posAway"
+      ]);
+  
+      const homeGoals = handicapRawNumber(raw, [
+        "home_goals_avg", "home.avg_goals", "stats.home.goals_for_avg",
+        "home_scored_avg", "homeGoalsAvg"
+      ], 1.35);
+  
+      const awayGoals = handicapRawNumber(raw, [
+        "away_goals_avg", "away.avg_goals", "stats.away.goals_for_avg",
+        "away_scored_avg", "awayGoalsAvg"
+      ], 1.15);
+  
+      const homeConcedes = handicapRawNumber(raw, [
+        "home_concedes_avg", "stats.home.goals_against_avg", "homeConcedesAvg"
+      ], 1.10);
+  
+      const awayConcedes = handicapRawNumber(raw, [
+        "away_concedes_avg", "stats.away.goals_against_avg", "awayConcedesAvg"
+      ], 1.30);
+  
+      let homeStrength = 50;
+      let awayStrength = 50;
+  
+      if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
+        if (homeOdds < awayOdds) homeStrength += Math.min(18, (awayOdds - homeOdds) * 8);
+        if (awayOdds < homeOdds) awayStrength += Math.min(18, (homeOdds - awayOdds) * 8);
+      }
+  
+      if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
+        const gap = awayPos - homePos;
+        homeStrength += Math.max(-16, Math.min(16, gap * 1.25));
+        awayStrength -= Math.max(-16, Math.min(16, gap * 1.25));
+      }
+  
+      homeStrength += Math.max(-12, Math.min(12, (homeGoals - awayConcedes) * 6));
+      awayStrength += Math.max(-12, Math.min(12, (awayGoals - homeConcedes) * 6));
+  
+      const baseConfidence = Number(game?.confidence || 68);
+      homeStrength += (baseConfidence - 68) * 0.25;
+      awayStrength += (baseConfidence - 68) * 0.15;
+  
+      const side = homeStrength >= awayStrength ? "home" : "away";
+      const strength = Math.max(homeStrength, awayStrength);
+      const gap = Math.abs(homeStrength - awayStrength);
+  
+      let line = "-0.25";
+      if (strength >= 78 && gap >= 18) line = "-1.0";
+      else if (strength >= 73 && gap >= 14) line = "-0.75";
+      else if (strength >= 66 && gap >= 9) line = "-0.5";
+      else if (strength >= 59 && gap >= 5) line = "-0.25";
+      else line = "+0.25";
+  
+      const confidence = Math.round(Math.max(57, Math.min(88, 58 + gap * 0.85)));
+      const teamName = side === "home" ? game.home : game.away;
+  
+      const reasons = [];
+      if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
+        reasons.push("favoritismo nas odds");
+      }
+      if (Number.isFinite(homePos) && Number.isFinite(awayPos)) {
+        reasons.push("vantagem na tabela");
+      }
+      reasons.push("produção e concessão de gols");
+  
+      return {
+        side,
+        line,
+        confidence,
+        score: strength + gap,
+        teamName,
+        reason: `${teamName} aparece mais forte por ${reasons.slice(0, 2).join(" e ")}.`
+      };
     }
   
     function handicapOdd(confidence) {
       return (1.53 + Math.max(0, 82 - confidence) / 100).toFixed(2);
     }
   
-    function renderHandicapMarket(layer, selectedLine = "-0.5") {
+    function renderHandicapMarket(layer, selectedLine = "IA") {
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
   
-      const line = clean(selectedLine, "-0.5");
-      const games = (state.handicap || state.pregame || []).slice(0, 6);
+      const requestedLine = clean(selectedLine, "IA");
+      const sourceGames = state.handicap || state.pregame || [];
   
-      const rows = games.map((game, index) => {
-        const side = index % 3 === 1 ? "away" : "home";
+      const preparedGames = sourceGames
+        .map((game, originalIndex) => ({
+          game,
+          originalIndex,
+          recommendation: handicapAutoRecommendation(game)
+        }))
+        .sort((a, b) => b.recommendation.score - a.recommendation.score)
+        .slice(0, 7);
+  
+      const rows = preparedGames.map(({ game, originalIndex, recommendation }) => {
+        const line = requestedLine === "IA" ? recommendation.line : requestedLine;
+        const side = recommendation.side;
         const sideLabel = side === "home" ? "CASA" : "FORA";
         const teamName = side === "home" ? game.home : game.away;
-        const confidence = Math.max(61, Math.min(89, Number(game.confidence || 72)));
-        const result = handicapWon(game, side, line);
-        const resultHtml = result === true
-          ? '<span class="cpHandicapResult green">✓ GREEN</span>'
-          : result === false
-            ? '<span class="cpHandicapResult red">× RED</span>'
-            : result === "push"
-              ? '<span class="cpHandicapResult push">↔ DEVOLVIDA</span>'
-              : "";
+        const confidence = requestedLine === "IA"
+          ? recommendation.confidence
+          : Math.max(57, Math.min(88, recommendation.confidence - 2));
+  
+        const result = handicapSettlement(game, side, line);
+        const resultHtml = handicapSettlementBadge(result);
+        const rule = handicapLineRule(line, sideLabel);
+  
+        const recommendationBadge = requestedLine === "IA"
+          ? `<span class="cpHandicapAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>`
+          : "";
   
         return `
-          <button type="button" class="cpHandicapOpportunity" data-v9-game="${index}">
+          <button type="button" class="cpHandicapOpportunity" data-v9-game="${originalIndex}">
             <div class="cpHandicapMatch">
               <div class="cpHandicapMeta">
                 <time>${escapeHtml(game.time)}</time>
@@ -703,13 +929,15 @@
             </div>
   
             <div class="cpHandicapPick">
+              ${recommendationBadge}
               <strong>${sideLabel} ${escapeHtml(line)}</strong>
-              <p>${escapeHtml(teamName)} precisa vencer.<br>Empate ou derrota = aposta perdida.</p>
+              <p>${escapeHtml(rule.headline)}</p>
+              <small>${escapeHtml(recommendation.reason)}</small>
               ${resultHtml}
             </div>
   
             <div class="cpHandicapOdd">
-              <small>Odd média</small>
+              <small>Odd estimada</small>
               <b>${handicapOdd(confidence)}</b>
             </div>
   
@@ -722,59 +950,85 @@
           </button>`;
       }).join("");
   
-      const explain = line === "-0.5"
-        ? "-0.5 é uma aposta sem devolução. O time selecionado precisa vencer. Empate ou derrota significam aposta perdida."
-        : `Na linha ${line}, o placar é ajustado antes de definir o resultado da aposta.`;
+      const explanationLine = requestedLine === "IA" ? "-1.0" : requestedLine;
+      const explainRule = handicapLineRule(explanationLine, "TIME");
   
       body.innerHTML = `
         <section class="cpHandicapIntro">
           <div class="cpHandicapIntroIcon">⚖</div>
-          <p>Escolha a linha desejada para ver os melhores jogos com base na nossa análise.</p>
+          <p>Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente o time e o handicap mais adequados antes da partida.</p>
         </section>
   
         <div class="cpHandicapLines">
           ${MARKET.handicap.lines.map(item => `
-            <button type="button" class="${item === line ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
+            <button type="button" class="${item === requestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${item === "IA" ? "✦ IA" : escapeHtml(item)}</button>
           `).join("")}
         </div>
   
         <section class="cpHandicapExplain">
-          <h3>COMO FUNCIONA ${escapeHtml(line)}?</h3>
-          <div>
-            <p>${escapeHtml(explain)}</p>
-            <article><i>⌂</i><section><b>CASA ${escapeHtml(line)}</b><span>Casa precisa vencer.<br>Empate ou derrota = aposta perdida.</span></section></article>
-            <article><i>✈</i><section><b>FORA ${escapeHtml(line)}</b><span>Fora precisa vencer.<br>Empate ou derrota = aposta perdida.</span></section></article>
+          <h3>${requestedLine === "IA" ? "COMO FUNCIONA A ANÁLISE AUTOMÁTICA?" : `COMO FUNCIONA ${escapeHtml(requestedLine)}?`}</h3>
+          <div class="cpHandicapExplainGrid">
+            <p>${
+              requestedLine === "IA"
+                ? "O app compara favoritismo, posição na tabela, média de gols e força relativa. Depois sugere o lado e a linha com melhor equilíbrio entre risco e proteção."
+                : escapeHtml(explainRule.headline)
+            }</p>
+            <article>
+              <i>✓</i>
+              <section>
+                <b>GANHA</b>
+                <span>${escapeHtml(explainRule.details[0])}</span>
+              </section>
+            </article>
+            <article>
+              <i>↔</i>
+              <section>
+                <b>DEVOLVE / PARCIAL</b>
+                <span>${escapeHtml(explainRule.details[1])}</span>
+              </section>
+            </article>
+            <article>
+              <i>×</i>
+              <section>
+                <b>PERDE</b>
+                <span>${escapeHtml(explainRule.details[2])}</span>
+              </section>
+            </article>
           </div>
         </section>
   
         <div class="cpHandicapTabs">
           <button type="button" class="active" data-handicap-side="all">TODOS</button>
-          <button type="button" data-handicap-side="home">CASA ${escapeHtml(line)}</button>
-          <button type="button" data-handicap-side="away">FORA ${escapeHtml(line)}</button>
+          <button type="button" data-handicap-side="home">CASA</button>
+          <button type="button" data-handicap-side="away">FORA</button>
         </div>
   
         <div class="cpHandicapTitle">
-          <h2>MELHORES OPORTUNIDADES</h2>
+          <h2>${requestedLine === "IA" ? "SUGESTÕES PRÉ-JOGO" : "MELHORES OPORTUNIDADES"}</h2>
           <button type="button">VER TODOS ›</button>
+        </div>
+  
+        <div class="cpHandicapNotice">
+          <b>Leitura do app:</b> as sugestões são análises estatísticas pré-jogo, não garantia de resultado.
         </div>
   
         <div class="cpHandicapList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
   
         <button type="button" class="cpHandicapAllGames">
-          <span>☷</span><b>VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(line)})</b><i>›</i>
+          <span>☷</span><b>${requestedLine === "IA" ? "VER TODAS AS SUGESTÕES AUTOMÁTICAS" : `VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(requestedLine)})`}</b><i>›</i>
         </button>
   
         <section class="cpHandicapBottomExplain">
-          <h3>EXPLICAÇÃO DAS LINHAS</h3>
-          <div>
-            <p><b>-1.0</b><br>Precisa vencer por 2 ou mais gols.</p>
-            <p><b>-0.75</b><br>Vitória por 2+ ganha tudo; por 1 ganha metade.</p>
-            <p><b>-0.5</b><br>Precisa vencer.</p>
-            <p><b>-0.25</b><br>Vitória ganha; empate devolve metade.</p>
-            <p><b>0.0</b><br>Empate devolve.</p>
-            <p><b>+0.25</b><br>Empate ganha metade.</p>
-            <p><b>+0.5</b><br>Empate ou vitória ganha.</p>
-            <p><b>+1.0</b><br>Perder por 1 devolve; por 2+ perde.</p>
+          <h3>GUIA COMPLETO DAS LINHAS</h3>
+          <div class="cpHandicapRulesTable">
+            ${["-1.0","-0.75","-0.5","-0.25","+0.25","+0.5","+0.75","+1.0"].map(item => {
+              const rule = handicapLineRule(item, "TIME");
+              return `
+                <article>
+                  <b>${item}</b>
+                  <p>${escapeHtml(rule.details.join(" "))}</p>
+                </article>`;
+            }).join("")}
           </div>
         </section>`;
     }
@@ -801,7 +1055,7 @@
       if (marketType === "btts") {
         renderBttsMarket(layer);
       } else if (marketType === "handicap") {
-        renderHandicapMarket(layer, "-0.5");
+        renderHandicapMarket(layer, "IA");
       } else {
         if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
         const grid = $("#cpMobileOddsGrid");
