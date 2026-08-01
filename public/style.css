@@ -12108,3 +12108,21 @@ button.railFullBtn {
     }
   }
 }
+
+/* ===== V36 - Ajuste de espaçamento do botão ===== */
+
+/* Sobe um pouco os times */
+.cpHomeBestTeams,
+.cpBestTeamsProfessional{
+    transform: translateY(-10px) !important;
+}
+
+/* Desce levemente o botão */
+#cpHomeBestOpen{
+    bottom: 8px !important;
+}
+
+/* Garante um respiro maior entre nomes e botão */
+.cpHomeBestBody{
+    padding-bottom: 58px !important;
+}
