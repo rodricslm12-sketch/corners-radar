@@ -1858,48 +1858,151 @@ function normalizeStatType(value) {
     .trim();
 }
 
+function statRawValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "object") {
+    const nested =
+      value.value ??
+      value.total ??
+      value.count ??
+      value.stat ??
+      value.number ??
+      value.result ??
+      value.display ??
+      value.text ??
+      null;
+
+    if (nested !== null && nested !== undefined && nested !== "") {
+      return nested;
+    }
+  }
+
+  return value;
+}
+
 function statSideValue(row, side) {
   if (!row || typeof row !== "object") return null;
+
   const keys = side === "home"
-    ? ["home", "hometeam", "home_team", "local", "casa", "value_home"]
-    : ["away", "awayteam", "away_team", "visitor", "fora", "value_away"];
+    ? [
+        "home", "hometeam", "home_team", "homeTeam", "local", "casa",
+        "value_home", "home_value", "homeValue", "valueHome",
+        "match_hometeam", "match_hometeam_value", "hometeam_value",
+        "team_home", "home_stat", "homeStat", "home_total"
+      ]
+    : [
+        "away", "awayteam", "away_team", "awayTeam", "visitor", "visitante", "fora",
+        "value_away", "away_value", "awayValue", "valueAway",
+        "match_awayteam", "match_awayteam_value", "awayteam_value",
+        "team_away", "away_stat", "awayStat", "away_total"
+      ];
+
   for (const key of keys) {
-    if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+    if (!(key in row)) continue;
+    const value = statRawValue(row[key]);
+    if (value !== null && value !== undefined && value !== "") return value;
   }
+
+  const list =
+    (Array.isArray(row.values) && row.values) ||
+    (Array.isArray(row.value) && row.value) ||
+    (Array.isArray(row.data) && row.data) ||
+    null;
+
+  if (list?.length >= 2) {
+    return statRawValue(side === "home" ? list[0] : list[1]);
+  }
+
   return null;
+}
+
+function statisticsTypeFromNode(node, inheritedType = "") {
+  if (!node || typeof node !== "object") return inheritedType;
+
+  return (
+    node.type ??
+    node.name ??
+    node.statistic ??
+    node.stat_name ??
+    node.statType ??
+    node.stat_type ??
+    node.label ??
+    node.title ??
+    node.key ??
+    node.metric ??
+    node.description ??
+    inheritedType
+  );
+}
+
+function setStatisticsPair(out, type, home, away) {
+  const key = normalizeStatType(type);
+  if (!key) return;
+
+  const current = out.get(key) || { home: null, away: null };
+  out.set(key, {
+    home: home ?? current.home ?? null,
+    away: away ?? current.away ?? null
+  });
 }
 
 function collectStatisticsRows(node, out, inheritedType = "") {
   if (node === null || node === undefined) return;
 
   if (Array.isArray(node)) {
+    if (
+      inheritedType &&
+      node.length >= 2 &&
+      node.every(item => item === null || ["string", "number"].includes(typeof item))
+    ) {
+      setStatisticsPair(out, inheritedType, node[0], node[1]);
+      return;
+    }
+
     for (const item of node) collectStatisticsRows(item, out, inheritedType);
     return;
   }
 
   if (typeof node !== "object") return;
 
-  const explicitType =
-    node.type ?? node.name ?? node.statistic ?? node.stat_name ??
-    node.label ?? node.key ?? inheritedType;
+  const explicitType = statisticsTypeFromNode(node, inheritedType);
   const home = statSideValue(node, "home");
   const away = statSideValue(node, "away");
 
   if (explicitType && (home !== null || away !== null)) {
-    const key = normalizeStatType(explicitType);
-    if (key) out.set(key, { home, away });
+    setStatisticsPair(out, explicitType, home, away);
   }
 
+  const ignored = new Set([
+    "type", "name", "statistic", "stat_name", "statType", "stat_type",
+    "label", "title", "key", "metric", "description",
+    "home", "away", "hometeam", "awayteam", "home_team", "away_team",
+    "homeTeam", "awayTeam", "local", "visitor", "visitante", "casa", "fora",
+    "value_home", "value_away", "home_value", "away_value",
+    "homeValue", "awayValue", "valueHome", "valueAway",
+    "match_hometeam", "match_awayteam", "match_hometeam_value",
+    "match_awayteam_value", "team_home", "team_away",
+    "values", "value"
+  ]);
+
   for (const [key, value] of Object.entries(node)) {
-    if (["type","name","statistic","stat_name","label","key","home","away","hometeam","awayteam","home_team","away_team","local","visitor","casa","fora","value_home","value_away"].includes(key)) continue;
+    if (ignored.has(key)) continue;
 
     if (value && typeof value === "object") {
       const nestedHome = statSideValue(value, "home");
       const nestedAway = statSideValue(value, "away");
+
       if (nestedHome !== null || nestedAway !== null) {
-        const statKey = normalizeStatType(key);
-        if (statKey) out.set(statKey, { home: nestedHome, away: nestedAway });
+        setStatisticsPair(out, key, nestedHome, nestedAway);
+      } else if (
+        Array.isArray(value) &&
+        value.length >= 2 &&
+        value.every(item => item === null || ["string", "number"].includes(typeof item))
+      ) {
+        setStatisticsPair(out, key, value[0], value[1]);
       }
+
       collectStatisticsRows(value, out, key);
     }
   }
@@ -2007,9 +2110,7 @@ function collectStatisticsRowsByPeriod(node, state, context = "") {
   const currentContext = `${context} ${ownPeriod}`.trim();
   const priority = mcPeriodPriority(currentContext);
 
-  const explicitType =
-    node.type ?? node.statistic ?? node.stat_name ??
-    node.label ?? node.key ?? "";
+  const explicitType = statisticsTypeFromNode(node, "");
 
   const home = statSideValue(node, "home");
   const away = statSideValue(node, "away");
@@ -4668,12 +4769,33 @@ function mcStatusInfo(event) {
   };
 }
 
+function mcAliasMatches(statKey, alias) {
+  const key = normalizeStatType(statKey);
+  const wanted = normalizeStatType(alias);
+  if (!key || !wanted) return false;
+
+  if (key === wanted) return true;
+  if (key.includes(wanted) || wanted.includes(key)) return true;
+
+  const keyTokens = new Set(key.split(" ").filter(Boolean));
+  const aliasTokens = wanted.split(" ").filter(Boolean);
+  return aliasTokens.length > 0 && aliasTokens.every(token => keyTokens.has(token));
+}
+
 function mcStatPair(statsMap, aliases) {
   if (!statsMap) return { home: null, away: null };
+
   for (const alias of aliases) {
     const row = statsMap.get(normalizeStatType(alias));
     if (row) return { home: mcNumber(row.home), away: mcNumber(row.away) };
   }
+
+  for (const [key, row] of statsMap.entries()) {
+    if (aliases.some(alias => mcAliasMatches(key, alias))) {
+      return { home: mcNumber(row.home), away: mcNumber(row.away) };
+    }
+  }
+
   return { home: null, away: null };
 }
 
@@ -4808,7 +4930,7 @@ app.get("/match_center", async (req, res) => {
     // Os campos diretos de get_events ficam apenas como fallback.
     const cornersStats = mcStatPair(
       statsMap,
-      ["corner kicks", "corners", "corners total", "total corners", "escanteios"]
+      ["corner kicks", "corner kick", "corners", "corners total", "total corners", "corner count", "escanteios", "tiros de canto"]
     );
 
     const cornersEvent = mcEventPair(
@@ -4846,49 +4968,49 @@ app.get("/match_center", async (req, res) => {
         ? (status.finished ? "event_final_fallback" : "event_live_fallback")
         : "unavailable";
     const shots = mcPreferPair(
-      mcStatPair(statsMap, ["shots total", "total shots", "shots", "goal attempts", "attempts", "finalizacoes"]),
+      mcStatPair(statsMap, ["shots total", "total shots", "shots", "goal attempts", "attempts", "total attempts", "shot attempts", "finalizacoes", "finalizacoes totais"]),
       mcEventPair(event,
         ["match_hometeam_shots", "match_hometeam_shots_total", "home_shots", "home_total_shots"],
         ["match_awayteam_shots", "match_awayteam_shots_total", "away_shots", "away_total_shots"])
     );
     const shotsOnTarget = mcPreferPair(
-      mcStatPair(statsMap, ["shots on goal", "shots on target", "on target", "shots on goal total", "finalizacoes no gol"]),
+      mcStatPair(statsMap, ["shots on goal", "shots on target", "on target", "shots on goal total", "target shots", "finalizacoes no gol", "finalizacoes certas"]),
       mcEventPair(event,
         ["match_hometeam_shots_on_target", "home_shots_on_target"],
         ["match_awayteam_shots_on_target", "away_shots_on_target"])
     );
     const possession = mcPreferPair(
-      mcStatPair(statsMap, ["ball possession", "possession", "posse de bola"]),
+      mcStatPair(statsMap, ["ball possession", "possession", "possession percentage", "posse de bola", "posse"]),
       mcEventPair(event,
         ["match_hometeam_possession", "home_possession"],
         ["match_awayteam_possession", "away_possession"])
     );
     const dangerousAttacks = mcPreferPair(
-      mcStatPair(statsMap, ["dangerous attacks", "dangerous attack", "ataques perigosos"]),
+      mcStatPair(statsMap, ["dangerous attacks", "dangerous attack", "danger attacks", "dangerous attacks total", "ataques perigosos"]),
       mcEventPair(event,
         ["match_hometeam_dangerous_attacks", "home_dangerous_attacks", "dangerous_attacks_home"],
         ["match_awayteam_dangerous_attacks", "away_dangerous_attacks", "dangerous_attacks_away"])
     );
     const attacks = mcPreferPair(
-      mcStatPair(statsMap, ["attacks", "total attacks", "ataques"]),
+      mcStatPair(statsMap, ["attacks", "total attacks", "attack", "attacks total", "ataques"]),
       mcEventPair(event,
         ["match_hometeam_attacks", "home_attacks", "attacks_home"],
         ["match_awayteam_attacks", "away_attacks", "attacks_away"])
     );
     const passes = mcPreferPair(
-      mcStatPair(statsMap, ["passes accurate", "accurate passes", "successful passes", "passes completed", "completed passes", "passes", "passes certos"]),
+      mcStatPair(statsMap, ["passes accurate", "accurate passes", "successful passes", "passes completed", "completed passes", "total passes", "passes", "passes certos"]),
       mcEventPair(event,
         ["match_hometeam_passes", "match_hometeam_passes_completed", "home_passes", "home_accurate_passes"],
         ["match_awayteam_passes", "match_awayteam_passes_completed", "away_passes", "away_accurate_passes"])
     );
     const fouls = mcPreferPair(
-      mcStatPair(statsMap, ["fouls", "fouls committed", "faltas"]),
+      mcStatPair(statsMap, ["fouls", "fouls committed", "total fouls", "foul", "faltas", "faltas cometidas"]),
       mcEventPair(event,
         ["match_hometeam_fouls", "home_fouls", "fouls_home"],
         ["match_awayteam_fouls", "away_fouls", "fouls_away"])
     );
-    const yellowStats = mcStatPair(statsMap, ["yellow cards", "yellow card", "cartoes amarelos"]);
-    const redStats = mcStatPair(statsMap, ["red cards", "red card", "cartoes vermelhos"]);
+    const yellowStats = mcStatPair(statsMap, ["yellow cards", "yellow card", "yellowcards", "bookings", "cartoes amarelos"]);
+    const redStats = mcStatPair(statsMap, ["red cards", "red card", "redcards", "sendings off", "cartoes vermelhos"]);
     const countedCards = mcCountCards(event);
     const yellow = mcPreferPair(yellowStats, countedCards.found ? { home: countedCards.yellowHome, away: countedCards.yellowAway } : null);
     const red = mcPreferPair(redStats, countedCards.found ? { home: countedCards.redHome, away: countedCards.redAway } : null);
@@ -4935,6 +5057,80 @@ app.get("/match_center", async (req, res) => {
         home: dangerousAttacks.home ?? attacks.home,
         away: dangerousAttacks.away ?? attacks.away
       },
+
+      home_score: homeScore,
+      away_score: awayScore,
+      score_home: homeScore,
+      score_away: awayScore,
+
+      home_corners: corners.home,
+      away_corners: corners.away,
+      corners_home: corners.home,
+      corners_away: corners.away,
+
+      home_cards: yellow.home,
+      away_cards: yellow.away,
+      cards_home: yellow.home,
+      cards_away: yellow.away,
+
+      home_yellow_cards: yellow.home,
+      away_yellow_cards: yellow.away,
+      home_red_cards: red.home,
+      away_red_cards: red.away,
+
+      home_shots: shots.home,
+      away_shots: shots.away,
+      shots_home: shots.home,
+      shots_away: shots.away,
+
+      home_shots_on_target: shotsOnTarget.home,
+      away_shots_on_target: shotsOnTarget.away,
+      shots_on_target_home: shotsOnTarget.home,
+      shots_on_target_away: shotsOnTarget.away,
+
+      home_possession: possession.home,
+      away_possession: possession.away,
+      possession_home: possession.home,
+      possession_away: possession.away,
+
+      home_attacks: attacks.home,
+      away_attacks: attacks.away,
+      home_dangerous_attacks: dangerousAttacks.home,
+      away_dangerous_attacks: dangerousAttacks.away,
+      home_passes: passes.home,
+      away_passes: passes.away,
+      home_fouls: fouls.home,
+      away_fouls: fouls.away,
+
+      statistics: {
+        home: {
+          corners: corners.home,
+          cards: yellow.home,
+          yellow_cards: yellow.home,
+          red_cards: red.home,
+          shots: shots.home,
+          shots_on_target: shotsOnTarget.home,
+          possession: possession.home,
+          attacks: attacks.home,
+          dangerous_attacks: dangerousAttacks.home,
+          passes: passes.home,
+          fouls: fouls.home
+        },
+        away: {
+          corners: corners.away,
+          cards: yellow.away,
+          yellow_cards: yellow.away,
+          red_cards: red.away,
+          shots: shots.away,
+          shots_on_target: shotsOnTarget.away,
+          possession: possession.away,
+          attacks: attacks.away,
+          dangerous_attacks: dangerousAttacks.away,
+          passes: passes.away,
+          fouls: fouls.away
+        }
+      },
+
       events: mcNormalizeEvents(event),
       sources: {
         event: true,
@@ -4970,6 +5166,22 @@ app.get("/match_center", async (req, res) => {
       match_id: matchId
     });
   }
+});
+
+
+app.get("/match_result", (req, res) => {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(req.query || {})) {
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, String(item));
+    } else if (value !== undefined && value !== null) {
+      params.set(key, String(value));
+    }
+  }
+
+  if (!params.has("fresh")) params.set("fresh", "1");
+  return res.redirect(307, `/match_center?${params.toString()}`);
 });
 
 
