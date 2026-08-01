@@ -265,6 +265,38 @@
       return name ? palette[Math.abs(hash) % palette.length] : fallback;
     }
   
+    function cpBestMarketLabel(marketType, game) {
+      const type = String(marketType || "").toLowerCase();
+  
+      if (type === "corners" || type === "escanteios") return "ESCANTEIOS";
+      if (type === "goals" || type === "gols") return "GOLS";
+      if (type === "cards" || type === "cartões" || type === "cartoes") return "CARTÕES";
+      if (type === "btts") return "AMBAS MARCAM";
+  
+      const raw = String(game?.market || game?.line || "").toUpperCase();
+  
+      if (/CANTO|ESCANTEIO|CORNER/.test(raw)) return "ESCANTEIOS";
+      if (/CART|YELLOW|RED/.test(raw)) return "CARTÕES";
+      if (/GOL|GOAL|OVER|UNDER|AMBAS/.test(raw)) return "GOLS";
+  
+      return "MELHOR APOSTA DO DIA";
+    }
+  
+    function cpUpdateBestMarketTitle(card, game, marketType) {
+      if (!card) return;
+  
+      const title =
+        card.querySelector("#cpHomeBestLabel") ||
+        card.querySelector(".cpHomeBestTop > b") ||
+        card.querySelector("[data-clone-id='cpHomeBestLabel']");
+  
+      if (!title) return;
+  
+      const label = cpBestMarketLabel(marketType, game);
+      title.textContent = `🔥 MELHOR APOSTA • ${label}`;
+      title.setAttribute("data-market-label", label);
+    }
+  
     function cpPaintBestTeamColors(card, game) {
       if (!card || !game) return;
   
@@ -315,6 +347,8 @@
   
       if (homeEl) homeEl.style.setProperty("--team-accent", homeColor);
       if (awayEl) awayEl.style.setProperty("--team-accent", awayColor);
+  
+      cpUpdateBestMarketTitle(card, game, state.activeMarket);
     }
   
     window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
@@ -16075,6 +16109,7 @@
           if(conf) conf.textContent=best.conf+'%';
           if(market) market.textContent=best.market;
           window.__cpPaintBestTeamColors?.(root,best);
+          cpUpdateBestMarketTitle(root,best,marketType);
   
           // Cada slide mantém seus próprios 3 indicadores sincronizados.
           // A função também neutraliza estilos antigos que marcavam o 1º ponto.

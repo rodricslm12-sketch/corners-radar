@@ -11857,3 +11857,125 @@ button.railFullBtn {
     }
   }
 }
+
+/* =========================================================
+   CORNER PRO V34 — TÍTULOS INTERNOS MAIS ORGANIZADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeBest,
+  .cpHomeBestClone{
+    height:250px!important;
+    min-height:250px!important;
+    max-height:250px!important;
+    padding:12px 13px 11px!important;
+  }
+
+  .cpHomeBestTop{
+    min-height:36px!important;
+    gap:10px!important;
+  }
+
+  .cpHomeBestTop > b{
+    min-height:32px!important;
+    max-width:76%!important;
+    padding:0 11px!important;
+    font-size:8.7px!important;
+    line-height:1.1!important;
+    letter-spacing:.08px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  .cpHomeBestTop > span{
+    padding-right:1px!important;
+    font-size:9.4px!important;
+    line-height:1!important;
+  }
+
+  .cpHomeBestBody{
+    height:157px!important;
+    min-height:157px!important;
+  }
+
+  .cpHomeBestBody time{
+    top:7px!important;
+    min-width:56px!important;
+    height:30px!important;
+    font-size:10.2px!important;
+  }
+
+  .cpHomeMarketDots{
+    top:46px!important;
+    gap:6px!important;
+    padding:3px 5px!important;
+  }
+
+  .cpHomeMarketDots button{
+    width:5px!important;
+    min-width:5px!important;
+    height:5px!important;
+  }
+
+  .cpHomeMarketDots button.active{
+    width:13px!important;
+    min-width:13px!important;
+  }
+
+  .cpHomeBestTeams.cpBestTeamsProfessional{
+    top:59px!important;
+    height:88px!important;
+    grid-template-rows:44px 32px!important;
+    row-gap:4px!important;
+  }
+
+  .cpBestTeamBadge{
+    width:42px!important;
+    height:42px!important;
+    font-size:10.5px!important;
+  }
+
+  .cpHomeBestTeams strong{
+    max-width:142px!important;
+    padding:0 4px 8px!important;
+    font-size:11.2px!important;
+    line-height:1.08!important;
+  }
+
+  .cpHomeBestTeams strong::after{
+    left:20%!important;
+    right:20%!important;
+    height:1.5px!important;
+  }
+
+  .cpHomeBestTeams i{
+    font-size:17px!important;
+  }
+
+  #cpHomeBestOpen{
+    left:12px!important;
+    right:12px!important;
+    bottom:9px!important;
+    height:38px!important;
+    font-size:9.8px!important;
+  }
+
+  @media (max-width:390px){
+    .cpHomeBest,
+    .cpHomeBestClone{
+      height:244px!important;
+      min-height:244px!important;
+      max-height:244px!important;
+    }
+
+    .cpHomeBestTop > b{
+      max-width:74%!important;
+      font-size:8.2px!important;
+    }
+
+    .cpHomeBestTeams strong{
+      max-width:120px!important;
+      font-size:10.5px!important;
+    }
+  }
+}
