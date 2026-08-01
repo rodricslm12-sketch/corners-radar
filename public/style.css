@@ -9769,3 +9769,79 @@ button.railFullBtn {
     line-height:1!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V14 — CARDS MAIS VISÍVEIS + SETAS CORRIGIDAS
+   ========================================================= */
+@media (max-width:980px){
+  .cpHomeGame{
+    background:
+      radial-gradient(circle at 50% 105%,rgba(140,255,0,.14),transparent 42%),
+      linear-gradient(180deg,#0b1418 0%,#081015 52%,#05090c 100%)!important;
+    border:1px solid #26383f!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.045),
+      0 8px 20px rgba(0,0,0,.28)!important;
+  }
+
+  .cpHomeGame.is-first{
+    border-color:rgba(140,255,0,.78)!important;
+    box-shadow:
+      inset 0 0 0 1px rgba(140,255,0,.10),
+      0 0 18px rgba(140,255,0,.10),
+      0 8px 20px rgba(0,0,0,.28)!important;
+  }
+
+  .cpHomeGame .teams b{
+    color:#ffffff!important;
+    text-shadow:0 1px 8px rgba(0,0,0,.45)!important;
+  }
+
+  .cpHomeGame .teams i{
+    color:#c3cbcd!important;
+  }
+
+  .cpHomeGame small{
+    color:var(--cp-v9-green)!important;
+  }
+
+  .cpHomeGame::after{
+    content:"›"!important;
+    right:10px!important;
+    bottom:7px!important;
+    width:auto!important;
+    height:auto!important;
+    color:var(--cp-v9-green)!important;
+    font-family:Arial,sans-serif!important;
+    font-size:25px!important;
+    font-weight:700!important;
+    line-height:1!important;
+    transform:none!important;
+  }
+
+  .cpHomeLastGame i{
+    right:10px!important;
+    top:50%!important;
+    bottom:auto!important;
+    transform:translateY(-50%)!important;
+    color:var(--cp-v9-green)!important;
+    font-family:Arial,sans-serif!important;
+    font-size:23px!important;
+    font-weight:700!important;
+    line-height:1!important;
+  }
+
+  .cpHomeLastGames{
+    background:linear-gradient(180deg,#0a1418,#071014)!important;
+    border-color:#23343b!important;
+  }
+
+  .cpHomeLastGame{
+    background:transparent!important;
+  }
+
+  .cpHomeLastGame:hover,
+  .cpHomeGame:active{
+    background:#0d191e!important;
+  }
+}
