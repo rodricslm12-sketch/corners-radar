@@ -13993,3 +13993,27 @@ button.railFullBtn {
     filter:none!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V59 — IA EM AMBAS MARCAM
+   ========================================================= */
+@media (max-width:980px){
+  .cpBttsTabs{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+
+  .cpBttsTabs button{
+    min-width:0!important;
+    padding:0 4px!important;
+    font-size:9px!important;
+  }
+
+  .cpBttsTabs button[data-btts-tab="ai"]{
+    color:#8df23a!important;
+  }
+
+  .cpBttsTabs button[data-btts-tab="ai"].active{
+    background:rgba(125,238,48,.10)!important;
+    border-color:#75d92f!important;
+  }
+}

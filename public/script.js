@@ -634,6 +634,8 @@
             data-settlement-key="${settlementKey}"
             data-settlement-market="btts"
             data-settlement-line="AMBAS ${choice}"
+            data-btts-choice="${isNoBet ? "none" : choice.toLowerCase()}"
+            data-btts-ai="${isNoBet ? "0" : "1"}"
             data-live-key="${liveKey}"
           >
             <div class="cpBttsMatch">
@@ -669,7 +671,8 @@
         </section>
   
         <div class="cpBttsTabs">
-          <button type="button" class="active" data-btts-tab="all">TODOS</button>
+          <button type="button" class="active" data-btts-tab="ai">IA</button>
+          <button type="button" data-btts-tab="all">TODOS</button>
           <button type="button" data-btts-tab="yes">SIM</button>
           <button type="button" data-btts-tab="no">NÃO</button>
         </div>
@@ -693,7 +696,7 @@
           <button type="button">VER TODOS ›</button>
         </div>
   
-        <div class="cpBttsList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta data.</div>'}</div>
+        <div class="cpBttsList">${rows || '<div class="cpBttsEmpty">A IA não encontrou oportunidade segura nesta data.</div>'}</div>
   
         <button type="button" class="cpBttsAllGames">
           <span>☷</span><b>VER TODOS OS JOGOS NESTA LINHA (AMBAS MARCAM)</b><i>›</i>
@@ -3365,9 +3368,19 @@
           event.preventDefault();
           $$(".cpBttsTabs button").forEach(button => button.classList.toggle("active", button === bttsTab));
           const mode = bttsTab.dataset.bttsTab;
-          $$(".cpBttsOpportunity").forEach((card, index) => {
-            const isNo = index % 3 === 1;
-            card.hidden = mode === "yes" ? isNo : mode === "no" ? !isNo : false;
+  
+          $$(".cpBttsOpportunity").forEach(card => {
+            const choice = card.dataset.bttsChoice;
+            const hasAiPick = card.dataset.bttsAi === "1";
+  
+            card.hidden =
+              mode === "ai"
+                ? !hasAiPick
+                : mode === "yes"
+                  ? choice !== "sim"
+                  : mode === "no"
+                    ? choice !== "não"
+                    : false;
           });
           return;
         }

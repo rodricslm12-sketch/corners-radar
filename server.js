@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v10-goals-btts-separated";
+const QUENTES_CACHE_VERSION = "tz-manaus-v11-team-history";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -4326,6 +4326,20 @@ function marketGameFromEvent(e, league, posHome = null, posAway = null) {
     score_away: Number.isFinite(awayGoals) ? awayGoals : null,
     // Campos crus são preservados para o frontend aproveitar estatísticas
     // que algumas ligas já devolvem diretamente em get_events.
+    home_team_id:
+      e?.match_hometeam_id ??
+      e?.home_team_key ??
+      e?.home_team_id ??
+      e?.teams?.home?.id ??
+      null,
+
+    away_team_id:
+      e?.match_awayteam_id ??
+      e?.away_team_key ??
+      e?.away_team_id ??
+      e?.teams?.away?.id ??
+      null,
+
     event_raw: e,
     markets_scope: "full_table"
   };
@@ -5016,6 +5030,100 @@ function enginePairFromStats(statsMap, keys) {
   return { home: null, away: null };
 }
 
+
+const teamRecentEventsCache = new Map();
+
+function engineDateShift(dateString, days) {
+  const base = new Date(`${dateString}T12:00:00Z`);
+  if (Number.isNaN(base.getTime())) return dateString;
+
+  base.setUTCDate(base.getUTCDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+async function engineRecentEventsByTeam(teamId, date, limit = 8) {
+  const numericId = Number(teamId);
+  if (!Number.isFinite(numericId) || numericId <= 0) return [];
+
+  const key = `${numericId}|${date}|${limit}`;
+  const cached = teamRecentEventsCache.get(key);
+
+  if (cached && cached.expires > Date.now()) {
+    return cached.value;
+  }
+
+  const from = engineDateShift(date, -210);
+  const to = engineDateShift(date, -1);
+
+  let events = [];
+
+  try {
+    const data = await apiGetV3({
+      action: "get_events",
+      from,
+      to,
+      team_id: numericId,
+      timezone: API_TIMEZONE
+    });
+
+    events = Array.isArray(data) ? data : [];
+  } catch {
+    try {
+      const data = await apiGetAny({
+        action: "get_events",
+        from,
+        to,
+        team_id: numericId,
+        timezone: API_TIMEZONE
+      });
+
+      events = Array.isArray(data) ? data : [];
+    } catch {
+      events = [];
+    }
+  }
+
+  const finished = events
+    .filter(event => {
+      const status = String(
+        event?.match_status ??
+        event?.status ??
+        ""
+      ).toLowerCase();
+
+      const home = handicapSafeNumber(
+        event?.match_hometeam_score ??
+        event?.home_score
+      );
+
+      const away = handicapSafeNumber(
+        event?.match_awayteam_score ??
+        event?.away_score
+      );
+
+      return (
+        Number.isFinite(home) &&
+        Number.isFinite(away) &&
+        !/postpon|cancel|aband/.test(status)
+      );
+    })
+    .sort((a, b) => {
+      const dateA = String(a?.match_date ?? a?.date ?? "");
+      const dateB = String(b?.match_date ?? b?.date ?? "");
+      const timeA = String(a?.match_time ?? a?.time ?? "");
+      const timeB = String(b?.match_time ?? b?.time ?? "");
+      return `${dateB} ${timeB}`.localeCompare(`${dateA} ${timeA}`);
+    })
+    .slice(0, limit);
+
+  teamRecentEventsCache.set(key, {
+    value: finished,
+    expires: Date.now() + 30 * 60 * 1000
+  });
+
+  return finished;
+}
+
 async function engineRecentProfile(teamName, matches, limit = MULTI_MARKET_ENGINE.RECENT_N) {
   const teamKey = normTeamKey(teamName);
   const list = Array.isArray(matches) ? matches.slice(0, limit) : [];
@@ -5254,7 +5362,39 @@ function engineFallbackGoalProjection(game, oddsInfo) {
     return engineClamp(1.8 + ((score % 35) / 35) * 1.45, 1.8, 3.25);
   }
 
-  return null;
+  const homePos = engineGameNumber(game, [
+    "pos_home",
+    "event_raw.home_position"
+  ]);
+
+  const awayPos = engineGameNumber(game, [
+    "pos_away",
+    "event_raw.away_position"
+  ]);
+
+  const tableGap =
+    Number.isFinite(homePos) &&
+    Number.isFinite(awayPos)
+      ? Math.abs(homePos - awayPos)
+      : 0;
+
+  const leagueId = engineGameNumber(game, [
+    "league_id",
+    "event_raw.league_id"
+  ], 0);
+
+  const leagueAdjustment =
+    Number.isFinite(leagueId)
+      ? ((leagueId % 7) - 3) * 0.06
+      : 0;
+
+  return engineClamp(
+    2.28 +
+      Math.min(0.42, tableGap * 0.035) +
+      leagueAdjustment,
+    1.95,
+    3.05
+  );
 }
 
 function engineFallbackCornersProjection(game) {
@@ -5349,7 +5489,7 @@ function goalsEngineDecision({ game, home, away, oddsInfo }) {
     edge * (source === "recent_form" ? 10 : 6) +
     Math.max(0, quality - 2) * 0.8;
 
-  if (source === "fallback") confidence = Math.min(confidence, 72);
+  if (source === "fallback") confidence = Math.min(confidence, 68);
 
   confidence = engineClamp(
     confidence,
@@ -5717,14 +5857,44 @@ async function buildAllMarketEngines({ date }) {
         h2hBlock = null;
       }
 
+      let homeMatches = Array.isArray(
+        h2hBlock?.firstTeam_lastResults
+      )
+        ? h2hBlock.firstTeam_lastResults
+        : [];
+
+      let awayMatches = Array.isArray(
+        h2hBlock?.secondTeam_lastResults
+      )
+        ? h2hBlock.secondTeam_lastResults
+        : [];
+
+      if (homeMatches.length < 3) {
+        homeMatches = await engineRecentEventsByTeam(
+          game.home_team_id,
+          date,
+          8
+        );
+      }
+
+      if (awayMatches.length < 3) {
+        awayMatches = await engineRecentEventsByTeam(
+          game.away_team_id,
+          date,
+          8
+        );
+      }
+
       const [homeProfile, awayProfile] = await Promise.all([
         engineRecentProfile(
           game.casa,
-          h2hBlock?.firstTeam_lastResults
+          homeMatches,
+          MULTI_MARKET_ENGINE.RECENT_N
         ),
         engineRecentProfile(
           game.fora,
-          h2hBlock?.secondTeam_lastResults
+          awayMatches,
+          MULTI_MARKET_ENGINE.RECENT_N
         )
       ]);
 
