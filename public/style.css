@@ -13978,3 +13978,18 @@ button.railFullBtn {
     background:rgba(141,242,58,.07)!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V58 — GOLS E AMBAS MARCAM SEPARADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity .cpAnalysisAutoBadge,
+  .cpBttsOpportunity .cpBttsEngineBadge{
+    white-space:nowrap!important;
+  }
+
+  .cpBttsOpportunity:not(.is-no-bet){
+    opacity:1!important;
+    filter:none!important;
+  }
+}

@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v9-handicap-fallback";
+const QUENTES_CACHE_VERSION = "tz-manaus-v10-goals-btts-separated";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -5380,7 +5380,7 @@ function goalsEngineDecision({ game, home, away, oddsInfo }) {
   });
 }
 
-function bttsEngineDecision({ game, home, away, oddsInfo }) {
+function bttsEngineDecision({ game, home, away, oddsInfo, goalsDecision }) {
   const quality = engineDataQuality(
     home,
     away,
@@ -5397,7 +5397,10 @@ function bttsEngineDecision({ game, home, away, oddsInfo }) {
     Number.isFinite(home?.bttsRate) &&
     Number.isFinite(away?.bttsRate);
 
-  const fallbackProjection = engineFallbackGoalProjection(game, oddsInfo);
+  const fallbackProjection =
+    Number.isFinite(Number(goalsDecision?.projection))
+      ? Number(goalsDecision.projection)
+      : engineFallbackGoalProjection(game, oddsInfo);
 
   let yesIndex = null;
   let noIndex = null;
@@ -5431,13 +5434,29 @@ function bttsEngineDecision({ game, home, away, oddsInfo }) {
       Number.isFinite(awayOdd) &&
       Math.abs(homeOdd - awayOdd) <= 0.9;
 
-    yesIndex =
-      48 +
-      (fallbackProjection - 2.2) * 15 +
-      (balancedOdds ? 7 : 0) +
-      (Number.isFinite(drawOdd) && drawOdd >= 3.4 ? 4 : 0);
+    const favoriteGap =
+      Number.isFinite(homeOdd) &&
+      Number.isFinite(awayOdd)
+        ? Math.abs(homeOdd - awayOdd)
+        : 0;
 
-    yesIndex = engineClamp(yesIndex, 35, 78);
+    yesIndex =
+      47 +
+      (fallbackProjection - 2.05) * 17 +
+      (balancedOdds ? 7 : 0) +
+      (
+        Number.isFinite(drawOdd) &&
+        drawOdd >= 3.35
+          ? 4
+          : 0
+      ) -
+      (
+        favoriteGap >= 1.5
+          ? 6
+          : 0
+      );
+
+    yesIndex = engineClamp(yesIndex, 32, 80);
     noIndex = 100 - yesIndex;
   }
 
@@ -5452,12 +5471,12 @@ function bttsEngineDecision({ game, home, away, oddsInfo }) {
   let line = "SEM APOSTA";
   let confidence = 0;
 
-  if (yesIndex >= 58 && yesIndex - noIndex >= 10) {
+  if (yesIndex >= 55 && yesIndex - noIndex >= 6) {
     line = "AMBAS SIM";
-    confidence = 58 + (yesIndex - 50) * 0.65;
-  } else if (noIndex >= 58 && noIndex - yesIndex >= 10) {
+    confidence = 58 + (yesIndex - 50) * 0.62;
+  } else if (noIndex >= 55 && noIndex - yesIndex >= 6) {
     line = "AMBAS NÃO";
-    confidence = 58 + (noIndex - 50) * 0.65;
+    confidence = 58 + (noIndex - 50) * 0.62;
   }
 
   if (line === "SEM APOSTA") {
@@ -5728,7 +5747,8 @@ async function buildAllMarketEngines({ date }) {
         game,
         home: homeProfile,
         away: awayProfile,
-        oddsInfo
+        oddsInfo,
+        goalsDecision: goals_ai
       });
 
       const corners_ai = cornersEngineDecision({

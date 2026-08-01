@@ -2003,15 +2003,41 @@
       const serverDecision = raw?.[`${marketType}_ai`];
   
       if (serverDecision && typeof serverDecision === "object") {
+        let serverLine = clean(
+          serverDecision.line,
+          "SEM APOSTA"
+        ).toUpperCase();
+  
+        if (
+          marketType === "goals" &&
+          serverLine.includes("AMBAS")
+        ) {
+          serverLine = "SEM APOSTA";
+        }
+  
+        if (
+          marketType !== "goals" &&
+          marketType !== "btts" &&
+          serverLine.includes("AMBAS")
+        ) {
+          serverLine = "SEM APOSTA";
+        }
+  
         return {
-          line: clean(serverDecision.line, "SEM APOSTA"),
-          projection: Number(serverDecision.projection || 0).toFixed(1),
-          confidence: Number(serverDecision.confidence || 0),
+          line: serverLine,
+          projection: Number(
+            serverDecision.projection || 0
+          ).toFixed(1),
+          confidence: Number(
+            serverDecision.confidence || 0
+          ),
           reason: clean(
             serverDecision.reason,
             "Decisão calculada pelo motor do servidor."
           ),
-          skip: Boolean(serverDecision.skip),
+          skip:
+            Boolean(serverDecision.skip) ||
+            serverLine === "SEM APOSTA",
           source: "server"
         };
       }
@@ -2274,77 +2300,6 @@
         })
         .slice(0, 7);
   
-      if (requestedLine === "IA" && prepared.length >= 3) {
-        const uniqueLines = new Set(
-          prepared.map(item => item.recommendation.line)
-        );
-  
-        if (uniqueLines.size === 1) {
-          prepared = prepared.map((item, index) => {
-            const projection = Number(item.recommendation.projection);
-  
-            if (!Number.isFinite(projection)) return item;
-  
-            let adjustedLine = item.recommendation.line;
-  
-            if (marketType === "corners") {
-              const alternatives = [
-                "OVER 11.5",
-                "OVER 10.5",
-                "OVER 9.5",
-                "OVER 8.5",
-                "UNDER 9.5"
-              ];
-  
-              const slot = Math.min(
-                alternatives.length - 1,
-                Math.floor(index * alternatives.length / prepared.length)
-              );
-  
-              adjustedLine = alternatives[slot];
-            } else if (marketType === "goals") {
-              const alternatives = [
-                "OVER 3.5",
-                "OVER 2.5",
-                "AMBAS SIM",
-                "OVER 1.5",
-                "UNDER 2.5"
-              ];
-  
-              const slot = Math.min(
-                alternatives.length - 1,
-                Math.floor(index * alternatives.length / prepared.length)
-              );
-  
-              adjustedLine = alternatives[slot];
-            } else if (marketType === "cards") {
-              const alternatives = [
-                "OVER 5.5",
-                "OVER 4.5",
-                "OVER 3.5",
-                "OVER 2.5",
-                "UNDER 4.5"
-              ];
-  
-              const slot = Math.min(
-                alternatives.length - 1,
-                Math.floor(index * alternatives.length / prepared.length)
-              );
-  
-              adjustedLine = alternatives[slot];
-            }
-  
-            return {
-              ...item,
-              recommendation: {
-                ...item.recommendation,
-                line: adjustedLine,
-                reason: `${item.recommendation.reason}`
-              }
-            };
-          });
-        }
-      }
   
       const settlementEntries = [];
       const liveEntries = [];
