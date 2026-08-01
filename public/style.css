@@ -10356,3 +10356,390 @@ button.railFullBtn {
     transition:none!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V22 — TELA AMBAS MARCAM
+   ========================================================= */
+@media (max-width:980px){
+  #cpMobileMarketsLayer:has(.cpBttsIntro){
+    background:#020405!important;
+  }
+
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileLayerHeader{
+    min-height:74px!important;
+    padding:16px 15px!important;
+    background:#020405!important;
+    border-bottom:0!important;
+  }
+
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileLayerHeader strong{
+    font-size:20px!important;
+  }
+
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileLayerHeader small,
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileMarketKinds,
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileSubTabs{
+    display:none!important;
+  }
+
+  #cpMobileMarketsLayer:has(.cpBttsIntro) .cpMobileMarketsBody{
+    padding:5px 14px 92px!important;
+    overflow-y:auto!important;
+    background:#020405!important;
+  }
+
+  .cpBttsIntro{
+    display:grid;
+    grid-template-columns:112px minmax(0,1fr);
+    gap:14px;
+    align-items:center;
+    margin-bottom:12px;
+  }
+
+  .cpBttsIntroIcon{
+    height:94px;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(140,255,0,.58);
+    border-radius:11px;
+    color:var(--cp-v9-green);
+    font-size:58px;
+    background:#06100d;
+  }
+
+  .cpBttsIntro p{
+    margin:0;
+    color:#e3e7e6;
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  .cpBttsTabs{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    margin-bottom:13px;
+    border:1px solid #203036;
+    border-radius:9px;
+    overflow:hidden;
+    background:#071014;
+  }
+
+  .cpBttsTabs button{
+    height:43px;
+    border-right:1px solid #203036!important;
+    color:#f3f5f4;
+    font-size:12px;
+    font-weight:850;
+  }
+
+  .cpBttsTabs button:last-child{border-right:0!important}
+
+  .cpBttsTabs button.active{
+    color:var(--cp-v9-green);
+    border:1px solid rgba(140,255,0,.68)!important;
+    background:rgba(140,255,0,.04);
+  }
+
+  .cpBttsExplain,
+  .cpBttsBottomExplain{
+    border:1px solid #1d3037;
+    border-radius:12px;
+    padding:13px;
+    background:linear-gradient(180deg,#071317,#061014);
+  }
+
+  .cpBttsExplain h3,
+  .cpBttsBottomExplain h3{
+    display:flex;
+    justify-content:space-between;
+    margin:0 0 12px;
+    color:var(--cp-v9-green);
+    font-size:13px;
+  }
+
+  .cpBttsExplain > div,
+  .cpBttsBottomExplain > div{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .cpBttsExplain article,
+  .cpBttsBottomExplain article{
+    display:flex;
+    gap:9px;
+    min-width:0;
+  }
+
+  .cpBttsExplain article + article,
+  .cpBttsBottomExplain article + article{
+    border-left:1px solid #26373d;
+    padding-left:12px;
+  }
+
+  .cpBttsExplain article > i,
+  .cpBttsBottomExplain article > i{
+    flex:0 0 30px;
+    width:30px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border:2px solid var(--cp-v9-green);
+    border-radius:50%;
+    color:var(--cp-v9-green);
+    font-style:normal;
+    font-size:18px;
+    font-weight:900;
+  }
+
+  .cpBttsExplain b,
+  .cpBttsBottomExplain b{
+    color:var(--cp-v9-green);
+    font-size:12px;
+  }
+
+  .cpBttsExplain p,
+  .cpBttsBottomExplain p{
+    margin:4px 0 0;
+    color:#d5dcda;
+    font-size:10px;
+    line-height:1.38;
+  }
+
+  .cpBttsTitle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:16px 0 9px;
+  }
+
+  .cpBttsTitle h2{
+    margin:0;
+    color:#fff;
+    font-size:15px;
+  }
+
+  .cpBttsTitle button{
+    color:var(--cp-v9-green);
+    font-size:10px;
+    font-weight:900;
+  }
+
+  .cpBttsList{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+
+  .cpBttsOpportunity{
+    position:relative;
+    width:100%;
+    min-height:117px;
+    display:grid;
+    grid-template-columns:minmax(0,1.25fr) minmax(105px,.8fr) 74px 16px;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border:1px solid #1d3037!important;
+    border-radius:11px!important;
+    background:linear-gradient(180deg,#071317,#061014)!important;
+    text-align:left;
+  }
+
+  .cpBttsMatch{
+    min-width:0;
+  }
+
+  .cpBttsMatch time{
+    color:var(--cp-v9-green);
+    font-size:11px;
+    font-weight:900;
+  }
+
+  .cpBttsMatch > small{
+    margin-left:8px;
+    color:#dfe5e3;
+    font-size:9px;
+  }
+
+  .cpBttsTeams{
+    margin-top:8px;
+    display:grid;
+    grid-template-columns:34px minmax(0,1fr);
+    gap:3px 7px;
+    align-items:center;
+  }
+
+  .cpBttsTeams .cpBttsBadge{
+    grid-row:1 / span 3;
+    width:32px;
+    height:32px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:#112129;
+    border:1px solid rgba(140,255,0,.45);
+    color:#fff;
+    font-size:9px;
+    font-weight:900;
+  }
+
+  .cpBttsTeams .cpBttsBadge.away{
+    display:none;
+  }
+
+  .cpBttsTeams b{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    color:#fff;
+    font-size:11px;
+  }
+
+  .cpBttsTeams i{
+    color:#9ca7a8;
+    font-size:9px;
+    font-style:normal;
+  }
+
+  .cpBttsPick{
+    align-self:stretch;
+    padding-left:11px;
+    border-left:1px solid #26373d;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .cpBttsPick strong{
+    color:var(--cp-v9-green);
+    font-size:10px;
+    line-height:1.2;
+  }
+
+  .cpBttsPick small{
+    margin-top:10px;
+    color:#d8dfdd;
+    font-size:9px;
+  }
+
+  .cpBttsPick b{
+    margin-top:2px;
+    color:var(--cp-v9-green);
+    font-size:20px;
+  }
+
+  .cpBttsGauge{
+    --value:calc(var(--btts) * 1%);
+    width:68px;
+    height:53px;
+    align-self:center;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    padding-bottom:1px;
+    overflow:hidden;
+  }
+
+  .cpBttsGauge::before{
+    content:"";
+    position:absolute;
+    top:2px;
+    width:66px;
+    height:66px;
+    border-radius:50%;
+    background:conic-gradient(from 270deg,var(--cp-v9-green) 0 var(--value),#273236 var(--value) 50%,transparent 50%);
+    transform:rotate(-90deg);
+  }
+
+  .cpBttsGauge::after{
+    content:"";
+    position:absolute;
+    top:12px;
+    width:47px;
+    height:47px;
+    border-radius:50%;
+    background:#071317;
+  }
+
+  .cpBttsGauge span,
+  .cpBttsGauge small{
+    position:relative;
+    z-index:2;
+  }
+
+  .cpBttsGauge span{
+    color:var(--cp-v9-green);
+    font-size:14px;
+    font-weight:900;
+  }
+
+  .cpBttsGauge small{
+    color:#fff;
+    font-size:7px;
+  }
+
+  .cpBttsArrow{
+    color:var(--cp-v9-green);
+    font-size:25px;
+    font-style:normal;
+  }
+
+  .cpBttsAllGames{
+    width:100%;
+    min-height:43px;
+    margin:9px 0;
+    display:grid;
+    grid-template-columns:27px minmax(0,1fr) 14px;
+    gap:8px;
+    align-items:center;
+    padding:0 12px;
+    border:1px solid #1d3037!important;
+    border-radius:9px!important;
+    background:#071014!important;
+    color:#fff;
+  }
+
+  .cpBttsAllGames b{
+    font-size:10px;
+  }
+
+  .cpBttsAllGames i{
+    color:#fff;
+    font-size:21px;
+    font-style:normal;
+  }
+
+  .cpBttsBottomExplain{
+    padding:10px 12px;
+  }
+
+  .cpBttsEmpty{
+    padding:25px;
+    color:#9ba7a8;
+    text-align:center;
+    border:1px dashed #26373d;
+    border-radius:10px;
+  }
+}
+
+@media (max-width:390px){
+  .cpBttsOpportunity{
+    grid-template-columns:minmax(0,1fr) 94px 60px 12px;
+    gap:7px;
+    padding:9px 8px;
+  }
+
+  .cpBttsGauge{
+    width:58px;
+  }
+
+  .cpBttsExplain p,
+  .cpBttsBottomExplain p{
+    font-size:9px;
+  }
+}

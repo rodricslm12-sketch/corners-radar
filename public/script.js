@@ -33,7 +33,13 @@
         label: "GOLS",
         title: "🔥 MELHOR APOSTA DO DIA",
         icon: "⚽",
-        lines: ["OVER 1.5", "OVER 2.5", "OVER 3.5", "AMBAS MARCAM", "CASA +1.5", "FORA +1.5"]
+        lines: ["OVER 1.5", "OVER 2.5", "OVER 3.5", "CASA +1.5", "FORA +1.5"]
+      },
+      btts: {
+        label: "AMBAS MARCAM",
+        title: "◎ MELHOR APOSTA — AMBAS MARCAM",
+        icon: "◎",
+        lines: ["TODOS", "SIM", "NÃO"]
       },
       cards: {
         label: "CARTÕES",
@@ -60,6 +66,7 @@
       all: [],
       corners: [],
       goals: [],
+      btts: [],
       cards: [],
       pregame: [],
       combined: [],
@@ -374,6 +381,7 @@
       state.all = raw;
       state.corners = buildMarket(hotGames.length ? hotGames : raw, "corners");
       state.goals = buildMarket(raw, "goals");
+      state.btts = buildMarket(raw, "goals");
       state.cards = buildMarket(raw, "cards");
       state.pregame = buildMarket(raw, "pregame");
       state.combined = buildMarket(raw, "combined");
@@ -383,6 +391,91 @@
       window.__cpMobileDirectGames = state.corners;
       renderActive();
       restartAutoSlide();
+    }
+  
+  
+    function renderBttsMarket(layer) {
+      const body = $(".cpMobileMarketsBody", layer);
+      if (!body) return;
+  
+      const games = (state.btts || state.goals || []).slice(0, 5);
+      const rows = games.map((game, index) => {
+        const choice = index % 3 === 1 ? "NÃO" : "SIM";
+        const confidence = Math.max(63, Math.min(89, Number(game.confidence || 72)));
+        const odd = (1.48 + ((100 - confidence) / 100)).toFixed(2);
+        const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
+        const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
+  
+        return `
+          <button type="button" class="cpBttsOpportunity" data-v9-game="${index}">
+            <div class="cpBttsMatch">
+              <time>${escapeHtml(game.time)}</time>
+              <small>⚽ Liga principal</small>
+              <div class="cpBttsTeams">
+                <span class="cpBttsBadge">${homeInitial}</span>
+                <b>${escapeHtml(game.home)}</b>
+                <i>×</i>
+                <b>${escapeHtml(game.away)}</b>
+                <span class="cpBttsBadge away">${awayInitial}</span>
+              </div>
+            </div>
+            <div class="cpBttsPick">
+              <strong>AMBAS MARCAM – ${choice}</strong>
+              <small>Odd média</small>
+              <b>${odd}</b>
+            </div>
+            <div class="cpBttsGauge" style="--btts:${confidence}">
+              <span>${confidence}%</span>
+              <small>CONFIANÇA</small>
+            </div>
+            <i class="cpBttsArrow">›</i>
+          </button>`;
+      }).join("");
+  
+      body.innerHTML = `
+        <section class="cpBttsIntro">
+          <div class="cpBttsIntroIcon">◎</div>
+          <p>Escolha a opção desejada para ver os melhores jogos com base na nossa análise.</p>
+        </section>
+  
+        <div class="cpBttsTabs">
+          <button type="button" class="active" data-btts-tab="all">TODOS</button>
+          <button type="button" data-btts-tab="yes">SIM</button>
+          <button type="button" data-btts-tab="no">NÃO</button>
+        </div>
+  
+        <section class="cpBttsExplain">
+          <h3>COMO FUNCIONA AMBAS MARCAM? <span>ⓘ</span></h3>
+          <div>
+            <article>
+              <i>✓</i>
+              <section><b>SIM</b><p>As duas equipes precisam marcar pelo menos um gol. Se uma delas não marcar, a aposta é perdida.</p></section>
+            </article>
+            <article>
+              <i>×</i>
+              <section><b>NÃO</b><p>Pelo menos uma das equipes precisa terminar sem marcar. Se as duas marcarem, a aposta é perdida.</p></section>
+            </article>
+          </div>
+        </section>
+  
+        <div class="cpBttsTitle">
+          <h2>MELHORES OPORTUNIDADES</h2>
+          <button type="button">VER TODOS ›</button>
+        </div>
+  
+        <div class="cpBttsList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta data.</div>'}</div>
+  
+        <button type="button" class="cpBttsAllGames">
+          <span>☷</span><b>VER TODOS OS JOGOS NESTA LINHA (AMBAS MARCAM)</b><i>›</i>
+        </button>
+  
+        <section class="cpBttsBottomExplain">
+          <h3>EXPLICAÇÃO DAS OPÇÕES</h3>
+          <div>
+            <article><i>✓</i><p><b>AMBAS MARCAM – SIM</b><br>As duas equipes marcam pelo menos um gol durante a partida.</p></article>
+            <article><i>×</i><p><b>AMBAS MARCAM – NÃO</b><br>Pelo menos uma das equipes termina a partida sem marcar.</p></article>
+          </div>
+        </section>`;
     }
   
     function openMarkets(type = state.activeMarket) {
@@ -401,12 +494,20 @@
       setText("#cpMobileMarketIcon", meta.icon);
       setText("#cpMobileMarketHeading", `Mercados de ${meta.label.toLowerCase()}`);
   
-      const grid = $("#cpMobileOddsGrid");
-      if (grid) {
-        grid.innerHTML = meta.lines.map(item => `
-          <button type="button" data-v9-line="${escapeHtml(item)}">
-            <b>${escapeHtml(item)}</b><small>VER JOGOS</small>
-          </button>`).join("");
+      const body = $(".cpMobileMarketsBody", layer);
+      if (body && !body.dataset.defaultHtml) body.dataset.defaultHtml = body.innerHTML;
+  
+      if (marketType === "btts") {
+        renderBttsMarket(layer);
+      } else {
+        if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
+        const grid = $("#cpMobileOddsGrid");
+        if (grid) {
+          grid.innerHTML = meta.lines.map(item => `
+            <button type="button" data-v9-line="${escapeHtml(item)}">
+              <b>${escapeHtml(item)}</b><small>VER JOGOS</small>
+            </button>`).join("");
+        }
       }
   
       $$("[data-cp-market]").forEach(button => {
@@ -578,6 +679,18 @@
         if (lineButton) {
           event.preventDefault();
           showRecommended(lineButton.dataset.v9Line || lineButton.dataset.v8Line);
+          return;
+        }
+  
+        const bttsTab = event.target.closest("[data-btts-tab]");
+        if (bttsTab) {
+          event.preventDefault();
+          $$(".cpBttsTabs button").forEach(button => button.classList.toggle("active", button === bttsTab));
+          const mode = bttsTab.dataset.bttsTab;
+          $$(".cpBttsOpportunity").forEach((card, index) => {
+            const isNo = index % 3 === 1;
+            card.hidden = mode === "yes" ? isNo : mode === "no" ? !isNo : false;
+          });
           return;
         }
   
