@@ -14027,3 +14027,35 @@ button.railFullBtn {
     white-space:nowrap!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V61 — UNDER SOMENTE COM AMOSTRA ROBUSTA
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity[data-settlement-market="corners"]
+  .cpAnalysisPick small{
+    line-height:1.28!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V62 — COMPARADOR DE LINHAS
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisAutoBadge,
+  .cpHandicapAutoBadge,
+  .cpBttsEngineBadge{
+    letter-spacing:.1px!important;
+  }
+
+  .cpAnalysisOpportunity
+  .cpAnalysisPick > strong,
+  .cpHandicapOpportunity
+  .cpHandicapPick > strong,
+  .cpBttsOpportunity
+  .cpBttsPick > strong{
+    color:#8df23a!important;
+  }
+}
