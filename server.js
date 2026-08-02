@@ -47,7 +47,23 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v17-corners-conservative-fill";
+const QUENTES_CACHE_VERSION = "tz-manaus-v19-corner-online-learning";
+
+const CORNER_LEARNING_VERSION = "corner-online-v1";
+const CORNER_LEARNING_FILE = path.join(
+  __dirname,
+  "corner-learning-model.json"
+);
+const CORNER_LEARNING_RATE = Number(
+  process.env.CORNER_LEARNING_RATE || 0.035
+);
+const CORNER_MIN_TRAINING_SAMPLES = Number(
+  process.env.CORNER_MIN_TRAINING_SAMPLES || 8
+);
+const CORNER_MAX_PREDICTION_MEMORY = Number(
+  process.env.CORNER_MAX_PREDICTION_MEMORY || 1500
+);
+
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -2924,15 +2940,42 @@ function isEligibleForIaCard(j){
 
 function pickBestDeterministic(list){
   const arr = (list || [])
-    .filter(isEligibleForIaCard)
-    .map(x => ({ ...x, ai_score: Number.isFinite(x?.ai_score) ? x.ai_score : aiScoreFromMatch(x) }));
+    .filter(Boolean)
+    .filter(x => {
+      const ai = x?.corners_ai;
+      if (ai && !ai.skip) return true;
+      return isEligibleForIaCard(x);
+    })
+    .map(x => ({
+      ...x,
+      ai_score:
+        Number.isFinite(x?.ai_score)
+          ? x.ai_score
+          : aiScoreFromMatch(x),
+      corner_elite_score: Number(
+        x?.corner_elite_score ??
+        cornerEliteScore(x)
+      )
+    }));
 
   arr.sort((a,b) => {
-    const sa = a.ai_score ?? 0, sb = b.ai_score ?? 0;
-    if (sb !== sa) return sb - sa;
-    const pa = a.over95_prob_adj ?? a.over95_prob ?? 0;
-    const pb = b.over95_prob_adj ?? b.over95_prob ?? 0;
-    return pb - pa;
+    const eliteDiff =
+      Number(b?.corner_elite_score ?? -999) -
+      Number(a?.corner_elite_score ?? -999);
+
+    if (eliteDiff !== 0) return eliteDiff;
+
+    const projectionDiff =
+      Number(b?.corners_ai?.projection ?? b?.proj_cantos ?? 0) -
+      Number(a?.corners_ai?.projection ?? a?.proj_cantos ?? 0);
+
+    if (projectionDiff !== 0) return projectionDiff;
+
+    const confidenceDiff =
+      Number(b?.corners_ai?.confidence ?? b?.over95_prob_adj ?? 0) -
+      Number(a?.corners_ai?.confidence ?? a?.over95_prob_adj ?? 0);
+
+    return confidenceDiff;
   });
 
   return arr[0] || null;
@@ -4288,13 +4331,672 @@ function cornerStrengthForClient(game) {
     + (Number.isFinite(proj) ? proj : 0) * 2.0;
 }
 
+
+const DEFAULT_CORNER_LEARNING_MODEL = {
+  version: CORNER_LEARNING_VERSION,
+  updated_at: null,
+  samples: 0,
+  greens: 0,
+  reds: 0,
+  pushes: 0,
+  projection_bias: 0,
+  confidence_bias: 0,
+  elite_bias: 0,
+  feature_weights: {
+    projection: 1.00,
+    confidence: 1.00,
+    pressure: 1.00,
+    recent: 1.00,
+    team_creation: 1.00,
+    opponent_concede: 1.00,
+    sample: 1.00
+  },
+  line_bias: {
+    "OVER 8.5": 0,
+    "OVER 9.5": 0,
+    "OVER 10.5": 0,
+    "OVER 11.5": 0,
+    "UNDER 9.5": 0,
+    "UNDER 10.5": 0,
+    "UNDER 11.5": 0
+  },
+  predictions: {}
+};
+
+let cornerLearningModel = null;
+let cornerLearningWriteTimer = null;
+
+function cornerLearningCloneDefault() {
+  return JSON.parse(
+    JSON.stringify(DEFAULT_CORNER_LEARNING_MODEL)
+  );
+}
+
+function cornerLearningClamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function loadCornerLearningModel() {
+  if (cornerLearningModel) return cornerLearningModel;
+
+  try {
+    if (fs.existsSync(CORNER_LEARNING_FILE)) {
+      const parsed = JSON.parse(
+        fs.readFileSync(CORNER_LEARNING_FILE, "utf8")
+      );
+
+      cornerLearningModel = {
+        ...cornerLearningCloneDefault(),
+        ...parsed,
+        feature_weights: {
+          ...DEFAULT_CORNER_LEARNING_MODEL.feature_weights,
+          ...(parsed?.feature_weights || {})
+        },
+        line_bias: {
+          ...DEFAULT_CORNER_LEARNING_MODEL.line_bias,
+          ...(parsed?.line_bias || {})
+        },
+        predictions:
+          parsed?.predictions &&
+          typeof parsed.predictions === "object"
+            ? parsed.predictions
+            : {}
+      };
+
+      return cornerLearningModel;
+    }
+  } catch (error) {
+    console.warn(
+      "[corner-learning] Não foi possível carregar o modelo:",
+      error?.message || error
+    );
+  }
+
+  cornerLearningModel = cornerLearningCloneDefault();
+  return cornerLearningModel;
+}
+
+function scheduleCornerLearningSave() {
+  if (cornerLearningWriteTimer) return;
+
+  cornerLearningWriteTimer = setTimeout(() => {
+    cornerLearningWriteTimer = null;
+
+    try {
+      const model = loadCornerLearningModel();
+      model.updated_at = new Date().toISOString();
+
+      const temporary = `${CORNER_LEARNING_FILE}.tmp`;
+
+      fs.writeFileSync(
+        temporary,
+        JSON.stringify(model, null, 2),
+        "utf8"
+      );
+
+      fs.renameSync(temporary, CORNER_LEARNING_FILE);
+    } catch (error) {
+      console.warn(
+        "[corner-learning] Não foi possível salvar o modelo:",
+        error?.message || error
+      );
+    }
+  }, 500);
+}
+
+function cornerLearningStatusText() {
+  const model = loadCornerLearningModel();
+
+  if (model.samples < CORNER_MIN_TRAINING_SAMPLES) {
+    return "COLETANDO DADOS";
+  }
+
+  if (model.samples < 40) {
+    return "APRENDENDO";
+  }
+
+  return "MODELO ADAPTATIVO";
+}
+
+function cornerLearningLineNumber(line) {
+  const match = String(line || "").match(/(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : null;
+}
+
+function cornerLearningFeatures(game, decision) {
+  const homeProfile = game?.engine_profiles?.home || {};
+  const awayProfile = game?.engine_profiles?.away || {};
+
+  return {
+    projection:
+      Number(decision?.projection || 0) / 12,
+    confidence:
+      Number(decision?.confidence || 0) / 100,
+    pressure:
+      Number(
+        decision?.pressure_hits ??
+        decision?.extra?.pressure_hits ??
+        game?.real?.pressureHits ??
+        game?.pressureHits ??
+        0
+      ) / 5,
+    recent:
+      Number(
+        game?.real?.recentCombinedAvg ??
+        game?.recentCombinedAvg ??
+        0
+      ) / 12,
+    team_creation:
+      (
+        Number(homeProfile?.cornersForAvg || 0) +
+        Number(awayProfile?.cornersForAvg || 0)
+      ) / 12,
+    opponent_concede:
+      (
+        Number(homeProfile?.cornersAgainstAvg || 0) +
+        Number(awayProfile?.cornersAgainstAvg || 0)
+      ) / 12,
+    sample:
+      Math.min(
+        1,
+        Number(
+          decision?.sample_games ??
+          decision?.extra?.sample_games ??
+          0
+        ) / 6
+      )
+  };
+}
+
+function cornerLearningAdjustment(game, decision) {
+  const model = loadCornerLearningModel();
+  const features = cornerLearningFeatures(game, decision);
+
+  let weighted = 0;
+
+  for (const [feature, value] of Object.entries(features)) {
+    weighted +=
+      Number(value || 0) *
+      (
+        Number(model.feature_weights?.[feature] || 1) -
+        1
+      );
+  }
+
+  const line = String(decision?.line || "").toUpperCase();
+  const lineBias = Number(model.line_bias?.[line] || 0);
+
+  return {
+    projection:
+      Number(model.projection_bias || 0) +
+      weighted * 0.9,
+    confidence:
+      Number(model.confidence_bias || 0) +
+      weighted * 5 +
+      lineBias,
+    elite:
+      Number(model.elite_bias || 0) +
+      weighted * 10 +
+      lineBias * 1.5,
+    samples: Number(model.samples || 0),
+    status: cornerLearningStatusText(),
+    version: model.version
+  };
+}
+
+function cornerLearningApply(game, decision) {
+  if (!decision || decision.skip) return decision;
+
+  const adjustment = cornerLearningAdjustment(game, decision);
+
+  const projection = cornerLearningClamp(
+    Number(decision.projection || 0) +
+      adjustment.projection,
+    6.5,
+    16.5
+  );
+
+  const confidence = cornerLearningClamp(
+    Number(decision.confidence || 0) +
+      adjustment.confidence,
+    55,
+    88
+  );
+
+  return {
+    ...decision,
+    projection: Number(projection.toFixed(2)),
+    confidence: Math.round(confidence),
+    learning_adjustment: {
+      projection:
+        Number(adjustment.projection.toFixed(3)),
+      confidence:
+        Number(adjustment.confidence.toFixed(2)),
+      elite:
+        Number(adjustment.elite.toFixed(2))
+    },
+    learning_samples: adjustment.samples,
+    learning_status: adjustment.status,
+    learning_version: adjustment.version
+  };
+}
+
+function cornerLearningPredictionKey(game) {
+  return String(
+    game?.match_id ??
+    game?.event_key ??
+    game?.event_raw?.match_id ??
+    `${game?.casa || ""}|${game?.fora || ""}|${game?.horario || ""}`
+  );
+}
+
+function cornerLearningGameStatus(game) {
+  return String(
+    game?.match_status ??
+    game?.status ??
+    game?.event_raw?.match_status ??
+    ""
+  ).toLowerCase();
+}
+
+function cornerLearningIsFinished(game) {
+  const status = cornerLearningGameStatus(game);
+
+  return /finished|finish|ended|encerrado|full.?time|\bft\b|after/.test(
+    status
+  );
+}
+
+function cornerLearningIsLive(game) {
+  const status = cornerLearningGameStatus(game);
+
+  return /live|ao vivo|halftime|intervalo|[1-9]\d?['’]/.test(
+    status
+  );
+}
+
+function cornerLearningRememberPrediction(game, decision, date) {
+  if (
+    !decision ||
+    decision.skip ||
+    cornerLearningIsFinished(game) ||
+    cornerLearningIsLive(game)
+  ) {
+    return;
+  }
+
+  const model = loadCornerLearningModel();
+  const key = cornerLearningPredictionKey(game);
+
+  if (model.predictions[key]?.settled) return;
+
+  model.predictions[key] = {
+    match_id:
+      game?.match_id ??
+      game?.event_key ??
+      game?.event_raw?.match_id ??
+      null,
+    date,
+    home: game?.casa || "",
+    away: game?.fora || "",
+    line: decision.line,
+    projection: Number(decision.projection || 0),
+    confidence: Number(decision.confidence || 0),
+    features: cornerLearningFeatures(game, decision),
+    created_at:
+      model.predictions[key]?.created_at ||
+      new Date().toISOString(),
+    settled: false
+  };
+
+  const keys = Object.keys(model.predictions);
+
+  if (keys.length > CORNER_MAX_PREDICTION_MEMORY) {
+    keys
+      .sort((a, b) =>
+        String(
+          model.predictions[a]?.created_at || ""
+        ).localeCompare(
+          String(model.predictions[b]?.created_at || "")
+        )
+      )
+      .slice(
+        0,
+        keys.length - CORNER_MAX_PREDICTION_MEMORY
+      )
+      .forEach(oldKey => {
+        delete model.predictions[oldKey];
+      });
+  }
+
+  scheduleCornerLearningSave();
+}
+
+function cornerLearningEvaluateLine(line, totalCorners) {
+  const normalized = String(line || "").toUpperCase();
+  const number = cornerLearningLineNumber(normalized);
+
+  if (!Number.isFinite(number)) return null;
+
+  if (normalized.startsWith("OVER")) {
+    return totalCorners > number ? 1 : -1;
+  }
+
+  if (normalized.startsWith("UNDER")) {
+    return totalCorners < number ? 1 : -1;
+  }
+
+  return null;
+}
+
+function cornerLearningTrain(prediction, totalCorners) {
+  const result = cornerLearningEvaluateLine(
+    prediction.line,
+    totalCorners
+  );
+
+  if (result === null) return;
+
+  const model = loadCornerLearningModel();
+  const error =
+    totalCorners -
+    Number(prediction.projection || 0);
+
+  model.samples += 1;
+
+  if (result > 0) model.greens += 1;
+  else if (result < 0) model.reds += 1;
+  else model.pushes += 1;
+
+  model.projection_bias = cornerLearningClamp(
+    Number(model.projection_bias || 0) +
+      CORNER_LEARNING_RATE *
+      cornerLearningClamp(error, -4, 4),
+    -1.5,
+    1.5
+  );
+
+  model.confidence_bias = cornerLearningClamp(
+    Number(model.confidence_bias || 0) +
+      CORNER_LEARNING_RATE *
+      (
+        result > 0
+          ? 0.65
+          : -0.9
+      ),
+    -8,
+    8
+  );
+
+  model.elite_bias = cornerLearningClamp(
+    Number(model.elite_bias || 0) +
+      CORNER_LEARNING_RATE *
+      (
+        result > 0
+          ? 0.9
+          : -1.1
+      ),
+    -12,
+    12
+  );
+
+  const features = prediction.features || {};
+
+  for (const feature of Object.keys(model.feature_weights)) {
+    const featureValue = Number(features?.[feature] || 0);
+
+    model.feature_weights[feature] = cornerLearningClamp(
+      Number(model.feature_weights[feature] || 1) +
+        CORNER_LEARNING_RATE *
+        result *
+        featureValue *
+        0.08,
+      0.72,
+      1.28
+    );
+  }
+
+  const line = String(prediction.line || "").toUpperCase();
+
+  if (Object.prototype.hasOwnProperty.call(model.line_bias, line)) {
+    model.line_bias[line] = cornerLearningClamp(
+      Number(model.line_bias[line] || 0) +
+        CORNER_LEARNING_RATE *
+        (
+          result > 0
+            ? 1.2
+            : -1.5
+        ),
+      -10,
+      10
+    );
+  }
+
+  scheduleCornerLearningSave();
+}
+
+async function cornerLearningFinalCorners(game) {
+  const matchId =
+    game?.match_id ??
+    game?.event_key ??
+    game?.event_raw?.match_id ??
+    null;
+
+  if (!matchId) return null;
+
+  try {
+    const statsMap = await getStats(matchId);
+    const metrics = extractMatchMetrics(statsMap);
+
+    if (
+      Number.isFinite(metrics?.cornersHome) &&
+      Number.isFinite(metrics?.cornersAway)
+    ) {
+      return (
+        Number(metrics.cornersHome) +
+        Number(metrics.cornersAway)
+      );
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function cornerLearningSettleFinishedGames(games) {
+  const model = loadCornerLearningModel();
+
+  const finished = (Array.isArray(games) ? games : [])
+    .filter(cornerLearningIsFinished)
+    .filter(game => {
+      const key = cornerLearningPredictionKey(game);
+      const prediction = model.predictions[key];
+      return prediction && !prediction.settled;
+    })
+    .slice(0, 8);
+
+  await mapLimit(
+    finished,
+    Math.min(CONCURRENCY, 2),
+    async game => {
+      const key = cornerLearningPredictionKey(game);
+      const prediction = model.predictions[key];
+
+      if (!prediction || prediction.settled) return;
+
+      const totalCorners =
+        await cornerLearningFinalCorners(game);
+
+      if (!Number.isFinite(totalCorners)) return;
+
+      cornerLearningTrain(prediction, totalCorners);
+
+      prediction.settled = true;
+      prediction.total_corners = totalCorners;
+      prediction.result =
+        cornerLearningEvaluateLine(
+          prediction.line,
+          totalCorners
+        );
+      prediction.settled_at =
+        new Date().toISOString();
+    }
+  );
+
+  scheduleCornerLearningSave();
+}
+
+function cornerEliteScore(game) {
+  const decision = game?.corners_ai || {};
+  const learning = cornerLearningAdjustment(
+    game,
+    decision
+  );
+
+  if (
+    decision?.skip ||
+    String(decision?.line || "").toUpperCase() === "SEM APOSTA" ||
+    String(decision?.line || "").toUpperCase() === "DADOS EM ATUALIZAÇÃO"
+  ) {
+    return -999;
+  }
+
+  const projection = Number(
+    decision?.projection ??
+    game?.proj_cantos ??
+    game?.projected_corners ??
+    game?.projection ??
+    0
+  );
+
+  const confidence = Number(
+    decision?.confidence ??
+    game?.confidence ??
+    game?.over95_prob_adj ??
+    game?.over95_prob ??
+    0
+  );
+
+  const engineScore = Number(
+    decision?.score ??
+    game?.ai_score ??
+    game?.score_adj ??
+    game?.score ??
+    0
+  );
+
+  const pressure = Number(
+    decision?.pressure_hits ??
+    decision?.extra?.pressure_hits ??
+    game?.real?.pressureHits ??
+    game?.pressureHits ??
+    0
+  );
+
+  const recentCombined = Number(
+    game?.real?.recentCombinedAvg ??
+    game?.recentCombinedAvg ??
+    0
+  );
+
+  const sampleGames = Number(
+    decision?.sample_games ??
+    decision?.extra?.sample_games ??
+    0
+  );
+
+  const homeProfile = game?.engine_profiles?.home || {};
+  const awayProfile = game?.engine_profiles?.away || {};
+
+  const homeFor = Number(homeProfile?.cornersForAvg ?? 0);
+  const awayFor = Number(awayProfile?.cornersForAvg ?? 0);
+  const homeAgainst = Number(homeProfile?.cornersAgainstAvg ?? 0);
+  const awayAgainst = Number(awayProfile?.cornersAgainstAvg ?? 0);
+
+  const teamsCreation =
+    (Number.isFinite(homeFor) ? homeFor : 0) +
+    (Number.isFinite(awayFor) ? awayFor : 0);
+
+  const opponentsConcede =
+    (Number.isFinite(homeAgainst) ? homeAgainst : 0) +
+    (Number.isFinite(awayAgainst) ? awayAgainst : 0);
+
+  const line = String(decision?.line || "").toUpperCase();
+
+  let lineBonus = 0;
+  if (line === "OVER 11.5") lineBonus = 22;
+  else if (line === "OVER 10.5") lineBonus = 17;
+  else if (line === "OVER 9.5") lineBonus = 11;
+  else if (line === "OVER 8.5") lineBonus = 3;
+  else if (line.startsWith("UNDER")) lineBonus = -14;
+
+  const source =
+    decision?.calculation_source ??
+    decision?.extra?.calculation_source ??
+    "";
+
+  const sourceBonus =
+    source === "recent_form"
+      ? 9
+      : source === "fallback"
+        ? 1
+        : 4;
+
+  const status = String(
+    game?.match_status ??
+    game?.status ??
+    game?.event_raw?.match_status ??
+    ""
+  ).toLowerCase();
+
+  // O card principal é pré-jogo. Jogos já encerrados ou ao vivo
+  // não devem tomar o lugar da melhor oportunidade futura.
+  const statusPenalty =
+    /finish|ended|encerrado|ft|after/.test(status)
+      ? 80
+      : /live|ao vivo|[1-9]\d?'/.test(status)
+        ? 35
+        : 0;
+
+  // Não existe qualquer bônus ou penalização por posição na tabela.
+  const score =
+    projection * 6.5 +
+    confidence * 0.82 +
+    engineScore * 0.18 +
+    pressure * 3.8 +
+    recentCombined * 1.6 +
+    teamsCreation * 2.6 +
+    opponentsConcede * 1.4 +
+    Math.min(sampleGames, 6) * 2.2 +
+    lineBonus +
+    sourceBonus +
+    Number(learning.elite || 0) -
+    statusPenalty;
+
+  return Number.isFinite(score) ? score : -999;
+}
+
 function rankGamesByCornerStrength(list) {
   return (Array.isArray(list) ? list.slice() : [])
-    .sort((a, b) => cornerStrengthForClient(b) - cornerStrengthForClient(a))
+    .map(game => ({
+      ...game,
+      corner_elite_score: Number(cornerEliteScore(game).toFixed(2))
+    }))
+    .sort((a, b) => {
+      const eliteDiff =
+        Number(b?.corner_elite_score ?? -999) -
+        Number(a?.corner_elite_score ?? -999);
+
+      if (eliteDiff !== 0) return eliteDiff;
+
+      return cornerStrengthForClient(b) - cornerStrengthForClient(a);
+    })
     .map((game, index) => ({
       ...game,
       corner_strength: Number(cornerStrengthForClient(game).toFixed(2)),
-      corner_rank: index + 1
+      corner_rank: index + 1,
+      corner_elite_rank: index + 1
     }));
 }
 
@@ -6406,11 +7108,28 @@ async function buildAllMarketEngines({ date }) {
         goalsDecision: goals_ai
       });
 
-      const corners_ai = cornersEngineDecision({
+      const rawCornersDecision = cornersEngineDecision({
         game,
         home: homeProfile,
         away: awayProfile
       });
+
+      const corners_ai = cornerLearningApply(
+        {
+          ...game,
+          engine_profiles: {
+            home: homeProfile,
+            away: awayProfile
+          }
+        },
+        rawCornersDecision
+      );
+
+      cornerLearningRememberPrediction(
+        game,
+        corners_ai,
+        date
+      );
 
       const cards_ai = cardsEngineDecision({
         game,
@@ -6456,16 +7175,83 @@ async function buildAllMarketEngines({ date }) {
           Number(aiA.score || 0);
       });
 
+  await cornerLearningSettleFinishedGames(analyzed);
+
+  const cornerEliteRanked = rankGamesByCornerStrength(
+    rank(analyzed, "corners_ai")
+  );
+
+  const learningModel = loadCornerLearningModel();
+
   return {
     date,
     generated_at: new Date().toISOString(),
-    corners: rank(analyzed, "corners_ai"),
+    corner_learning: {
+      version: learningModel.version,
+      status: cornerLearningStatusText(),
+      samples: learningModel.samples,
+      greens: learningModel.greens,
+      reds: learningModel.reds,
+      accuracy:
+        learningModel.samples > 0
+          ? Number(
+              (
+                learningModel.greens /
+                learningModel.samples *
+                100
+              ).toFixed(1)
+            )
+          : 0,
+      projection_bias:
+        Number(
+          Number(
+            learningModel.projection_bias || 0
+          ).toFixed(3)
+        ),
+      updated_at: learningModel.updated_at
+    },
+    corners: cornerEliteRanked,
     goals: rank(analyzed, "goals_ai"),
     cards: rank(analyzed, "cards_ai"),
     btts: rank(analyzed, "btts_ai"),
     handicap: rank(analyzed, "handicap_ai")
   };
 }
+
+
+app.get("/corner_learning_status", (req, res) => {
+  const model = loadCornerLearningModel();
+
+  return res.json({
+    version: model.version,
+    status: cornerLearningStatusText(),
+    samples: model.samples,
+    greens: model.greens,
+    reds: model.reds,
+    pushes: model.pushes,
+    accuracy:
+      model.samples > 0
+        ? Number(
+            (
+              model.greens /
+              model.samples *
+              100
+            ).toFixed(1)
+          )
+        : 0,
+    projection_bias:
+      Number(
+        Number(model.projection_bias || 0).toFixed(3)
+      ),
+    confidence_bias:
+      Number(
+        Number(model.confidence_bias || 0).toFixed(3)
+      ),
+    feature_weights: model.feature_weights,
+    line_bias: model.line_bias,
+    updated_at: model.updated_at
+  });
+});
 
 app.get("/market_engines", async (req, res) => {
   const date = req.query.date || toISODate();
@@ -6813,7 +7599,10 @@ app.get("/ia_card", async (req, res) => {
     const out = await buildQuentesList({ date, fresh });
     const top6 = await aiPickTop6(out, date);
 
-    const best = pickBestDeterministic(top6) || pickBestDeterministic(out);
+    const rankedUniverse = rankGamesByCornerStrength(out);
+    const best =
+      pickBestDeterministic(rankedUniverse) ||
+      pickBestDeterministic(top6);
 
     if (!best) {
       return res.json({

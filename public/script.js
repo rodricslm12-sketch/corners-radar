@@ -218,6 +218,7 @@
   
     function buildMarket(raw, type) {
       const seen = new Set();
+  
       return raw
         .map((game, index) => normalize(game, type, index))
         .filter(game => {
@@ -225,7 +226,44 @@
           seen.add(game.id);
           return true;
         })
-        .sort((a, b) => b.confidence - a.confidence || a.time.localeCompare(b.time));
+        .sort((a, b) => {
+          if (type === "corners") {
+            const eliteA = Number(
+              a?.raw?.corner_elite_score ??
+              a?.raw?.corners_ai?.score ??
+              0
+            );
+  
+            const eliteB = Number(
+              b?.raw?.corner_elite_score ??
+              b?.raw?.corners_ai?.score ??
+              0
+            );
+  
+            if (eliteB !== eliteA) return eliteB - eliteA;
+  
+            const projectionA = Number(
+              a?.raw?.corners_ai?.projection ??
+              a?.raw?.proj_cantos ??
+              0
+            );
+  
+            const projectionB = Number(
+              b?.raw?.corners_ai?.projection ??
+              b?.raw?.proj_cantos ??
+              0
+            );
+  
+            if (projectionB !== projectionA) {
+              return projectionB - projectionA;
+            }
+          }
+  
+          return (
+            b.confidence - a.confidence ||
+            a.time.localeCompare(b.time)
+          );
+        });
     }
   
     function activeList() {
@@ -520,6 +558,9 @@
       const enginePayload = enginesResult.status === "fulfilled"
         ? (enginesResult.value || {})
         : {};
+  
+      state.cornerLearning =
+        enginePayload.corner_learning || null;
   
       const cornerEngineGames = extract(enginePayload.corners);
       const goalEngineGames = extract(enginePayload.goals);
@@ -2388,11 +2429,11 @@
                     marketType === "corners" &&
                     recommendation.source === "server"
                       ? (
-                          recommendation.stable_cache_used
-                            ? "✦ IA • LINHA PRESERVADA"
-                            : recommendation.fallback_line_used
-                              ? "✦ IA • LINHA CONSERVADORA"
-                              : "✦ IA • MELHOR LINHA"
+                          Number(
+                            recommendation.learning_samples || 0
+                          ) >= 8
+                            ? "✦ IA • APRENDIZADO ATIVO"
+                            : "✦ IA • COLETANDO DADOS"
                         )
                       : recommendation.source === "server"
                         ? "✦ IA DO SERVIDOR"
@@ -18051,9 +18092,39 @@
             score=confidence*1.18+projection*9;
           }else{
             projection=cornersProjection(g); confidence=cornersConfidence(g); line=cornersLine(g);
-            const pressure=numberOf(g?.real?.pressureHits,g?.pressureHits)??0;
-            const ai=numberOf(g?.top1_score,g?.ai_score,g?.score_adj,g?.score)??0;
-            score=confidence*1.12+projection*6+pressure*3+ai*.12;
+            const pressure=numberOf(
+              g?.real?.pressureHits,
+              g?.pressureHits,
+              g?.corners_ai?.pressure_hits,
+              g?.corners_ai?.extra?.pressure_hits
+            )??0;
+  
+            const ai=numberOf(
+              g?.corner_elite_score,
+              g?.top1_score,
+              g?.corners_ai?.score,
+              g?.ai_score,
+              g?.score_adj,
+              g?.score
+            )??0;
+  
+            const recent=numberOf(
+              g?.real?.recentCombinedAvg,
+              g?.recentCombinedAvg
+            )??0;
+  
+            const sample=numberOf(
+              g?.corners_ai?.sample_games,
+              g?.corners_ai?.extra?.sample_games
+            )??0;
+  
+            score=
+              ai*1.55+
+              confidence*.72+
+              projection*7.2+
+              pressure*4+
+              recent*1.5+
+              Math.min(sample,6)*2;
           }
           return {raw:g,id:gameId(g,index),time:gameTime(g),home:gameName(g,true),away:gameName(g,false),market:line,conf:confidence,projection,score};
         }
@@ -18074,10 +18145,22 @@
           // Cada mercado deve ter um Top 1 próprio. Evita repetir automaticamente
           // o mesmo jogo do card de cantos quando há outra opção forte disponível.
           const used=new Set();
+  
           for(const type of MARKETS){
             const list=rankings[type];
-            const alternative=list.findIndex((x,i)=>i<5&&!used.has(x.id)&&x.conf>=55);
-            if(alternative>0) list.unshift(list.splice(alternative,1)[0]);
+  
+            // Escanteios mantém sempre o melhor absoluto do ranking.
+            // Nos demais mercados, continua evitando repetição visual.
+            if(type !== "corners"){
+              const alternative=list.findIndex(
+                (x,i)=>i<5&&!used.has(x.id)&&x.conf>=55
+              );
+  
+              if(alternative>0){
+                list.unshift(list.splice(alternative,1)[0]);
+              }
+            }
+  
             if(list[0]) used.add(list[0].id);
           }
           marketRankings=rankings;
