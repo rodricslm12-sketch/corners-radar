@@ -14147,3 +14147,14 @@ button.railFullBtn {
     white-space:nowrap!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V71 — SEM OVER 8.5 ARTIFICIAL
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity[data-settlement-market="corners"].is-no-bet
+  .cpAnalysisPick > strong{
+    font-size:11px!important;
+    line-height:1.15!important;
+  }
+}

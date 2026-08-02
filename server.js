@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v20-official-corner-lock";
+const QUENTES_CACHE_VERSION = "tz-manaus-v21-no-fake-over85";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -6151,28 +6151,20 @@ function engineFallbackCornersProjection(game) {
   ]);
 
   const over95 = engineGameNumber(game, [
+    "over95_prob_adj",
+    "over95_prob",
     "over95",
     "over_95",
     "over9_5",
     "over95_rate"
   ]);
 
-  let projection = Number.isFinite(baseCorners)
-    ? baseCorners
-    : 9.55;
-
-  if (Number.isFinite(aiScore)) {
-    projection += engineClamp((aiScore - 60) / 28, -0.8, 1.5);
-  }
-
-  if (Number.isFinite(pressureHits)) {
-    projection += engineClamp((pressureHits - 2) * 0.32, -0.5, 1.25);
-  }
-
-  if (Number.isFinite(over95)) {
-    const normalizedRate = over95 > 1 ? over95 / 100 : over95;
-    projection += engineClamp((normalizedRate - 0.5) * 2.4, -0.8, 1.0);
-  }
+  const recentCombined = engineGameNumber(game, [
+    "real.recentCombinedAvg",
+    "recentCombinedAvg",
+    "recent_combined_avg",
+    "avg_total_corners"
+  ]);
 
   const homeCorners = engineGameNumber(game, [
     "home_corners_avg",
@@ -6188,13 +6180,81 @@ function engineFallbackCornersProjection(game) {
     "stats.away.corners_for_avg"
   ]);
 
-  if (Number.isFinite(homeCorners) && Number.isFinite(awayCorners)) {
-    projection = (projection + homeCorners + awayCorners) / 2;
+  const signals = [
+    baseCorners,
+    aiScore,
+    pressureHits,
+    over95,
+    recentCombined,
+    homeCorners,
+    awayCorners
+  ].filter(Number.isFinite).length;
+
+  // Sem pelo menos dois indicadores reais, não cria projeção artificial.
+  if (signals < 2) {
+    return null;
+  }
+
+  let projection = Number.isFinite(baseCorners)
+    ? baseCorners
+    : Number.isFinite(recentCombined)
+      ? recentCombined
+      : (
+          Number.isFinite(homeCorners) &&
+          Number.isFinite(awayCorners)
+            ? homeCorners + awayCorners
+            : null
+        );
+
+  if (!Number.isFinite(projection)) {
+    return null;
+  }
+
+  if (Number.isFinite(aiScore)) {
+    projection += engineClamp(
+      (aiScore - 60) / 34,
+      -0.65,
+      1.25
+    );
+  }
+
+  if (Number.isFinite(pressureHits)) {
+    projection += engineClamp(
+      (pressureHits - 2) * 0.28,
+      -0.45,
+      1.05
+    );
+  }
+
+  if (Number.isFinite(over95)) {
+    const normalizedRate =
+      over95 > 1 ? over95 / 100 : over95;
+
+    projection += engineClamp(
+      (normalizedRate - 0.5) * 2.1,
+      -0.7,
+      0.9
+    );
+  }
+
+  if (
+    Number.isFinite(homeCorners) &&
+    Number.isFinite(awayCorners)
+  ) {
+    const teamsProjection = homeCorners + awayCorners;
+    projection =
+      projection * 0.52 +
+      teamsProjection * 0.48;
+  }
+
+  if (Number.isFinite(recentCombined)) {
+    projection =
+      projection * 0.58 +
+      recentCombined * 0.42;
   }
 
   return engineClamp(projection, 6.5, 15.5);
 }
-
 function engineFallbackCardsProjection(game) {
   return engineGameNumber(game, [
     "proj_cartoes",
@@ -6617,10 +6677,10 @@ function cornersFallbackLineFromProjection(projection) {
     };
   }
 
-  if (projection >= 8.45) {
+  if (projection >= 8.9) {
     return {
       line: "OVER 8.5",
-      confidence: 64
+      confidence: 63
     };
   }
 
@@ -6631,10 +6691,7 @@ function cornersFallbackLineFromProjection(projection) {
     };
   }
 
-  return {
-    line: "OVER 8.5",
-    confidence: 61
-  };
+  return null;
 }
 
 function cornersUsePreviousOrUpdating(game, draftDecision) {
@@ -6747,10 +6804,26 @@ function cornersEngineDecision({ game, home, away }) {
     source = "recent_form";
   } else if (Number.isFinite(fallbackProjection)) {
     projection =
-      fallbackProjection * 0.68 +
-      leagueBase * 0.32;
+      fallbackProjection * 0.76 +
+      leagueBase * 0.24;
   } else {
-    projection = leagueBase;
+    return cornersUsePreviousOrUpdating(
+      game,
+      {
+        market: "ESCANTEIOS",
+        skip: true,
+        projection: null,
+        confidence: 0,
+        score: 0,
+        line: "DADOS EM ATUALIZAÇÃO",
+        reason:
+          "A API ainda não entregou indicadores reais suficientes para calcular a linha de escanteios.",
+        extra: {
+          sample_games: sampleGames,
+          calculation_source: "insufficient_data"
+        }
+      }
+    );
   }
 
   projection = engineClamp(projection, 7.2, 15.8);
@@ -6844,18 +6917,36 @@ function cornersEngineDecision({ game, home, away }) {
       minProbability: 0.70,
       riskPenalty: robustUnderEvidence ? 0 : 22
     }
-  ].map(candidate => ({
-    ...candidate,
-    probability: cornersLineProbability(
-      projection,
-      candidate.line,
-      candidate.direction
-    ),
-    contextBonus:
-      source === "recent_form"
-        ? Math.min(5, sampleGames)
-        : 0
-  }));
+  ].map(candidate => {
+    let projectionGate = true;
+
+    if (candidate.label === "OVER 8.5") {
+      projectionGate =
+        projection >= 8.9 &&
+        projection < 10.15;
+    } else if (candidate.label === "OVER 9.5") {
+      projectionGate = projection >= 9.75;
+    } else if (candidate.label === "OVER 10.5") {
+      projectionGate = projection >= 10.75;
+    } else if (candidate.label === "OVER 11.5") {
+      projectionGate = projection >= 11.75;
+    }
+
+    return {
+      ...candidate,
+      probability: projectionGate
+        ? cornersLineProbability(
+            projection,
+            candidate.line,
+            candidate.direction
+          )
+        : 0,
+      contextBonus:
+        source === "recent_form"
+          ? Math.min(5, sampleGames)
+          : 0
+    };
+  });
 
   const comparison = cornersCompareLines(candidates);
 
@@ -7193,9 +7284,57 @@ async function buildAllMarketEngines({ date }) {
 
   await cornerLearningSettleFinishedGames(analyzed);
 
-  const cornerEliteRanked = rankGamesByCornerStrength(
+  let cornerEliteRanked = rankGamesByCornerStrength(
     rank(analyzed, "corners_ai")
   );
+
+  const validCornerPicks = cornerEliteRanked.filter(
+    game =>
+      game?.corners_ai &&
+      !game.corners_ai.skip
+  );
+
+  const over85Fallbacks = validCornerPicks.filter(game => {
+    const ai = game.corners_ai;
+    const source =
+      ai?.calculation_source ??
+      ai?.extra?.calculation_source ??
+      "";
+
+    return (
+      ai?.line === "OVER 8.5" &&
+      source !== "recent_form" &&
+      Number(
+        ai?.sample_games ??
+        ai?.extra?.sample_games ??
+        0
+      ) < 3
+    );
+  });
+
+  if (
+    validCornerPicks.length >= 4 &&
+    over85Fallbacks.length / validCornerPicks.length >= 0.55
+  ) {
+    cornerEliteRanked = cornerEliteRanked.map(game => {
+      const ai = game?.corners_ai;
+      if (!over85Fallbacks.includes(game)) return game;
+
+      return {
+        ...game,
+        corners_ai: {
+          ...ai,
+          skip: true,
+          updating: true,
+          line: "DADOS EM ATUALIZAÇÃO",
+          confidence: 0,
+          score: 0,
+          reason:
+            "Over 8.5 bloqueado porque a API não entregou uma base individual suficiente para esta partida."
+        }
+      };
+    });
+  }
 
   const learningModel = loadCornerLearningModel();
 
