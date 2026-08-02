@@ -2028,6 +2028,7 @@
   
         if (
           marketType === "corners" &&
+          serverLine !== "DADOS EM ATUALIZAÇÃO" &&
           !/^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(serverLine)
         ) {
           serverLine = "SEM APOSTA";
@@ -2319,9 +2320,17 @@
           ? recommendation.line
           : requestedLine;
   
+        const isUpdating =
+          requestedLine === "IA" &&
+          line === "DADOS EM ATUALIZAÇÃO";
+  
         const isNoBet =
           requestedLine === "IA" &&
-          (recommendation.skip || line === "SEM APOSTA");
+          (
+            recommendation.skip ||
+            line === "SEM APOSTA" ||
+            isUpdating
+          );
   
         const confidence = isNoBet
           ? 0
@@ -2375,13 +2384,30 @@
   
             <div class="cpAnalysisPick">
               ${requestedLine === "IA"
-                ? `<span class="cpAnalysisAutoBadge">${recommendation.source === "server"
-                ? "✦ IA DO SERVIDOR"
-                : recommendation.source === "table"
-                  ? "✦ IA CONSERVADORA"
-                  : "✦ SUGESTÃO AUTOMÁTICA"}</span>`
+                ? `<span class="cpAnalysisAutoBadge">${
+                    marketType === "corners" &&
+                    recommendation.source === "server"
+                      ? (
+                          recommendation.stable_cache_used
+                            ? "✦ IA • LINHA PRESERVADA"
+                            : recommendation.fallback_line_used
+                              ? "✦ IA • LINHA CONSERVADORA"
+                              : "✦ IA • MELHOR LINHA"
+                        )
+                      : recommendation.source === "server"
+                        ? "✦ IA DO SERVIDOR"
+                        : recommendation.source === "table"
+                          ? "✦ IA CONSERVADORA"
+                          : "✦ SUGESTÃO AUTOMÁTICA"
+                  }</span>`
                 : ""}
-              <strong>${isNoBet ? "SEM APOSTA" : escapeHtml(line)}</strong>
+              <strong>${
+                isUpdating
+                  ? "DADOS EM ATUALIZAÇÃO"
+                  : isNoBet
+                    ? "SEM APOSTA"
+                    : escapeHtml(line)
+              }</strong>
               <p>${escapeHtml(isNoBet ? recommendation.reason : rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>

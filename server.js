@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v16-corners-stable-cache";
+const QUENTES_CACHE_VERSION = "tz-manaus-v17-corners-conservative-fill";
 
 // ====== WHITELIST DINÂMICA / TODAS LIGAS ======
 const USE_DYNAMIC_LEAGUES = String(process.env.USE_DYNAMIC_LEAGUES || "0") === "1";
@@ -5872,6 +5872,53 @@ function cornersStoreStableDecision(game, decision) {
   return decision;
 }
 
+
+function cornersFallbackLineFromProjection(projection) {
+  if (!Number.isFinite(projection)) {
+    return null;
+  }
+
+  if (projection >= 11.9) {
+    return {
+      line: "OVER 11.5",
+      confidence: 67
+    };
+  }
+
+  if (projection >= 10.8) {
+    return {
+      line: "OVER 10.5",
+      confidence: 68
+    };
+  }
+
+  if (projection >= 9.7) {
+    return {
+      line: "OVER 9.5",
+      confidence: 67
+    };
+  }
+
+  if (projection >= 8.45) {
+    return {
+      line: "OVER 8.5",
+      confidence: 64
+    };
+  }
+
+  if (projection <= 7.45) {
+    return {
+      line: "UNDER 9.5",
+      confidence: 62
+    };
+  }
+
+  return {
+    line: "OVER 8.5",
+    confidence: 61
+  };
+}
+
 function cornersUsePreviousOrUpdating(game, draftDecision) {
   const key = cornersStableKey(game);
   const existing = cornersStableDecisionCache.get(key);
@@ -5885,6 +5932,33 @@ function cornersUsePreviousOrUpdating(game, draftDecision) {
     };
   }
 
+  const projection = Number(draftDecision?.projection);
+  const fallback = cornersFallbackLineFromProjection(projection);
+
+  if (fallback) {
+    const decision = {
+      ...draftDecision,
+      skip: false,
+      updating: false,
+      line: fallback.line,
+      confidence: fallback.confidence,
+      score:
+        Number(draftDecision?.score || 0) +
+        fallback.confidence +
+        projection,
+      fallback_line_used: true,
+      reason:
+        `${fallback.line}: linha conservadora escolhida pela projeção disponível de ${projection.toFixed(1)} escanteios.`
+    };
+
+    cornersStableDecisionCache.set(key, {
+      decision,
+      expires: Date.now() + 45 * 60 * 1000
+    });
+
+    return decision;
+  }
+
   return {
     ...draftDecision,
     skip: true,
@@ -5893,7 +5967,7 @@ function cornersUsePreviousOrUpdating(game, draftDecision) {
     score: 0,
     updating: true,
     reason:
-      "A API ainda não entregou dados suficientes. O app não alterou a linha para evitar uma recomendação artificial."
+      "A API ainda não entregou uma projeção mínima para este confronto."
   };
 }
 
@@ -6070,19 +6144,22 @@ function cornersEngineDecision({ game, home, away }) {
   if (!comparison.best) {
     return cornersUsePreviousOrUpdating(
       game,
-      engineDecision({
+      {
         market: "ESCANTEIOS",
         skip: true,
         projection,
+        confidence: 0,
+        score: 0,
+        line: "SEM APOSTA",
         reason:
-          `A projeção de ${projection.toFixed(1)} cantos não apresentou valor suficiente em nenhuma linha.`,
+          `A projeção de ${projection.toFixed(1)} cantos será convertida em uma linha conservadora.`,
         extra: {
           sample_games: sampleGames,
           calculation_source: source,
           compared_lines:
             cornersComparisonSummary(comparison.ranked)
         }
-      })
+      }
     );
   }
 
@@ -6145,7 +6222,7 @@ function cornersEngineDecision({ game, home, away }) {
     decision.line === "OVER 8.5" &&
     source === "fallback" &&
     sampleGames < 3 &&
-    projection < 9.65;
+    projection < 8.45;
 
   if (weakFallbackOver85) {
     return cornersUsePreviousOrUpdating(game, decision);
