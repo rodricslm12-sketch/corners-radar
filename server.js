@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v21-no-fake-over85";
+const QUENTES_CACHE_VERSION = "tz-manaus-v22-team-league-learning";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -4376,6 +4376,9 @@ const DEFAULT_CORNER_LEARNING_MODEL = {
     "UNDER 10.5": 0,
     "UNDER 11.5": 0
   },
+  league_memory: {},
+  team_memory: {},
+  line_memory: {},
   predictions: {}
 };
 
@@ -4412,6 +4415,21 @@ function loadCornerLearningModel() {
           ...DEFAULT_CORNER_LEARNING_MODEL.line_bias,
           ...(parsed?.line_bias || {})
         },
+        league_memory:
+          parsed?.league_memory &&
+          typeof parsed.league_memory === "object"
+            ? parsed.league_memory
+            : {},
+        team_memory:
+          parsed?.team_memory &&
+          typeof parsed.team_memory === "object"
+            ? parsed.team_memory
+            : {},
+        line_memory:
+          parsed?.line_memory &&
+          typeof parsed.line_memory === "object"
+            ? parsed.line_memory
+            : {},
         predictions:
           parsed?.predictions &&
           typeof parsed.predictions === "object"
@@ -4524,9 +4542,182 @@ function cornerLearningFeatures(game, decision) {
   };
 }
 
+
+function cornerLearningNormalizeKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function cornerLearningMemoryEntry(memory, key) {
+  if (!key) return null;
+  const entry = memory?.[key];
+  if (!entry || typeof entry !== "object") return null;
+  return entry;
+}
+
+function cornerLearningMemoryRate(entry) {
+  const samples = Number(entry?.samples || 0);
+  const greens = Number(entry?.greens || 0);
+
+  if (samples <= 0) return 0.5;
+
+  // Suavização tradicional para não exagerar com amostra pequena.
+  return (greens + 2) / (samples + 4);
+}
+
+function cornerLearningMemoryImpact(entry, maxImpact = 5) {
+  if (!entry) return 0;
+
+  const samples = Number(entry.samples || 0);
+  if (samples < 3) return 0;
+
+  const rate = cornerLearningMemoryRate(entry);
+  const reliability = Math.min(1, samples / 25);
+
+  return cornerLearningClamp(
+    (rate - 0.5) * 2 * maxImpact * reliability,
+    -maxImpact,
+    maxImpact
+  );
+}
+
+function cornerLearningContextKeys(game, decision) {
+  const league = cornerLearningNormalizeKey(
+    game?.liga ??
+    game?.league_name ??
+    game?.event_raw?.league_name ??
+    ""
+  );
+
+  const home = cornerLearningNormalizeKey(
+    game?.casa ??
+    game?.home ??
+    game?.event_home_team ??
+    ""
+  );
+
+  const away = cornerLearningNormalizeKey(
+    game?.fora ??
+    game?.away ??
+    game?.event_away_team ??
+    ""
+  );
+
+  const line = String(decision?.line || "").toUpperCase();
+
+  return { league, home, away, line };
+}
+
+function cornerLearningContextAdjustment(game, decision) {
+  const model = loadCornerLearningModel();
+  const keys = cornerLearningContextKeys(game, decision);
+
+  const leagueEntry = cornerLearningMemoryEntry(
+    model.league_memory,
+    keys.league
+  );
+
+  const homeEntry = cornerLearningMemoryEntry(
+    model.team_memory,
+    keys.home
+  );
+
+  const awayEntry = cornerLearningMemoryEntry(
+    model.team_memory,
+    keys.away
+  );
+
+  const lineEntry = cornerLearningMemoryEntry(
+    model.line_memory,
+    keys.line
+  );
+
+  const leagueImpact =
+    cornerLearningMemoryImpact(leagueEntry, 4.5);
+
+  const homeImpact =
+    cornerLearningMemoryImpact(homeEntry, 3.5);
+
+  const awayImpact =
+    cornerLearningMemoryImpact(awayEntry, 3.5);
+
+  const lineImpact =
+    cornerLearningMemoryImpact(lineEntry, 4.0);
+
+  return {
+    confidence:
+      leagueImpact +
+      homeImpact * 0.65 +
+      awayImpact * 0.65 +
+      lineImpact,
+    elite:
+      leagueImpact * 1.8 +
+      homeImpact * 1.2 +
+      awayImpact * 1.2 +
+      lineImpact * 1.5,
+    details: {
+      league: leagueImpact,
+      home: homeImpact,
+      away: awayImpact,
+      line: lineImpact
+    }
+  };
+}
+
+function cornerLearningUpdateMemory(memory, key, result, totalCorners) {
+  if (!key) return;
+
+  const current = memory[key] || {
+    samples: 0,
+    greens: 0,
+    reds: 0,
+    total_corners_sum: 0,
+    average_corners: 0,
+    updated_at: null
+  };
+
+  current.samples += 1;
+
+  if (result > 0) current.greens += 1;
+  else if (result < 0) current.reds += 1;
+
+  current.total_corners_sum += Number(totalCorners || 0);
+  current.average_corners =
+    current.samples > 0
+      ? Number(
+          (
+            current.total_corners_sum /
+            current.samples
+          ).toFixed(2)
+        )
+      : 0;
+
+  current.hit_rate =
+    current.samples > 0
+      ? Number(
+          (
+            current.greens /
+            current.samples *
+            100
+          ).toFixed(1)
+        )
+      : 0;
+
+  current.updated_at = new Date().toISOString();
+  memory[key] = current;
+}
+
 function cornerLearningAdjustment(game, decision) {
   const model = loadCornerLearningModel();
   const features = cornerLearningFeatures(game, decision);
+  const context = cornerLearningContextAdjustment(
+    game,
+    decision
+  );
 
   let weighted = 0;
 
@@ -4549,11 +4740,14 @@ function cornerLearningAdjustment(game, decision) {
     confidence:
       Number(model.confidence_bias || 0) +
       weighted * 5 +
-      lineBias,
+      lineBias +
+      Number(context.confidence || 0),
     elite:
       Number(model.elite_bias || 0) +
       weighted * 10 +
-      lineBias * 1.5,
+      lineBias * 1.5 +
+      Number(context.elite || 0),
+    context_details: context.details,
     samples: Number(model.samples || 0),
     status: cornerLearningStatusText(),
     version: model.version
@@ -4589,7 +4783,8 @@ function cornerLearningApply(game, decision) {
       confidence:
         Number(adjustment.confidence.toFixed(2)),
       elite:
-        Number(adjustment.elite.toFixed(2))
+        Number(adjustment.elite.toFixed(2)),
+      context: adjustment.context_details || {}
     },
     learning_samples: adjustment.samples,
     learning_status: adjustment.status,
@@ -4653,6 +4848,11 @@ function cornerLearningRememberPrediction(game, decision, date) {
       game?.event_raw?.match_id ??
       null,
     date,
+    league:
+      game?.liga ??
+      game?.league_name ??
+      game?.event_raw?.league_name ??
+      "",
     home: game?.casa || "",
     away: game?.fora || "",
     line: decision.line,
@@ -4787,6 +4987,44 @@ function cornerLearningTrain(prediction, totalCorners) {
       10
     );
   }
+
+  const leagueKey = cornerLearningNormalizeKey(
+    prediction.league
+  );
+  const homeKey = cornerLearningNormalizeKey(
+    prediction.home
+  );
+  const awayKey = cornerLearningNormalizeKey(
+    prediction.away
+  );
+
+  cornerLearningUpdateMemory(
+    model.league_memory,
+    leagueKey,
+    result,
+    totalCorners
+  );
+
+  cornerLearningUpdateMemory(
+    model.team_memory,
+    homeKey,
+    result,
+    totalCorners
+  );
+
+  cornerLearningUpdateMemory(
+    model.team_memory,
+    awayKey,
+    result,
+    totalCorners
+  );
+
+  cornerLearningUpdateMemory(
+    model.line_memory,
+    line,
+    result,
+    totalCorners
+  );
 
   scheduleCornerLearningSave();
 }
@@ -7430,6 +7668,15 @@ app.get("/corner_learning_status", (req, res) => {
       ),
     feature_weights: model.feature_weights,
     line_bias: model.line_bias,
+    learned_leagues: Object.keys(
+      model.league_memory || {}
+    ).length,
+    learned_teams: Object.keys(
+      model.team_memory || {}
+    ).length,
+    league_memory: model.league_memory,
+    team_memory: model.team_memory,
+    line_memory: model.line_memory,
     updated_at: model.updated_at
   });
 });
