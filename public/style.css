@@ -14125,3 +14125,25 @@ button.railFullBtn {
     display:none!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V69 — MINUTO AO VIVO NO HANDICAP ASIÁTICO
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapOpportunity .cpMarketLiveSlot.is-live strong:empty{
+    display:none!important;
+  }
+
+  .cpHandicapOpportunity .cpMarketLiveSlot.is-live{
+    gap:7px!important;
+  }
+}
+
+/* =========================================================
+   CORNER PRO V70 — INTERVALO EM TODOS OS MERCADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpMarketLiveSlot.is-live strong{
+    white-space:nowrap!important;
+  }
+}

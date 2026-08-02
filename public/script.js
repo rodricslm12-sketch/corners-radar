@@ -1308,7 +1308,7 @@
           >
             <div class="cpHandicapMatch">
               <div class="cpHandicapMeta">
-                ${marketLiveBadgeHtml(game)}
+                ${marketLiveBadgeHtml(game, "handicap")}
                 <small>⚽ Liga principal</small>
               </div>
               <div class="cpHandicapTeams">
@@ -1423,6 +1423,7 @@
         </section>`;
   
       settlementRefreshCards(body, settlementEntries);
+      marketStartLiveRefresh(body, liveEntries);
     }
   
   
@@ -1508,37 +1509,65 @@
         raw.minute ?? raw.match_minute ?? raw.match_live ??
         raw.elapsed ?? raw.timer ?? "";
   
-      const minute = Number(String(minuteValue).replace(/[^\d]/g, ""));
+      const minuteRaw = clean(minuteValue, "").toLowerCase();
+      const minute = Number(
+        String(minuteValue).replace(/[^\d]/g, "")
+      );
   
       const finished =
         Boolean(raw.finished) ||
         /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
   
+      const halftime =
+        !finished && (
+          Boolean(raw.halftime) ||
+          Boolean(raw.half_time) ||
+          Boolean(raw.is_halftime) ||
+          /(^|\s)(ht|half.?time|halftime|intervalo|interval|break)(\s|$)/.test(status) ||
+          /^(ht|half.?time|halftime|intervalo|interval|break)$/.test(minuteRaw)
+        );
+  
       const live =
         !finished && (
+          halftime ||
           Boolean(raw.live) ||
           Number.isFinite(minute) && minute > 0 ||
-          /live|ao vivo|andamento|1st|2nd|half|interval|ht/.test(status)
+          /live|ao vivo|andamento|1st|2nd/.test(status)
         );
   
       return {
         live,
         finished,
-        minute: live
-          ? (Number.isFinite(minute) && minute > 0 ? `${minute}'` : "AO VIVO")
-          : ""
+        halftime,
+        minute: halftime
+          ? "INTERVALO"
+          : live
+            ? (
+                Number.isFinite(minute) && minute > 0
+                  ? `${minute}'`
+                  : "AO VIVO"
+              )
+            : ""
       };
     }
   
-    function marketLiveBadgeHtml(game) {
+    function marketLiveBadgeHtml(game, marketType = "") {
       const info = marketLiveStatus(game?.raw || {}, game);
   
       if (info.live) {
+        const minuteText =
+          marketType === "handicap" &&
+          info.minute === "AO VIVO"
+            ? ""
+            : info.minute;
+  
         return `
           <span class="cpMarketLiveSlot is-live">
             <i></i>
             <b>AO VIVO</b>
-            <strong>${info.minute}</strong>
+            ${minuteText
+              ? `<strong>${escapeHtml(minuteText)}</strong>`
+              : ""}
           </span>`;
       }
   
@@ -1556,7 +1585,7 @@
         </span>`;
     }
   
-    async function marketRefreshLiveCard(card, game) {
+    async function marketRefreshLiveCard(card, game, marketType = "") {
       if (!card || !game) return;
   
       const slot = card.querySelector(".cpMarketLiveSlot");
@@ -1580,7 +1609,20 @@
         if (info.live) {
           slot.classList.remove("is-scheduled", "is-finished");
           slot.classList.add("is-live");
-          slot.innerHTML = `<i></i><b>AO VIVO</b><strong>${info.minute}</strong>`;
+  
+          const minuteText =
+            marketType === "handicap" &&
+            info.minute === "AO VIVO"
+              ? ""
+              : info.minute;
+  
+          slot.innerHTML =
+            `<i></i><b>AO VIVO</b>` +
+            (
+              minuteText
+                ? `<strong>${escapeHtml(minuteText)}</strong>`
+                : ""
+            );
         } else if (info.finished) {
           slot.classList.remove("is-scheduled", "is-live");
           slot.classList.add("is-finished");
@@ -1602,7 +1644,11 @@
         for (const entry of entries || []) {
           const card = container?.querySelector(`[data-live-key="${entry.key}"]`);
   
-          marketRefreshLiveCard(card, entry.game);
+          marketRefreshLiveCard(
+            card,
+            entry.game,
+            entry.marketType || ""
+          );
   
           if (entry.marketType && entry.line) {
             settlementRefreshCard(
@@ -2948,11 +2994,42 @@
           stats.attacks?.away
         );
   
+        const phaseStatus = clean(
+          stats.status ??
+          stats.status_raw ??
+          stats.match_status ??
+          raw.status ??
+          raw.match_status ??
+          "",
+          ""
+        ).toLowerCase();
+  
+        const phaseMinuteRaw = clean(
+          stats.minute ??
+          stats.match_minute ??
+          stats.match_live ??
+          raw.minute ??
+          raw.match_minute ??
+          raw.match_live ??
+          "",
+          ""
+        ).toLowerCase();
+  
+        const isHalftime =
+          /(^|\s)(ht|half.?time|halftime|intervalo|interval|break)(\s|$)/.test(
+            phaseStatus
+          ) ||
+          /^(ht|half.?time|halftime|intervalo|interval|break)$/.test(
+            phaseMinuteRaw
+          );
+  
         const minuteLabel = phase.finished
           ? "ENCERRADO"
-          : phase.live
-            ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
-            : escapeHtml(game.time);
+          : isHalftime
+            ? "INTERVALO"
+            : phase.live
+              ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
+              : escapeHtml(game.time);
   
         const settlementGame = settlementMergeGame(game, stats);
         const selectedMarket = game.selectedMarket || "";
