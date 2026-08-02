@@ -2475,11 +2475,17 @@
                     marketType === "corners" &&
                     recommendation.source === "server"
                       ? (
-                          Number(
-                            recommendation.learning_samples || 0
-                          ) >= 8
-                            ? "✦ IA • APRENDIZADO ATIVO"
-                            : "✦ IA • COLETANDO DADOS"
+                          recommendation.pregame_locked &&
+                          marketLiveStatus(game).live
+                            ? "✦ IA • LINHA PRÉ-JOGO"
+                            : recommendation.pregame_locked &&
+                              marketLiveStatus(game).finished
+                              ? "✦ IA • LINHA PRÉ-JOGO"
+                              : Number(
+                                  recommendation.learning_samples || 0
+                                ) >= 8
+                                  ? "✦ IA • APRENDIZADO ATIVO"
+                                  : "✦ IA • COLETANDO DADOS"
                         )
                       : recommendation.source === "server"
                         ? "✦ IA DO SERVIDOR"

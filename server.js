@@ -47,11 +47,18 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v22-team-league-learning";
+const QUENTES_CACHE_VERSION = "tz-manaus-v23-pregame-line-lock";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
+
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v1";
+const CORNER_PREGAME_LOCK_FILE = path.join(
+  __dirname,
+  "corner-pregame-locks.json"
+);
+
 const OFFICIAL_CORNER_PICK_FILE = path.join(
   __dirname,
   "official-corner-picks.json"
@@ -7459,7 +7466,7 @@ async function buildAllMarketEngines({ date }) {
         away: awayProfile
       });
 
-      const corners_ai = cornerLearningApply(
+      const learnedCornersDecision = cornerLearningApply(
         {
           ...game,
           engine_profiles: {
@@ -7468,6 +7475,11 @@ async function buildAllMarketEngines({ date }) {
           }
         },
         rawCornersDecision
+      );
+
+      const corners_ai = cornerPregameApplyLock(
+        game,
+        learnedCornersDecision
       );
 
       cornerLearningRememberPrediction(
@@ -7612,6 +7624,18 @@ async function buildAllMarketEngines({ date }) {
 }
 
 
+
+
+app.get("/corner_pregame_locks", (req, res) => {
+  const store = loadCornerPregameLockStore();
+
+  return res.json({
+    ok: true,
+    version: store.version,
+    total: Object.keys(store.locks || {}).length,
+    locks: store.locks
+  });
+});
 
 app.get("/official_corner_pick", async (req, res) => {
   const date = req.query.date || toISODate();
@@ -8017,6 +8041,220 @@ app.get("/quentes_ai", async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar top6 IA", details: String(err?.message || err) });
   }
 });
+
+
+
+let cornerPregameLockStore = null;
+let cornerPregameLockWriteTimer = null;
+
+function loadCornerPregameLockStore() {
+  if (cornerPregameLockStore) return cornerPregameLockStore;
+
+  try {
+    if (fs.existsSync(CORNER_PREGAME_LOCK_FILE)) {
+      const parsed = JSON.parse(
+        fs.readFileSync(CORNER_PREGAME_LOCK_FILE, "utf8")
+      );
+
+      cornerPregameLockStore = {
+        version: CORNER_PREGAME_LOCK_VERSION,
+        locks:
+          parsed?.locks && typeof parsed.locks === "object"
+            ? parsed.locks
+            : {}
+      };
+
+      return cornerPregameLockStore;
+    }
+  } catch (error) {
+    console.warn(
+      "[corner-pregame-lock] Falha ao carregar:",
+      error?.message || error
+    );
+  }
+
+  cornerPregameLockStore = {
+    version: CORNER_PREGAME_LOCK_VERSION,
+    locks: {}
+  };
+
+  return cornerPregameLockStore;
+}
+
+function saveCornerPregameLockStore() {
+  if (cornerPregameLockWriteTimer) return;
+
+  cornerPregameLockWriteTimer = setTimeout(() => {
+    cornerPregameLockWriteTimer = null;
+
+    try {
+      const store = loadCornerPregameLockStore();
+      const temporary = `${CORNER_PREGAME_LOCK_FILE}.tmp`;
+
+      fs.writeFileSync(
+        temporary,
+        JSON.stringify(store, null, 2),
+        "utf8"
+      );
+
+      fs.renameSync(temporary, CORNER_PREGAME_LOCK_FILE);
+    } catch (error) {
+      console.warn(
+        "[corner-pregame-lock] Falha ao salvar:",
+        error?.message || error
+      );
+    }
+  }, 250);
+}
+
+function cornerPregameLockKey(game) {
+  return String(
+    game?.match_id ??
+    game?.event_key ??
+    game?.event_raw?.match_id ??
+    `${game?.casa || ""}|${game?.fora || ""}|${game?.hora || game?.horario || ""}`
+  );
+}
+
+function cornerPregameLockStatus(game) {
+  return String(
+    game?.match_status ??
+    game?.status ??
+    game?.event_raw?.match_status ??
+    game?.event_raw?.status ??
+    ""
+  ).trim().toLowerCase();
+}
+
+function cornerPregameLockIsFinished(game) {
+  const status = cornerPregameLockStatus(game);
+
+  if (
+    /finished|finish|ended|encerrado|full.?time|\bft\b|after|aet|penalties/.test(
+      status
+    )
+  ) {
+    return true;
+  }
+
+  const elapsed = Number(
+    game?.elapsed ??
+    game?.match_elapsed ??
+    game?.event_raw?.match_elapsed
+  );
+
+  return Number.isFinite(elapsed) && elapsed >= 120;
+}
+
+function cornerPregameLockIsLive(game) {
+  if (cornerPregameLockIsFinished(game)) return false;
+
+  const status = cornerPregameLockStatus(game);
+
+  return /live|ao vivo|halftime|intervalo|1st half|2nd half|[1-9]\d?['’]/.test(
+    status
+  );
+}
+
+function cornerPregameLockSnapshot(game, decision) {
+  return {
+    id: cornerPregameLockKey(game),
+    match_id:
+      game?.match_id ??
+      game?.event_key ??
+      game?.event_raw?.match_id ??
+      null,
+    home: game?.casa || "",
+    away: game?.fora || "",
+    line: decision?.line || null,
+    projection: Number(decision?.projection || 0),
+    confidence: Number(decision?.confidence || 0),
+    score: Number(decision?.score || 0),
+    reason: decision?.reason || "",
+    selected_at: new Date().toISOString(),
+    source:
+      decision?.calculation_source ??
+      decision?.extra?.calculation_source ??
+      ""
+  };
+}
+
+function cornerPregameApplyLock(game, decision) {
+  const store = loadCornerPregameLockStore();
+  const key = cornerPregameLockKey(game);
+  const existing = store.locks[key];
+  const live = cornerPregameLockIsLive(game);
+  const finished = cornerPregameLockIsFinished(game);
+
+  if ((live || finished) && existing?.line) {
+    return {
+      ...decision,
+      line: existing.line,
+      projection: existing.projection,
+      confidence: existing.confidence,
+      score: existing.score,
+      reason:
+        `${existing.reason} Recomendação pré-jogo preservada após o início da partida.`,
+      skip: false,
+      pregame_locked: true,
+      pregame_locked_at: existing.selected_at
+    };
+  }
+
+  if ((live || finished) && !existing?.line) {
+    return {
+      ...decision,
+      skip: true,
+      line: "SEM RECOMENDAÇÃO PRÉ-JOGO",
+      confidence: 0,
+      score: 0,
+      pregame_missing: true,
+      reason:
+        "A partida começou antes de uma recomendação pré-jogo válida ser registrada."
+    };
+  }
+
+  if (
+    !live &&
+    !finished &&
+    decision &&
+    !decision.skip &&
+    decision.line &&
+    decision.line !== "DADOS EM ATUALIZAÇÃO" &&
+    decision.line !== "SEM APOSTA"
+  ) {
+    if (!existing?.line) {
+      const snapshot = cornerPregameLockSnapshot(
+        game,
+        decision
+      );
+
+      store.locks[key] = snapshot;
+      saveCornerPregameLockStore();
+
+      return {
+        ...decision,
+        pregame_locked: true,
+        pregame_locked_at: snapshot.selected_at
+      };
+    }
+
+    return {
+      ...decision,
+      line: existing.line,
+      projection: existing.projection,
+      confidence: existing.confidence,
+      score: existing.score,
+      reason:
+        `${existing.reason} Primeira recomendação pré-jogo mantida.`,
+      skip: false,
+      pregame_locked: true,
+      pregame_locked_at: existing.selected_at
+    };
+  }
+
+  return decision;
+}
 
 
 let officialCornerPickStore = null;
