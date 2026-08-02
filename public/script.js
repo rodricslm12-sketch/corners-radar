@@ -17867,7 +17867,7 @@
   
         // Congela a fotografia dos cards de cada mercado. O resultado da partida
         // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
-        const MOBILE_MARKET_LOCK_VERSION='v5-all-engines';
+        const MOBILE_MARKET_LOCK_VERSION='v6-official-corner-pick';
         function mobileMarketDate(){
           const value=String(document.getElementById('date')?.value||'').trim();
           if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -17891,6 +17891,210 @@
               date:mobileMarketDate(), lockedAt:new Date().toISOString(), rankings
             }));
           }catch(error){ console.warn('Não foi possível congelar os mercados do dia.',error); }
+        }
+  
+        let cornerOfficialNoOpportunity=false;
+  
+        function cornerOfficialLockKey(){
+          return `cornerProOfficialCorner:${MOBILE_MARKET_LOCK_VERSION}:${mobileMarketDate()}`;
+        }
+  
+        function readCornerOfficialLock(){
+          try{
+            return JSON.parse(
+              localStorage.getItem(cornerOfficialLockKey()) || "null"
+            );
+          }catch(_){
+            return null;
+          }
+        }
+  
+        function writeCornerOfficialLock(data){
+          try{
+            localStorage.setItem(
+              cornerOfficialLockKey(),
+              JSON.stringify(data)
+            );
+          }catch(error){
+            console.warn(
+              "Não foi possível salvar a aposta oficial.",
+              error
+            );
+          }
+        }
+  
+        function rawGameStatus(item){
+          const g=item?.raw||item||{};
+          return clean(
+            g?.match_status ??
+            g?.status ??
+            g?.event_raw?.match_status ??
+            g?.event_raw?.status ??
+            ""
+          ).toLowerCase();
+        }
+  
+        function isFinishedOfficialItem(item){
+          const status=rawGameStatus(item);
+  
+          if(/finished|finish|ended|encerrado|full.?time|\bft\b|after|aet|penalties/.test(status)){
+            return true;
+          }
+  
+          const g=item?.raw||item||{};
+          const elapsed=numberOf(
+            g?.elapsed,
+            g?.match_elapsed,
+            g?.event_raw?.match_elapsed
+          );
+  
+          return Number.isFinite(elapsed)&&elapsed>=120;
+        }
+  
+        function isLiveOfficialItem(item){
+          if(isFinishedOfficialItem(item)) return false;
+          return /live|ao vivo|halftime|intervalo|1st half|2nd half|[1-9]\d?['’]/.test(
+            rawGameStatus(item)
+          );
+        }
+  
+        function itemKickoffMinutes(item){
+          const match=String(item?.time||"").match(/(\d{1,2}):(\d{2})/);
+          return match ? Number(match[1])*60+Number(match[2]) : null;
+        }
+  
+        function manausMinutesNow(){
+          const parts=new Intl.DateTimeFormat("en-US",{
+            timeZone:"America/Manaus",
+            hour:"2-digit",
+            minute:"2-digit",
+            hour12:false
+          }).formatToParts(new Date());
+  
+          return (
+            Number(parts.find(p=>p.type==="hour")?.value||0)*60+
+            Number(parts.find(p=>p.type==="minute")?.value||0)
+          );
+        }
+  
+        function isFutureOfficialItem(item){
+          if(isFinishedOfficialItem(item)||isLiveOfficialItem(item)) return false;
+  
+          const selectedDate=mobileMarketDate();
+          let today;
+  
+          try{
+            today=typeof todayAM_YMD==="function"
+              ? todayAM_YMD()
+              : new Date().toISOString().slice(0,10);
+          }catch(_){
+            today=new Date().toISOString().slice(0,10);
+          }
+  
+          if(selectedDate>today) return true;
+          if(selectedDate<today) return false;
+  
+          const kickoff=itemKickoffMinutes(item);
+          return !Number.isFinite(kickoff)||kickoff>=manausMinutesNow()-2;
+        }
+  
+        function isStrongOfficialCorner(item){
+          if(!item||!isFutureOfficialItem(item)) return false;
+  
+          const g=item.raw||{};
+          const ai=g?.corners_ai||{};
+          const line=clean(ai?.line||item.market).toUpperCase();
+          const conf=numberOf(ai?.confidence,item.conf)??0;
+          const projection=numberOf(ai?.projection,item.projection)??0;
+          const elite=numberOf(
+            g?.corner_elite_score,
+            ai?.score,
+            item.score
+          )??0;
+          const quality=numberOf(
+            ai?.data_quality,
+            ai?.extra?.data_quality
+          )??0;
+          const sample=numberOf(
+            ai?.sample_games,
+            ai?.extra?.sample_games
+          )??0;
+  
+          const normal=
+            line.startsWith("OVER")&&
+            conf>=66&&
+            projection>=9.6&&
+            elite>=125;
+  
+          const exceptionalOver85=
+            line==="OVER 8.5"&&
+            conf>=73&&
+            projection>=9.45&&
+            elite>=133;
+  
+          const dataApproved=
+            quality>=2||
+            sample>=3||
+            ai?.calculation_source==="recent_form"||
+            ai?.extra?.calculation_source==="recent_form";
+  
+          return (normal||exceptionalOver85)&&dataApproved;
+        }
+  
+        function applyOfficialCornerLock(cornerList){
+          cornerOfficialNoOpportunity=false;
+  
+          const list=Array.isArray(cornerList)
+            ? cornerList.slice()
+            : [];
+  
+          const lock=readCornerOfficialLock();
+  
+          if(lock?.item){
+            const current=list.find(item=>item.id===lock.item.id);
+  
+            if(current&&!isFinishedOfficialItem(current)){
+              const remaining=list.filter(item=>item.id!==current.id);
+              writeCornerOfficialLock({
+                ...lock,
+                item:current,
+                updatedAt:new Date().toISOString()
+              });
+              return [current,...remaining];
+            }
+  
+            if(!current&&!lock.finished){
+              return [
+                lock.item,
+                ...list.filter(item=>item.id!==lock.item.id)
+              ];
+            }
+          }
+  
+          const next=list.find(isStrongOfficialCorner);
+  
+          if(!next){
+            cornerOfficialNoOpportunity=true;
+            writeCornerOfficialLock({
+              date:mobileMarketDate(),
+              item:null,
+              noOpportunity:true,
+              updatedAt:new Date().toISOString()
+            });
+            return list;
+          }
+  
+          writeCornerOfficialLock({
+            date:mobileMarketDate(),
+            item:next,
+            selectedAt:new Date().toISOString(),
+            noOpportunity:false
+          });
+  
+          return [
+            next,
+            ...list.filter(item=>item.id!==next.id)
+          ];
         }
   
         function clampLocal(n,a,b){ return Math.max(a,Math.min(b,n)); }
@@ -18131,17 +18335,32 @@
   
         function buildRankings(){
           const locked=readMobileMarketLock();
-          if(locked){
-            marketRankings=locked;
-            return locked;
-          }
   
           const games=rawGames();
           if(!games.length) return marketRankings;
+  
           const rankings={};
+  
           MARKETS.forEach(type=>{
-            rankings[type]=games.map((g,i)=>marketItem(g,type,i)).sort((a,b)=>(b.score-a.score)||(b.conf-a.conf));
+            rankings[type]=games
+              .map((g,i)=>marketItem(g,type,i))
+              .sort((a,b)=>(b.score-a.score)||(b.conf-a.conf));
           });
+  
+          // Gols e cartões preservam o comportamento anterior.
+          // Escanteios é atualizado para reconhecer quando a partida terminou.
+          if(locked){
+            if(Array.isArray(locked.goals)&&locked.goals.length){
+              rankings.goals=locked.goals;
+            }
+            if(Array.isArray(locked.cards)&&locked.cards.length){
+              rankings.cards=locked.cards;
+            }
+          }
+  
+          rankings.corners=applyOfficialCornerLock(
+            rankings.corners
+          );
           // Cada mercado deve ter um Top 1 próprio. Evita repetir automaticamente
           // o mesmo jogo do card de cantos quando há outra opção forte disponível.
           const used=new Set();
@@ -18164,7 +18383,15 @@
             if(list[0]) used.add(list[0].id);
           }
           marketRankings=rankings;
-          writeMobileMarketLock(rankings);
+  
+          writeMobileMarketLock({
+            ...rankings,
+            corners:rankings.corners.map(item=>({
+              ...item,
+              raw:null
+            }))
+          });
+  
           return rankings;
         }
   
@@ -18312,13 +18539,49 @@
           const best=data[0]; const meta=MARKET_META[activeMarket];
           home.dataset.activeMarket=activeMarket;
           $('#cpHomeBest')?.setAttribute('data-market',activeMarket);
-          $('#cpHomeBestTitle').textContent=`${meta.icon} MELHOR APOSTA DE ${meta.label}`;
-          $('#cpHomeBestTime').textContent=best.time;
-          $('#cpHomeBestHome').textContent=best.home;
-          $('#cpHomeBestAway').textContent=best.away;
-          $('#cpHomeBestConfidence').textContent=best.conf+'%';
-          $('#cpHomeBestMarket').textContent=best.market;
-          $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
+  
+          const noCornerOpportunity=
+            activeMarket==='corners'&&
+            cornerOfficialNoOpportunity;
+  
+          if(noCornerOpportunity){
+            $('#cpHomeBestTitle').textContent='⚑ ESCANTEIOS';
+            $('#cpHomeBestTime').textContent='HOJE';
+            $('#cpHomeBestHome').textContent='SEM NOVAS';
+            $('#cpHomeBestAway').textContent='OPORTUNIDADES';
+            $('#cpHomeBestConfidence').textContent='—';
+            $('#cpHomeBestMarket').textContent='NENHUM JOGO FORTE';
+            $('#cpHomeMatchTeams').textContent=
+              'A IA não encontrou mais jogos bons de escanteios no dia.';
+  
+            const openButton=$('#cpHomeBestOpen');
+            if(openButton){
+              openButton.disabled=true;
+              openButton.setAttribute('aria-disabled','true');
+              const openText=openButton.querySelector('.cpHomeBestOpenText');
+              if(openText){
+                openText.textContent='SEM NOVAS OPORTUNIDADES HOJE';
+              }
+            }
+          }else{
+            $('#cpHomeBestTitle').textContent=`${meta.icon} MELHOR APOSTA DE ${meta.label}`;
+            $('#cpHomeBestTime').textContent=best.time;
+            $('#cpHomeBestHome').textContent=best.home;
+            $('#cpHomeBestAway').textContent=best.away;
+            $('#cpHomeBestConfidence').textContent=best.conf+'%';
+            $('#cpHomeBestMarket').textContent=best.market;
+            $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
+  
+            const openButton=$('#cpHomeBestOpen');
+            if(openButton){
+              openButton.disabled=false;
+              openButton.removeAttribute('aria-disabled');
+              const openText=openButton.querySelector('.cpHomeBestOpenText');
+              if(openText){
+                openText.textContent='VER ANÁLISE COMPLETA →';
+              }
+            }
+          }
           window.__cpPaintBestTeamColors?.($('#cpHomeBest'),best);
           const orderSwitch=$('.cpHomeOrderSwitch');
           const forceBtn=orderSwitch?.querySelector('[data-corner-order="strength"]');
@@ -18362,7 +18625,12 @@
           }
           const game=e.target.closest('[data-home-market-game]');
           if(game){e.preventDefault();openItem(currentData()[Number(game.dataset.homeMarketGame)]);return;}
-          if(e.target.closest('#cpHomeBestOpen')){e.preventDefault();openItem(currentData()[0]);return;}
+          if(e.target.closest('#cpHomeBestOpen')){
+            e.preventDefault();
+            if(activeMarket==='corners'&&cornerOfficialNoOpportunity) return;
+            openItem(currentData()[0]);
+            return;
+          }
           if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openItem(currentData()[0]);}
         });
   

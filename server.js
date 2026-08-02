@@ -47,9 +47,25 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v19-corner-online-learning";
+const QUENTES_CACHE_VERSION = "tz-manaus-v20-official-corner-lock";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
+
+const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
+const OFFICIAL_CORNER_PICK_FILE = path.join(
+  __dirname,
+  "official-corner-picks.json"
+);
+const OFFICIAL_CORNER_MIN_CONFIDENCE = Number(
+  process.env.OFFICIAL_CORNER_MIN_CONFIDENCE || 66
+);
+const OFFICIAL_CORNER_MIN_PROJECTION = Number(
+  process.env.OFFICIAL_CORNER_MIN_PROJECTION || 9.6
+);
+const OFFICIAL_CORNER_MIN_ELITE_SCORE = Number(
+  process.env.OFFICIAL_CORNER_MIN_ELITE_SCORE || 125
+);
+
 const CORNER_LEARNING_FILE = path.join(
   __dirname,
   "corner-learning-model.json"
@@ -7219,6 +7235,32 @@ async function buildAllMarketEngines({ date }) {
 }
 
 
+
+app.get("/official_corner_pick", async (req, res) => {
+  const date = req.query.date || toISODate();
+  const fresh = String(req.query.fresh || "") === "1";
+
+  try {
+    const out = await buildQuentesList({ date, fresh });
+    const official = resolveOfficialCornerPick({
+      date,
+      games: rankGamesByCornerStrength(out)
+    });
+
+    return res.json({
+      ok: true,
+      date,
+      ...official
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: "Falha ao carregar a aposta oficial",
+      details: String(error?.message || error)
+    });
+  }
+});
+
 app.get("/corner_learning_status", (req, res) => {
   const model = loadCornerLearningModel();
 
@@ -7590,6 +7632,340 @@ app.get("/quentes_ai", async (req, res) => {
   }
 });
 
+
+let officialCornerPickStore = null;
+let officialCornerPickWriteTimer = null;
+
+function loadOfficialCornerPickStore() {
+  if (officialCornerPickStore) return officialCornerPickStore;
+
+  try {
+    if (fs.existsSync(OFFICIAL_CORNER_PICK_FILE)) {
+      const parsed = JSON.parse(
+        fs.readFileSync(OFFICIAL_CORNER_PICK_FILE, "utf8")
+      );
+
+      officialCornerPickStore = {
+        version: OFFICIAL_CORNER_PICK_VERSION,
+        dates:
+          parsed?.dates && typeof parsed.dates === "object"
+            ? parsed.dates
+            : {}
+      };
+
+      return officialCornerPickStore;
+    }
+  } catch (error) {
+    console.warn(
+      "[official-corner-pick] Falha ao carregar:",
+      error?.message || error
+    );
+  }
+
+  officialCornerPickStore = {
+    version: OFFICIAL_CORNER_PICK_VERSION,
+    dates: {}
+  };
+
+  return officialCornerPickStore;
+}
+
+function saveOfficialCornerPickStore() {
+  if (officialCornerPickWriteTimer) return;
+
+  officialCornerPickWriteTimer = setTimeout(() => {
+    officialCornerPickWriteTimer = null;
+
+    try {
+      const store = loadOfficialCornerPickStore();
+      const temporary = `${OFFICIAL_CORNER_PICK_FILE}.tmp`;
+
+      fs.writeFileSync(
+        temporary,
+        JSON.stringify(store, null, 2),
+        "utf8"
+      );
+
+      fs.renameSync(temporary, OFFICIAL_CORNER_PICK_FILE);
+    } catch (error) {
+      console.warn(
+        "[official-corner-pick] Falha ao salvar:",
+        error?.message || error
+      );
+    }
+  }, 250);
+}
+
+function officialCornerGameId(game) {
+  return String(
+    game?.match_id ??
+    game?.event_key ??
+    game?.event_raw?.match_id ??
+    `${game?.casa || ""}|${game?.fora || ""}|${game?.hora || game?.horario || ""}`
+  );
+}
+
+function officialCornerStatus(game) {
+  return String(
+    game?.match_status ??
+    game?.status ??
+    game?.event_raw?.match_status ??
+    game?.event_raw?.status ??
+    ""
+  ).trim().toLowerCase();
+}
+
+function officialCornerIsFinished(game) {
+  const status = officialCornerStatus(game);
+
+  if (
+    /finished|finish|ended|encerrado|full.?time|\bft\b|after|aet|penalties/.test(
+      status
+    )
+  ) {
+    return true;
+  }
+
+  const elapsed = Number(
+    game?.elapsed ??
+    game?.match_elapsed ??
+    game?.event_raw?.match_elapsed
+  );
+
+  return Number.isFinite(elapsed) && elapsed >= 120;
+}
+
+function officialCornerIsLive(game) {
+  if (officialCornerIsFinished(game)) return false;
+
+  const status = officialCornerStatus(game);
+
+  return /live|ao vivo|halftime|intervalo|1st half|2nd half|[1-9]\d?['’]/.test(
+    status
+  );
+}
+
+function officialCornerKickoffMinutes(game) {
+  const raw = String(
+    game?.kickoff_manaus ??
+    game?.hora_manaus ??
+    game?.hora ??
+    game?.horario ??
+    game?.match_time ??
+    ""
+  );
+
+  const match = raw.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function officialCornerCurrentMinutesManaus() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Manaus",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+
+  const hour = Number(
+    parts.find(part => part.type === "hour")?.value
+  );
+  const minute = Number(
+    parts.find(part => part.type === "minute")?.value
+  );
+
+  return hour * 60 + minute;
+}
+
+function officialCornerIsFuture(game, date) {
+  if (officialCornerIsFinished(game) || officialCornerIsLive(game)) {
+    return false;
+  }
+
+  const today = toISODate();
+  if (date > today) return true;
+  if (date < today) return false;
+
+  const kickoff = officialCornerKickoffMinutes(game);
+  if (!Number.isFinite(kickoff)) return true;
+
+  return kickoff >= officialCornerCurrentMinutesManaus() - 2;
+}
+
+function officialCornerIsStrong(game, date) {
+  if (!game || !officialCornerIsFuture(game, date)) return false;
+
+  const decision = game?.corners_ai || {};
+  if (decision.skip) return false;
+
+  const line = String(decision.line || "").toUpperCase();
+  if (!line.startsWith("OVER")) return false;
+
+  const confidence = Number(
+    decision.confidence ??
+    game?.over95_prob_adj ??
+    game?.over95_prob ??
+    0
+  );
+
+  const projection = Number(
+    decision.projection ??
+    game?.proj_cantos ??
+    game?.projection ??
+    0
+  );
+
+  const eliteScore = Number(
+    game?.corner_elite_score ??
+    cornerEliteScore(game)
+  );
+
+  const dataQuality = Number(
+    decision?.data_quality ??
+    decision?.extra?.data_quality ??
+    0
+  );
+
+  const sampleGames = Number(
+    decision?.sample_games ??
+    decision?.extra?.sample_games ??
+    0
+  );
+
+  const strongBase =
+    confidence >= OFFICIAL_CORNER_MIN_CONFIDENCE &&
+    projection >= OFFICIAL_CORNER_MIN_PROJECTION &&
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE;
+
+  const exceptionalOver85 =
+    line === "OVER 8.5" &&
+    confidence >= 73 &&
+    projection >= 9.45 &&
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE + 8;
+
+  const dataApproved =
+    dataQuality >= 2 ||
+    sampleGames >= 3 ||
+    decision?.calculation_source === "recent_form" ||
+    decision?.extra?.calculation_source === "recent_form";
+
+  return (strongBase || exceptionalOver85) && dataApproved;
+}
+
+function officialCornerSnapshot(game) {
+  return {
+    id: officialCornerGameId(game),
+    match_id: game?.match_id ?? game?.event_key ?? null,
+    casa: game?.casa || "",
+    fora: game?.fora || "",
+    hora:
+      game?.kickoff_manaus ??
+      game?.hora_manaus ??
+      game?.hora ??
+      game?.horario ??
+      "",
+    liga: game?.liga || game?.league_name || "",
+    league_id: game?.league_id ?? null,
+    corners_ai: game?.corners_ai || null,
+    corner_elite_score: Number(
+      game?.corner_elite_score ??
+      cornerEliteScore(game)
+    ),
+    selected_at: new Date().toISOString()
+  };
+}
+
+function officialCornerFindCurrent(games, current) {
+  if (!current) return null;
+
+  return (games || []).find(
+    game => officialCornerGameId(game) === current.id
+  ) || null;
+}
+
+function resolveOfficialCornerPick({ date, games }) {
+  const store = loadOfficialCornerPickStore();
+  const day =
+    store.dates[date] ||
+    {
+      current: null,
+      history: [],
+      updated_at: null
+    };
+
+  let currentGame = officialCornerFindCurrent(
+    games,
+    day.current
+  );
+
+  // A seleção oficial permanece travada antes e durante o jogo.
+  if (day.current && currentGame && !officialCornerIsFinished(currentGame)) {
+    return {
+      game: currentGame,
+      locked: true,
+      selected_at: day.current.selected_at,
+      no_more_opportunities: false
+    };
+  }
+
+  // Se a API temporariamente não devolver a partida, preserva a fotografia.
+  if (day.current && !currentGame) {
+    return {
+      game: day.current,
+      locked: true,
+      snapshot_only: true,
+      selected_at: day.current.selected_at,
+      no_more_opportunities: false
+    };
+  }
+
+  // Somente após o encerramento a seleção é liberada.
+  if (day.current && currentGame && officialCornerIsFinished(currentGame)) {
+    day.history = Array.isArray(day.history) ? day.history : [];
+    day.history.push({
+      ...day.current,
+      finished_at: new Date().toISOString(),
+      final_status: officialCornerStatus(currentGame)
+    });
+
+    day.current = null;
+  }
+
+  const ranked = rankGamesByCornerStrength(games || []);
+  const next = ranked.find(
+    game => officialCornerIsStrong(game, date)
+  );
+
+  if (!next) {
+    day.current = null;
+    day.updated_at = new Date().toISOString();
+    store.dates[date] = day;
+    saveOfficialCornerPickStore();
+
+    return {
+      game: null,
+      locked: false,
+      no_more_opportunities: true,
+      message: "A IA não encontrou mais jogos de escanteios com qualidade suficiente para hoje."
+    };
+  }
+
+  day.current = officialCornerSnapshot(next);
+  day.updated_at = new Date().toISOString();
+  store.dates[date] = day;
+  saveOfficialCornerPickStore();
+
+  return {
+    game: next,
+    locked: true,
+    selected_at: day.current.selected_at,
+    no_more_opportunities: false
+  };
+}
+
+
 // ✅ IA Card (compat) — OPÇÃO A
 app.get("/ia_card", async (req, res) => {
   const date = req.query.date || toISODate();
@@ -7600,23 +7976,42 @@ app.get("/ia_card", async (req, res) => {
     const top6 = await aiPickTop6(out, date);
 
     const rankedUniverse = rankGamesByCornerStrength(out);
-    const best =
-      pickBestDeterministic(rankedUniverse) ||
-      pickBestDeterministic(top6);
+    const official = resolveOfficialCornerPick({
+      date,
+      games: rankedUniverse
+    });
 
-    if (!best) {
+    if (!official.game) {
       return res.json({
         ok: true,
         best: null,
+        official_locked: false,
+        no_more_opportunities: true,
         blockedCount: 0,
-        sugestao: "Aguardar ao vivo",
-        confianca: "Baixa",
-        why: "Sem jogos com base completa (H2H+Stats)."
+        sugestao: "Sem novas oportunidades",
+        confianca: "—",
+        why:
+          official.message ||
+          "A IA não encontrou mais jogos fortes de escanteios para hoje."
       });
     }
 
-    const pack = await aiThinkBestPick(best, top6, date);
-    res.json(pack);
+    const pack = await aiThinkBestPick(
+      official.game,
+      top6,
+      date
+    );
+
+    res.json({
+      ...pack,
+      best: official.game,
+      official_locked: true,
+      official_selected_at: official.selected_at,
+      official_snapshot_only: Boolean(
+        official.snapshot_only
+      ),
+      no_more_opportunities: false
+    });
   } catch (e){
     res.status(500).json({ ok:false, error:"Falha no ia_card", details: String(e?.message || e) });
   }
