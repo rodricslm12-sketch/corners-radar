@@ -2088,6 +2088,99 @@
       return "";
     }
   
+  
+    function cornerLocalLineLockKey(game) {
+      const raw = game?.raw || {};
+  
+      const id =
+        raw?.match_id ??
+        raw?.event_key ??
+        raw?.event_raw?.match_id ??
+        game?.id ??
+        `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
+  
+      return `cornerProPregameLine:v2:${String(id)}`;
+    }
+  
+    function readCornerLocalLineLock(game) {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            cornerLocalLineLockKey(game)
+          ) || "null"
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+  
+    function writeCornerLocalLineLock(game, decision) {
+      try {
+        localStorage.setItem(
+          cornerLocalLineLockKey(game),
+          JSON.stringify({
+            line: decision.line,
+            projection: decision.projection,
+            confidence: decision.confidence,
+            reason: decision.reason,
+            saved_at: new Date().toISOString()
+          })
+        );
+      } catch (_) {}
+    }
+  
+    function applyCornerLocalLineLock(game, decision) {
+      if (!decision) return decision;
+  
+      const status = marketLiveStatus(game);
+      const existing = readCornerLocalLineLock(game);
+  
+      const validLine =
+        /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(
+          String(decision.line || "").toUpperCase()
+        );
+  
+      if (!status.live && !status.finished && validLine && !decision.skip) {
+        if (!existing?.line) {
+          writeCornerLocalLineLock(game, decision);
+  
+          return {
+            ...decision,
+            pregame_locked: true,
+            local_pregame_locked: true
+          };
+        }
+  
+        return {
+          ...decision,
+          line: existing.line,
+          projection: existing.projection,
+          confidence: existing.confidence,
+          reason:
+            `${existing.reason || decision.reason} Primeira linha pré-jogo mantida.`,
+          skip: false,
+          pregame_locked: true,
+          local_pregame_locked: true
+        };
+      }
+  
+      if ((status.live || status.finished) && existing?.line) {
+        return {
+          ...decision,
+          line: existing.line,
+          projection: existing.projection,
+          confidence: existing.confidence,
+          reason:
+            `${existing.reason || decision.reason} Linha pré-jogo preservada após o início.`,
+          skip: false,
+          pregame_locked: true,
+          local_pregame_locked: true
+        };
+      }
+  
+      return decision;
+    }
+  
     function analysisProjection(game, marketType) {
       const raw = game?.raw || {};
       const serverDecision = raw?.[`${marketType}_ai`];
@@ -2121,7 +2214,7 @@
           serverLine = "SEM APOSTA";
         }
   
-        return {
+        const serverRecommendation = {
           line: serverLine,
           projection: Number(
             serverDecision.projection || 0
@@ -2136,8 +2229,21 @@
           skip:
             Boolean(serverDecision.skip) ||
             serverLine === "SEM APOSTA",
-          source: "server"
+          source: "server",
+          pregame_locked:
+            Boolean(serverDecision.pregame_locked),
+          pregame_locked_at:
+            serverDecision.pregame_locked_at || null,
+          learning_samples:
+            Number(serverDecision.learning_samples || 0)
         };
+  
+        return marketType === "corners"
+          ? applyCornerLocalLineLock(
+              game,
+              serverRecommendation
+            )
+          : serverRecommendation;
       }
       const originalConfidence = Number(game?.confidence || 68);
       const current = analysisCurrentStats(game, marketType);
@@ -2276,14 +2382,38 @@
           factorC * 4
         )));
   
-        return {
+        const calculatedCornerDecision = {
           line,
           projection: projection.toFixed(1),
           confidence,
           reason: Number.isFinite(current.total)
-            ? `O jogo já registra ${current.total} escanteios; a recomendação mudou automaticamente para ${line}.`
-            : `Projeção própria de ${projection.toFixed(1)} escanteios para este jogo, usando pressão, criação e perfil das equipes.`
+            ? `A partida está em andamento. A linha pré-jogo original será preservada.`
+            : `Projeção própria de ${projection.toFixed(1)} escanteios para este jogo, usando pressão, criação e perfil das equipes.`,
+          skip: false,
+          source: "calculated"
         };
+  
+        const lockedCornerDecision =
+          applyCornerLocalLineLock(
+            game,
+            calculatedCornerDecision
+          );
+  
+        if (
+          marketLiveStatus(game).live &&
+          !lockedCornerDecision?.pregame_locked
+        ) {
+          return {
+            ...calculatedCornerDecision,
+            line: "SEM RECOMENDAÇÃO PRÉ-JOGO",
+            confidence: 0,
+            skip: true,
+            reason:
+              "O jogo já começou e nenhuma linha pré-jogo foi registrada. O app não criará uma nova entrada ao vivo."
+          };
+        }
+  
+        return lockedCornerDecision;
       }
   
       const homeCards = analysisNumber(raw, [

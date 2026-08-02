@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v23-pregame-line-lock";
+const QUENTES_CACHE_VERSION = "tz-manaus-v24-double-pregame-lock";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -8151,8 +8151,24 @@ function cornerPregameLockIsLive(game) {
 
   const status = cornerPregameLockStatus(game);
 
-  return /live|ao vivo|halftime|intervalo|1st half|2nd half|[1-9]\d?['’]/.test(
-    status
+  const elapsedRaw =
+    game?.elapsed ??
+    game?.minute ??
+    game?.match_minute ??
+    game?.match_elapsed ??
+    game?.event_raw?.match_elapsed ??
+    game?.event_raw?.match_live ??
+    "";
+
+  const elapsed = Number(
+    String(elapsedRaw).replace(/[^\d]/g, "")
+  );
+
+  return (
+    (Number.isFinite(elapsed) && elapsed > 0) ||
+    /live|ao vivo|halftime|intervalo|interval|half.?time|1st half|2nd half|[1-9]\d?['’]/.test(
+      status
+    )
   );
 }
 
