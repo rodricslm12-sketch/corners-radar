@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v24-double-pregame-lock";
+const QUENTES_CACHE_VERSION = "tz-manaus-v25-future-data-ready";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -7371,6 +7371,230 @@ function cardsEngineDecision({ game, home, away }) {
   });
 }
 
+
+const FUTURE_MARKET_READY_CACHE_TTL_MS =
+  Number(process.env.FUTURE_MARKET_READY_CACHE_TTL_MIN || 720) *
+  60 *
+  1000;
+
+const futureMarketReadyCache = new Map();
+
+function futureMarketTodayManaus() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Manaus",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function futureMarketIsFutureDate(date) {
+  return String(date || "") > futureMarketTodayManaus();
+}
+
+function futureMarketGameKey(game, market) {
+  return [
+    market,
+    game?.match_id ??
+      game?.event_key ??
+      game?.event_raw?.match_id ??
+      `${game?.casa || ""}|${game?.fora || ""}|${game?.hora || game?.horario || ""}`
+  ].join(":");
+}
+
+function futureMarketGetStable(game, market) {
+  const key = futureMarketGameKey(game, market);
+  const cached = futureMarketReadyCache.get(key);
+
+  if (!cached) return null;
+
+  if (cached.expires <= Date.now()) {
+    futureMarketReadyCache.delete(key);
+    return null;
+  }
+
+  return cached.decision;
+}
+
+function futureMarketSaveStable(game, market, decision) {
+  if (
+    !decision ||
+    decision.skip ||
+    decision.updating ||
+    !decision.line ||
+    decision.line === "SEM APOSTA" ||
+    decision.line === "DADOS EM ATUALIZAÇÃO" ||
+    decision.line === "ANALISANDO PARTIDA"
+  ) {
+    return decision;
+  }
+
+  futureMarketReadyCache.set(
+    futureMarketGameKey(game, market),
+    {
+      decision: {
+        ...decision,
+        future_ready_cache: true,
+        cached_at: new Date().toISOString()
+      },
+      expires: Date.now() + FUTURE_MARKET_READY_CACHE_TTL_MS
+    }
+  );
+
+  return decision;
+}
+
+function futureMarketUpdatingDecision(market, reason) {
+  return engineDecision({
+    market,
+    line: "ANALISANDO PARTIDA",
+    confidence: 0,
+    score: 0,
+    projection: null,
+    skip: true,
+    extra: {
+      updating: true,
+      future_waiting_data: true,
+      calculation_source: "future_data_pending"
+    },
+    reason:
+      reason ||
+      "A IA está coletando as estatísticas necessárias antes de publicar uma recomendação."
+  });
+}
+
+function futureMarketProfileReady(profile, market) {
+  if (!profile || typeof profile !== "object") return false;
+
+  if (market === "corners") {
+    return (
+      Number(profile.cornerGames || 0) >= 3 &&
+      Number.isFinite(profile.cornersForAvg) &&
+      Number.isFinite(profile.cornersAgainstAvg)
+    );
+  }
+
+  if (market === "goals" || market === "btts") {
+    return (
+      Number(profile.goalGames || profile.games || 0) >= 3 ||
+      (
+        Number.isFinite(profile.goalsForAvg) &&
+        Number.isFinite(profile.goalsAgainstAvg)
+      )
+    );
+  }
+
+  if (market === "cards") {
+    return (
+      Number(profile.cardGames || profile.games || 0) >= 3 ||
+      (
+        Number.isFinite(profile.cardsForAvg) &&
+        Number.isFinite(profile.cardsAgainstAvg)
+      )
+    );
+  }
+
+  return false;
+}
+
+function futureMarketDecisionGate({
+  date,
+  game,
+  market,
+  decision,
+  homeProfile,
+  awayProfile,
+  oddsInfo
+}) {
+  if (!futureMarketIsFutureDate(date)) {
+    return futureMarketSaveStable(
+      game,
+      market,
+      decision
+    );
+  }
+
+  const stable = futureMarketGetStable(game, market);
+
+  const homeReady =
+    market === "handicap"
+      ? true
+      : futureMarketProfileReady(homeProfile, market);
+
+  const awayReady =
+    market === "handicap"
+      ? true
+      : futureMarketProfileReady(awayProfile, market);
+
+  const oddsReady =
+    market !== "handicap" ||
+    Boolean(
+      oddsInfo &&
+      (
+        Number.isFinite(Number(oddsInfo.home)) ||
+        Number.isFinite(Number(oddsInfo.away)) ||
+        Number.isFinite(Number(oddsInfo.draw)) ||
+        Number.isFinite(Number(oddsInfo.odd_home)) ||
+        Number.isFinite(Number(oddsInfo.odd_away))
+      )
+    );
+
+  const source =
+    decision?.calculation_source ??
+    decision?.extra?.calculation_source ??
+    "";
+
+  const decisionReady =
+    decision &&
+    !decision.skip &&
+    !decision.updating &&
+    decision.line &&
+    decision.line !== "SEM APOSTA" &&
+    decision.line !== "DADOS EM ATUALIZAÇÃO" &&
+    decision.line !== "ANALISANDO PARTIDA" &&
+    source !== "insufficient_data" &&
+    source !== "future_data_pending";
+
+  const dataReady =
+    homeReady &&
+    awayReady &&
+    oddsReady &&
+    decisionReady;
+
+  if (dataReady) {
+    return futureMarketSaveStable(
+      game,
+      market,
+      {
+        ...decision,
+        future_data_ready: true
+      }
+    );
+  }
+
+  if (stable) {
+    return {
+      ...stable,
+      stable_cache_used: true,
+      reason:
+        `${stable.reason} Última análise completa preservada enquanto os dados futuros são atualizados.`
+    };
+  }
+
+  const marketLabel = {
+    corners: "ESCANTEIOS",
+    goals: "GOLS",
+    btts: "AMBAS MARCAM",
+    cards: "CARTÕES",
+    handicap: "HANDICAP ASIÁTICO"
+  }[market] || String(market || "").toUpperCase();
+
+  return futureMarketUpdatingDecision(
+    marketLabel,
+    `A IA ainda está coletando dados completos para este jogo futuro de ${marketLabel.toLowerCase()}.`
+  );
+}
+
 async function buildAllMarketEngines({ date }) {
   const baseGames = await buildMarketGamesList({ date });
   const candidates = baseGames.slice(0, MULTI_MARKET_ENGINE.MAX_GAMES);
@@ -7437,7 +7661,7 @@ async function buildAllMarketEngines({ date }) {
         )
       ]);
 
-      const handicap_ai = handicapDecision({
+      const rawHandicapDecision = handicapDecision({
         game,
         oddsInfo,
         h2hBlock,
@@ -7445,19 +7669,49 @@ async function buildAllMarketEngines({ date }) {
         posAway: game.pos_away
       });
 
-      const goals_ai = goalsEngineDecision({
+      const handicap_ai = futureMarketDecisionGate({
+        date,
+        game,
+        market: "handicap",
+        decision: rawHandicapDecision,
+        homeProfile,
+        awayProfile,
+        oddsInfo
+      });
+
+      const rawGoalsDecision = goalsEngineDecision({
         game,
         home: homeProfile,
         away: awayProfile,
         oddsInfo
       });
 
-      const btts_ai = bttsEngineDecision({
+      const goals_ai = futureMarketDecisionGate({
+        date,
+        game,
+        market: "goals",
+        decision: rawGoalsDecision,
+        homeProfile,
+        awayProfile,
+        oddsInfo
+      });
+
+      const rawBttsDecision = bttsEngineDecision({
         game,
         home: homeProfile,
         away: awayProfile,
         oddsInfo,
-        goalsDecision: goals_ai
+        goalsDecision: rawGoalsDecision
+      });
+
+      const btts_ai = futureMarketDecisionGate({
+        date,
+        game,
+        market: "btts",
+        decision: rawBttsDecision,
+        homeProfile,
+        awayProfile,
+        oddsInfo
       });
 
       const rawCornersDecision = cornersEngineDecision({
@@ -7477,10 +7731,20 @@ async function buildAllMarketEngines({ date }) {
         rawCornersDecision
       );
 
-      const corners_ai = cornerPregameApplyLock(
+      const lockedCornersDecision = cornerPregameApplyLock(
         game,
         learnedCornersDecision
       );
+
+      const corners_ai = futureMarketDecisionGate({
+        date,
+        game,
+        market: "corners",
+        decision: lockedCornersDecision,
+        homeProfile,
+        awayProfile,
+        oddsInfo
+      });
 
       cornerLearningRememberPrediction(
         game,
@@ -7488,10 +7752,20 @@ async function buildAllMarketEngines({ date }) {
         date
       );
 
-      const cards_ai = cardsEngineDecision({
+      const rawCardsDecision = cardsEngineDecision({
         game,
         home: homeProfile,
         away: awayProfile
+      });
+
+      const cards_ai = futureMarketDecisionGate({
+        date,
+        game,
+        market: "cards",
+        decision: rawCardsDecision,
+        homeProfile,
+        awayProfile,
+        oddsInfo
       });
 
       return {

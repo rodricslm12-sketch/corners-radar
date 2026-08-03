@@ -2209,6 +2209,7 @@
         if (
           marketType === "corners" &&
           serverLine !== "DADOS EM ATUALIZAÇÃO" &&
+          serverLine !== "ANALISANDO PARTIDA" &&
           !/^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(serverLine)
         ) {
           serverLine = "SEM APOSTA";
@@ -2228,7 +2229,8 @@
           ),
           skip:
             Boolean(serverDecision.skip) ||
-            serverLine === "SEM APOSTA",
+            serverLine === "SEM APOSTA" ||
+            serverLine === "ANALISANDO PARTIDA",
           source: "server",
           pregame_locked:
             Boolean(serverDecision.pregame_locked),
@@ -2539,7 +2541,10 @@
   
         const isUpdating =
           requestedLine === "IA" &&
-          line === "DADOS EM ATUALIZAÇÃO";
+          (
+            line === "DADOS EM ATUALIZAÇÃO" ||
+            line === "ANALISANDO PARTIDA"
+          );
   
         const isNoBet =
           requestedLine === "IA" &&
@@ -2617,6 +2622,9 @@
                                   ? "✦ IA • APRENDIZADO ATIVO"
                                   : "✦ IA • COLETANDO DADOS"
                         )
+                      : recommendation.source === "server" &&
+                        isUpdating
+                        ? "✦ IA • COLETANDO DADOS"
                       : recommendation.source === "server"
                         ? "✦ IA DO SERVIDOR"
                         : recommendation.source === "table"
@@ -2626,7 +2634,7 @@
                 : ""}
               <strong>${
                 isUpdating
-                  ? "DADOS EM ATUALIZAÇÃO"
+                  ? "ANALISANDO PARTIDA"
                   : isNoBet
                     ? "SEM APOSTA"
                     : escapeHtml(line)
