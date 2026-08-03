@@ -635,7 +635,7 @@
           ? "NÃO"
           : "SIM";
   
-        const confidence = (isNoBet || isUpdating)
+        const confidence = isNoBet
           ? 0
           : Math.max(
               62,
@@ -649,7 +649,7 @@
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
         const settlementKey = `btts-${index}`;
   
-        if (!isNoBet && !isUpdating) {
+        if (!isNoBet) {
           settlementEntries.push({
             key: settlementKey,
             game,
@@ -2089,26 +2089,6 @@
     }
   
   
-  
-    function selectedMarketDateIsFuture() {
-      let today;
-  
-      try {
-        today =
-          typeof todayAM_YMD === "function"
-            ? todayAM_YMD()
-            : new Date().toISOString().slice(0, 10);
-      } catch (_) {
-        today = new Date().toISOString().slice(0, 10);
-      }
-  
-      try {
-        return mobileMarketDate() > today;
-      } catch (_) {
-        return false;
-      }
-    }
-  
     function cornerLocalLineLockKey(game) {
       const raw = game?.raw || {};
   
@@ -2119,7 +2099,7 @@
         game?.id ??
         `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
   
-      return `cornerProPregameLine:v3:${String(id)}`;
+      return `cornerProPregameLine:v2:${String(id)}`;
     }
   
     function readCornerLocalLineLock(game) {
@@ -2153,30 +2133,6 @@
       if (!decision) return decision;
   
       const status = marketLiveStatus(game);
-      const futureDate = selectedMarketDateIsFuture();
-  
-      if (
-        futureDate &&
-        (
-          decision.line === "ANALISANDO PARTIDA" ||
-          decision.line === "DADOS EM ATUALIZAÇÃO" ||
-          decision.future_waiting_data ||
-          decision.updating
-        )
-      ) {
-        try {
-          localStorage.removeItem(
-            cornerLocalLineLockKey(game)
-          );
-        } catch (_) {}
-  
-        return {
-          ...decision,
-          skip: true,
-          line: "ANALISANDO PARTIDA"
-        };
-      }
-  
       const existing = readCornerLocalLineLock(game);
   
       const validLine =
@@ -2281,13 +2237,7 @@
           pregame_locked_at:
             serverDecision.pregame_locked_at || null,
           learning_samples:
-            Number(serverDecision.learning_samples || 0),
-          updating:
-            Boolean(serverDecision.updating),
-          future_waiting_data:
-            Boolean(serverDecision.future_waiting_data),
-          future_data_ready:
-            Boolean(serverDecision.future_data_ready)
+            Number(serverDecision.learning_samples || 0)
         };
   
         return marketType === "corners"
@@ -2600,7 +2550,8 @@
           requestedLine === "IA" &&
           (
             recommendation.skip ||
-            line === "SEM APOSTA"
+            line === "SEM APOSTA" ||
+            isUpdating
           );
   
         const confidence = isNoBet
@@ -2634,7 +2585,7 @@
         return `
           <button
             type="button"
-            class="cpAnalysisOpportunity ${isUpdating ? "is-updating" : isNoBet ? "is-no-bet" : ""}"
+            class="cpAnalysisOpportunity ${isNoBet ? "is-no-bet" : ""}"
             data-v9-game="${originalIndex}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="${marketType}"
@@ -2688,19 +2639,19 @@
                     ? "SEM APOSTA"
                     : escapeHtml(line)
               }</strong>
-              <p>${escapeHtml((isNoBet || isUpdating) ? recommendation.reason : rule.headline)}</p>
+              <p>${escapeHtml(isNoBet ? recommendation.reason : rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpAnalysisOdd">
-              <small>${(isNoBet || isUpdating) ? "Status" : "Odd estimada"}</small>
-              <b>${(isNoBet || isUpdating) ? "—" : analysisOdd(confidence, game, marketType)}</b>
+              <small>${isNoBet ? "Decisão" : "Odd estimada"}</small>
+              <b>${isNoBet ? "—" : analysisOdd(confidence, game, marketType)}</b>
             </div>
   
-            <div class="cpAnalysisGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--analysis:${confidence}">
-              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
-              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+            <div class="cpAnalysisGauge ${isNoBet ? "is-disabled" : ""}" style="--analysis:${confidence}">
+              <span>${isNoBet ? "—" : `${confidence}%`}</span>
+              <small>${isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
   
             <i class="cpAnalysisArrow">›</i>
