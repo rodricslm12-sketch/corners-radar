@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v25-future-data-ready";
+const QUENTES_CACHE_VERSION = "tz-manaus-v26-future-state-fix";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -7445,22 +7445,21 @@ function futureMarketSaveStable(game, market, decision) {
 }
 
 function futureMarketUpdatingDecision(market, reason) {
-  return engineDecision({
+  return {
     market,
     line: "ANALISANDO PARTIDA",
     confidence: 0,
     score: 0,
     projection: null,
     skip: true,
-    extra: {
-      updating: true,
-      future_waiting_data: true,
-      calculation_source: "future_data_pending"
-    },
+    updating: true,
+    future_waiting_data: true,
+    calculation_source: "future_data_pending",
+    source: "server",
     reason:
       reason ||
       "A IA está coletando as estatísticas necessárias antes de publicar uma recomendação."
-  });
+  };
 }
 
 function futureMarketProfileReady(profile, market) {
@@ -7553,13 +7552,23 @@ function futureMarketDecisionGate({
     decision.line !== "DADOS EM ATUALIZAÇÃO" &&
     decision.line !== "ANALISANDO PARTIDA" &&
     source !== "insufficient_data" &&
-    source !== "future_data_pending";
+    source !== "future_data_pending" &&
+    (
+      market !== "corners" ||
+      Number.isFinite(Number(decision.projection))
+    );
+
+  const profileSignals =
+    Number(Boolean(homeReady)) +
+    Number(Boolean(awayReady));
 
   const dataReady =
-    homeReady &&
-    awayReady &&
-    oddsReady &&
-    decisionReady;
+    decisionReady &&
+    (
+      market === "handicap"
+        ? oddsReady
+        : profileSignals >= 1
+    );
 
   if (dataReady) {
     return futureMarketSaveStable(

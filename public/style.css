@@ -14198,3 +14198,32 @@ button.railFullBtn {
     opacity:.9!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V76 — JOGO FUTURO EM ANÁLISE
+   ========================================================= */
+@media (max-width:980px){
+  .cpAnalysisOpportunity.is-updating{
+    border-color:#27373d!important;
+    opacity:.92!important;
+  }
+
+  .cpAnalysisOpportunity.is-updating
+  .cpAnalysisPick > strong{
+    color:#aeb8bb!important;
+    font-size:15px!important;
+    line-height:1.15!important;
+  }
+
+  .cpAnalysisOpportunity.is-updating
+  .cpAnalysisAutoBadge{
+    color:#8fe936!important;
+    border-color:rgba(143,233,54,.42)!important;
+  }
+
+  .cpAnalysisOpportunity.is-updating
+  .cpAnalysisGauge{
+    filter:grayscale(1)!important;
+    opacity:.55!important;
+  }
+}
