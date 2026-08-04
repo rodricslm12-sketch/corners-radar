@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-v68-auth" />
-  <script src="script.js?v=cornerpro-v68-auth" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-fixed-nav-v1" />
+  <script src="script.js?v=cornerpro-fixed-nav-v1" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -223,12 +223,12 @@
     </section>
   </main>
 
-  <nav class="mobileBottomNav" aria-label="Navegação mobile">
-    <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
-    <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
-    <button type="button"><span>◎</span><b>Ao Vivo</b></button>
-    <button type="button"><span>⚑</span><b>Escanteios</b></button>
-    <button type="button"><span>•••</span><b>Mais</b></button>
+  <nav class="mobileBottomNav cpPersistentBottomNav" aria-label="Navegação mobile">
+    <button class="active" type="button" data-bottom-nav="dashboard"><span>⌂</span><b>Dashboard</b></button>
+    <button type="button" data-bottom-nav="pregame"><span>⚽</span><b>Pré-Jogo</b></button>
+    <button type="button" data-bottom-nav="live"><span>◎</span><b>Ao Vivo</b></button>
+    <button type="button" data-bottom-nav="corners"><span>⚑</span><b>Escanteios</b></button>
+    <button type="button" data-bottom-nav="more"><span>•••</span><b>Mais</b></button>
   </nav>
 
 

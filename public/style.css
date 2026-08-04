@@ -14376,3 +14376,152 @@ button.railFullBtn {
     height:48px !important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — BARRA INFERIOR FIXA EM TODAS AS TELAS MOBILE
+   Somente front-end.
+   ========================================================= */
+@media (max-width:980px){
+  :root{
+    --cp-fixed-bottom-nav-height:72px;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:2147483000!important;
+
+    width:100%!important;
+    max-width:none!important;
+    height:calc(
+      var(--cp-fixed-bottom-nav-height) +
+      env(safe-area-inset-bottom,0px)
+    )!important;
+
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    align-items:center!important;
+
+    margin:0!important;
+    padding:
+      5px
+      6px
+      max(6px,env(safe-area-inset-bottom,0px))!important;
+
+    background:rgba(3,9,12,.985)!important;
+    border-top:1px solid #17262c!important;
+    box-shadow:0 -10px 28px rgba(0,0,0,.45)!important;
+    backdrop-filter:blur(18px)!important;
+    -webkit-backdrop-filter:blur(18px)!important;
+
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    transform:translateZ(0)!important;
+    -webkit-transform:translateZ(0)!important;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav button{
+    position:relative!important;
+    min-width:0!important;
+    height:58px!important;
+
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:3px!important;
+
+    margin:0!important;
+    padding:3px 1px!important;
+    border:0!important;
+    border-radius:10px!important;
+    background:transparent!important;
+    color:#929da1!important;
+
+    -webkit-tap-highlight-color:transparent!important;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav button span{
+    display:grid!important;
+    place-items:center!important;
+    min-height:24px!important;
+    font-size:22px!important;
+    line-height:1!important;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav button b{
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:8.5px!important;
+    line-height:1!important;
+    font-weight:800!important;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav button.active{
+    color:#80f337!important;
+  }
+
+  .mobileBottomNav.cpPersistentBottomNav button.active::after{
+    content:""!important;
+    position:absolute!important;
+    left:25%!important;
+    right:25%!important;
+    bottom:0!important;
+    height:2px!important;
+    border-radius:99px!important;
+    background:#80f337!important;
+    box-shadow:0 0 8px rgba(128,243,55,.55)!important;
+  }
+
+  /* Evita a barra duplicada da home mobile. */
+  .cpHomeBottom{
+    display:none!important;
+  }
+
+  /* Mantém a barra acima de todas as camadas do app. */
+  .cpMobileLayer,
+  .cpMobileMarketsLayer,
+  .cpMobileMatchLayer,
+  .matchCenterOverlay{
+    z-index:100000!important;
+  }
+
+  /* Reserva espaço para a barra não cobrir cards ou botões. */
+  .cpMobileHome,
+  .cpHomeScroll,
+  .cpMobileLayerBody,
+  .cpMobileMarketsBody,
+  .cpMobileMatchContent,
+  .cpMobileRailClone,
+  .cpAnalysisBody,
+  .cpBttsBody,
+  .cpHandicapBody,
+  .matchCenterOverlayBox{
+    padding-bottom:calc(
+      var(--cp-fixed-bottom-nav-height) +
+      env(safe-area-inset-bottom,0px) +
+      18px
+    )!important;
+  }
+
+  .cpMobileLayer,
+  .cpMobileMarketsLayer,
+  .cpMobileMatchLayer{
+    padding-bottom:calc(
+      var(--cp-fixed-bottom-nav-height) +
+      env(safe-area-inset-bottom,0px)
+    )!important;
+  }
+}
+
+@media (min-width:981px){
+  .mobileBottomNav.cpPersistentBottomNav{
+    display:none!important;
+  }
+}
