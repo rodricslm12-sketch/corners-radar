@@ -20305,15 +20305,13 @@
   
   
   /* =========================================================
-     CORNER PRO — BARRA ORIGINAL GLOBAL EM TODAS AS TELAS
-     Move .cpHomeBottom para o body para ela não desaparecer
-     quando a Dashboard é escondida.
+     CORNER PRO — NAVEGAÇÃO DA BARRA GLOBAL DO HTML
      ========================================================= */
-  (function installCornerProGlobalOriginalBottomNav(){
+  (function installCornerProHtmlGlobalBottomNav(){
     "use strict";
   
-    if (window.__cpGlobalOriginalBottomNavInstalled) return;
-    window.__cpGlobalOriginalBottomNavInstalled = true;
+    if (window.__cpHtmlGlobalBottomNavInstalled) return;
+    window.__cpHtmlGlobalBottomNavInstalled = true;
   
     const mobileMedia = window.matchMedia("(max-width:980px)");
   
@@ -20321,40 +20319,21 @@
       return mobileMedia.matches;
     }
   
-    function normalizeText(value){
+    function normalize(value){
       return String(value || "")
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
     }
   
-    function getNav(){
-      return document.querySelector(".cpHomeBottom");
-    }
-  
-    function moveNavToBody(){
-      const nav = getNav();
-      if (!nav) return null;
-  
-      if (nav.parentElement !== document.body) {
-        document.body.appendChild(nav);
-      }
-  
-      nav.classList.add("cpGlobalOriginalBottomNav");
-      nav.removeAttribute("hidden");
-  
-      return nav;
-    }
-  
-    function buttons(){
-      const nav = moveNavToBody();
-      return nav
-        ? Array.from(nav.querySelectorAll("button"))
-        : [];
+    function nav(){
+      return document.querySelector(
+        "body > .cpHomeBottom.cpGlobalBottomNav"
+      );
     }
   
     function buttonType(button){
-      const text = normalizeText(button?.textContent);
+      const text = normalize(button?.textContent);
   
       if (text.includes("dashboard")) return "dashboard";
       if (text.includes("pre-jogo") || text.includes("pre jogo")) return "pregame";
@@ -20366,7 +20345,7 @@
     }
   
     function setActive(type){
-      buttons().forEach(button => {
+      nav()?.querySelectorAll("button").forEach(button => {
         const active = buttonType(button) === type;
         button.classList.toggle("active", active);
         button.setAttribute(
@@ -20394,7 +20373,7 @@
       );
     }
   
-    function openDashboard(){
+    function dashboard(){
       closeLayers();
   
       const home = document.getElementById("cpMobileHome");
@@ -20405,31 +20384,21 @@
         home.classList.add("is-visible");
       }
   
-      window.scrollTo({
-        top:0,
-        left:0,
-        behavior:"smooth"
-      });
-  
+      window.scrollTo({top:0,left:0,behavior:"smooth"});
       setActive("dashboard");
     }
   
-    function openMarket(type){
+    function market(type){
       const selector =
         type === "corners"
           ? '[data-home-market="corners"],[data-cp-market="corners"]'
           : '[data-home-market="pregame"],[data-cp-market="pregame"]';
   
-      const target = document.querySelector(selector);
-  
-      if (target) {
-        target.click();
-      }
-  
+      document.querySelector(selector)?.click();
       setActive(type);
     }
   
-    function openLive(){
+    function live(){
       const target = Array.from(
         document.querySelectorAll(
           ".side-item,.nav a,[data-tab],[data-view]"
@@ -20450,7 +20419,7 @@
       setActive("live");
     }
   
-    function openMore(){
+    function more(){
       closeLayers();
   
       (
@@ -20462,36 +20431,30 @@
       setActive("more");
     }
   
-    document.addEventListener(
-      "click",
-      event => {
-        if (!isMobile()) return;
-  
-        const button = event.target.closest(
-          ".cpGlobalOriginalBottomNav button"
-        );
-  
-        if (!button) return;
-  
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-  
-        const type = buttonType(button);
-  
-        if (type === "dashboard") openDashboard();
-        else if (type === "pregame") openMarket("pregame");
-        else if (type === "live") openLive();
-        else if (type === "corners") openMarket("corners");
-        else if (type === "more") openMore();
-      },
-      true
-    );
-  
-    function syncActive(){
+    document.addEventListener("click", event => {
       if (!isMobile()) return;
   
-      moveNavToBody();
+      const button = event.target.closest(
+        "body > .cpHomeBottom.cpGlobalBottomNav button"
+      );
+  
+      if (!button) return;
+  
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+  
+      const type = buttonType(button);
+  
+      if (type === "dashboard") dashboard();
+      else if (type === "pregame") market("pregame");
+      else if (type === "live") live();
+      else if (type === "corners") market("corners");
+      else if (type === "more") more();
+    }, true);
+  
+    function sync(){
+      if (!isMobile()) return;
   
       const matchLayer =
         document.getElementById("cpMobileMatchLayer");
@@ -20505,7 +20468,7 @@
       }
   
       if (marketLayer?.classList.contains("is-open")) {
-        const title = normalizeText(
+        const title = normalize(
           document.getElementById(
             "cpMobileMarketsTitle"
           )?.textContent
@@ -20522,11 +20485,8 @@
       setActive("dashboard");
     }
   
-    function installObservers(){
-      const layerObserver = new MutationObserver(() => {
-        moveNavToBody();
-        syncActive();
-      });
+    function observe(){
+      const observer = new MutationObserver(sync);
   
       [
         "cpMobileMarketsLayer",
@@ -20535,50 +20495,22 @@
         const layer = document.getElementById(id);
   
         if (layer) {
-          layerObserver.observe(layer, {
+          observer.observe(layer, {
             attributes:true,
             attributeFilter:["class","aria-hidden"]
           });
         }
       });
-  
-      const bodyObserver = new MutationObserver(() => {
-        const nav = getNav();
-  
-        if (nav && nav.parentElement !== document.body) {
-          moveNavToBody();
-        }
-      });
-  
-      bodyObserver.observe(document.body, {
-        childList:true,
-        subtree:true
-      });
-    }
-  
-    function initialize(){
-      moveNavToBody();
-      installObservers();
-      syncActive();
     }
   
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initialize);
+      document.addEventListener("DOMContentLoaded", () => {
+        observe();
+        sync();
+      });
     } else {
-      initialize();
+      observe();
+      sync();
     }
-  
-    window.addEventListener("resize", () => {
-      moveNavToBody();
-      syncActive();
-    });
-  
-    window.addEventListener("orientationchange", () => {
-      moveNavToBody();
-      syncActive();
-    });
-  
-    setTimeout(initialize, 300);
-    setTimeout(initialize, 1200);
   })();
   
