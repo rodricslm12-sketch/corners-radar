@@ -14379,15 +14379,17 @@ button.railFullBtn {
 
 
 /* =========================================================
-   CORNER PRO — BARRA INFERIOR FIXA EM TODAS AS TELAS MOBILE
-   Somente front-end.
+   CORNER PRO — ÍCONES ORIGINAIS FIXOS EM TODAS AS TELAS
+   Mantém a barra .cpHomeBottom existente.
+   Não cria nem remove ícones.
    ========================================================= */
 @media (max-width:980px){
   :root{
-    --cp-fixed-bottom-nav-height:72px;
+    --cp-original-bottom-nav-height:72px;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav{
+  /* A barra original continua existindo e fica fixa. */
+  .cpHomeBottom{
     position:fixed!important;
     left:0!important;
     right:0!important;
@@ -14395,9 +14397,8 @@ button.railFullBtn {
     z-index:2147483000!important;
 
     width:100%!important;
-    max-width:none!important;
     height:calc(
-      var(--cp-fixed-bottom-nav-height) +
+      var(--cp-original-bottom-nav-height) +
       env(safe-area-inset-bottom,0px)
     )!important;
 
@@ -14424,7 +14425,7 @@ button.railFullBtn {
     -webkit-transform:translateZ(0)!important;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav button{
+  .cpHomeBottom button{
     position:relative!important;
     min-width:0!important;
     height:58px!important;
@@ -14441,11 +14442,10 @@ button.railFullBtn {
     border-radius:10px!important;
     background:transparent!important;
     color:#929da1!important;
-
     -webkit-tap-highlight-color:transparent!important;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav button span{
+  .cpHomeBottom button span{
     display:grid!important;
     place-items:center!important;
     min-height:24px!important;
@@ -14453,7 +14453,7 @@ button.railFullBtn {
     line-height:1!important;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav button b{
+  .cpHomeBottom button b{
     max-width:100%!important;
     overflow:hidden!important;
     text-overflow:ellipsis!important;
@@ -14463,11 +14463,11 @@ button.railFullBtn {
     font-weight:800!important;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav button.active{
+  .cpHomeBottom button.active{
     color:#80f337!important;
   }
 
-  .mobileBottomNav.cpPersistentBottomNav button.active::after{
+  .cpHomeBottom button.active::after{
     content:""!important;
     position:absolute!important;
     left:25%!important;
@@ -14479,12 +14479,15 @@ button.railFullBtn {
     box-shadow:0 0 8px rgba(128,243,55,.55)!important;
   }
 
-  /* Evita a barra duplicada da home mobile. */
-  .cpHomeBottom{
+  /*
+   * A outra barra antiga do layout desktop/mobile é escondida
+   * para não duplicar. Os ícones preservados são os da cpHomeBottom.
+   */
+  .mobileBottomNav{
     display:none!important;
   }
 
-  /* Mantém a barra acima de todas as camadas do app. */
+  /* As telas continuam abaixo da barra original. */
   .cpMobileLayer,
   .cpMobileMarketsLayer,
   .cpMobileMatchLayer,
@@ -14492,7 +14495,7 @@ button.railFullBtn {
     z-index:100000!important;
   }
 
-  /* Reserva espaço para a barra não cobrir cards ou botões. */
+  /* Espaço inferior para a barra não cobrir o conteúdo. */
   .cpMobileHome,
   .cpHomeScroll,
   .cpMobileLayerBody,
@@ -14504,7 +14507,7 @@ button.railFullBtn {
   .cpHandicapBody,
   .matchCenterOverlayBox{
     padding-bottom:calc(
-      var(--cp-fixed-bottom-nav-height) +
+      var(--cp-original-bottom-nav-height) +
       env(safe-area-inset-bottom,0px) +
       18px
     )!important;
@@ -14514,14 +14517,14 @@ button.railFullBtn {
   .cpMobileMarketsLayer,
   .cpMobileMatchLayer{
     padding-bottom:calc(
-      var(--cp-fixed-bottom-nav-height) +
+      var(--cp-original-bottom-nav-height) +
       env(safe-area-inset-bottom,0px)
     )!important;
   }
 }
 
 @media (min-width:981px){
-  .mobileBottomNav.cpPersistentBottomNav{
+  .cpHomeBottom{
     display:none!important;
   }
 }

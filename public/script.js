@@ -20305,39 +20305,54 @@
   
   
   /* =========================================================
-     CORNER PRO — CONTROLE DA BARRA INFERIOR FIXA
-     Somente front-end.
+     CORNER PRO — CONTROLE DOS ÍCONES ORIGINAIS FIXOS
+     Usa somente .cpHomeBottom.
      ========================================================= */
-  (function installCornerProPersistentBottomNav(){
+  (function installCornerProOriginalFixedBottomNav(){
     "use strict";
   
-    if (window.__cpPersistentBottomNavInstalled) return;
-    window.__cpPersistentBottomNavInstalled = true;
+    if (window.__cpOriginalFixedBottomNavInstalled) return;
+    window.__cpOriginalFixedBottomNavInstalled = true;
   
-    const mobileMedia = window.matchMedia("(max-width: 980px)");
+    const mobileMedia =
+      window.matchMedia("(max-width:980px)");
   
     function isMobile(){
       return mobileMedia.matches;
     }
   
     function nav(){
-      return document.querySelector(
-        ".mobileBottomNav.cpPersistentBottomNav"
-      );
+      return document.querySelector(".cpHomeBottom");
     }
   
     function buttons(){
       return nav()
-        ? Array.from(
-            nav().querySelectorAll("[data-bottom-nav]")
-          )
+        ? Array.from(nav().querySelectorAll("button"))
         : [];
     }
   
-    function setActive(name){
+    function normalize(text){
+      return String(text || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+  
+    function buttonType(button){
+      const text = normalize(button?.textContent);
+  
+      if (text.includes("dashboard")) return "dashboard";
+      if (text.includes("pre-jogo") || text.includes("pre jogo")) return "pregame";
+      if (text.includes("ao vivo")) return "live";
+      if (text.includes("escante")) return "corners";
+      if (text.includes("mais")) return "more";
+  
+      return "";
+    }
+  
+    function setActive(type){
       buttons().forEach(button => {
-        const active =
-          button.dataset.bottomNav === name;
+        const active = buttonType(button) === type;
   
         button.classList.toggle("active", active);
         button.setAttribute(
@@ -20348,14 +20363,6 @@
     }
   
     function closeLayers(){
-      try {
-        if (
-          typeof window.cpMobileCloseLayers === "function"
-        ) {
-          window.cpMobileCloseLayers();
-        }
-      } catch (_) {}
-  
       document.querySelectorAll(
         ".cpMobileLayer.is-open," +
         ".cpMobileMarketsLayer.is-open," +
@@ -20373,7 +20380,7 @@
       );
     }
   
-    function openDashboard(){
+    function dashboard(){
       closeLayers();
   
       const home =
@@ -20394,33 +20401,21 @@
       setActive("dashboard");
     }
   
-    function clickMarket(type){
+    function openMarket(type){
       const selector =
         type === "corners"
           ? '[data-home-market="corners"],[data-cp-market="corners"]'
           : '[data-home-market="pregame"],[data-cp-market="pregame"]';
   
-      const target = document.querySelector(selector);
+      const target =
+        document.querySelector(selector);
   
-      if (target) {
-        target.click();
-        return true;
-      }
+      if (target) target.click();
   
-      return false;
+      setActive(type);
     }
   
-    function openPregame(){
-      clickMarket("pregame");
-      setActive("pregame");
-    }
-  
-    function openCorners(){
-      clickMarket("corners");
-      setActive("corners");
-    }
-  
-    function openLive(){
+    function live(){
       const target = Array.from(
         document.querySelectorAll(
           ".side-item,.nav a,[data-tab],[data-view]"
@@ -20434,25 +20429,24 @@
       if (target) {
         target.click();
       } else {
-        const best =
+        (
           document.getElementById("cpHomeMatchOpen") ||
-          document.getElementById("cpHomeBestOpen");
-  
-        best?.click();
+          document.getElementById("cpHomeBestOpen")
+        )?.click();
       }
   
       setActive("live");
     }
   
-    function openMore(){
+    function more(){
       closeLayers();
   
-      const menu =
+      (
         document.querySelector(".cpHomeMenu") ||
         document.getElementById("mobileMenuBtn") ||
-        document.querySelector(".mobileMenuBtn");
+        document.querySelector(".mobileMenuBtn")
+      )?.click();
   
-      menu?.click();
       setActive("more");
     }
   
@@ -20461,10 +20455,8 @@
       event => {
         if (!isMobile()) return;
   
-        const button = event.target.closest(
-          ".mobileBottomNav.cpPersistentBottomNav " +
-          "[data-bottom-nav]"
-        );
+        const button =
+          event.target.closest(".cpHomeBottom button");
   
         if (!button) return;
   
@@ -20472,41 +20464,37 @@
         event.stopPropagation();
         event.stopImmediatePropagation();
   
-        const target = button.dataset.bottomNav;
+        const type = buttonType(button);
   
-        if (target === "dashboard") openDashboard();
-        if (target === "pregame") openPregame();
-        if (target === "live") openLive();
-        if (target === "corners") openCorners();
-        if (target === "more") openMore();
+        if (type === "dashboard") dashboard();
+        else if (type === "pregame") openMarket("pregame");
+        else if (type === "live") live();
+        else if (type === "corners") openMarket("corners");
+        else if (type === "more") more();
       },
       true
     );
   
-    function syncActive(){
+    function sync(){
       if (!isMobile()) return;
   
-      const matchLayer =
+      const match =
         document.getElementById("cpMobileMatchLayer");
   
-      const marketLayer =
+      const markets =
         document.getElementById("cpMobileMarketsLayer");
   
-      if (
-        matchLayer?.classList.contains("is-open")
-      ) {
+      if (match?.classList.contains("is-open")) {
         setActive("live");
         return;
       }
   
-      if (
-        marketLayer?.classList.contains("is-open")
-      ) {
-        const title = String(
+      if (markets?.classList.contains("is-open")) {
+        const title = normalize(
           document.getElementById(
             "cpMobileMarketsTitle"
-          )?.textContent || ""
-        ).toLowerCase();
+          )?.textContent
+        );
   
         setActive(
           title.includes("escante")
@@ -20519,9 +20507,9 @@
       setActive("dashboard");
     }
   
-    function installObservers(){
+    function observeLayers(){
       const observer =
-        new MutationObserver(syncActive);
+        new MutationObserver(sync);
   
       [
         "cpMobileMarketsLayer",
@@ -20533,43 +20521,23 @@
         if (layer) {
           observer.observe(layer, {
             attributes:true,
-            attributeFilter:[
-              "class",
-              "aria-hidden"
-            ]
+            attributeFilter:["class","aria-hidden"]
           });
         }
       });
     }
   
-    function update(){
-      const root = nav();
-      if (!root) return;
-  
-      root.hidden = !isMobile();
-  
-      if (isMobile()) {
-        syncActive();
-      }
-    }
-  
     document.addEventListener(
       "DOMContentLoaded",
       () => {
-        installObservers();
-        update();
+        observeLayers();
+        sync();
       }
     );
   
-    window.addEventListener("resize", update);
-    window.addEventListener(
-      "orientationchange",
-      update
-    );
-  
     setTimeout(() => {
-      installObservers();
-      update();
+      observeLayers();
+      sync();
     }, 350);
   })();
   
