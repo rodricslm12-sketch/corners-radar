@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-v78" />
-  <script src="script.js?v=cornerpro-v78" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-v68-auth" />
+  <script src="script.js?v=cornerpro-v68-auth" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -239,8 +239,15 @@
       <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
       <button class="cpHomeCalendar" type="button" aria-label="Calendário"><span class="cpHomeCalendarMonth">JUL</span><b class="cpHomeCalendarDay">28</b></button>
       <div class="cpHomeHeaderAuth" id="cpHomeAuthArea">
-        <strong id="cpHomeAuthName">Entrar com Google</strong>
-        <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">ENTRAR <i></i></button>
+        <div class="cpHomeAuthText">
+          <strong id="cpHomeAuthName">Entrar</strong>
+          <small id="cpHomeAuthPlan">COM GOOGLE</small>
+        </div>
+        <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">
+          <img id="cpHomeAuthPhoto" src="" alt="" referrerpolicy="no-referrer" hidden>
+          <span class="cpHomeAuthFallback" aria-hidden="true">●</span>
+          <i></i>
+        </button>
       </div>
     </header>
 
@@ -396,7 +403,7 @@
   </section>
 
   <!-- Login Firebase no navegador. O auth.js importa o firebase-client.js. -->
-  <script type="module" src="auth.js?v=20260728-firebase-auth-v1"></script>
+  <script type="module" src="auth.js?v=20260802-google-profile-v2"></script>
 
   <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
 

@@ -47,7 +47,7 @@ const API_BASE_V2 = "https://apiv2.apifootball.com/";
 
 // Todos os horários de eventos devem chegar já convertidos para Manaus.
 const API_TIMEZONE = "America/Manaus";
-const QUENTES_CACHE_VERSION = "tz-manaus-v26-future-state-fix";
+const QUENTES_CACHE_VERSION = "tz-manaus-v27-history-fallback";
 
 const CORNER_LEARNING_VERSION = "corner-online-v1";
 
@@ -5684,6 +5684,9 @@ function handicapDecision({
     }
   }
 
+  // V77: jogos futuros podem ser analisados pelo histórico disponível.
+  // Não inventa linha: exige ao menos 4 pontos reais de qualidade.
+  // Forma recente e tabela continuam valendo mesmo sem odds/H2H completos.
   if (dataQuality < 4) {
     return {
       skip: true,
@@ -6081,7 +6084,7 @@ async function engineRecentEventsByTeam(teamId, date, limit = 8) {
 
   teamRecentEventsCache.set(key, {
     value: finished,
-    expires: Date.now() + 30 * 60 * 1000
+    expires: Date.now() + 12 * 60 * 1000
   });
 
   return finished;
@@ -7562,11 +7565,21 @@ function futureMarketDecisionGate({
     Number(Boolean(homeReady)) +
     Number(Boolean(awayReady));
 
+  const handicapHistoricalReady =
+    market === "handicap" &&
+    decisionReady &&
+    (
+      Number(decision?.data_quality || 0) >= 4 ||
+      Boolean(decision?.factors?.home_form) ||
+      Boolean(decision?.factors?.away_form) ||
+      Boolean(decision?.factors?.table)
+    );
+
   const dataReady =
     decisionReady &&
     (
       market === "handicap"
-        ? oddsReady
+        ? (oddsReady || handicapHistoricalReady)
         : profileSignals >= 1
     );
 
@@ -7670,10 +7683,16 @@ async function buildAllMarketEngines({ date }) {
         )
       ]);
 
+      const handicapHistoryBlock = {
+        ...(h2hBlock || {}),
+        firstTeam_lastResults: homeMatches,
+        secondTeam_lastResults: awayMatches
+      };
+
       const rawHandicapDecision = handicapDecision({
         game,
         oddsInfo,
-        h2hBlock,
+        h2hBlock: handicapHistoryBlock,
         posHome: game.pos_home,
         posAway: game.pos_away
       });
