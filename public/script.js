@@ -635,7 +635,7 @@
           ? "NÃO"
           : "SIM";
   
-        const confidence = isNoBet
+        const confidence = (isNoBet || isUpdating)
           ? 0
           : Math.max(
               62,
@@ -649,7 +649,7 @@
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
         const settlementKey = `btts-${index}`;
   
-        if (!isNoBet) {
+        if (!isNoBet && !isUpdating) {
           settlementEntries.push({
             key: settlementKey,
             game,
@@ -2089,6 +2089,26 @@
     }
   
   
+  
+    function selectedMarketDateIsFuture() {
+      let today;
+  
+      try {
+        today =
+          typeof todayAM_YMD === "function"
+            ? todayAM_YMD()
+            : new Date().toISOString().slice(0, 10);
+      } catch (_) {
+        today = new Date().toISOString().slice(0, 10);
+      }
+  
+      try {
+        return mobileMarketDate() > today;
+      } catch (_) {
+        return false;
+      }
+    }
+  
     function cornerLocalLineLockKey(game) {
       const raw = game?.raw || {};
   
@@ -2099,7 +2119,7 @@
         game?.id ??
         `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
   
-      return `cornerProPregameLine:v2:${String(id)}`;
+      return `cornerProPregameLine:v3:${String(id)}`;
     }
   
     function readCornerLocalLineLock(game) {
@@ -2133,6 +2153,30 @@
       if (!decision) return decision;
   
       const status = marketLiveStatus(game);
+      const futureDate = selectedMarketDateIsFuture();
+  
+      if (
+        futureDate &&
+        (
+          decision.line === "ANALISANDO PARTIDA" ||
+          decision.line === "DADOS EM ATUALIZAÇÃO" ||
+          decision.future_waiting_data ||
+          decision.updating
+        )
+      ) {
+        try {
+          localStorage.removeItem(
+            cornerLocalLineLockKey(game)
+          );
+        } catch (_) {}
+  
+        return {
+          ...decision,
+          skip: true,
+          line: "ANALISANDO PARTIDA"
+        };
+      }
+  
       const existing = readCornerLocalLineLock(game);
   
       const validLine =
@@ -2237,7 +2281,13 @@
           pregame_locked_at:
             serverDecision.pregame_locked_at || null,
           learning_samples:
-            Number(serverDecision.learning_samples || 0)
+            Number(serverDecision.learning_samples || 0),
+          updating:
+            Boolean(serverDecision.updating),
+          future_waiting_data:
+            Boolean(serverDecision.future_waiting_data),
+          future_data_ready:
+            Boolean(serverDecision.future_data_ready)
         };
   
         return marketType === "corners"
@@ -2550,8 +2600,7 @@
           requestedLine === "IA" &&
           (
             recommendation.skip ||
-            line === "SEM APOSTA" ||
-            isUpdating
+            line === "SEM APOSTA"
           );
   
         const confidence = isNoBet
@@ -2585,7 +2634,7 @@
         return `
           <button
             type="button"
-            class="cpAnalysisOpportunity ${isNoBet ? "is-no-bet" : ""}"
+            class="cpAnalysisOpportunity ${isUpdating ? "is-updating" : isNoBet ? "is-no-bet" : ""}"
             data-v9-game="${originalIndex}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="${marketType}"
@@ -2639,19 +2688,19 @@
                     ? "SEM APOSTA"
                     : escapeHtml(line)
               }</strong>
-              <p>${escapeHtml(isNoBet ? recommendation.reason : rule.headline)}</p>
+              <p>${escapeHtml((isNoBet || isUpdating) ? recommendation.reason : rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpAnalysisOdd">
-              <small>${isNoBet ? "Decisão" : "Odd estimada"}</small>
-              <b>${isNoBet ? "—" : analysisOdd(confidence, game, marketType)}</b>
+              <small>${(isNoBet || isUpdating) ? "Status" : "Odd estimada"}</small>
+              <b>${(isNoBet || isUpdating) ? "—" : analysisOdd(confidence, game, marketType)}</b>
             </div>
   
-            <div class="cpAnalysisGauge ${isNoBet ? "is-disabled" : ""}" style="--analysis:${confidence}">
-              <span>${isNoBet ? "—" : `${confidence}%`}</span>
-              <small>${isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+            <div class="cpAnalysisGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--analysis:${confidence}">
+              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
+              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
   
             <i class="cpAnalysisArrow">›</i>
@@ -18010,6 +18059,23 @@
           },320);
         }
   
+        window.cpMobileOpenMarket = function(type){
+          if(!isMobile()) return;
+          renderMarket(MARKET_DATA[type] ? type : "corners");
+          openLayer(marketLayer);
+        };
+  
+        window.cpMobileCloseLayers = function(){
+          if(matchLayer.classList.contains("is-open")) closeLayer(matchLayer);
+          if(marketLayer.classList.contains("is-open")) closeLayer(marketLayer);
+        };
+  
+        window.cpMobileOpenBestMatch = function(){
+          if(!isMobile()) return;
+          const games = collectGames();
+          if(games.length) openMatch(games[0], 0);
+        };
+  
         function marketTypeFromTab(tab){
           const t=String(tab?.textContent||"").toLowerCase();
           if(t.includes("escante")) return "corners";
@@ -20000,3 +20066,208 @@
       "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
     );
   })();
+  
+  
+  /* =========================================================
+     CORNER PRO V78 — NAVEGAÇÃO INFERIOR GLOBAL MOBILE
+     ========================================================= */
+  (function installCornerProGlobalBottomNav(){
+    "use strict";
+  
+    if (window.__cpGlobalBottomNavInstalled) return;
+    window.__cpGlobalBottomNavInstalled = true;
+  
+    const isMobile = () =>
+      window.matchMedia &&
+      window.matchMedia("(max-width:700px)").matches;
+  
+    function ensureNav(){
+      if (!isMobile()) return null;
+  
+      let nav = document.getElementById("cpGlobalBottomNav");
+  
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "cpGlobalBottomNav";
+        nav.className = "cpGlobalBottomNav";
+        nav.setAttribute("aria-label", "Navegação principal");
+  
+        nav.innerHTML = `
+          <button type="button" data-global-nav="dashboard" class="active">
+            <span>⌂</span><b>Dashboard</b>
+          </button>
+          <button type="button" data-global-nav="pregame">
+            <span>⚽</span><b>Pré-jogo</b>
+          </button>
+          <button type="button" data-global-nav="live">
+            <span>●</span><b>Ao Vivo</b>
+          </button>
+          <button type="button" data-global-nav="corners">
+            <span>⚑</span><b>Escanteios</b>
+          </button>
+          <button type="button" data-global-nav="more">
+            <span>•••</span><b>Mais</b>
+          </button>
+        `;
+  
+        document.body.appendChild(nav);
+      }
+  
+      return nav;
+    }
+  
+    function setActive(name){
+      const nav = ensureNav();
+      if (!nav) return;
+  
+      nav.querySelectorAll("[data-global-nav]").forEach(button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.globalNav === name
+        );
+      });
+    }
+  
+    function closeAllMobileLayers(){
+      try {
+        if (typeof window.cpMobileCloseLayers === "function") {
+          window.cpMobileCloseLayers();
+        }
+      } catch (_) {}
+  
+      document.querySelectorAll(
+        ".cpMobileLayer.is-open,.cpMobileCalendarLayer.is-open,.matchCenterOverlay.is-open"
+      ).forEach(layer => {
+        layer.classList.remove("is-open");
+        layer.setAttribute("aria-hidden", "true");
+      });
+  
+      document.body.classList.remove("cp-mobile-layer-open");
+    }
+  
+    function clickByText(selector, regex){
+      const items = Array.from(document.querySelectorAll(selector));
+      const item = items.find(el => regex.test(el.textContent || ""));
+      if (item) {
+        item.click();
+        return true;
+      }
+      return false;
+    }
+  
+    function goDashboard(){
+      closeAllMobileLayers();
+  
+      const home = document.getElementById("cpMobileHome");
+      if (home) {
+        home.style.display = "";
+        home.classList.add("is-visible");
+      }
+  
+      window.scrollTo({top:0, behavior:"smooth"});
+      setActive("dashboard");
+    }
+  
+    function goPregame(){
+      if (typeof window.cpMobileOpenMarket === "function") {
+        window.cpMobileOpenMarket("pregame");
+      } else {
+        clickByText(
+          ".marketTabs .marketTab,.mobileBottomNav button",
+          /pré.?jogo|pre.?jogo/i
+        );
+      }
+      setActive("pregame");
+    }
+  
+    function goCorners(){
+      if (typeof window.cpMobileOpenMarket === "function") {
+        window.cpMobileOpenMarket("corners");
+      } else {
+        clickByText(
+          ".marketTabs .marketTab,.mobileBottomNav button",
+          /escante/i
+        );
+      }
+      setActive("corners");
+    }
+  
+    function goLive(){
+      const clicked = clickByText(
+        ".mobileBottomNav button,.nav-link,.side-item,[data-tab],[data-view]",
+        /ao vivo|live/i
+      );
+  
+      if (!clicked && typeof window.cpMobileOpenBestMatch === "function") {
+        window.cpMobileOpenBestMatch();
+      }
+  
+      setActive("live");
+    }
+  
+    function goMore(){
+      closeAllMobileLayers();
+  
+      const menu =
+        document.querySelector(".cpHomeMenu") ||
+        document.querySelector("[data-open-menu]") ||
+        document.querySelector(".mobileMenuBtn");
+  
+      if (menu) menu.click();
+      setActive("more");
+    }
+  
+    document.addEventListener("click", event => {
+      if (!isMobile()) return;
+  
+      const button = event.target.closest(
+        "#cpGlobalBottomNav [data-global-nav]"
+      );
+  
+      if (!button) return;
+  
+      event.preventDefault();
+  
+      const target = button.dataset.globalNav;
+  
+      if (target === "dashboard") goDashboard();
+      else if (target === "pregame") goPregame();
+      else if (target === "live") goLive();
+      else if (target === "corners") goCorners();
+      else if (target === "more") goMore();
+    });
+  
+    document.addEventListener("click", event => {
+      if (!isMobile()) return;
+  
+      if (event.target.closest(".cpMobileMatchLayer,.matchCenterOverlay")) {
+        setActive("live");
+        return;
+      }
+  
+      if (event.target.closest(".cpMobileMarketsLayer")) {
+        const title =
+          document.getElementById("cpMobileMarketsTitle")?.textContent || "";
+  
+        setActive(/escante/i.test(title) ? "corners" : "pregame");
+      }
+    }, true);
+  
+    function updateVisibility(){
+      const nav = ensureNav();
+      if (!nav) return;
+  
+      nav.hidden = !isMobile();
+      document.documentElement.classList.toggle(
+        "cp-has-global-bottom-nav",
+        isMobile()
+      );
+    }
+  
+    window.addEventListener("resize", updateVisibility);
+    document.addEventListener("DOMContentLoaded", updateVisibility);
+  
+    setTimeout(updateVisibility, 0);
+    setTimeout(updateVisibility, 600);
+  })();
+  
