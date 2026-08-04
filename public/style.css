@@ -14645,3 +14645,106 @@ button.railFullBtn {
     }
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — AJUSTE VISUAL DO LOADING V8
+   Evita sobreposição com times e botão.
+   ========================================================= */
+@media (max-width:700px){
+
+  /* Fora do carregamento, o bloco fica totalmente oculto. */
+  .cpHomeInitialLoading{
+    display:none!important;
+  }
+
+  /* Durante o carregamento, esconde o conteúdo normal do card. */
+  .cpHomeBest.is-loading-initial .cpHomeBestBody,
+  .cpHomeBestClone.is-loading-initial .cpHomeBestBody{
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+
+  /* Área limpa e centralizada, sem fundo preto sobre os times. */
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading{
+    position:absolute!important;
+    z-index:20!important;
+    left:22px!important;
+    right:22px!important;
+    top:92px!important;
+    bottom:60px!important;
+
+    width:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:12px!important;
+
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+
+    background:#071014!important;
+    border:1px solid rgba(124,242,46,.14)!important;
+    border-radius:14px!important;
+    box-shadow:none!important;
+    overflow:hidden!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading strong,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading strong{
+    margin:0 0 11px!important;
+    max-width:100%!important;
+    color:#f4f7f5!important;
+    font-size:13px!important;
+    line-height:1.15!important;
+    font-weight:900!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeLoadingDots,
+  .cpHomeBestClone.is-loading-initial .cpHomeLoadingDots{
+    width:132px!important;
+    height:20px!important;
+    margin:0 auto 9px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeLoadingDots i,
+  .cpHomeBestClone.is-loading-initial .cpHomeLoadingDots i{
+    width:8px!important;
+    height:8px!important;
+    margin-top:-4px!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeInitialLoading small,
+  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading small{
+    margin:0!important;
+    color:#8f9a9d!important;
+    font-size:9.5px!important;
+    line-height:1.25!important;
+    font-weight:600!important;
+    text-align:center!important;
+  }
+
+  /* Botão discreto, sem texto concorrendo com o loading. */
+  .cpHomeBest.is-loading-initial #cpHomeBestOpen,
+  .cpHomeBestClone.is-loading-initial [data-clone-id="cpHomeBestOpen"]{
+    opacity:.55!important;
+    pointer-events:none!important;
+  }
+
+  .cpHomeBest.is-loading-initial .cpHomeBestOpenText,
+  .cpHomeBestClone.is-loading-initial .cpHomeBestOpenText{
+    font-size:10px!important;
+  }
+
+  /* Respeita o atributo hidden assim que os dados chegam. */
+  .cpHomeInitialLoading[hidden]{
+    display:none!important;
+  }
+}
