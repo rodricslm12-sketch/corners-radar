@@ -14527,224 +14527,263 @@ button.railFullBtn {
 
 
 /* =========================================================
-   CORNER PRO — LOADING COM PONTOS VERDES V7
-   Visual aprovado: compacto, profissional e sem bloco pesado.
+   CORNER PRO — BARRA ORIGINAL EM TODAS AS ABAS
+   Usa .mobileBottomNav, que já está diretamente no body.
    ========================================================= */
-@media (max-width:700px){
-  .cpHomeBest.is-loading-initial .cpHomeInitialLoading,
-  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading{
-    min-height:176px!important;
-    padding:22px 18px 17px!important;
+@media (max-width:980px){
+  :root{
+    --cp-global-tabs-nav-h:76px;
+  }
+
+  body.dashboard > .mobileBottomNav.cpGlobalTabsNav,
+  body > .mobileBottomNav.cpGlobalTabsNav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    top:auto!important;
+    z-index:2147483647!important;
+
+    width:100%!important;
+    max-width:100%!important;
+    height:calc(
+      var(--cp-global-tabs-nav-h) +
+      env(safe-area-inset-bottom,0px)
+    )!important;
+
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    align-items:center!important;
+
+    margin:0!important;
+    padding:
+      5px
+      6px
+      max(7px,env(safe-area-inset-bottom,0px))!important;
+
+    background:rgba(3,9,12,.99)!important;
+    border-top:1px solid #192a30!important;
+    box-shadow:0 -10px 28px rgba(0,0,0,.46)!important;
+    backdrop-filter:blur(18px)!important;
+    -webkit-backdrop-filter:blur(18px)!important;
+
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+  }
+
+  body > .mobileBottomNav.cpGlobalTabsNav > button{
+    position:relative!important;
+    min-width:0!important;
+    height:60px!important;
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
-    text-align:center!important;
+    gap:4px!important;
+    margin:0!important;
+    padding:3px 1px!important;
+    border:0!important;
     background:transparent!important;
+    color:#96a0a4!important;
+    visibility:visible!important;
+    opacity:1!important;
   }
 
-  /* Esconde definitivamente o spinner circular antigo. */
-  .cpHomeInitialLoading .cpHomeLoadingSpinner{
-    display:none!important;
+  body > .mobileBottomNav.cpGlobalTabsNav > button > span{
+    display:grid!important;
+    place-items:center!important;
+    min-height:26px!important;
+    font-size:23px!important;
+    line-height:1!important;
+    color:inherit!important;
+    visibility:visible!important;
+    opacity:1!important;
   }
 
-  .cpHomeInitialLoading strong{
-    order:1!important;
-    margin:0!important;
-    color:#f5f7f6!important;
-    font-size:15px!important;
-    line-height:1.15!important;
-    font-weight:950!important;
-    letter-spacing:.1px!important;
-  }
-
-  .cpHomeLoadingDots{
-    order:2!important;
-    position:relative!important;
-    width:154px!important;
-    height:30px!important;
-    margin:15px auto 7px!important;
+  body > .mobileBottomNav.cpGlobalTabsNav > button > b{
     display:block!important;
-    overflow:hidden!important;
+    font-size:9px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    color:inherit!important;
+    white-space:nowrap!important;
+    visibility:visible!important;
+    opacity:1!important;
   }
 
-  .cpHomeLoadingDots i{
+  body > .mobileBottomNav.cpGlobalTabsNav > button.active{
+    color:#80f337!important;
+  }
+
+  body > .mobileBottomNav.cpGlobalTabsNav > button.active::after{
+    content:""!important;
     position:absolute!important;
-    top:50%!important;
-    right:-18px!important;
-    width:10px!important;
-    height:10px!important;
-    margin-top:-5px!important;
-    display:block!important;
-    border-radius:50%!important;
-    background:#7cf22e!important;
-    box-shadow:
-      0 0 8px rgba(124,242,46,.52),
-      0 0 16px rgba(124,242,46,.20)!important;
-    animation:cpDotsRightToLeft 1.85s linear infinite!important;
-    will-change:transform,opacity!important;
+    left:25%!important;
+    right:25%!important;
+    bottom:0!important;
+    height:3px!important;
+    border-radius:99px!important;
+    background:#80f337!important;
+    box-shadow:0 0 8px rgba(128,243,55,.55)!important;
   }
 
-  .cpHomeLoadingDots i:nth-child(1){animation-delay:0s!important}
-  .cpHomeLoadingDots i:nth-child(2){animation-delay:.24s!important}
-  .cpHomeLoadingDots i:nth-child(3){animation-delay:.48s!important}
-  .cpHomeLoadingDots i:nth-child(4){animation-delay:.72s!important}
-  .cpHomeLoadingDots i:nth-child(5){animation-delay:.96s!important}
-
-  .cpHomeInitialLoading small{
-    order:3!important;
-    margin:0!important;
-    color:#9aa5a6!important;
-    font-size:10.5px!important;
-    line-height:1.35!important;
-    font-weight:650!important;
-  }
-
-  .cpHomeBest.is-loading-initial #cpHomeBestOpen,
-  .cpHomeBestClone.is-loading-initial #cpHomeBestOpen{
-    min-height:44px!important;
-    margin-top:0!important;
-    pointer-events:none!important;
-  }
-
-  .cpHomeBest.is-loading-initial .cpHomeButtonSpinner,
-  .cpHomeBestClone.is-loading-initial .cpHomeButtonSpinner{
+  /* Esconde apenas a barra interna da Dashboard para não duplicar. */
+  .cpHomeBottom{
     display:none!important;
   }
 
-  .cpHomeBest.is-loading-initial .cpHomeBestOpenText,
-  .cpHomeBestClone.is-loading-initial .cpHomeBestOpenText{
-    color:#aeb7b8!important;
-    font-size:11px!important;
-    font-weight:900!important;
-    letter-spacing:.15px!important;
+  /* Reserva espaço somente dentro dos conteúdos roláveis. */
+  .cpHomeScroll,
+  .cpMobileMarketsBody,
+  .cpMobileMatchContent,
+  .cpMobileLayerBody,
+  .cpAnalysisBody,
+  .cpBttsBody,
+  .cpHandicapBody{
+    padding-bottom:calc(
+      var(--cp-global-tabs-nav-h) +
+      env(safe-area-inset-bottom,0px) +
+      14px
+    )!important;
   }
 
-  @keyframes cpDotsRightToLeft{
-    0%{
-      transform:translateX(0) scale(.62)!important;
-      opacity:0!important;
-    }
-    12%{
-      opacity:1!important;
-      transform:translateX(-12px) scale(1)!important;
-    }
-    76%{
-      opacity:1!important;
-      transform:translateX(-142px) scale(1)!important;
-    }
-    100%{
-      transform:translateX(-166px) scale(.62)!important;
-      opacity:0!important;
-    }
+  .cpMobileHome,
+  .cpMobileLayer,
+  .cpMobileMarketsLayer,
+  .cpMobileMatchLayer{
+    padding-bottom:0!important;
+    margin-bottom:0!important;
   }
+}
 
-  @media (prefers-reduced-motion:reduce){
-    .cpHomeLoadingDots i{
-      animation-duration:3.6s!important;
-    }
+@media (min-width:981px){
+  body > .mobileBottomNav.cpGlobalTabsNav{
+    display:none!important;
   }
 }
 
 
 /* =========================================================
-   CORNER PRO — AJUSTE VISUAL DO LOADING V8
-   Evita sobreposição com times e botão.
+   CORNER PRO — CORREÇÃO DE ROLAGEM EM TODAS AS ABAS V6
+   Impede arrastar além do conteúdo e revelar área preta.
+   Não altera a barra nem os ícones.
    ========================================================= */
-@media (max-width:700px){
-
-  /* Fora do carregamento, o bloco fica totalmente oculto. */
-  .cpHomeInitialLoading{
-    display:none!important;
+@media (max-width:980px){
+  html,
+  body{
+    width:100%!important;
+    height:100%!important;
+    min-height:100%!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+    overscroll-behavior:none!important;
+    background:#020607!important;
   }
 
-  /* Durante o carregamento, esconde o conteúdo normal do card. */
-  .cpHomeBest.is-loading-initial .cpHomeBestBody,
-  .cpHomeBestClone.is-loading-initial .cpHomeBestBody{
-    visibility:hidden!important;
-    opacity:0!important;
-    pointer-events:none!important;
-  }
-
-  /* Área limpa e centralizada, sem fundo preto sobre os times. */
-  .cpHomeBest.is-loading-initial .cpHomeInitialLoading,
-  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading{
-    position:absolute!important;
-    z-index:20!important;
-    left:22px!important;
-    right:22px!important;
-    top:92px!important;
-    bottom:60px!important;
-
-    width:auto!important;
-    height:auto!important;
-    min-height:0!important;
-    margin:0!important;
-    padding:12px!important;
-
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:0!important;
-
-    background:#071014!important;
-    border:1px solid rgba(124,242,46,.14)!important;
-    border-radius:14px!important;
-    box-shadow:none!important;
+  body.dashboard{
+    position:fixed!important;
+    inset:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
     overflow:hidden!important;
   }
 
-  .cpHomeBest.is-loading-initial .cpHomeInitialLoading strong,
-  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading strong{
-    margin:0 0 11px!important;
-    max-width:100%!important;
-    color:#f4f7f5!important;
-    font-size:13px!important;
-    line-height:1.15!important;
-    font-weight:900!important;
-    text-align:center!important;
-    white-space:nowrap!important;
+  /* Dashboard: somente a área interna pode rolar. */
+  .cpMobileHome{
+    position:fixed!important;
+    inset:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    overscroll-behavior:none!important;
   }
 
-  .cpHomeBest.is-loading-initial .cpHomeLoadingDots,
-  .cpHomeBestClone.is-loading-initial .cpHomeLoadingDots{
-    width:132px!important;
-    height:20px!important;
-    margin:0 auto 9px!important;
+  .cpHomeScroll{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:none!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:calc(
+      var(--cp-global-tabs-nav-h,76px) +
+      env(safe-area-inset-bottom,0px) +
+      14px
+    )!important;
   }
 
-  .cpHomeBest.is-loading-initial .cpHomeLoadingDots i,
-  .cpHomeBestClone.is-loading-initial .cpHomeLoadingDots i{
-    width:8px!important;
-    height:8px!important;
-    margin-top:-4px!important;
+  /* Mercados e Match Center: camada não rola; só o conteúdo interno. */
+  .cpMobileLayer,
+  .cpMobileMarketsLayer,
+  .cpMobileMatchLayer{
+    position:fixed!important;
+    inset:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    overscroll-behavior:none!important;
   }
 
-  .cpHomeBest.is-loading-initial .cpHomeInitialLoading small,
-  .cpHomeBestClone.is-loading-initial .cpHomeInitialLoading small{
+  .cpMobileLayerBody,
+  .cpMobileMarketsBody,
+  .cpMobileMatchContent,
+  .cpAnalysisBody,
+  .cpBttsBody,
+  .cpHandicapBody{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:none!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:calc(
+      var(--cp-global-tabs-nav-h,76px) +
+      env(safe-area-inset-bottom,0px) +
+      14px
+    )!important;
+  }
+
+  /* A barra permanece presa no rodapé e fora da rolagem. */
+  body > .mobileBottomNav.cpGlobalTabsNav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    top:auto!important;
+    bottom:0!important;
     margin:0!important;
-    color:#8f9a9d!important;
-    font-size:9.5px!important;
-    line-height:1.25!important;
-    font-weight:600!important;
-    text-align:center!important;
+    transform:none!important;
+    -webkit-transform:none!important;
   }
 
-  /* Botão discreto, sem texto concorrendo com o loading. */
-  .cpHomeBest.is-loading-initial #cpHomeBestOpen,
-  .cpHomeBestClone.is-loading-initial [data-clone-id="cpHomeBestOpen"]{
-    opacity:.55!important;
-    pointer-events:none!important;
-  }
-
-  .cpHomeBest.is-loading-initial .cpHomeBestOpenText,
-  .cpHomeBestClone.is-loading-initial .cpHomeBestOpenText{
-    font-size:10px!important;
-  }
-
-  /* Respeita o atributo hidden assim que os dados chegam. */
-  .cpHomeInitialLoading[hidden]{
+  /* Remove alturas ou margens residuais que criavam o vazio preto. */
+  .cpHomeScroll::after,
+  .cpMobileLayerBody::after,
+  .cpMobileMarketsBody::after,
+  .cpMobileMatchContent::after{
     display:none!important;
+    content:none!important;
+  }
+
+  .cpMobileHome,
+  .cpMobileLayer,
+  .cpMobileMarketsLayer,
+  .cpMobileMatchLayer,
+  .cpHomeScroll,
+  .cpMobileLayerBody,
+  .cpMobileMarketsBody,
+  .cpMobileMatchContent{
+    margin-bottom:0!important;
   }
 }
