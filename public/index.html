@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-scroll-limit-v6" />
-  <script src="script.js?v=cornerpro-scroll-limit-v6" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-loading-dots-v7" />
+  <script src="script.js?v=cornerpro-loading-dots-v7" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -223,12 +223,12 @@
     </section>
   </main>
 
-  <nav class="mobileBottomNav cpGlobalTabsNav" aria-label="Navegação mobile">
-    <button class="active" type="button" data-global-tab="dashboard"><span>⌂</span><b>Dashboard</b></button>
-    <button type="button" data-global-tab="pregame"><span>⚽</span><b>Pré-Jogo</b></button>
-    <button type="button" data-global-tab="live"><span>◎</span><b>Ao Vivo</b></button>
-    <button type="button" data-global-tab="corners"><span>⚑</span><b>Escanteios</b></button>
-    <button type="button" data-global-tab="more"><span>•••</span><b>Mais</b></button>
+  <nav class="mobileBottomNav" aria-label="Navegação mobile">
+    <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+    <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
+    <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+    <button type="button"><span>⚑</span><b>Escanteios</b></button>
+    <button type="button"><span>•••</span><b>Mais</b></button>
   </nav>
 
 
@@ -263,9 +263,11 @@
         <div class="cpHomeBestTop"><b id="cpHomeBestTitle">⚑ MELHOR APOSTA DE ESCANTEIOS</b><span id="cpHomeBestMarket">ANALISANDO</span></div>
 
         <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
-          <span class="cpHomeLoadingSpinner" aria-hidden="true"></span>
-          <strong>CARREGANDO JOGOS DO DIA</strong>
-          <small>Buscando as melhores oportunidades para você...</small>
+          <strong>ANALISANDO JOGOS DO DIA</strong>
+          <div class="cpHomeLoadingDots" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <small>Buscando a melhor oportunidade...</small>
         </div>
 
         <div class="cpHomeBestBody">
@@ -275,7 +277,7 @@
         </div>
         <button type="button" id="cpHomeBestOpen" disabled>
           <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
-          <span class="cpHomeBestOpenText">CARREGANDO JOGOS DO DIA...</span>
+          <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
         </button>
       </section>
 
@@ -401,5 +403,12 @@
 
 
   <!-- Barra original global: Dashboard, mercados e Match Center -->
+<nav class="cpHomeBottom cpGlobalBottomNav">
+      <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+      <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+      <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button"><span>•••</span><b>Mais</b></button>
+    </nav>
 </body>
 </html>
