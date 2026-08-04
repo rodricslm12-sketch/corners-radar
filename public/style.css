@@ -14379,26 +14379,25 @@ button.railFullBtn {
 
 
 /* =========================================================
-   CORNER PRO — ÍCONES ORIGINAIS FIXOS EM TODAS AS TELAS
-   Mantém a barra .cpHomeBottom existente.
-   Não cria nem remove ícones.
+   CORNER PRO — BARRA ORIGINAL GLOBAL
+   A própria .cpHomeBottom é movida para o body pelo JS.
    ========================================================= */
 @media (max-width:980px){
   :root{
-    --cp-original-bottom-nav-height:72px;
+    --cp-global-original-nav-height:72px;
   }
 
-  /* A barra original continua existindo e fica fixa. */
-  .cpHomeBottom{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav{
     position:fixed!important;
     left:0!important;
     right:0!important;
     bottom:0!important;
-    z-index:2147483000!important;
+    z-index:2147483640!important;
 
     width:100%!important;
+    max-width:none!important;
     height:calc(
-      var(--cp-original-bottom-nav-height) +
+      var(--cp-global-original-nav-height) +
       env(safe-area-inset-bottom,0px)
     )!important;
 
@@ -14412,9 +14411,9 @@ button.railFullBtn {
       6px
       max(6px,env(safe-area-inset-bottom,0px))!important;
 
-    background:rgba(3,9,12,.985)!important;
+    background:rgba(3,9,12,.99)!important;
     border-top:1px solid #17262c!important;
-    box-shadow:0 -10px 28px rgba(0,0,0,.45)!important;
+    box-shadow:0 -10px 28px rgba(0,0,0,.48)!important;
     backdrop-filter:blur(18px)!important;
     -webkit-backdrop-filter:blur(18px)!important;
 
@@ -14425,7 +14424,7 @@ button.railFullBtn {
     -webkit-transform:translateZ(0)!important;
   }
 
-  .cpHomeBottom button{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav button{
     position:relative!important;
     min-width:0!important;
     height:58px!important;
@@ -14445,7 +14444,7 @@ button.railFullBtn {
     -webkit-tap-highlight-color:transparent!important;
   }
 
-  .cpHomeBottom button span{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav button span{
     display:grid!important;
     place-items:center!important;
     min-height:24px!important;
@@ -14453,7 +14452,7 @@ button.railFullBtn {
     line-height:1!important;
   }
 
-  .cpHomeBottom button b{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav button b{
     max-width:100%!important;
     overflow:hidden!important;
     text-overflow:ellipsis!important;
@@ -14463,11 +14462,11 @@ button.railFullBtn {
     font-weight:800!important;
   }
 
-  .cpHomeBottom button.active{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav button.active{
     color:#80f337!important;
   }
 
-  .cpHomeBottom button.active::after{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav button.active::after{
     content:""!important;
     position:absolute!important;
     left:25%!important;
@@ -14479,23 +14478,12 @@ button.railFullBtn {
     box-shadow:0 0 8px rgba(128,243,55,.55)!important;
   }
 
-  /*
-   * A outra barra antiga do layout desktop/mobile é escondida
-   * para não duplicar. Os ícones preservados são os da cpHomeBottom.
-   */
+  /* A barra antiga paralela permanece escondida para não duplicar. */
   .mobileBottomNav{
     display:none!important;
   }
 
-  /* As telas continuam abaixo da barra original. */
-  .cpMobileLayer,
-  .cpMobileMarketsLayer,
-  .cpMobileMatchLayer,
-  .matchCenterOverlay{
-    z-index:100000!important;
-  }
-
-  /* Espaço inferior para a barra não cobrir o conteúdo. */
+  /* Todas as páginas ganham espaço para a barra fixa. */
   .cpMobileHome,
   .cpHomeScroll,
   .cpMobileLayerBody,
@@ -14507,7 +14495,7 @@ button.railFullBtn {
   .cpHandicapBody,
   .matchCenterOverlayBox{
     padding-bottom:calc(
-      var(--cp-original-bottom-nav-height) +
+      var(--cp-global-original-nav-height) +
       env(safe-area-inset-bottom,0px) +
       18px
     )!important;
@@ -14517,14 +14505,14 @@ button.railFullBtn {
   .cpMobileMarketsLayer,
   .cpMobileMatchLayer{
     padding-bottom:calc(
-      var(--cp-original-bottom-nav-height) +
+      var(--cp-global-original-nav-height) +
       env(safe-area-inset-bottom,0px)
     )!important;
   }
 }
 
 @media (min-width:981px){
-  .cpHomeBottom{
+  body > .cpHomeBottom.cpGlobalOriginalBottomNav{
     display:none!important;
   }
 }

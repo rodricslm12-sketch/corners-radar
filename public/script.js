@@ -20305,41 +20305,56 @@
   
   
   /* =========================================================
-     CORNER PRO — CONTROLE DOS ÍCONES ORIGINAIS FIXOS
-     Usa somente .cpHomeBottom.
+     CORNER PRO — BARRA ORIGINAL GLOBAL EM TODAS AS TELAS
+     Move .cpHomeBottom para o body para ela não desaparecer
+     quando a Dashboard é escondida.
      ========================================================= */
-  (function installCornerProOriginalFixedBottomNav(){
+  (function installCornerProGlobalOriginalBottomNav(){
     "use strict";
   
-    if (window.__cpOriginalFixedBottomNavInstalled) return;
-    window.__cpOriginalFixedBottomNavInstalled = true;
+    if (window.__cpGlobalOriginalBottomNavInstalled) return;
+    window.__cpGlobalOriginalBottomNavInstalled = true;
   
-    const mobileMedia =
-      window.matchMedia("(max-width:980px)");
+    const mobileMedia = window.matchMedia("(max-width:980px)");
   
     function isMobile(){
       return mobileMedia.matches;
     }
   
-    function nav(){
-      return document.querySelector(".cpHomeBottom");
-    }
-  
-    function buttons(){
-      return nav()
-        ? Array.from(nav().querySelectorAll("button"))
-        : [];
-    }
-  
-    function normalize(text){
-      return String(text || "")
+    function normalizeText(value){
+      return String(value || "")
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
     }
   
+    function getNav(){
+      return document.querySelector(".cpHomeBottom");
+    }
+  
+    function moveNavToBody(){
+      const nav = getNav();
+      if (!nav) return null;
+  
+      if (nav.parentElement !== document.body) {
+        document.body.appendChild(nav);
+      }
+  
+      nav.classList.add("cpGlobalOriginalBottomNav");
+      nav.removeAttribute("hidden");
+  
+      return nav;
+    }
+  
+    function buttons(){
+      const nav = moveNavToBody();
+      return nav
+        ? Array.from(nav.querySelectorAll("button"))
+        : [];
+    }
+  
     function buttonType(button){
-      const text = normalize(button?.textContent);
+      const text = normalizeText(button?.textContent);
   
       if (text.includes("dashboard")) return "dashboard";
       if (text.includes("pre-jogo") || text.includes("pre jogo")) return "pregame";
@@ -20353,7 +20368,6 @@
     function setActive(type){
       buttons().forEach(button => {
         const active = buttonType(button) === type;
-  
         button.classList.toggle("active", active);
         button.setAttribute(
           "aria-current",
@@ -20380,11 +20394,10 @@
       );
     }
   
-    function dashboard(){
+    function openDashboard(){
       closeLayers();
   
-      const home =
-        document.getElementById("cpMobileHome");
+      const home = document.getElementById("cpMobileHome");
   
       if (home) {
         home.hidden = false;
@@ -20407,23 +20420,22 @@
           ? '[data-home-market="corners"],[data-cp-market="corners"]'
           : '[data-home-market="pregame"],[data-cp-market="pregame"]';
   
-      const target =
-        document.querySelector(selector);
+      const target = document.querySelector(selector);
   
-      if (target) target.click();
+      if (target) {
+        target.click();
+      }
   
       setActive(type);
     }
   
-    function live(){
+    function openLive(){
       const target = Array.from(
         document.querySelectorAll(
           ".side-item,.nav a,[data-tab],[data-view]"
         )
       ).find(element =>
-        /ao vivo|live/i.test(
-          element.textContent || ""
-        )
+        /ao vivo|live/i.test(element.textContent || "")
       );
   
       if (target) {
@@ -20438,7 +20450,7 @@
       setActive("live");
     }
   
-    function more(){
+    function openMore(){
       closeLayers();
   
       (
@@ -20455,8 +20467,9 @@
       event => {
         if (!isMobile()) return;
   
-        const button =
-          event.target.closest(".cpHomeBottom button");
+        const button = event.target.closest(
+          ".cpGlobalOriginalBottomNav button"
+        );
   
         if (!button) return;
   
@@ -20466,31 +20479,33 @@
   
         const type = buttonType(button);
   
-        if (type === "dashboard") dashboard();
+        if (type === "dashboard") openDashboard();
         else if (type === "pregame") openMarket("pregame");
-        else if (type === "live") live();
+        else if (type === "live") openLive();
         else if (type === "corners") openMarket("corners");
-        else if (type === "more") more();
+        else if (type === "more") openMore();
       },
       true
     );
   
-    function sync(){
+    function syncActive(){
       if (!isMobile()) return;
   
-      const match =
+      moveNavToBody();
+  
+      const matchLayer =
         document.getElementById("cpMobileMatchLayer");
   
-      const markets =
+      const marketLayer =
         document.getElementById("cpMobileMarketsLayer");
   
-      if (match?.classList.contains("is-open")) {
+      if (matchLayer?.classList.contains("is-open")) {
         setActive("live");
         return;
       }
   
-      if (markets?.classList.contains("is-open")) {
-        const title = normalize(
+      if (marketLayer?.classList.contains("is-open")) {
+        const title = normalizeText(
           document.getElementById(
             "cpMobileMarketsTitle"
           )?.textContent
@@ -20507,37 +20522,63 @@
       setActive("dashboard");
     }
   
-    function observeLayers(){
-      const observer =
-        new MutationObserver(sync);
+    function installObservers(){
+      const layerObserver = new MutationObserver(() => {
+        moveNavToBody();
+        syncActive();
+      });
   
       [
         "cpMobileMarketsLayer",
         "cpMobileMatchLayer"
       ].forEach(id => {
-        const layer =
-          document.getElementById(id);
+        const layer = document.getElementById(id);
   
         if (layer) {
-          observer.observe(layer, {
+          layerObserver.observe(layer, {
             attributes:true,
             attributeFilter:["class","aria-hidden"]
           });
         }
       });
+  
+      const bodyObserver = new MutationObserver(() => {
+        const nav = getNav();
+  
+        if (nav && nav.parentElement !== document.body) {
+          moveNavToBody();
+        }
+      });
+  
+      bodyObserver.observe(document.body, {
+        childList:true,
+        subtree:true
+      });
     }
   
-    document.addEventListener(
-      "DOMContentLoaded",
-      () => {
-        observeLayers();
-        sync();
-      }
-    );
+    function initialize(){
+      moveNavToBody();
+      installObservers();
+      syncActive();
+    }
   
-    setTimeout(() => {
-      observeLayers();
-      sync();
-    }, 350);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initialize);
+    } else {
+      initialize();
+    }
+  
+    window.addEventListener("resize", () => {
+      moveNavToBody();
+      syncActive();
+    });
+  
+    window.addEventListener("orientationchange", () => {
+      moveNavToBody();
+      syncActive();
+    });
+  
+    setTimeout(initialize, 300);
+    setTimeout(initialize, 1200);
   })();
   
