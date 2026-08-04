@@ -472,6 +472,10 @@
         cpPaintBestTeamColors(card, best);
       }
   
+      if (typeof window.cpUpdateHomeBestLiveCard === "function") {
+        window.cpUpdateHomeBestLiveCard(best.raw || best, best);
+      }
+  
       const open = $("#cpHomeBestOpen");
       if (open) {
         open.disabled = false;
@@ -19906,6 +19910,10 @@
           setText('#cpHomeBestMarket',best.market);
           setText('#cpHomeMatchTeams',`${best.home} × ${best.away}`);
   
+          if (typeof window.cpUpdateHomeBestLiveCard === "function") {
+            window.cpUpdateHomeBestLiveCard(best.raw || best, best);
+          }
+  
           const list = $('#cpHomeGames');
           if (list){
             list.innerHTML = games.slice(0,5).map((g,i)=>`
@@ -20512,5 +20520,252 @@
       observe();
       sync();
     }
+  })();
+  
+  
+  /* =========================================================
+     CORNER PRO — STATUS E PLACAR COMPACTO NO CARD PRINCIPAL
+     20 min antes, ao vivo, intervalo, gols, cantos e cartões.
+     ========================================================= */
+  (function installCornerProHomeBestLiveStatus(){
+    "use strict";
+  
+    if (window.__cpHomeBestLiveStatusInstalled) return;
+    window.__cpHomeBestLiveStatusInstalled = true;
+  
+    function numberValue(...values){
+      for (const value of values) {
+        const n = Number(value);
+        if (Number.isFinite(n)) return n;
+      }
+      return 0;
+    }
+  
+    function textValue(...values){
+      for (const value of values) {
+        const text = String(value ?? "").trim();
+        if (text && !["undefined","null","NaN"].includes(text)) {
+          return text;
+        }
+      }
+      return "";
+    }
+  
+    function statusText(raw){
+      return textValue(
+        raw?.status,
+        raw?.match_status,
+        raw?.event_status,
+        raw?.status_short,
+        raw?.event_raw?.match_status
+      ).toLowerCase();
+    }
+  
+    function liveMinute(raw){
+      const candidates = [
+        raw?.minute,
+        raw?.elapsed,
+        raw?.match_minute,
+        raw?.live_minute,
+        raw?.event_raw?.match_live,
+        raw?.event_raw?.match_status
+      ];
+  
+      for (const value of candidates) {
+        const match = String(value ?? "").match(/\d{1,3}/);
+        if (match) {
+          const minute = Number(match[0]);
+          if (minute >= 0 && minute <= 130) return minute;
+        }
+      }
+  
+      return null;
+    }
+  
+    function isHalfTime(raw){
+      const status = statusText(raw);
+      return (
+        /\bht\b|half.?time|intervalo|halftime/.test(status) ||
+        raw?.is_halftime === true
+      );
+    }
+  
+    function isFinished(raw){
+      const status = statusText(raw);
+      return /finished|encerrado|finalizado|\bft\b|after extra time/.test(status);
+    }
+  
+    function isLive(raw){
+      const status = statusText(raw);
+      return (
+        raw?.is_live === true ||
+        raw?.live === true ||
+        /ao vivo|live|in play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
+        liveMinute(raw) !== null
+      ) && !isFinished(raw);
+    }
+  
+    function selectedDate(){
+      return (
+        document.getElementById("date")?.value ||
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone:"America/Manaus",
+          year:"numeric",
+          month:"2-digit",
+          day:"2-digit"
+        }).format(new Date())
+      );
+    }
+  
+    function minutesToKickoff(raw, normalized){
+      const date = textValue(
+        raw?.match_date,
+        raw?.date,
+        raw?.event_date,
+        selectedDate()
+      ).slice(0,10);
+  
+      const time = textValue(
+        raw?.hora_manaus,
+        raw?.hora,
+        raw?.match_time,
+        raw?.time,
+        normalized?.time
+      ).match(/(\d{1,2}):(\d{2})/);
+  
+      if (!date || !time) return null;
+  
+      const kickoff = new Date(
+        `${date}T${time[1].padStart(2,"0")}:${time[2]}:00-04:00`
+      );
+  
+      if (!Number.isFinite(kickoff.getTime())) return null;
+      return Math.round((kickoff.getTime() - Date.now()) / 60000);
+    }
+  
+    function scorePair(raw, type){
+      const sources = {
+        goals: [
+          raw?.home_score, raw?.away_score,
+          raw?.match_hometeam_score, raw?.match_awayteam_score,
+          raw?.goals_home, raw?.goals_away,
+          raw?.event_raw?.match_hometeam_score,
+          raw?.event_raw?.match_awayteam_score
+        ],
+        corners: [
+          raw?.home_corners, raw?.away_corners,
+          raw?.corners_home, raw?.corners_away,
+          raw?.stats?.corners?.home, raw?.stats?.corners?.away,
+          raw?.event_raw?.home_corners, raw?.event_raw?.away_corners
+        ],
+        cards: [
+          raw?.home_cards, raw?.away_cards,
+          raw?.cards_home, raw?.cards_away,
+          raw?.stats?.cards?.home, raw?.stats?.cards?.away,
+          raw?.event_raw?.home_cards, raw?.event_raw?.away_cards
+        ]
+      }[type];
+  
+      return [
+        numberValue(sources?.[0], sources?.[2], sources?.[4], sources?.[6]),
+        numberValue(sources?.[1], sources?.[3], sources?.[5], sources?.[7])
+      ];
+    }
+  
+    function ensureElements(card){
+      let status = card.querySelector(".cpHomeBestMatchStatus");
+      if (!status) {
+        status = document.createElement("div");
+        status.className = "cpHomeBestMatchStatus";
+        status.hidden = true;
+  
+        const body = card.querySelector(".cpHomeBestBody");
+        if (body) body.insertAdjacentElement("beforebegin", status);
+      }
+  
+      let events = card.querySelector(".cpHomeBestLiveEvents");
+      if (!events) {
+        events = document.createElement("div");
+        events.className = "cpHomeBestLiveEvents";
+        events.hidden = true;
+        events.innerHTML = `
+          <span data-best-event="goals"><i>⚽</i><small>GOLS</small><b>0 × 0</b></span>
+          <span data-best-event="corners"><i>⚑</i><small>ESCANTEIOS</small><b>0 × 0</b></span>
+          <span data-best-event="cards"><i>▯</i><small>CARTÕES</small><b>0 × 0</b></span>
+        `;
+  
+        const open = card.querySelector("#cpHomeBestOpen");
+        if (open) open.insertAdjacentElement("beforebegin", events);
+        else card.appendChild(events);
+      }
+  
+      return {status, events};
+    }
+  
+    function update(raw, normalized = {}){
+      const card = document.getElementById("cpHomeBest");
+      if (!card || !raw) return;
+  
+      window.__cpCurrentHomeBestRaw = raw;
+      window.__cpCurrentHomeBestNormalized = normalized;
+  
+      const {status, events} = ensureElements(card);
+      const timeElement = document.getElementById("cpHomeBestTime");
+  
+      const halfTime = isHalfTime(raw);
+      const live = isLive(raw);
+      const finished = isFinished(raw);
+      const minute = liveMinute(raw);
+      const until = minutesToKickoff(raw, normalized);
+  
+      card.classList.toggle("is-best-live", live || halfTime);
+      card.classList.toggle("is-best-soon", !live && !finished && until !== null && until >= 0 && until <= 20);
+  
+      if (halfTime) {
+        status.hidden = false;
+        status.className = "cpHomeBestMatchStatus is-live";
+        status.innerHTML = `<i></i><b>INTERVALO</b>`;
+        if (timeElement) timeElement.textContent = "INTERVALO";
+      } else if (live) {
+        const minuteLabel = minute !== null ? `${minute}'` : "AO VIVO";
+        status.hidden = false;
+        status.className = "cpHomeBestMatchStatus is-live";
+        status.innerHTML = `<i></i><b>AO VIVO</b><span>${minuteLabel}</span>`;
+        if (timeElement) timeElement.textContent = minuteLabel;
+      } else if (!finished && until !== null && until >= 0 && until <= 20) {
+        status.hidden = false;
+        status.className = "cpHomeBestMatchStatus is-soon";
+        status.innerHTML = `<i>●</i><b>O JOGO JÁ VAI COMEÇAR</b><span>${until} MIN</span>`;
+      } else if (finished) {
+        status.hidden = false;
+        status.className = "cpHomeBestMatchStatus is-finished";
+        status.innerHTML = `<b>PARTIDA ENCERRADA</b>`;
+      } else {
+        status.hidden = true;
+      }
+  
+      events.hidden = !(live || halfTime || finished);
+  
+      if (!events.hidden) {
+        for (const type of ["goals","corners","cards"]) {
+          const [home, away] = scorePair(raw, type);
+          const value = events.querySelector(
+            `[data-best-event="${type}"] b`
+          );
+          if (value) value.textContent = `${home} × ${away}`;
+        }
+      }
+    }
+  
+    window.cpUpdateHomeBestLiveCard = update;
+  
+    setInterval(() => {
+      if (window.__cpCurrentHomeBestRaw) {
+        update(
+          window.__cpCurrentHomeBestRaw,
+          window.__cpCurrentHomeBestNormalized || {}
+        );
+      }
+    }, 30000);
   })();
   
