@@ -20771,66 +20771,36 @@
   
   
   /* =========================================================
-     CORNER PRO — BARRA INFERIOR FIXA EM TODAS AS ABAS V5
-     Usa a área realmente visível do Safari/iPhone.
+     CORNER PRO — CORREÇÃO FINAL DA POSIÇÃO DA BARRA INFERIOR
+     Mantém a barra presa ao rodapé da tela no iPhone/Safari.
      ========================================================= */
-  (function installCornerProAllTabsBottomNavV5(){
+  (function forceCornerProBottomNavToViewport(){
     "use strict";
   
-    if (window.__cpAllTabsBottomNavV5Installed) return;
-    window.__cpAllTabsBottomNavV5Installed = true;
+    if (window.__cpBottomNavViewportFixInstalled) return;
+    window.__cpBottomNavViewportFixInstalled = true;
   
-    const MOBILE_MAX = 980;
-  
-    function isMobile(){
-      return window.innerWidth <= MOBILE_MAX;
-    }
-  
-    function getNav(){
-      return document.querySelector(
-        "body > .cpHomeBottom.cpGlobalBottomNav"
+    function applyFix(){
+      const nav = document.querySelector(
+        ".cpHomeBottom.cpGlobalBottomNav"
       );
-    }
   
-    function visibleViewport(){
-      const viewport = window.visualViewport;
+      if (!nav) return;
   
-      if (viewport) {
-        return {
-          top: viewport.offsetTop || 0,
-          height: viewport.height || window.innerHeight
-        };
+      if (nav.parentElement !== document.body) {
+        document.body.appendChild(nav);
       }
   
-      return {
-        top: 0,
-        height: window.innerHeight
-      };
-    }
-  
-    function positionNav(){
-      const nav = getNav();
-      if (!nav || !isMobile()) return;
-  
-      const viewport = visibleViewport();
-      const safeHeight = Math.max(
-        68,
-        nav.getBoundingClientRect().height || 76
-      );
-  
-      const top = Math.max(
-        viewport.top,
-        viewport.top + viewport.height - safeHeight
-      );
-  
       nav.style.setProperty("position", "fixed", "important");
+      nav.style.setProperty("top", "auto", "important");
       nav.style.setProperty("left", "0", "important");
-      nav.style.setProperty("right", "auto", "important");
-      nav.style.setProperty("bottom", "auto", "important");
-      nav.style.setProperty("top", `${Math.round(top)}px`, "important");
+      nav.style.setProperty("right", "0", "important");
+      nav.style.setProperty("bottom", "0", "important");
       nav.style.setProperty("width", "100vw", "important");
       nav.style.setProperty("max-width", "100vw", "important");
       nav.style.setProperty("margin", "0", "important");
+      nav.style.setProperty("transform", "none", "important");
+      nav.style.setProperty("-webkit-transform", "none", "important");
       nav.style.setProperty("display", "grid", "important");
       nav.style.setProperty(
         "grid-template-columns",
@@ -20841,115 +20811,18 @@
       nav.style.setProperty("opacity", "1", "important");
       nav.style.setProperty("pointer-events", "auto", "important");
       nav.style.setProperty("z-index", "2147483647", "important");
-      nav.style.setProperty("transform", "translateZ(0)", "important");
-      nav.style.setProperty("-webkit-transform", "translateZ(0)", "important");
-    }
-  
-    function normalize(value){
-      return String(value || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-    }
-  
-    function setActiveFromScreen(){
-      const nav = getNav();
-      if (!nav || !isMobile()) return;
-  
-      const marketLayer =
-        document.getElementById("cpMobileMarketsLayer");
-  
-      const matchLayer =
-        document.getElementById("cpMobileMatchLayer");
-  
-      let activeType = "dashboard";
-  
-      if (matchLayer?.classList.contains("is-open")) {
-        activeType = "live";
-      } else if (marketLayer?.classList.contains("is-open")) {
-        const title = normalize(
-          document.getElementById("cpMobileMarketsTitle")?.textContent
-        );
-  
-        activeType = title.includes("escante")
-          ? "corners"
-          : "pregame";
-      }
-  
-      nav.querySelectorAll("button").forEach(button => {
-        const text = normalize(button.textContent);
-        const type =
-          text.includes("dashboard") ? "dashboard" :
-          text.includes("pre-jogo") || text.includes("pre jogo") ? "pregame" :
-          text.includes("ao vivo") ? "live" :
-          text.includes("escante") ? "corners" :
-          text.includes("mais") ? "more" :
-          "";
-  
-        button.classList.toggle("active", type === activeType);
-      });
-    }
-  
-    function refresh(){
-      requestAnimationFrame(() => {
-        positionNav();
-        setActiveFromScreen();
-      });
-    }
-  
-    function observeLayers(){
-      const observer = new MutationObserver(refresh);
-  
-      [
-        "cpMobileMarketsLayer",
-        "cpMobileMatchLayer"
-      ].forEach(id => {
-        const layer = document.getElementById(id);
-  
-        if (layer) {
-          observer.observe(layer, {
-            attributes: true,
-            attributeFilter: ["class", "aria-hidden", "style"]
-          });
-        }
-      });
     }
   
     function initialize(){
-      const nav = getNav();
-      if (!nav) return;
+      applyFix();
   
-      positionNav();
-      setActiveFromScreen();
-      observeLayers();
-  
-      const viewport = window.visualViewport;
-  
-      if (viewport) {
-        viewport.addEventListener("resize", refresh);
-        viewport.addEventListener("scroll", refresh);
-      }
-  
-      window.addEventListener("resize", refresh);
-      window.addEventListener("orientationchange", refresh);
-      window.addEventListener("scroll", refresh, { passive: true });
-  
-      document.addEventListener("click", event => {
-        if (
-          event.target.closest(
-            "[data-home-market]," +
-            "[data-cp-market]," +
-            "[data-cp-close]," +
-            "#cpHomeBestOpen," +
-            "#cpHomeMatchOpen"
-          )
-        ) {
-          setTimeout(refresh, 0);
-          setTimeout(refresh, 180);
-        }
-      }, true);
-  
-      setInterval(refresh, 1200);
+      const observer = new MutationObserver(applyFix);
+      observer.observe(document.body, {
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:["class","style"]
+      });
     }
   
     if (document.readyState === "loading") {
@@ -20958,7 +20831,152 @@
       initialize();
     }
   
-    setTimeout(initialize, 250);
-    setTimeout(refresh, 900);
+    window.addEventListener("resize", applyFix);
+    window.addEventListener("orientationchange", applyFix);
+    window.addEventListener("scroll", applyFix, {passive:true});
+  
+    setTimeout(applyFix, 100);
+    setTimeout(applyFix, 600);
+    setTimeout(applyFix, 1500);
+  })();
+  
+  
+  /* =========================================================
+     CORNER PRO — CONTROLE DA BARRA ORIGINAL EM TODAS AS ABAS
+     ========================================================= */
+  (function installCornerProGlobalTabsNav(){
+    "use strict";
+  
+    if (window.__cpGlobalTabsNavInstalled) return;
+    window.__cpGlobalTabsNavInstalled = true;
+  
+    function nav(){
+      return document.querySelector(
+        "body > .mobileBottomNav.cpGlobalTabsNav"
+      );
+    }
+  
+    function setActive(type){
+      nav()?.querySelectorAll("[data-global-tab]").forEach(button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.globalTab === type
+        );
+      });
+    }
+  
+    function closeLayers(){
+      document.querySelectorAll(
+        ".cpMobileLayer.is-open," +
+        ".cpMobileMarketsLayer.is-open," +
+        ".cpMobileMatchLayer.is-open"
+      ).forEach(layer => {
+        layer.classList.remove("is-open");
+        layer.setAttribute("aria-hidden", "true");
+      });
+  
+      document.body.classList.remove("cpMobileLayerOpen");
+    }
+  
+    function dashboard(){
+      closeLayers();
+  
+      const home = document.getElementById("cpMobileHome");
+      if (home) {
+        home.hidden = false;
+        home.style.display = "";
+      }
+  
+      window.scrollTo({top:0,left:0,behavior:"smooth"});
+      setActive("dashboard");
+    }
+  
+    function openMarket(type){
+      document.querySelector(
+        `[data-home-market="${type}"],[data-cp-market="${type}"]`
+      )?.click();
+  
+      setActive(type === "corners" ? "corners" : "pregame");
+    }
+  
+    function live(){
+      (
+        document.getElementById("cpHomeMatchOpen") ||
+        document.getElementById("cpHomeBestOpen")
+      )?.click();
+  
+      setActive("live");
+    }
+  
+    function more(){
+      document.querySelector(".cpHomeMenu")?.click();
+      setActive("more");
+    }
+  
+    document.addEventListener("click", event => {
+      const button = event.target.closest(
+        "body > .mobileBottomNav.cpGlobalTabsNav [data-global-tab]"
+      );
+  
+      if (!button) return;
+  
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+  
+      const type = button.dataset.globalTab;
+  
+      if (type === "dashboard") dashboard();
+      else if (type === "pregame") openMarket("pregame");
+      else if (type === "live") live();
+      else if (type === "corners") openMarket("corners");
+      else if (type === "more") more();
+    }, true);
+  
+    function sync(){
+      const marketLayer = document.getElementById("cpMobileMarketsLayer");
+      const matchLayer = document.getElementById("cpMobileMatchLayer");
+  
+      if (matchLayer?.classList.contains("is-open")) {
+        setActive("live");
+        return;
+      }
+  
+      if (marketLayer?.classList.contains("is-open")) {
+        const title = String(
+          document.getElementById("cpMobileMarketsTitle")?.textContent || ""
+        ).toLowerCase();
+  
+        setActive(title.includes("escante") ? "corners" : "pregame");
+        return;
+      }
+  
+      setActive("dashboard");
+    }
+  
+    function observe(){
+      const observer = new MutationObserver(sync);
+  
+      ["cpMobileMarketsLayer","cpMobileMatchLayer"].forEach(id => {
+        const layer = document.getElementById(id);
+  
+        if (layer) {
+          observer.observe(layer, {
+            attributes:true,
+            attributeFilter:["class","aria-hidden"]
+          });
+        }
+      });
+    }
+  
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        observe();
+        sync();
+      });
+    } else {
+      observe();
+      sync();
+    }
   })();
   
