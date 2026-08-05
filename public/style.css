@@ -15115,945 +15115,368 @@ button.railFullBtn {
   }
 }
 
-
 /* =========================================================
-   CORNER PRO — CARD PRINCIPAL AO VIVO V10
-   Somente #cpHomeBest.
+   CARD PRINCIPAL MOBILE — BLOCO ÚNICO E LIMPO
+   Estados: pré-jogo, começa em até 20 min, ao vivo,
+   intervalo e encerrado.
    ========================================================= */
 @media (max-width:980px){
 
-  #cpHomeBest{
-    position:relative!important;
-    width:100%!important;
-    min-height:330px!important;
-    height:auto!important;
-    padding:16px 15px 14px!important;
-    display:flex!important;
-    flex-direction:column!important;
-    border-radius:21px!important;
-    overflow:hidden!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) auto!important;
-    align-items:center!important;
-    gap:10px!important;
-    min-height:38px!important;
-    margin:0!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop > b{
-    min-width:0!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-    white-space:nowrap!important;
-    font-size:11px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop > span{
-    min-width:66px!important;
-    text-align:right!important;
-    white-space:nowrap!important;
-    font-size:10px!important;
-  }
-
-  #cpHomeBest .cpHomeMarketDots{
-    margin:5px auto 7px!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar{
-    width:max-content!important;
-    max-width:100%!important;
-    min-height:30px!important;
-    margin:0 auto 8px!important;
-    padding:6px 11px!important;
-
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:7px!important;
-
-    border-radius:999px!important;
-    font-size:9px!important;
-    line-height:1!important;
-    font-weight:900!important;
-    white-space:nowrap!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar[hidden]{
-    display:none!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar > i{
-    width:7px!important;
-    height:7px!important;
-    border-radius:50%!important;
-    background:currentColor!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar.is-soon{
-    color:#80f337!important;
-    background:rgba(128,243,55,.10)!important;
-    border:1px solid rgba(128,243,55,.42)!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar.is-live{
-    color:#fff!important;
-    background:#d83d47!important;
-    border:1px solid rgba(255,255,255,.16)!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar.is-halftime{
-    color:#ffc94a!important;
-    background:rgba(255,174,30,.10)!important;
-    border:1px solid rgba(255,174,30,.48)!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar.is-finished{
-    color:#d4dcda!important;
-    background:#10191d!important;
-    border:1px solid #2c3a40!important;
-  }
-
-  #cpHomeBest .cpHomeBestBody{
-    width:100%!important;
-    min-height:145px!important;
-    margin:0!important;
-    padding:4px 0 7px!important;
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    justify-content:center!important;
-  }
-
-  #cpHomeBest .cpHomeBestBody > time{
-    min-width:72px!important;
-    height:30px!important;
-    margin:0 auto 8px!important;
-    padding:0 10px!important;
-
-    display:inline-flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-
-    border-radius:9px!important;
-    font-size:10px!important;
-    white-space:nowrap!important;
-  }
-
-  #cpHomeBest .cpHomeBestTeams{
-    position:relative!important;
-    width:100%!important;
-    min-height:92px!important;
-    margin:0!important;
-
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr)!important;
-    align-items:end!important;
-    gap:6px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTeams > strong{
-    min-width:0!important;
-    padding:55px 4px 8px!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-    white-space:nowrap!important;
-    text-align:center!important;
-    font-size:12px!important;
-    line-height:1.1!important;
-  }
-
-  #cpHomeBest .cpHomeBestVersus{
-    align-self:center!important;
-    justify-self:center!important;
-    margin-top:28px!important;
-    font-size:15px!important;
-    color:#718086!important;
-    font-style:normal!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore{
-    align-self:center!important;
-    justify-self:center!important;
-    margin-top:27px!important;
-
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:7px!important;
-
-    color:#fff!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore[hidden]{
-    display:none!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore b{
-    min-width:25px!important;
-    font-size:24px!important;
-    line-height:1!important;
-    font-weight:950!important;
-    text-align:center!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore i{
-    color:#748187!important;
-    font-size:12px!important;
-    font-style:normal!important;
-  }
-
-  #cpHomeBest .cpBestTeamBadge{
-    top:2px!important;
-    width:46px!important;
-    height:46px!important;
-  }
-
-  #cpHomeBest .cpHomeBestConfidence{
-    display:none!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats{
-    width:100%!important;
-    margin:2px 0 9px!important;
-    padding:7px!important;
-
-    display:grid!important;
-    grid-template-columns:1fr 1fr!important;
-    gap:7px!important;
-
-    border:1px solid #1b2b31!important;
-    border-radius:12px!important;
-    background:rgba(4,10,13,.58)!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats[hidden]{
-    display:none!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats > div{
-    min-width:0!important;
-    min-height:42px!important;
-    padding:6px 8px!important;
-
-    display:grid!important;
-    grid-template-columns:20px minmax(0,1fr)!important;
-    grid-template-rows:auto auto!important;
-    align-items:center!important;
-    column-gap:5px!important;
-
-    border-radius:9px!important;
-    background:#081216!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats i{
-    grid-row:1 / 3!important;
-    color:#80f337!important;
-    font-size:16px!important;
-    font-style:normal!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats small{
-    color:#8d999c!important;
-    font-size:7px!important;
-    font-weight:800!important;
-    white-space:nowrap!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats b{
-    color:#f5f7f6!important;
-    font-size:11px!important;
-    font-weight:900!important;
-  }
-
-  #cpHomeBest #cpHomeBestOpen{
-    width:100%!important;
-    min-height:46px!important;
-    margin-top:auto!important;
-    border-radius:12px!important;
-    font-size:10.5px!important;
-  }
-
-  #cpHomeBest.is-match-live,
-  #cpHomeBest.is-match-halftime,
-  #cpHomeBest.is-match-finished{
-    min-height:382px!important;
-  }
-
-  #cpHomeBest.is-match-soon{
-    min-height:350px!important;
-  }
-}
-
-
-/* =========================================================
-   CORNER PRO — CARD PRINCIPAL COMPACTO V11
-   Somente tamanho e espaçamento do card principal.
-   Mantém toda a lógica de status da V10.
-   ========================================================= */
-@media (max-width:980px){
-
-  /* Estado normal: card bem mais compacto. */
-  #cpHomeBest{
-    min-height:0!important;
-    height:auto!important;
-    padding:14px 14px 12px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop{
-    min-height:34px!important;
-    gap:8px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop > b{
-    min-height:34px!important;
-    padding:0 11px!important;
-    font-size:10.5px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTop > span{
-    min-width:62px!important;
-    font-size:9.5px!important;
-  }
-
-  #cpHomeBest .cpHomeMarketDots{
-    height:17px!important;
-    margin:4px auto 3px!important;
-  }
-
-  #cpHomeBest .cpHomeBestStatusBar{
-    min-height:28px!important;
-    margin:2px auto 6px!important;
-    padding:5px 10px!important;
-    font-size:8.5px!important;
-  }
-
-  #cpHomeBest .cpHomeBestBody{
-    min-height:0!important;
-    height:auto!important;
-    padding:2px 0 5px!important;
-    justify-content:flex-start!important;
-  }
-
-  #cpHomeBest .cpHomeBestBody > time{
-    min-width:66px!important;
-    height:29px!important;
-    margin:0 auto 4px!important;
-    padding:0 9px!important;
-    font-size:9.5px!important;
-  }
-
-  #cpHomeBest .cpHomeBestTeams{
-    min-height:126px!important;
-    height:126px!important;
-    grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr)!important;
-    gap:4px!important;
-    align-items:end!important;
-  }
-
-  #cpHomeBest .cpHomeBestTeams > strong{
-    padding:66px 3px 8px!important;
-    font-size:11.5px!important;
-    line-height:1.05!important;
-  }
-
-  #cpHomeBest .cpHomeBestVersus{
-    margin-top:30px!important;
-    font-size:14px!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore{
-    margin-top:30px!important;
-    gap:6px!important;
-  }
-
-  #cpHomeBest .cpHomeBestScore b{
-    min-width:22px!important;
-    font-size:22px!important;
-  }
-
-  #cpHomeBest .cpBestTeamBadge{
-    top:13px!important;
-    width:45px!important;
-    height:45px!important;
-    border-radius:13px!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats{
-    margin:3px 0 7px!important;
-    padding:6px!important;
-    gap:6px!important;
-  }
-
-  #cpHomeBest .cpHomeBestLiveStats > div{
-    min-height:39px!important;
-    padding:5px 7px!important;
-  }
-
-  #cpHomeBest #cpHomeBestOpen{
-    min-height:44px!important;
-    height:44px!important;
-    margin-top:3px!important;
-    font-size:10px!important;
-  }
-
-  /* Pré-jogo normal: sem espaço reservado para estatísticas. */
-  #cpHomeBest:not(.has-match-data):not(.is-match-soon){
-    min-height:292px!important;
-  }
-
-  /* Nos 20 minutos anteriores, cresce só o necessário. */
-  #cpHomeBest.is-match-soon{
-    min-height:318px!important;
-  }
-
-  /* Ao vivo, intervalo e encerrado recebem espaço para os dados. */
-  #cpHomeBest.is-match-live,
-  #cpHomeBest.is-match-halftime,
-  #cpHomeBest.is-match-finished{
-    min-height:352px!important;
-  }
-
-  /* Remove qualquer altura antiga que ainda esteja dominando. */
-  #cpHomeBest:not(.is-loading-initial) .cpHomeInitialLoading{
-    display:none!important;
-  }
-}
-
-
-/* =========================================================
-   CORNER PRO — CARD PRINCIPAL E CLONES COMPACTOS V12
-   Corrige o tamanho real do carrossel dos três cards.
-   ========================================================= */
-@media (max-width:980px){
-
-  /* O contêiner do carrossel não pode conservar a altura antiga. */
   .cpHomeSwipeViewport{
-    width:100%!important;
-    height:294px!important;
-    min-height:294px!important;
-    max-height:294px!important;
-    overflow:hidden!important;
+    --cp-card-height:286px;
+    width:100%;
+    height:var(--cp-card-height);
+    min-height:var(--cp-card-height);
+    max-height:var(--cp-card-height);
+    overflow:hidden;
+    border-radius:18px;
+    transition:height .22s ease,min-height .22s ease,max-height .22s ease;
   }
+
+  .cpHomeSwipeViewport.is-soon{--cp-card-height:310px}
+  .cpHomeSwipeViewport.is-live,
+  .cpHomeSwipeViewport.is-halftime,
+  .cpHomeSwipeViewport.is-finished{--cp-card-height:344px}
 
   .cpHomeSwipeTrack{
-    height:294px!important;
-    min-height:294px!important;
-    max-height:294px!important;
-    align-items:stretch!important;
+    display:flex;
+    flex-wrap:nowrap;
+    width:100%;
+    height:var(--cp-card-height);
+    min-height:var(--cp-card-height);
+    max-height:var(--cp-card-height);
+    align-items:flex-start;
+    transition:height .22s ease;
   }
 
-  /* Aplica o mesmo formato ao original e aos dois clones. */
   .cpHomeSwipeTrack > #cpHomeBest,
   .cpHomeSwipeTrack > .cpHomeBestClone{
-    box-sizing:border-box!important;
-    flex:0 0 100%!important;
-
-    width:100%!important;
-    height:294px!important;
-    min-height:294px!important;
-    max-height:294px!important;
-
-    margin:0!important;
-    padding:13px 14px 11px!important;
-    overflow:hidden!important;
+    box-sizing:border-box;
+    flex:0 0 100%;
+    width:100%;
+    min-width:100%;
+    max-width:100%;
+    height:var(--cp-card-height);
+    min-height:var(--cp-card-height);
+    max-height:var(--cp-card-height);
+    margin:0;
+    padding:11px 14px 10px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
   }
 
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop{
-    min-height:34px!important;
-    height:34px!important;
-    margin:0!important;
+  #cpHomeBest,
+  .cpHomeBestClone{
+    --cp-card-height:286px;
   }
 
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > b{
-    min-height:34px!important;
-    height:34px!important;
-    padding:0 10px!important;
-    font-size:10.5px!important;
+  #cpHomeBest.is-match-soon,
+  .cpHomeBestClone.is-match-soon{
+    --cp-card-height:310px;
   }
 
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > span{
-    font-size:9.5px!important;
+  #cpHomeBest.is-match-live,
+  #cpHomeBest.is-match-halftime,
+  #cpHomeBest.is-match-finished,
+  .cpHomeBestClone.is-match-live,
+  .cpHomeBestClone.is-match-halftime,
+  .cpHomeBestClone.is-match-finished{
+    --cp-card-height:344px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeSwipeGuide{
+    display:none;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeMarketDots{
-    position:relative!important;
-    inset:auto!important;
-    height:16px!important;
-    margin:4px auto 2px!important;
+    position:relative;
+    inset:auto;
+    flex:0 0 12px;
+    width:auto;
+    height:12px;
+    min-height:12px;
+    margin:1px auto 3px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop{
+    position:relative;
+    inset:auto;
+    flex:0 0 35px;
+    width:100%;
+    height:35px;
+    min-height:35px;
+    max-height:35px;
+    margin:0;
+    gap:8px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > b{
+    min-width:0;
+    height:35px;
+    min-height:35px;
+    padding:0 10px;
+    font-size:10px;
+    line-height:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > span{
+    flex:none;
+    font-size:9px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar{
+    position:relative;
+    inset:auto;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    flex:0 0 26px;
+    width:max-content;
+    max-width:calc(100% - 12px);
+    height:26px;
+    min-height:26px;
+    max-height:26px;
+    margin:3px auto 2px;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:.35px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar[hidden]{
+    display:none;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar > i{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:currentColor;
+    flex:none;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-soon{
+    color:#e8ffdd;
+    background:rgba(99,241,39,.12);
+    border:1px solid rgba(99,241,39,.34);
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-live{
+    color:#ff6565;
+    background:rgba(255,68,68,.10);
+    border:1px solid rgba(255,68,68,.30);
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-halftime{
+    color:#ffd26c;
+    background:rgba(255,191,58,.10);
+    border:1px solid rgba(255,191,58,.28);
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-finished{
+    color:#c7d0d1;
+    background:rgba(199,208,209,.08);
+    border:1px solid rgba(199,208,209,.20);
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody{
-    min-height:0!important;
-    height:171px!important;
-    padding:0!important;
-    margin:0!important;
-    display:flex!important;
-    flex-direction:column!important;
-    justify-content:flex-start!important;
+    position:relative;
+    inset:auto;
+    flex:0 0 151px;
+    width:100%;
+    height:151px;
+    min-height:151px;
+    max-height:151px;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    overflow:hidden;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).has-match-data .cpHomeBestBody{
+    flex-basis:139px;
+    height:139px;
+    min-height:139px;
+    max-height:139px;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody > time{
-    position:relative!important;
-    inset:auto!important;
-    min-width:64px!important;
-    height:28px!important;
-    margin:0 auto 2px!important;
-    padding:0 9px!important;
-    font-size:9.5px!important;
+    position:relative;
+    inset:auto;
+    flex:0 0 27px;
+    min-width:62px;
+    width:max-content;
+    height:27px;
+    min-height:27px;
+    max-height:27px;
+    margin:0 auto;
+    padding:0 9px;
+    font-size:9.5px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).has-match-data .cpHomeBestBody > time{
+    display:none;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams{
-    position:relative!important;
-    inset:auto!important;
-    transform:none!important;
-
-    width:100%!important;
-    height:136px!important;
-    min-height:136px!important;
-    max-height:136px!important;
-    margin:0!important;
-
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr)!important;
-    align-items:end!important;
-    gap:3px!important;
+    position:relative;
+    inset:auto;
+    transform:none;
+    flex:1 1 auto;
+    width:100%;
+    height:auto;
+    min-height:0;
+    max-height:none;
+    margin:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);
+    align-items:end;
+    gap:4px;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong{
-    max-width:none!important;
-    min-width:0!important;
-    padding:64px 3px 8px!important;
-    font-size:11.5px!important;
-    line-height:1.05!important;
+    min-width:0;
+    max-width:none;
+    padding:57px 3px 7px;
+    font-size:11.5px;
+    line-height:1.08;
+    white-space:normal;
+    overflow-wrap:anywhere;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge{
-    top:17px!important;
-    width:43px!important;
-    height:43px!important;
-    border-radius:12px!important;
+    top:9px;
+    width:43px;
+    height:43px;
+    border-radius:12px;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestVersus,
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > i{
-    margin-top:30px!important;
-    font-size:14px!important;
+    margin:0 0 12px;
+    font-size:14px;
   }
 
-  /* Botão deixa de ficar absolutamente preso no fundo antigo. */
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore{
+    align-self:end;
+    margin:0 0 8px;
+    gap:5px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore b{
+    min-width:20px;
+    font-size:20px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestConfidence{
+    display:none;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats{
+    position:relative;
+    inset:auto;
+    flex:0 0 48px;
+    width:100%;
+    height:48px;
+    min-height:48px;
+    max-height:48px;
+    margin:2px 0 4px;
+    padding:4px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+    border-radius:11px;
+    background:rgba(3,8,10,.38);
+    border:1px solid rgba(255,255,255,.05);
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats[hidden],
+  :is(#cpHomeBest,.cpHomeBestClone):not(.has-match-data) .cpHomeBestLiveStats{
+    display:none;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div{
+    min-width:0;
+    height:40px;
+    min-height:40px;
+    padding:3px 4px;
+    display:grid;
+    grid-template-columns:17px minmax(0,1fr);
+    grid-template-rows:auto auto;
+    align-items:center;
+    column-gap:3px;
+    border-radius:8px;
+    background:#081216;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats i{
+    grid-row:1 / 3;
+    color:#80f337;
+    font-size:14px;
+    font-style:normal;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats small{
+    color:#8d999c;
+    font-size:6.4px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats b{
+    color:#f5f7f6;
+    font-size:9.2px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
   :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestOpen,
   .cpHomeBestClone [data-clone-id="cpHomeBestOpen"]{
-    position:relative!important;
-    inset:auto!important;
-
-    width:100%!important;
-    height:43px!important;
-    min-height:43px!important;
-    max-height:43px!important;
-
-    margin:4px 0 0!important;
-    padding:0 12px!important;
-    border-radius:11px!important;
-    font-size:9.8px!important;
-  }
-
-  /* Esconde blocos que não devem reservar espaço no pré-jogo normal. */
-  :is(#cpHomeBest,.cpHomeBestClone):not(.has-match-data)
-  .cpHomeBestLiveStats{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone)
-  .cpHomeBestConfidence{
-    display:none!important;
-  }
-
-  /* Estados que precisam de estatísticas ganham altura controlada. */
-  .cpHomeSwipeViewport:has(#cpHomeBest.is-match-soon){
-    height:320px!important;
-    min-height:320px!important;
-    max-height:320px!important;
-  }
-
-  .cpHomeSwipeViewport:has(#cpHomeBest.is-match-live),
-  .cpHomeSwipeViewport:has(#cpHomeBest.is-match-halftime),
-  .cpHomeSwipeViewport:has(#cpHomeBest.is-match-finished){
-    height:358px!important;
-    min-height:358px!important;
-    max-height:358px!important;
-  }
-
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-soon),
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-soon) > #cpHomeBest,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-soon) > .cpHomeBestClone{
-    height:320px!important;
-    min-height:320px!important;
-    max-height:320px!important;
-  }
-
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-live),
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-halftime),
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-finished),
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-live) > #cpHomeBest,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-live) > .cpHomeBestClone,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-halftime) > #cpHomeBest,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-halftime) > .cpHomeBestClone,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-finished) > #cpHomeBest,
-  .cpHomeSwipeTrack:has(#cpHomeBest.is-match-finished) > .cpHomeBestClone{
-    height:358px!important;
-    min-height:358px!important;
-    max-height:358px!important;
+    position:relative;
+    inset:auto;
+    flex:0 0 39px;
+    width:100%;
+    height:39px;
+    min-height:39px;
+    max-height:39px;
+    margin:auto 0 0;
+    padding:0 12px;
+    border-radius:10px;
+    font-size:9.4px;
   }
 }
 
 @media (max-width:390px){
   .cpHomeSwipeViewport,
-  .cpHomeSwipeTrack,
-  .cpHomeSwipeTrack > #cpHomeBest,
-  .cpHomeSwipeTrack > .cpHomeBestClone{
-    height:286px!important;
-    min-height:286px!important;
-    max-height:286px!important;
+  #cpHomeBest,
+  .cpHomeBestClone{
+    --cp-card-height:280px;
   }
 
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody{
-    height:164px!important;
+  .cpHomeSwipeViewport.is-soon,
+  #cpHomeBest.is-match-soon,
+  .cpHomeBestClone.is-match-soon{
+    --cp-card-height:304px;
   }
 
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams{
-    height:130px!important;
-    min-height:130px!important;
-    max-height:130px!important;
+  .cpHomeSwipeViewport.is-live,
+  .cpHomeSwipeViewport.is-halftime,
+  .cpHomeSwipeViewport.is-finished,
+  #cpHomeBest.is-match-live,
+  #cpHomeBest.is-match-halftime,
+  #cpHomeBest.is-match-finished,
+  .cpHomeBestClone.is-match-live,
+  .cpHomeBestClone.is-match-halftime,
+  .cpHomeBestClone.is-match-finished{
+    --cp-card-height:338px;
   }
-}
-
-
-/* =========================================================
-   CORNER PRO — AVISO E ESTADOS DO CARD V15
-   ========================================================= */
-@media (max-width:980px){
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar{
-    display:flex!important;
-    position:relative!important;
-    inset:auto!important;
-    z-index:30!important;
-    width:max-content!important;
-    max-width:calc(100% - 18px)!important;
-    min-height:29px!important;
-    margin:3px auto 6px!important;
-    padding:5px 10px!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:6px!important;
-    border-radius:999px!important;
-    font-size:8.5px!important;
-    line-height:1!important;
-    font-weight:900!important;
-    white-space:nowrap!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar[hidden]{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar > i{
-    display:block!important;
-    width:7px!important;
-    height:7px!important;
-    flex:none!important;
-    border-radius:50%!important;
-    background:currentColor!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-soon{
-    color:#83f63c!important;
-    background:#0b2411!important;
-    border:1px solid rgba(131,246,60,.62)!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-live{
-    color:#fff!important;
-    background:#df3e48!important;
-    border:1px solid rgba(255,255,255,.18)!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-halftime{
-    color:#ffcb4b!important;
-    background:#251b08!important;
-    border:1px solid rgba(255,203,75,.62)!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-finished{
-    color:#e0e6e4!important;
-    background:#121b1f!important;
-    border:1px solid #39484f!important;
-  }
-}
-/* =========================================================
-   CORNER PRO — CARD PRINCIPAL COMPACTO E DINÂMICO V16
-   Última regra do arquivo: elimina o espaço vazio e mantém
-   pré-jogo, aviso, ao vivo, intervalo e encerrado organizados.
-   ========================================================= */
-@media (max-width:980px){
-
-  .cpHomeSwipeViewport{
-    --cp-active-card-height:286px;
-    width:100%!important;
-    height:var(--cp-active-card-height)!important;
-    min-height:var(--cp-active-card-height)!important;
-    max-height:var(--cp-active-card-height)!important;
-    overflow:hidden!important;
-    transition:height .24s ease,min-height .24s ease,max-height .24s ease!important;
-  }
-
-  .cpHomeSwipeTrack{
-    height:var(--cp-active-card-height)!important;
-    min-height:var(--cp-active-card-height)!important;
-    max-height:var(--cp-active-card-height)!important;
-    align-items:flex-start!important;
-    transition:height .24s ease!important;
-  }
-
-  .cpHomeSwipeTrack > #cpHomeBest,
-  .cpHomeSwipeTrack > .cpHomeBestClone{
-    box-sizing:border-box!important;
-    flex:0 0 100%!important;
-    width:100%!important;
-    height:var(--cp-card-height,286px)!important;
-    min-height:var(--cp-card-height,286px)!important;
-    max-height:var(--cp-card-height,286px)!important;
-    margin:0!important;
-    padding:12px 14px 11px!important;
-    overflow:hidden!important;
-    display:flex!important;
-    flex-direction:column!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon{
-    --cp-card-height:310px;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-live,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished{
-    --cp-card-height:342px;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeSwipeGuide{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeMarketDots{
-    position:relative!important;
-    inset:auto!important;
-    flex:0 0 13px!important;
-    height:13px!important;
-    margin:1px auto 3px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop{
-    flex:0 0 35px!important;
-    min-height:35px!important;
-    height:35px!important;
-    margin:0!important;
-    gap:8px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > b{
-    min-width:0!important;
-    height:35px!important;
-    min-height:35px!important;
-    padding:0 10px!important;
-    font-size:10.2px!important;
-    line-height:1.05!important;
-    white-space:nowrap!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > span{
-    flex:none!important;
-    font-size:9.2px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar{
-    flex:0 0 auto!important;
-    min-height:25px!important;
-    height:25px!important;
-    max-width:calc(100% - 12px)!important;
-    margin:3px auto 2px!important;
-    padding:4px 9px!important;
-    font-size:8px!important;
-    line-height:1!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar[hidden]{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody{
-    flex:0 0 149px!important;
-    min-height:149px!important;
-    height:149px!important;
-    max-height:149px!important;
-    padding:0!important;
-    margin:0!important;
-    display:flex!important;
-    flex-direction:column!important;
-    justify-content:flex-start!important;
-    overflow:visible!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon .cpHomeBestBody{
-    flex-basis:148px!important;
-    height:148px!important;
-    min-height:148px!important;
-    max-height:148px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone).has-match-data .cpHomeBestBody{
-    flex-basis:140px!important;
-    height:140px!important;
-    min-height:140px!important;
-    max-height:140px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody > time{
-    position:relative!important;
-    inset:auto!important;
-    flex:0 0 27px!important;
-    min-width:62px!important;
-    height:27px!important;
-    margin:0 auto 1px!important;
-    padding:0 9px!important;
-    font-size:9.5px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-live .cpHomeBestBody > time,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime .cpHomeBestBody > time,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished .cpHomeBestBody > time{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams{
-    position:relative!important;
-    inset:auto!important;
-    transform:none!important;
-    width:100%!important;
-    flex:1 1 auto!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin:0!important;
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr)!important;
-    align-items:end!important;
-    gap:4px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong{
-    min-width:0!important;
-    max-width:none!important;
-    padding:57px 3px 7px!important;
-    font-size:11.5px!important;
-    line-height:1.08!important;
-    white-space:normal!important;
-    overflow-wrap:anywhere!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge{
-    top:9px!important;
-    width:43px!important;
-    height:43px!important;
-    border-radius:12px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestVersus,
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > i{
-    margin:0 0 12px!important;
-    font-size:14px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore{
-    align-self:end!important;
-    margin:0 0 8px!important;
-    gap:5px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore b{
-    min-width:20px!important;
-    font-size:20px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestConfidence{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats{
-    flex:0 0 46px!important;
-    height:46px!important;
-    min-height:46px!important;
-    margin:2px 0 4px!important;
-    padding:4px!important;
-    gap:5px!important;
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats[hidden],
-  :is(#cpHomeBest,.cpHomeBestClone):not(.has-match-data) .cpHomeBestLiveStats{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div{
-    min-width:0!important;
-    min-height:38px!important;
-    height:38px!important;
-    padding:3px 6px!important;
-    display:grid!important;
-    grid-template-columns:18px minmax(0,1fr) auto!important;
-    align-items:center!important;
-    gap:4px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > i{
-    font-size:15px!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > small{
-    font-size:7.2px!important;
-    white-space:nowrap!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > b{
-    font-size:10px!important;
-    white-space:nowrap!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestOpen,
-  .cpHomeBestClone [data-clone-id="cpHomeBestOpen"]{
-    position:relative!important;
-    inset:auto!important;
-    flex:0 0 39px!important;
-    width:100%!important;
-    height:39px!important;
-    min-height:39px!important;
-    max-height:39px!important;
-    margin-top:auto!important;
-    padding:0 12px!important;
-    border-radius:10px!important;
-    font-size:9.4px!important;
-  }
-}
-
-@media (max-width:390px){
-  .cpHomeSwipeViewport{--cp-active-card-height:280px}
-  .cpHomeSwipeTrack > #cpHomeBest,
-  .cpHomeSwipeTrack > .cpHomeBestClone{--cp-card-height:280px}
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon{--cp-card-height:304px}
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-live,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime,
-  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished{--cp-card-height:336px}
 }

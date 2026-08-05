@@ -20597,591 +20597,392 @@
       sync();
     }
   })();
-  
-  
-  /* =========================================================
-     CORNER PRO — ESTADOS DO CARD PRINCIPAL V15
-     Aviso pré-jogo independente + atualização persistente.
-     ========================================================= */
-  (function installHomeBestStatesV15(){
-    "use strict";
 
-    if (window.__cpHomeBestStatesV15Installed) return;
-    window.__cpHomeBestStatesV15Installed = true;
+/* =========================================================
+   ESTADOS DO CARD PRINCIPAL — CONTROLADOR ÚNICO
+   ========================================================= */
+(() => {
+  "use strict";
 
-    function clean(value){
-      return String(value ?? "").trim();
+  if (window.__cpHomeBestStateController) return;
+  window.__cpHomeBestStateController = true;
+
+  const CARD_SELECTOR = "#cpHomeBest,.cpHomeBestClone";
+
+  function clean(value) {
+    return String(value ?? "").trim().toLowerCase();
+  }
+
+  function number(...values) {
+    for (const value of values) {
+      const n = Number(String(value ?? "").replace(",", "."));
+      if (Number.isFinite(n)) return n;
     }
+    return 0;
+  }
 
-    function number(...values){
-      for (const value of values) {
-        if (value === null || value === undefined || value === "") continue;
-        const found = String(value).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
-        if (!found) continue;
-        const parsed = Number(found[0]);
-        if (Number.isFinite(parsed)) return parsed;
-      }
-      return 0;
+  function field(card, id) {
+    if (!card) return null;
+    if (card.id === "cpHomeBest") {
+      return card.querySelector(`#${id}`);
     }
+    return card.querySelector(`[data-clone-id="${id}"]`);
+  }
 
-    function field(card, id){
-      if (!card) return null;
-      return card.id === "cpHomeBest"
-        ? card.querySelector(`#${id}`)
-        : card.querySelector(`[data-clone-id="${id}"]`);
+  function setText(card, id, value) {
+    const element = field(card, id);
+    if (element) element.textContent = String(value ?? "");
+  }
+
+  function statusText(raw) {
+    return clean(
+      raw?.status ??
+      raw?.match_status ??
+      raw?.event_status ??
+      raw?.status_long ??
+      raw?.event_raw?.match_status
+    );
+  }
+
+  function minuteValue(raw) {
+    const values = [
+      raw?.minute,
+      raw?.elapsed,
+      raw?.match_minute,
+      raw?.event_minute,
+      raw?.time_elapsed,
+      raw?.event_raw?.match_status
+    ];
+
+    for (const value of values) {
+      const match = String(value ?? "").match(/\b(\d{1,3})(?:\+(\d{1,2}))?\b/);
+      if (!match) continue;
+      const base = Number(match[1]);
+      const extra = Number(match[2] || 0);
+      if (Number.isFinite(base)) return { base, extra };
     }
+    return null;
+  }
 
-    function setText(card, id, value){
-      const node = field(card, id);
-      if (node) node.textContent = String(value);
-    }
+  function minuteLabel(raw) {
+    const minute = minuteValue(raw);
+    if (!minute) return "";
+    return minute.extra ? `${minute.base}+${minute.extra}'` : `${minute.base}'`;
+  }
 
-    function nowManaus(){
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone:"America/Manaus",
-        year:"numeric",
-        month:"2-digit",
-        day:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit",
-        second:"2-digit",
-        hourCycle:"h23"
-      }).formatToParts(new Date());
+  function isHalfTime(raw) {
+    const status = statusText(raw);
+    return ["half time", "halftime", "intervalo", "ht", "break"]
+      .some(label => status === label || status.includes(label));
+  }
 
-      return Object.fromEntries(parts.map(part => [part.type, part.value]));
-    }
+  function isFinished(raw) {
+    const status = statusText(raw);
+    return [
+      "finished", "match finished", "full time", "full-time",
+      "encerrado", "finalizado", "resultado final", "ft", "ended"
+    ].some(label => status === label || status.includes(label));
+  }
 
-    function visibleTime(card){
-      const node = field(card, "cpHomeBestTime");
-      const text = clean(node?.textContent);
-      const found = text.match(/(\d{1,2}):(\d{2})/);
-      return found
-        ? { hour:Number(found[1]), minute:Number(found[2]) }
-        : null;
-    }
+  function isLive(raw) {
+    if (isFinished(raw)) return false;
+    const status = statusText(raw);
+    const explicit = [
+      "live", "ao vivo", "1st half", "first half",
+      "2nd half", "second half", "in play",
+      "in progress", "playing", "intervalo", "half time", "halftime"
+    ].some(label => status.includes(label));
+    return explicit || Boolean(minuteValue(raw));
+  }
 
-    function minutesUntilVisibleTime(card){
-      const time = visibleTime(card);
-      if (!time) return null;
+  function statFromArray(raw, labels, side) {
+    const arrays = [
+      raw?.statistics,
+      raw?.stats,
+      raw?.event_raw?.statistics,
+      raw?.event_raw?.statistics_1half
+    ];
 
-      const now = nowManaus();
-      const currentMinutes = Number(now.hour) * 60 + Number(now.minute);
-      const kickoffMinutes = time.hour * 60 + time.minute;
+    for (const list of arrays) {
+      if (!Array.isArray(list)) continue;
+      for (const item of list) {
+        const name = clean(item?.type ?? item?.name ?? item?.label);
+        if (!labels.some(label => name.includes(label))) continue;
 
-      return kickoffMinutes - currentMinutes;
-    }
+        const value = side === "home"
+          ? (item?.home ?? item?.home_value ?? item?.value_home)
+          : (item?.away ?? item?.away_value ?? item?.value_away);
 
-    function rawStatus(raw){
-      return clean(
-        raw?.match_status ??
-        raw?.status ??
-        raw?.event_status ??
-        raw?.status_short ??
-        raw?.fixture?.status?.short ??
-        raw?.event_raw?.match_status
-      ).toLowerCase();
-    }
-
-    function isFinished(raw){
-      const status = rawStatus(raw);
-      return raw?.is_finished === true ||
-        /\bft\b|finished|encerrado|finalizado|aet|penalties/.test(status);
-    }
-
-    function isHalfTime(raw){
-      const status = rawStatus(raw);
-      return raw?.is_halftime === true ||
-        /\bht\b|intervalo|half.?time|halftime/.test(status);
-    }
-
-    function minuteLabel(raw){
-      const source = clean(
-        raw?.minute_label ??
-        raw?.match_live ??
-        raw?.event_raw?.match_live ??
-        raw?.fixture?.status?.elapsed ??
-        raw?.minute ??
-        raw?.elapsed
-      );
-
-      const found = source.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
-      if (!found) return "";
-
-      return found[2]
-        ? `${found[1]}+${found[2]}'`
-        : `${found[1]}'`;
-    }
-
-    function isLive(raw){
-      if (isFinished(raw)) return false;
-      if (isHalfTime(raw)) return true;
-
-      const status = rawStatus(raw);
-      return raw?.is_live === true ||
-        raw?.live === true ||
-        /\blive\b|ao vivo|in.?play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
-        Boolean(minuteLabel(raw));
-    }
-
-    function statFromArray(raw, labels, side){
-      const wanted = Array.isArray(labels) ? labels : [labels];
-      const collections = [
-        raw?.statistics,
-        raw?.stats,
-        raw?.event_raw?.statistics,
-        raw?.event_raw?.stats
-      ];
-
-      for (const list of collections) {
-        if (!Array.isArray(list)) continue;
-
-        for (const item of list) {
-          const name = clean(
-            item?.type ?? item?.name ?? item?.statistic ?? item?.label
-          ).toLowerCase();
-
-          if (!wanted.some(label => name.includes(label))) continue;
-
-          return number(
-            side === "home"
-              ? (item?.home ?? item?.home_value ?? item?.value_home)
-              : (item?.away ?? item?.away_value ?? item?.value_away)
-          );
-        }
-      }
-
-      return 0;
-    }
-
-    function score(raw, side){
-      return number(
-        side === "home" ? raw?.home_score : raw?.away_score,
-        side === "home" ? raw?.score_home : raw?.score_away,
-        side === "home" ? raw?.match_hometeam_score : raw?.match_awayteam_score,
-        side === "home" ? raw?.goals_home : raw?.goals_away,
-        side === "home" ? raw?.score?.home : raw?.score?.away,
-        side === "home" ? raw?.goals?.home : raw?.goals?.away,
-        side === "home"
-          ? raw?.event_raw?.match_hometeam_score
-          : raw?.event_raw?.match_awayteam_score
-      );
-    }
-
-    function corners(raw, side){
-      return number(
-        side === "home" ? raw?.home_corners : raw?.away_corners,
-        side === "home" ? raw?.corners_home : raw?.corners_away,
-        side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
-        side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
-        side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
-        statFromArray(raw, ["corner","escanteio"], side)
-      );
-    }
-
-    function cards(raw, side){
-      const direct = number(
-        side === "home" ? raw?.home_cards : raw?.away_cards,
-        side === "home" ? raw?.cards_home : raw?.cards_away,
-        side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away
-      );
-
-      if (direct) return direct;
-
-      return number(
-        side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
-        side === "home" ? raw?.yellow_cards_home : raw?.yellow_cards_away,
-        statFromArray(raw, ["yellow","amarelo"], side)
-      ) + number(
-        side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
-        side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
-        statFromArray(raw, ["red","vermelho"], side)
-      );
-    }
-
-    function ensureStatus(card){
-      let bar = field(card, "cpHomeBestStatusBar");
-
-      if (!bar) {
-        bar = document.createElement("div");
-        bar.className = "cpHomeBestStatusBar";
-        bar.hidden = true;
-
-        if (card.id !== "cpHomeBest") {
-          bar.dataset.cloneId = "cpHomeBestStatusBar";
-        }
-
-        bar.innerHTML = `
-          <i aria-hidden="true"></i>
-          <b ${card.id === "cpHomeBest" ? 'id="cpHomeBestStatusText"' : 'data-clone-id="cpHomeBestStatusText"'}></b>
-          <span ${card.id === "cpHomeBest" ? 'id="cpHomeBestStatusExtra"' : 'data-clone-id="cpHomeBestStatusExtra"'}></span>
-        `;
-
-        const body = card.querySelector(".cpHomeBestBody");
-        if (body) body.insertAdjacentElement("beforebegin", bar);
-      }
-
-      return bar;
-    }
-
-    function setStatus(card, type, text, extra = ""){
-      const bar = ensureStatus(card);
-      if (!bar) return;
-
-      bar.hidden = false;
-      bar.className = `cpHomeBestStatusBar is-${type}`;
-      setText(card, "cpHomeBestStatusText", text);
-      setText(card, "cpHomeBestStatusExtra", extra);
-    }
-
-    function clearStatus(card){
-      const bar = ensureStatus(card);
-      if (bar) bar.hidden = true;
-    }
-
-    function update(card){
-      if (!card) return;
-
-      const raw = card.__cpCurrentRaw || {};
-      const halftime = isHalfTime(raw);
-      const finished = isFinished(raw);
-      const live = isLive(raw);
-      const minute = minuteLabel(raw);
-      const until = minutesUntilVisibleTime(card);
-
-      const soon = !live && !finished &&
-        until !== null && until >= 0 && until <= 20;
-
-      const showData = live || halftime || finished;
-
-      card.classList.toggle("is-match-soon", soon);
-      card.classList.toggle("is-match-live", live && !halftime);
-      card.classList.toggle("is-match-halftime", halftime);
-      card.classList.toggle("is-match-finished", finished);
-      card.classList.toggle("has-match-data", showData);
-
-      if (finished) {
-        setStatus(card, "finished", "ENCERRADO");
-      } else if (halftime) {
-        setStatus(card, "halftime", "INTERVALO");
-      } else if (live) {
-        setStatus(card, "live", "AO VIVO", minute);
-      } else if (soon) {
-        setStatus(
-          card,
-          "soon",
-          "A PARTIDA JÁ VAI COMEÇAR",
-          until === 0 ? "AGORA" : `${until} MIN`
-        );
-      } else {
-        clearStatus(card);
-      }
-
-      const scoreBox = field(card, "cpHomeBestScore");
-      const statsBox = field(card, "cpHomeBestLiveStats");
-      const versus =
-        card.querySelector(".cpHomeBestVersus") ||
-        card.querySelector(".cpHomeBestTeams > i");
-
-      if (showData) {
-        if (scoreBox) scoreBox.hidden = false;
-        if (statsBox) statsBox.hidden = false;
-        if (versus) versus.hidden = true;
-
-        setText(card, "cpHomeBestHomeScore", score(raw, "home"));
-        setText(card, "cpHomeBestAwayScore", score(raw, "away"));
-        setText(card, "cpHomeBestHomeCorners", corners(raw, "home"));
-        setText(card, "cpHomeBestAwayCorners", corners(raw, "away"));
-        setText(card, "cpHomeBestHomeCards", cards(raw, "home"));
-        setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
-      } else {
-        if (scoreBox) scoreBox.hidden = true;
-        if (statsBox) statsBox.hidden = true;
-        if (versus) versus.hidden = false;
+        const n = Number(String(value ?? "").replace("%", "").replace(",", "."));
+        if (Number.isFinite(n)) return n;
       }
     }
+    return 0;
+  }
 
-    function updateAll(){
-      document
-        .querySelectorAll("#cpHomeBest,.cpHomeBestClone")
-        .forEach(update);
+  function score(raw, side) {
+    return number(
+      side === "home" ? raw?.home_score : raw?.away_score,
+      side === "home" ? raw?.score_home : raw?.score_away,
+      side === "home" ? raw?.match_hometeam_score : raw?.match_awayteam_score,
+      side === "home" ? raw?.goals_home : raw?.goals_away,
+      side === "home" ? raw?.score?.home : raw?.score?.away,
+      side === "home" ? raw?.goals?.home : raw?.goals?.away,
+      side === "home"
+        ? raw?.event_raw?.match_hometeam_score
+        : raw?.event_raw?.match_awayteam_score
+    );
+  }
+
+  function corners(raw, side) {
+    return number(
+      side === "home" ? raw?.home_corners : raw?.away_corners,
+      side === "home" ? raw?.corners_home : raw?.corners_away,
+      side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
+      side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
+      side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
+      statFromArray(raw, ["corner", "escanteio"], side)
+    );
+  }
+
+  function cards(raw, side) {
+    const direct = number(
+      side === "home" ? raw?.home_cards : raw?.away_cards,
+      side === "home" ? raw?.cards_home : raw?.cards_away,
+      side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away
+    );
+
+    if (direct > 0) return direct;
+
+    return number(
+      side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
+      side === "home" ? raw?.yellow_cards_home : raw?.yellow_cards_away,
+      statFromArray(raw, ["yellow", "amarelo"], side)
+    ) + number(
+      side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
+      side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
+      statFromArray(raw, ["red", "vermelho"], side)
+    );
+  }
+
+  function kickoffFromCard(card) {
+    const raw = card?.__cpCurrentRaw || {};
+    const direct = [
+      raw?.kickoff,
+      raw?.date_time,
+      raw?.match_datetime,
+      raw?.event_date_time,
+      raw?.event_raw?.match_date_time
+    ];
+
+    for (const value of direct) {
+      if (!value) continue;
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) return date;
     }
 
-    window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}){
-      const card = document.getElementById("cpHomeBest");
-      if (!card) return;
+    const normalized = card?.__cpCurrentNormalized || {};
+    const dateText = normalized?.date || raw?.date || raw?.match_date || "";
+    const timeText =
+      normalized?.time ||
+      raw?.hora_manaus ||
+      raw?.hora ||
+      raw?.match_time ||
+      field(card, "cpHomeBestTime")?.textContent ||
+      "";
 
-      card.__cpCurrentRaw = raw;
-      card.__cpCurrentNormalized = normalized;
-      update(card);
-    };
+    if (!dateText || !timeText) return null;
 
-    window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}){
-      if (!card) return;
+    const match = String(timeText).match(/(\d{1,2}):(\d{2})/);
+    if (!match) return null;
 
-      card.__cpCurrentRaw = raw;
-      card.__cpCurrentNormalized = normalized;
-      update(card);
-    };
+    const date = new Date(`${dateText}T${match[1].padStart(2, "0")}:${match[2]}:00-04:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
 
-    const observer = new MutationObserver(() => {
-      requestAnimationFrame(updateAll);
-    });
+  function minutesUntilKickoff(card) {
+    const kickoff = kickoffFromCard(card);
+    if (!kickoff) return null;
+    return Math.ceil((kickoff.getTime() - Date.now()) / 60000);
+  }
 
-    function start(){
-      const home = document.getElementById("cpMobileHome");
-      if (home) observer.observe(home, {childList:true, subtree:true});
-      updateAll();
-    }
+  function ensureStatus(card) {
+    let bar = field(card, "cpHomeBestStatusBar");
+    if (bar) return bar;
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", start);
+    bar = document.createElement("div");
+    bar.className = "cpHomeBestStatusBar";
+    bar.hidden = true;
+
+    if (card.id === "cpHomeBest") {
+      bar.id = "cpHomeBestStatusBar";
+      bar.innerHTML = `
+        <i aria-hidden="true"></i>
+        <b id="cpHomeBestStatusText"></b>
+        <span id="cpHomeBestStatusExtra"></span>
+      `;
     } else {
-      start();
+      bar.dataset.cloneId = "cpHomeBestStatusBar";
+      bar.innerHTML = `
+        <i aria-hidden="true"></i>
+        <b data-clone-id="cpHomeBestStatusText"></b>
+        <span data-clone-id="cpHomeBestStatusExtra"></span>
+      `;
     }
 
-    setInterval(updateAll, 1000);
-  })();
+    card.querySelector(".cpHomeBestBody")?.insertAdjacentElement("beforebegin", bar);
+    return bar;
+  }
 
+  function setStatus(card, type, text, extra = "") {
+    const bar = ensureStatus(card);
+    bar.hidden = false;
+    bar.className = `cpHomeBestStatusBar is-${type}`;
+    setText(card, "cpHomeBestStatusText", text);
+    setText(card, "cpHomeBestStatusExtra", extra);
+  }
 
-  /* =========================================================
-     CORNER PRO — CORREÇÃO FINAL DA POSIÇÃO DA BARRA INFERIOR
-     Mantém a barra presa ao rodapé da tela no iPhone/Safari.
-     ========================================================= */
-  (function forceCornerProBottomNavToViewport(){
-    "use strict";
-  
-    if (window.__cpBottomNavViewportFixInstalled) return;
-    window.__cpBottomNavViewportFixInstalled = true;
-  
-    function applyFix(){
-      const nav = document.querySelector(
-        ".cpHomeBottom.cpGlobalBottomNav"
+  function clearStatus(card) {
+    const bar = ensureStatus(card);
+    bar.hidden = true;
+  }
+
+  function updateViewport(activeCard) {
+    const viewport = document.querySelector(".cpHomeSwipeViewport");
+    if (!viewport || !activeCard) return;
+
+    viewport.classList.toggle("is-soon", activeCard.classList.contains("is-match-soon"));
+    viewport.classList.toggle("is-live", activeCard.classList.contains("is-match-live"));
+    viewport.classList.toggle("is-halftime", activeCard.classList.contains("is-match-halftime"));
+    viewport.classList.toggle("is-finished", activeCard.classList.contains("is-match-finished"));
+  }
+
+  function visibleCard() {
+    const viewport = document.querySelector(".cpHomeSwipeViewport");
+    const cards = [...document.querySelectorAll(CARD_SELECTOR)];
+    if (!viewport || cards.length < 2) return cards[0] || null;
+
+    const rect = viewport.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+
+    return cards.reduce((best, card) => {
+      const cardRect = card.getBoundingClientRect();
+      const distance = Math.abs((cardRect.left + cardRect.width / 2) - center);
+      return !best || distance < best.distance ? { card, distance } : best;
+    }, null)?.card || cards[0];
+  }
+
+  function update(card) {
+    if (!card) return;
+
+    const raw = card.__cpCurrentRaw || {};
+    const halftime = isHalfTime(raw);
+    const finished = isFinished(raw);
+    const live = isLive(raw);
+    const until = minutesUntilKickoff(card);
+    const soon = !live && !finished && until !== null && until >= 0 && until <= 20;
+    const showData = live || halftime || finished;
+
+    card.classList.toggle("is-match-soon", soon);
+    card.classList.toggle("is-match-live", live && !halftime);
+    card.classList.toggle("is-match-halftime", halftime);
+    card.classList.toggle("is-match-finished", finished);
+    card.classList.toggle("has-match-data", showData);
+
+    if (finished) {
+      setStatus(card, "finished", "ENCERRADO");
+    } else if (halftime) {
+      setStatus(card, "halftime", "INTERVALO");
+    } else if (live) {
+      setStatus(card, "live", "AO VIVO", minuteLabel(raw));
+    } else if (soon) {
+      setStatus(
+        card,
+        "soon",
+        "A PARTIDA JÁ VAI COMEÇAR",
+        until === 0 ? "AGORA" : `${until} MIN`
       );
-  
-      if (!nav) return;
-  
-      if (nav.parentElement !== document.body) {
-        document.body.appendChild(nav);
-      }
-  
-      nav.style.setProperty("position", "fixed", "important");
-      nav.style.setProperty("top", "auto", "important");
-      nav.style.setProperty("left", "0", "important");
-      nav.style.setProperty("right", "0", "important");
-      nav.style.setProperty("bottom", "0", "important");
-      nav.style.setProperty("width", "100vw", "important");
-      nav.style.setProperty("max-width", "100vw", "important");
-      nav.style.setProperty("margin", "0", "important");
-      nav.style.setProperty("transform", "none", "important");
-      nav.style.setProperty("-webkit-transform", "none", "important");
-      nav.style.setProperty("display", "grid", "important");
-      nav.style.setProperty(
-        "grid-template-columns",
-        "repeat(5,minmax(0,1fr))",
-        "important"
-      );
-      nav.style.setProperty("visibility", "visible", "important");
-      nav.style.setProperty("opacity", "1", "important");
-      nav.style.setProperty("pointer-events", "auto", "important");
-      nav.style.setProperty("z-index", "2147483647", "important");
+    } else {
+      clearStatus(card);
     }
-  
-    function initialize(){
-      applyFix();
-  
-      const observer = new MutationObserver(applyFix);
-      observer.observe(document.body, {
+
+    const scoreBox = field(card, "cpHomeBestScore");
+    const statsBox = field(card, "cpHomeBestLiveStats");
+    const versus = card.querySelector(".cpHomeBestVersus");
+
+    if (scoreBox) scoreBox.hidden = !showData;
+    if (statsBox) statsBox.hidden = !showData;
+    if (versus) versus.hidden = showData;
+
+    if (showData) {
+      const homeGoals = score(raw, "home");
+      const awayGoals = score(raw, "away");
+
+      setText(card, "cpHomeBestHomeScore", homeGoals);
+      setText(card, "cpHomeBestAwayScore", awayGoals);
+      setText(card, "cpHomeBestHomeGoals", homeGoals);
+      setText(card, "cpHomeBestAwayGoals", awayGoals);
+      setText(card, "cpHomeBestHomeCorners", corners(raw, "home"));
+      setText(card, "cpHomeBestAwayCorners", corners(raw, "away"));
+      setText(card, "cpHomeBestHomeCards", cards(raw, "home"));
+      setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
+    }
+  }
+
+  function updateAll() {
+    document.querySelectorAll(CARD_SELECTOR).forEach(update);
+    updateViewport(visibleCard());
+  }
+
+  window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}) {
+    const card = document.getElementById("cpHomeBest");
+    if (!card) return;
+    card.__cpCurrentRaw = raw || {};
+    card.__cpCurrentNormalized = normalized || {};
+    update(card);
+    updateViewport(visibleCard());
+  };
+
+  window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}) {
+    if (!card) return;
+    card.__cpCurrentRaw = raw || {};
+    card.__cpCurrentNormalized = normalized || {};
+    update(card);
+    updateViewport(visibleCard());
+  };
+
+  let frame = 0;
+  function schedule() {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(updateAll);
+  }
+
+  function start() {
+    const home = document.getElementById("cpMobileHome");
+    if (home) {
+      new MutationObserver(schedule).observe(home, {
         childList:true,
         subtree:true,
         attributes:true,
-        attributeFilter:["class","style"]
+        attributeFilter:["class", "hidden"]
       });
     }
-  
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initialize);
-    } else {
-      initialize();
-    }
-  
-    window.addEventListener("resize", applyFix);
-    window.addEventListener("orientationchange", applyFix);
-    window.addEventListener("scroll", applyFix, {passive:true});
-  
-    setTimeout(applyFix, 100);
-    setTimeout(applyFix, 600);
-    setTimeout(applyFix, 1500);
-  })();
 
+    document.querySelector(".cpHomeSwipeViewport")
+      ?.addEventListener("scroll", schedule, { passive:true });
 
-/* =========================================================
-   CORNER PRO — GARANTIA DE JOGOS EM DESTAQUE V3
-   Não cria cards novos; preserva os cards preenchidos pelo app.
-   ========================================================= */
-(function installFeaturedGamesVisibilityV3(){
-  "use strict";
-
-  if (window.__cpFeaturedGamesVisibilityV3Installed) return;
-  window.__cpFeaturedGamesVisibilityV3Installed = true;
-
-  function apply(){
-    const scroll = document.querySelector(".cpHomeScroll");
-    const markets = document.querySelector(".cpHomeMarketsSection");
-    const section =
-      document.getElementById("cpHomeFeaturedGamesSection") ||
-      document.getElementById("cpHomeGames")?.closest(".cpHomeSection");
-    const games = document.getElementById("cpHomeGames");
-
-    if (!scroll || !markets || !section || !games) return;
-
-    if (!section.id) {
-      section.id = "cpHomeFeaturedGamesSection";
-    }
-
-    section.classList.add("cpHomeFeaturedGamesSection");
-
-    if (section.previousElementSibling !== markets) {
-      markets.insertAdjacentElement("afterend", section);
-    }
-
-    scroll.style.setProperty("display", "flex", "important");
-    scroll.style.setProperty("flex-direction", "column", "important");
-    scroll.style.setProperty("flex", "1 1 0", "important");
-    scroll.style.setProperty("height", "0", "important");
-    scroll.style.setProperty("min-height", "0", "important");
-    scroll.style.setProperty("overflow-y", "auto", "important");
-    scroll.style.setProperty("overflow-x", "hidden", "important");
-
-    section.hidden = false;
-    section.removeAttribute("aria-hidden");
-    section.style.setProperty("display", "block", "important");
-    section.style.setProperty("height", "auto", "important");
-    section.style.setProperty("min-height", "214px", "important");
-    section.style.setProperty("visibility", "visible", "important");
-    section.style.setProperty("opacity", "1", "important");
-
-    games.hidden = false;
-    games.removeAttribute("aria-hidden");
-    games.style.setProperty("display", "flex", "important");
-    games.style.setProperty("height", "168px", "important");
-    games.style.setProperty("min-height", "168px", "important");
-    games.style.setProperty("visibility", "visible", "important");
-    games.style.setProperty("opacity", "1", "important");
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", apply);
-  } else {
-    apply();
-  }
-
-  window.addEventListener("resize", apply);
-  window.addEventListener("orientationchange", apply);
-
-  setTimeout(apply, 250);
-  setTimeout(apply, 1000);
-  setTimeout(apply, 2500);
-})();
-/* =========================================================
-   CORNER PRO — ALTURA DO CARD ATIVO V16
-   Cada um dos três cards conserva o próprio estado. O viewport
-   acompanha somente o card visível, sem deixar espaço vazio.
-   ========================================================= */
-(function installCornerProActiveCardHeightV16(){
-  "use strict";
-
-  if (window.__cpActiveCardHeightV16Installed) return;
-  window.__cpActiveCardHeightV16Installed = true;
-
-  const MOBILE_QUERY = "(max-width:980px)";
-
-  function cardHeight(card){
-    if (!card) return 286;
-    if (
-      card.classList.contains("is-match-live") ||
-      card.classList.contains("is-match-halftime") ||
-      card.classList.contains("is-match-finished")
-    ) return 342;
-    if (card.classList.contains("is-match-soon")) return 310;
-    return 286;
-  }
-
-  function visibleCard(viewport, cards){
-    const rect = viewport.getBoundingClientRect();
-    const center = rect.left + rect.width / 2;
-    let best = cards[0] || null;
-    let distance = Infinity;
-
-    for (const card of cards) {
-      const cardRect = card.getBoundingClientRect();
-      const cardCenter = cardRect.left + cardRect.width / 2;
-      const current = Math.abs(cardCenter - center);
-      if (current < distance) {
-        distance = current;
-        best = card;
-      }
-    }
-    return best;
-  }
-
-  function apply(){
-    if (!window.matchMedia(MOBILE_QUERY).matches) return;
-
-    const viewport = document.querySelector(".cpHomeSwipeViewport");
-    const track = document.querySelector(".cpHomeSwipeTrack");
-    if (!viewport || !track) return;
-
-    const cards = [...track.querySelectorAll(":scope > #cpHomeBest,:scope > .cpHomeBestClone")];
-    if (!cards.length) return;
-
-    for (const card of cards) {
-      card.style.setProperty("--cp-card-height", `${cardHeight(card)}px`);
-    }
-
-    const active = visibleCard(viewport, cards);
-    viewport.style.setProperty("--cp-active-card-height", `${cardHeight(active)}px`);
-  }
-
-  let raf = 0;
-  function schedule(){
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(apply);
-  }
-
-  function start(){
-    const home = document.getElementById("cpMobileHome");
-    if (!home) return;
-
-    const observer = new MutationObserver(schedule);
-    observer.observe(home, {
-      subtree:true,
-      childList:true,
-      attributes:true,
-      attributeFilter:["class","style","hidden"]
-    });
-
-    const viewport = document.querySelector(".cpHomeSwipeViewport");
-    viewport?.addEventListener("scroll", schedule, {passive:true});
-    viewport?.addEventListener("touchmove", schedule, {passive:true});
-    viewport?.addEventListener("touchend", () => {
+    document.addEventListener("touchend", () => {
       schedule();
-      setTimeout(schedule, 180);
-      setTimeout(schedule, 420);
-    }, {passive:true});
+      setTimeout(schedule, 220);
+    }, { passive:true });
 
-    window.addEventListener("resize", schedule, {passive:true});
-    window.addEventListener("orientationchange", schedule, {passive:true});
-
-    schedule();
-    setTimeout(schedule, 250);
-    setTimeout(schedule, 900);
+    updateAll();
+    setInterval(updateAll, 15000);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start, {once:true});
+    document.addEventListener("DOMContentLoaded", start, { once:true });
   } else {
     start();
   }
-
-  setInterval(apply, 1000);
 })();
