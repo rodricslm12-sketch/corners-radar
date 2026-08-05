@@ -20901,3 +20901,77 @@
     setTimeout(applyFix, 600);
     setTimeout(applyFix, 1500);
   })();
+
+
+/* =========================================================
+   CORNER PRO — PROTEÇÃO DA SEÇÃO JOGOS EM DESTAQUE
+   Mantém a seção logo após Mercados em destaque.
+   ========================================================= */
+(function installFeaturedGamesSectionGuard(){
+  "use strict";
+
+  if (window.__cpFeaturedGamesSectionGuardInstalled) return;
+  window.__cpFeaturedGamesSectionGuardInstalled = true;
+
+  function restoreFeaturedGamesSection(){
+    const section =
+      document.getElementById("cpHomeFeaturedGamesSection");
+
+    const markets =
+      document.querySelector(".cpHomeMarketsSection");
+
+    if (!section || !markets) return;
+
+    if (section.previousElementSibling !== markets) {
+      markets.insertAdjacentElement("afterend", section);
+    }
+
+    section.hidden = false;
+    section.removeAttribute("aria-hidden");
+    section.style.removeProperty("display");
+    section.style.removeProperty("height");
+    section.style.removeProperty("max-height");
+    section.style.removeProperty("visibility");
+    section.style.removeProperty("opacity");
+
+    const games = document.getElementById("cpHomeGames");
+
+    if (games) {
+      games.hidden = false;
+      games.removeAttribute("aria-hidden");
+      games.style.removeProperty("display");
+      games.style.removeProperty("height");
+      games.style.removeProperty("max-height");
+      games.style.removeProperty("visibility");
+      games.style.removeProperty("opacity");
+    }
+  }
+
+  function initialize(){
+    restoreFeaturedGamesSection();
+
+    const observer = new MutationObserver(() => {
+      restoreFeaturedGamesSection();
+    });
+
+    const home = document.getElementById("cpMobileHome");
+
+    if (home) {
+      observer.observe(home, {
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:["hidden","style","class","aria-hidden"]
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialize);
+  } else {
+    initialize();
+  }
+
+  setTimeout(restoreFeaturedGamesSection, 300);
+  setTimeout(restoreFeaturedGamesSection, 1200);
+})();

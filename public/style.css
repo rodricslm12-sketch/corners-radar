@@ -14890,3 +14890,151 @@ button.railFullBtn {
     )!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — JOGOS EM DESTAQUE RESTAURADO DEFINITIVO
+   Somente a seção #cpHomeFeaturedGamesSection.
+   ========================================================= */
+@media (max-width:980px){
+
+  #cpHomeFeaturedGamesSection{
+    display:block!important;
+    position:relative!important;
+    inset:auto!important;
+    z-index:1!important;
+
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:196px!important;
+    max-height:none!important;
+
+    margin:14px 0 12px!important;
+    padding:13px 11px 12px!important;
+
+    visibility:visible!important;
+    opacity:1!important;
+    overflow:visible!important;
+    pointer-events:auto!important;
+
+    background:linear-gradient(180deg,#050a0d,#020607)!important;
+    border:1px solid #17252b!important;
+    border-radius:16px!important;
+  }
+
+  #cpHomeFeaturedGamesSection[hidden]{
+    display:block!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeSectionHead{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:28px!important;
+    margin:0 0 10px!important;
+    padding:0!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeSectionHead h2{
+    display:block!important;
+    margin:0!important;
+    color:#f5f7f6!important;
+    font-size:15px!important;
+    line-height:1.1!important;
+    font-weight:900!important;
+    text-transform:uppercase!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeSectionHead h2::before{
+    content:"◎"!important;
+    display:inline-block!important;
+    margin-right:9px!important;
+    color:#80f337!important;
+    font-size:19px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeSectionHead button{
+    display:block!important;
+    margin-left:auto!important;
+    color:#80f337!important;
+    font-size:9px!important;
+    font-weight:900!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeOrderSwitch,
+  #cpHomeFeaturedGamesSection .cpHomeOrderHint{
+    display:none!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames{
+    display:flex!important;
+    position:relative!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:158px!important;
+    min-height:158px!important;
+    max-height:158px!important;
+
+    gap:9px!important;
+    margin:0!important;
+    padding:1px 1px 7px!important;
+
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+
+    scroll-snap-type:x mandatory!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeGame,
+  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeSkeleton{
+    display:flex!important;
+    flex:0 0 118px!important;
+    width:118px!important;
+    min-width:118px!important;
+    max-width:118px!important;
+    height:150px!important;
+    min-height:150px!important;
+    max-height:150px!important;
+
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    scroll-snap-align:start!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeEmptyState{
+    display:flex!important;
+    flex:1 0 100%!important;
+    min-height:130px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex-direction:column!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  /* Mantém a seção dentro da área rolável da Dashboard. */
+  .cpHomeScroll{
+    display:block!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+  }
+}
