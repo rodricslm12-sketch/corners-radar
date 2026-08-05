@@ -633,6 +633,13 @@
       const rows = games.map((game, index) => {
         const decision = game?.raw?.btts_ai || {};
         const decisionLine = clean(decision.line, "SEM APOSTA").toUpperCase();
+        
+        /* Correção exclusiva do Ambas Marcam:
+           a variável era usada sem ter sido criada. */
+        const isUpdating =
+          decisionLine === "DADOS EM ATUALIZAÇÃO" ||
+          decisionLine === "ANALISANDO PARTIDA";
+
         const isNoBet = Boolean(decision.skip) || decisionLine === "SEM APOSTA";
   
         const choice = decisionLine.includes("NÃO")
@@ -646,7 +653,7 @@
               Math.min(89, Number(decision.confidence || game.confidence || 72))
             );
   
-        const odd = isNoBet
+        const odd = (isNoBet || isUpdating)
           ? "—"
           : (1.48 + ((100 - confidence) / 100)).toFixed(2);
         const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
@@ -674,13 +681,13 @@
         return `
           <button
             type="button"
-            class="cpBttsOpportunity ${isNoBet ? "is-no-bet" : ""}"
+            class="cpBttsOpportunity ${isUpdating ? "is-updating" : isNoBet ? "is-no-bet" : ""}"
             data-v9-game="${index}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="btts"
             data-settlement-line="AMBAS ${choice}"
             data-btts-choice="${isNoBet ? "none" : choice.toLowerCase()}"
-            data-btts-ai="${isNoBet ? "0" : "1"}"
+            data-btts-ai="${(isNoBet || isUpdating) ? "0" : "1"}"
             data-live-key="${liveKey}"
           >
             <div class="cpBttsMatch">
@@ -696,14 +703,14 @@
             </div>
             <div class="cpBttsPick">
               <span class="cpBttsEngineBadge">✦ IA DO SERVIDOR</span>
-              <strong>${isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
-              <small>${isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
+              <strong>${isUpdating ? "ANALISANDO PARTIDA" : isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
+              <small>${isUpdating ? "A IA está coletando dados." : isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
               <b>${odd}</b>
               <span class="cpSettlementSlot">${isNoBet ? "" : ""}</span>
             </div>
-            <div class="cpBttsGauge ${isNoBet ? "is-disabled" : ""}" style="--btts:${confidence}">
-              <span>${isNoBet ? "—" : `${confidence}%`}</span>
-              <small>${isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+            <div class="cpBttsGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--btts:${confidence}">
+              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
+              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
             <i class="cpBttsArrow">›</i>
           </button>`;
