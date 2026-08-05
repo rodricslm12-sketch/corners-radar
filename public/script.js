@@ -205,7 +205,39 @@
       const away = team(game, "away");
       return {
         raw: game,
-        id: clean(game?.match_id ?? game?.fixture_id ?? game?.id, `${home}|${away}|${index}`),
+        id: clean(
+          game?.match_id ??
+          game?.event_id ??
+          game?.event_key ??
+          game?.fixture_id ??
+          game?.id ??
+          game?.event_raw?.match_id ??
+          game?.event_raw?.event_id ??
+          game?.event_raw?.event_key ??
+          game?.event_raw?.id,
+          `${home}|${away}|${index}`
+        ),
+        match_id: clean(
+          game?.match_id ??
+          game?.event_id ??
+          game?.event_key ??
+          game?.fixture_id ??
+          game?.id ??
+          game?.event_raw?.match_id ??
+          game?.event_raw?.event_id ??
+          game?.event_raw?.event_key ??
+          game?.event_raw?.id,
+          ""
+        ),
+        date: clean(
+          game?.match_date ??
+          game?.event_date ??
+          game?.date ??
+          game?.event_raw?.match_date ??
+          game?.event_raw?.event_date ??
+          game?.event_raw?.date,
+          ""
+        ),
         home,
         away,
         time: gameTime(game),
@@ -20614,7 +20646,7 @@
   window.__cpHomeBestStateControllerV21 = true;
 
   const CARD_SELECTOR = "#cpHomeBest,.cpHomeBestClone";
-  const POLL_MS = 30000;
+  const POLL_MS = 15000;
   const CACHE_MAX_AGE_MS = 25000;
 
   const liveCache = new Map();
@@ -20661,6 +20693,11 @@
       raw?.event_key ??
       raw?.fixture_id ??
       raw?.id ??
+      raw?.event_raw?.match_id ??
+      raw?.event_raw?.event_id ??
+      raw?.event_raw?.event_key ??
+      raw?.event_raw?.fixture_id ??
+      raw?.event_raw?.id ??
       normalized?.match_id ??
       normalized?.event_id ??
       normalized?.fixture_id ??
@@ -20827,6 +20864,9 @@
       raw?.match_date ??
       raw?.event_date ??
       raw?.date ??
+      raw?.event_raw?.match_date ??
+      raw?.event_raw?.event_date ??
+      raw?.event_raw?.date ??
       "";
 
     const timeText =
@@ -20834,14 +20874,40 @@
       raw?.hora_manaus ??
       raw?.match_time ??
       raw?.time ??
+      raw?.event_raw?.match_time ??
+      raw?.event_raw?.event_time ??
+      raw?.event_raw?.time ??
       field(card, "cpHomeBestTime")?.textContent ??
       "";
 
     const timeMatch = String(timeText).match(/(\d{1,2}):(\d{2})/);
-    if (!dateText || !timeMatch) return null;
+    if (!timeMatch) return null;
+
+    let resolvedDate = String(dateText || "").trim();
+
+    if (!resolvedDate) {
+      try {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Manaus",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).formatToParts(new Date());
+
+        const map = Object.fromEntries(
+          parts.map(part => [part.type, part.value])
+        );
+
+        resolvedDate = `${map.year}-${map.month}-${map.day}`;
+      } catch {
+        resolvedDate = new Date(Date.now() - 4 * 3600000)
+          .toISOString()
+          .slice(0, 10);
+      }
+    }
 
     const date = new Date(
-      `${dateText}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00-04:00`
+      `${resolvedDate}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00-04:00`
     );
 
     return Number.isNaN(date.getTime()) ? null : date;
@@ -21070,13 +21136,16 @@
     if (!card || document.hidden) return false;
 
     const raw = card.__cpCurrentRaw || {};
-    if (isLive(raw) || isHalfTime(raw)) return true;
     if (isFinished(raw)) return false;
 
-    const until = minutesUntilKickoff(card);
-
-    // Começa a consultar 30 minutos antes e continua por até 4 horas.
-    return until !== null && until <= 30 && until >= -240;
+    // O jogo pode chegar sem match_date no endpoint pré-jogo.
+    // Havendo match_id, o /match_center é a fonte oficial do estado real.
+    return Boolean(
+      matchIdFrom(
+        raw,
+        card.__cpCurrentNormalized || {}
+      )
+    );
   }
 
   async function refreshCard(card, force = false) {
@@ -21094,8 +21163,11 @@
     const payload = await fetchMatchCenter(matchId, force);
     if (!payload) {
       render(card);
+      card.dataset.matchCenterState = "unavailable";
       return;
     }
+
+    card.dataset.matchCenterState = "ok";
 
     // Atualiza todos os slides que representam a mesma partida.
     document.querySelectorAll(CARD_SELECTOR).forEach(slide => {
