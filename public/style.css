@@ -14787,3 +14787,106 @@ button.railFullBtn {
     margin-bottom:0!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — RESTAURA JOGOS EM DESTAQUE
+   Somente esta seção da Dashboard mobile.
+   ========================================================= */
+@media (max-width:980px){
+
+  /* Garante que a seção que contém #cpHomeGames permaneça visível. */
+  .cpHomeSection:has(#cpHomeGames){
+    display:block!important;
+    position:relative!important;
+    width:100%!important;
+    min-height:196px!important;
+    height:auto!important;
+    margin-top:18px!important;
+    padding:14px 14px 12px!important;
+    visibility:visible!important;
+    opacity:1!important;
+    overflow:visible!important;
+    background:linear-gradient(180deg,#050b0e,#030708)!important;
+    border:1px solid rgba(255,255,255,.025)!important;
+    border-radius:16px!important;
+  }
+
+  .cpHomeSection:has(#cpHomeGames) .cpHomeSectionHead{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    min-height:28px!important;
+    height:auto!important;
+    margin:0 0 10px!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  .cpHomeSection:has(#cpHomeGames) .cpHomeSectionHead h2{
+    display:block!important;
+    margin:0!important;
+    color:#f5f7f6!important;
+    font-size:16px!important;
+    line-height:1.1!important;
+    font-weight:900!important;
+    text-transform:uppercase!important;
+  }
+
+  .cpHomeSection:has(#cpHomeGames) .cpHomeSectionHead button{
+    display:block!important;
+    color:#80f337!important;
+    font-size:9px!important;
+    font-weight:900!important;
+  }
+
+  /* Mantém os filtros ocultos como já estavam. */
+  .cpHomeSection:has(#cpHomeGames) .cpHomeOrderSwitch,
+  .cpHomeSection:has(#cpHomeGames) .cpHomeOrderHint{
+    display:none!important;
+  }
+
+  #cpHomeGames{
+    display:flex!important;
+    position:relative!important;
+    width:100%!important;
+    min-height:150px!important;
+    height:auto!important;
+    gap:10px!important;
+    padding:2px 2px 8px!important;
+    margin:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    visibility:visible!important;
+    opacity:1!important;
+    scroll-snap-type:x mandatory!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+
+  #cpHomeGames::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  #cpHomeGames > .cpHomeGame,
+  #cpHomeGames > .cpHomeSkeleton{
+    display:block!important;
+    flex:0 0 116px!important;
+    width:116px!important;
+    min-width:116px!important;
+    height:150px!important;
+    visibility:visible!important;
+    opacity:1!important;
+    scroll-snap-align:start!important;
+  }
+
+  /* Permite alcançar a seção normalmente ao rolar a Dashboard. */
+  .cpHomeScroll{
+    overflow-y:auto!important;
+    padding-bottom:calc(
+      var(--cp-global-tabs-nav-h,76px) +
+      env(safe-area-inset-bottom,0px) +
+      24px
+    )!important;
+  }
+}
