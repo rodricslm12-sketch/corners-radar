@@ -15792,3 +15792,268 @@ button.railFullBtn {
     border:1px solid #39484f!important;
   }
 }
+/* =========================================================
+   CORNER PRO — CARD PRINCIPAL COMPACTO E DINÂMICO V16
+   Última regra do arquivo: elimina o espaço vazio e mantém
+   pré-jogo, aviso, ao vivo, intervalo e encerrado organizados.
+   ========================================================= */
+@media (max-width:980px){
+
+  .cpHomeSwipeViewport{
+    --cp-active-card-height:286px;
+    width:100%!important;
+    height:var(--cp-active-card-height)!important;
+    min-height:var(--cp-active-card-height)!important;
+    max-height:var(--cp-active-card-height)!important;
+    overflow:hidden!important;
+    transition:height .24s ease,min-height .24s ease,max-height .24s ease!important;
+  }
+
+  .cpHomeSwipeTrack{
+    height:var(--cp-active-card-height)!important;
+    min-height:var(--cp-active-card-height)!important;
+    max-height:var(--cp-active-card-height)!important;
+    align-items:flex-start!important;
+    transition:height .24s ease!important;
+  }
+
+  .cpHomeSwipeTrack > #cpHomeBest,
+  .cpHomeSwipeTrack > .cpHomeBestClone{
+    box-sizing:border-box!important;
+    flex:0 0 100%!important;
+    width:100%!important;
+    height:var(--cp-card-height,286px)!important;
+    min-height:var(--cp-card-height,286px)!important;
+    max-height:var(--cp-card-height,286px)!important;
+    margin:0!important;
+    padding:12px 14px 11px!important;
+    overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon{
+    --cp-card-height:310px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-live,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished{
+    --cp-card-height:342px;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeSwipeGuide{
+    display:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeMarketDots{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 13px!important;
+    height:13px!important;
+    margin:1px auto 3px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop{
+    flex:0 0 35px!important;
+    min-height:35px!important;
+    height:35px!important;
+    margin:0!important;
+    gap:8px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > b{
+    min-width:0!important;
+    height:35px!important;
+    min-height:35px!important;
+    padding:0 10px!important;
+    font-size:10.2px!important;
+    line-height:1.05!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTop > span{
+    flex:none!important;
+    font-size:9.2px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar{
+    flex:0 0 auto!important;
+    min-height:25px!important;
+    height:25px!important;
+    max-width:calc(100% - 12px)!important;
+    margin:3px auto 2px!important;
+    padding:4px 9px!important;
+    font-size:8px!important;
+    line-height:1!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar[hidden]{
+    display:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody{
+    flex:0 0 149px!important;
+    min-height:149px!important;
+    height:149px!important;
+    max-height:149px!important;
+    padding:0!important;
+    margin:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:flex-start!important;
+    overflow:visible!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon .cpHomeBestBody{
+    flex-basis:148px!important;
+    height:148px!important;
+    min-height:148px!important;
+    max-height:148px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).has-match-data .cpHomeBestBody{
+    flex-basis:140px!important;
+    height:140px!important;
+    min-height:140px!important;
+    max-height:140px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody > time{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 27px!important;
+    min-width:62px!important;
+    height:27px!important;
+    margin:0 auto 1px!important;
+    padding:0 9px!important;
+    font-size:9.5px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-live .cpHomeBestBody > time,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime .cpHomeBestBody > time,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished .cpHomeBestBody > time{
+    display:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams{
+    position:relative!important;
+    inset:auto!important;
+    transform:none!important;
+    width:100%!important;
+    flex:1 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr)!important;
+    align-items:end!important;
+    gap:4px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong{
+    min-width:0!important;
+    max-width:none!important;
+    padding:57px 3px 7px!important;
+    font-size:11.5px!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge{
+    top:9px!important;
+    width:43px!important;
+    height:43px!important;
+    border-radius:12px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestVersus,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > i{
+    margin:0 0 12px!important;
+    font-size:14px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore{
+    align-self:end!important;
+    margin:0 0 8px!important;
+    gap:5px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore b{
+    min-width:20px!important;
+    font-size:20px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestConfidence{
+    display:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats{
+    flex:0 0 46px!important;
+    height:46px!important;
+    min-height:46px!important;
+    margin:2px 0 4px!important;
+    padding:4px!important;
+    gap:5px!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats[hidden],
+  :is(#cpHomeBest,.cpHomeBestClone):not(.has-match-data) .cpHomeBestLiveStats{
+    display:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div{
+    min-width:0!important;
+    min-height:38px!important;
+    height:38px!important;
+    padding:3px 6px!important;
+    display:grid!important;
+    grid-template-columns:18px minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:4px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > i{
+    font-size:15px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > small{
+    font-size:7.2px!important;
+    white-space:nowrap!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div > b{
+    font-size:10px!important;
+    white-space:nowrap!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestOpen,
+  .cpHomeBestClone [data-clone-id="cpHomeBestOpen"]{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 39px!important;
+    width:100%!important;
+    height:39px!important;
+    min-height:39px!important;
+    max-height:39px!important;
+    margin-top:auto!important;
+    padding:0 12px!important;
+    border-radius:10px!important;
+    font-size:9.4px!important;
+  }
+}
+
+@media (max-width:390px){
+  .cpHomeSwipeViewport{--cp-active-card-height:280px}
+  .cpHomeSwipeTrack > #cpHomeBest,
+  .cpHomeSwipeTrack > .cpHomeBestClone{--cp-card-height:280px}
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-soon{--cp-card-height:304px}
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-live,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-halftime,
+  :is(#cpHomeBest,.cpHomeBestClone).is-match-finished{--cp-card-height:336px}
+}

@@ -21082,3 +21082,106 @@
   setTimeout(apply, 1000);
   setTimeout(apply, 2500);
 })();
+/* =========================================================
+   CORNER PRO — ALTURA DO CARD ATIVO V16
+   Cada um dos três cards conserva o próprio estado. O viewport
+   acompanha somente o card visível, sem deixar espaço vazio.
+   ========================================================= */
+(function installCornerProActiveCardHeightV16(){
+  "use strict";
+
+  if (window.__cpActiveCardHeightV16Installed) return;
+  window.__cpActiveCardHeightV16Installed = true;
+
+  const MOBILE_QUERY = "(max-width:980px)";
+
+  function cardHeight(card){
+    if (!card) return 286;
+    if (
+      card.classList.contains("is-match-live") ||
+      card.classList.contains("is-match-halftime") ||
+      card.classList.contains("is-match-finished")
+    ) return 342;
+    if (card.classList.contains("is-match-soon")) return 310;
+    return 286;
+  }
+
+  function visibleCard(viewport, cards){
+    const rect = viewport.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    let best = cards[0] || null;
+    let distance = Infinity;
+
+    for (const card of cards) {
+      const cardRect = card.getBoundingClientRect();
+      const cardCenter = cardRect.left + cardRect.width / 2;
+      const current = Math.abs(cardCenter - center);
+      if (current < distance) {
+        distance = current;
+        best = card;
+      }
+    }
+    return best;
+  }
+
+  function apply(){
+    if (!window.matchMedia(MOBILE_QUERY).matches) return;
+
+    const viewport = document.querySelector(".cpHomeSwipeViewport");
+    const track = document.querySelector(".cpHomeSwipeTrack");
+    if (!viewport || !track) return;
+
+    const cards = [...track.querySelectorAll(":scope > #cpHomeBest,:scope > .cpHomeBestClone")];
+    if (!cards.length) return;
+
+    for (const card of cards) {
+      card.style.setProperty("--cp-card-height", `${cardHeight(card)}px`);
+    }
+
+    const active = visibleCard(viewport, cards);
+    viewport.style.setProperty("--cp-active-card-height", `${cardHeight(active)}px`);
+  }
+
+  let raf = 0;
+  function schedule(){
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(apply);
+  }
+
+  function start(){
+    const home = document.getElementById("cpMobileHome");
+    if (!home) return;
+
+    const observer = new MutationObserver(schedule);
+    observer.observe(home, {
+      subtree:true,
+      childList:true,
+      attributes:true,
+      attributeFilter:["class","style","hidden"]
+    });
+
+    const viewport = document.querySelector(".cpHomeSwipeViewport");
+    viewport?.addEventListener("scroll", schedule, {passive:true});
+    viewport?.addEventListener("touchmove", schedule, {passive:true});
+    viewport?.addEventListener("touchend", () => {
+      schedule();
+      setTimeout(schedule, 180);
+      setTimeout(schedule, 420);
+    }, {passive:true});
+
+    window.addEventListener("resize", schedule, {passive:true});
+    window.addEventListener("orientationchange", schedule, {passive:true});
+
+    schedule();
+    setTimeout(schedule, 250);
+    setTimeout(schedule, 900);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, {once:true});
+  } else {
+    start();
+  }
+
+  setInterval(apply, 1000);
+})();
