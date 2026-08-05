@@ -988,10 +988,24 @@
             ? "away"
             : "home";
   
+        const serverLine =
+          clean(serverDecision.line, "SEM APOSTA");
+
+        const validServerLines = new Set([
+          "-1.0", "-0.75", "-0.5", "-0.25",
+          "+0.25", "+0.5", "+0.75", "+1.0",
+          "SEM APOSTA"
+        ]);
+
         return {
-          skip: Boolean(serverDecision.skip),
+          skip:
+            Boolean(serverDecision.skip) ||
+            !validServerLines.has(serverLine),
           side,
-          line: clean(serverDecision.line, "SEM APOSTA"),
+          line:
+            validServerLines.has(serverLine)
+              ? serverLine
+              : "SEM APOSTA",
           confidence: Number(serverDecision.confidence || 0),
           score: Number(serverDecision.score || 0),
           teamName: clean(
@@ -1005,68 +1019,6 @@
           source: "server"
         };
       }
-  
-      const homePosFallback = handicapRawNumber(raw, [
-        "pos_home",
-        "home_position",
-        "table.home.position",
-        "standings.home.position",
-        "posHome"
-      ]);
-  
-      const awayPosFallback = handicapRawNumber(raw, [
-        "pos_away",
-        "away_position",
-        "table.away.position",
-        "standings.away.position",
-        "posAway"
-      ]);
-  
-      if (
-        Number.isFinite(homePosFallback) &&
-        Number.isFinite(awayPosFallback)
-      ) {
-        const gap = Math.abs(
-          awayPosFallback - homePosFallback
-        );
-  
-        if (gap >= 4) {
-          const side =
-            homePosFallback < awayPosFallback
-              ? "home"
-              : "away";
-  
-          const teamName =
-            side === "home"
-              ? game.home
-              : game.away;
-  
-          const line =
-            gap >= 11
-              ? "-0.5"
-              : gap >= 7
-                ? "-0.25"
-                : "+0.25";
-  
-          return {
-            skip: false,
-            side,
-            line,
-            confidence:
-              gap >= 11
-                ? 68
-                : gap >= 7
-                  ? 65
-                  : 62,
-            score: gap * 2,
-            teamName,
-            reason:
-              `${teamName} ${line}: leitura conservadora pela diferença de ${gap} posições.`,
-            source: "table"
-          };
-        }
-      }
-  
       const homeOdds = handicapRawNumber(raw, [
         "home_od", "odds.home", "home_odd", "odd_home",
         "match_hometeam_odd", "odds.1"
@@ -1078,12 +1030,12 @@
       ]);
   
       const homePos = handicapRawNumber(raw, [
-        "home_position", "table.home.position",
+        "pos_home", "home_position", "table.home.position",
         "standings.home.position", "posHome"
       ]);
   
       const awayPos = handicapRawNumber(raw, [
-        "away_position", "table.away.position",
+        "pos_away", "away_position", "table.away.position",
         "standings.away.position", "posAway"
       ]);
   
@@ -1171,21 +1123,69 @@
   
       let line = "";
       let confidence = 0;
-  
-      if (edge >= 30 && hasOdds && hasGoals) {
+
+      const favoriteOdd =
+        side === "home" ? homeOdds : awayOdds;
+
+      const underdogOdd =
+        side === "home" ? awayOdds : homeOdds;
+
+      const oddsGap =
+        hasOdds
+          ? Math.abs((underdogOdd ?? 0) - (favoriteOdd ?? 0))
+          : 0;
+
+      const tableGap =
+        hasTable
+          ? Math.abs(awayPos - homePos)
+          : 0;
+
+      const strongEvidence =
+        Number(hasOdds) +
+        Number(hasTable) +
+        Number(hasGoals);
+
+      if (
+        edge >= 34 &&
+        strongEvidence >= 2 &&
+        (!hasOdds || favoriteOdd <= 1.65)
+      ) {
         line = "-1.0";
-        confidence = 78;
-      } else if (edge >= 23 && hasOdds && hasGoals) {
+        confidence = 79;
+      } else if (
+        edge >= 26 &&
+        strongEvidence >= 2 &&
+        (!hasOdds || favoriteOdd <= 1.82)
+      ) {
         line = "-0.75";
-        confidence = 74;
-      } else if (edge >= 16) {
+        confidence = 75;
+      } else if (
+        edge >= 18 ||
+        (tableGap >= 10 && oddsGap >= 0.55)
+      ) {
         line = "-0.5";
-        confidence = 70;
-      } else if (edge >= 10) {
+        confidence = 71;
+      } else if (
+        edge >= 11 &&
+        (
+          strongEvidence >= 2 ||
+          tableGap >= 7 ||
+          oddsGap >= 0.38
+        )
+      ) {
         line = "-0.25";
-        confidence = 66;
-      } else if (edge >= 5) {
+        confidence = 67;
+      } else if (
+        edge >= 7 ||
+        tableGap >= 4
+      ) {
         line = "+0.25";
+        confidence = 64;
+      } else if (
+        edge >= 4 &&
+        hasOdds
+      ) {
+        line = "+0.5";
         confidence = 62;
       } else {
         return {
@@ -1198,13 +1198,13 @@
           reason: "Confronto equilibrado: não há vantagem suficiente."
         };
       }
-  
+
       confidence = Math.min(
         82,
         Math.round(confidence + Math.min(4, dataQuality - 3))
       );
   
-      if (confidence < 64) {
+      if (confidence < 62) {
         return {
           skip: true,
           side,
@@ -1243,7 +1243,62 @@
           game,
           originalIndex,
           recommendation: handicapAutoRecommendation(game)
-        }))
+        }));
+
+      const fingerprintCount = new Map();
+
+      preparedGames.forEach(item => {
+        const recommendation = item.recommendation || {};
+        const fingerprint = [
+          recommendation.side,
+          recommendation.line,
+          Math.round(Number(recommendation.confidence || 0))
+        ].join("|");
+
+        fingerprintCount.set(
+          fingerprint,
+          (fingerprintCount.get(fingerprint) || 0) + 1
+        );
+      });
+
+      preparedGames = preparedGames.map(item => {
+        const recommendation = item.recommendation || {};
+        const fingerprint = [
+          recommendation.side,
+          recommendation.line,
+          Math.round(Number(recommendation.confidence || 0))
+        ].join("|");
+
+        const repeated =
+          recommendation.source === "server" &&
+          recommendation.line !== "SEM APOSTA" &&
+          (fingerprintCount.get(fingerprint) || 0) >= 3;
+
+        if (!repeated) return item;
+
+        const rawWithoutServerDecision = {
+          ...(item.game?.raw || {})
+        };
+
+        delete rawWithoutServerDecision.handicap_ai;
+
+        const recalculated = handicapAutoRecommendation({
+          ...item.game,
+          raw: rawWithoutServerDecision
+        });
+
+        return {
+          ...item,
+          recommendation: {
+            ...recalculated,
+            repeated_server_line_blocked: true,
+            reason:
+              `${recalculated.reason} A linha repetida foi revisada com os dados individuais da partida.`
+          }
+        };
+      });
+
+      preparedGames = preparedGames
         .sort((a, b) => {
           if (a.recommendation.skip !== b.recommendation.skip) {
             return a.recommendation.skip ? 1 : -1;
