@@ -20586,24 +20586,17 @@
   
   
   /* =========================================================
-     CORNER PRO — STATUS E PLACAR COMPACTO NO CARD PRINCIPAL
-     20 min antes, ao vivo, intervalo, gols, cantos e cartões.
+     CORNER PRO — ESTADOS DO CARD PRINCIPAL V10
+     20 minutos antes, ao vivo, intervalo e encerrado.
+     Somente o card principal.
      ========================================================= */
-  (function installCornerProHomeBestLiveStatus(){
+  (function installCornerProHomeBestMatchStatesV10(){
     "use strict";
-  
-    if (window.__cpHomeBestLiveStatusInstalled) return;
-    window.__cpHomeBestLiveStatusInstalled = true;
-  
-    function numberValue(...values){
-      for (const value of values) {
-        const n = Number(value);
-        if (Number.isFinite(n)) return n;
-      }
-      return 0;
-    }
-  
-    function textValue(...values){
+
+    if (window.__cpHomeBestMatchStatesV10Installed) return;
+    window.__cpHomeBestMatchStatesV10Installed = true;
+
+    function cleanText(...values){
       for (const value of values) {
         const text = String(value ?? "").trim();
         if (text && !["undefined","null","NaN"].includes(text)) {
@@ -20612,61 +20605,85 @@
       }
       return "";
     }
-  
+
+    function numeric(...values){
+      for (const value of values) {
+        if (value === null || value === undefined || value === "") continue;
+        const match = String(value).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+        if (!match) continue;
+        const number = Number(match[0]);
+        if (Number.isFinite(number)) return number;
+      }
+      return 0;
+    }
+
     function statusText(raw){
-      return textValue(
+      return cleanText(
         raw?.status,
         raw?.match_status,
         raw?.event_status,
         raw?.status_short,
+        raw?.fixture?.status?.short,
+        raw?.fixture?.status?.long,
         raw?.event_raw?.match_status
       ).toLowerCase();
     }
-  
-    function liveMinute(raw){
-      const candidates = [
-        raw?.minute,
-        raw?.elapsed,
-        raw?.match_minute,
-        raw?.live_minute,
-        raw?.event_raw?.match_live,
-        raw?.event_raw?.match_status
-      ];
-  
-      for (const value of candidates) {
-        const match = String(value ?? "").match(/\d{1,3}/);
-        if (match) {
-          const minute = Number(match[0]);
-          if (minute >= 0 && minute <= 130) return minute;
-        }
-      }
-  
-      return null;
-    }
-  
+
     function isHalfTime(raw){
       const status = statusText(raw);
       return (
-        /\bht\b|half.?time|intervalo|halftime/.test(status) ||
-        raw?.is_halftime === true
+        raw?.is_halftime === true ||
+        /\bht\b|half.?time|intervalo|halftime|half time/.test(status)
       );
     }
-  
+
     function isFinished(raw){
       const status = statusText(raw);
-      return /finished|encerrado|finalizado|\bft\b|after extra time/.test(status);
+      return (
+        raw?.is_finished === true ||
+        /\bft\b|finished|encerrado|finalizado|after extra time|aet|penalties/.test(status)
+      );
     }
-  
+
+    function minuteText(raw){
+      const direct = cleanText(
+        raw?.minute_label,
+        raw?.match_live,
+        raw?.event_raw?.match_live,
+        raw?.fixture?.status?.elapsed
+      );
+
+      const directMatch = direct.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
+      if (directMatch) {
+        return directMatch[2]
+          ? `${directMatch[1]}+${directMatch[2]}'`
+          : `${directMatch[1]}'`;
+      }
+
+      const minute = numeric(
+        raw?.minute,
+        raw?.elapsed,
+        raw?.match_minute,
+        raw?.live_minute
+      );
+
+      return minute > 0 && minute <= 130 ? `${minute}'` : "";
+    }
+
     function isLive(raw){
+      if (isFinished(raw)) return false;
+      if (isHalfTime(raw)) return true;
+
       const status = statusText(raw);
+
       return (
         raw?.is_live === true ||
         raw?.live === true ||
-        /ao vivo|live|in play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
-        liveMinute(raw) !== null
-      ) && !isFinished(raw);
+        /\blive\b|ao vivo|in play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
+        Boolean(minuteText(raw))
+      );
     }
-  
+
     function selectedDate(){
       return (
         document.getElementById("date")?.value ||
@@ -20678,149 +20695,219 @@
         }).format(new Date())
       );
     }
-  
+
     function minutesToKickoff(raw, normalized){
-      const date = textValue(
+      const date = cleanText(
         raw?.match_date,
         raw?.date,
         raw?.event_date,
         selectedDate()
       ).slice(0,10);
-  
-      const time = textValue(
+
+      const timeMatch = cleanText(
         raw?.hora_manaus,
         raw?.hora,
         raw?.match_time,
         raw?.time,
         normalized?.time
       ).match(/(\d{1,2}):(\d{2})/);
-  
-      if (!date || !time) return null;
-  
+
+      if (!date || !timeMatch) return null;
+
       const kickoff = new Date(
-        `${date}T${time[1].padStart(2,"0")}:${time[2]}:00-04:00`
+        `${date}T${timeMatch[1].padStart(2,"0")}:${timeMatch[2]}:00-04:00`
       );
-  
+
       if (!Number.isFinite(kickoff.getTime())) return null;
       return Math.round((kickoff.getTime() - Date.now()) / 60000);
     }
-  
-    function scorePair(raw, type){
-      const sources = {
-        goals: [
-          raw?.home_score, raw?.away_score,
-          raw?.match_hometeam_score, raw?.match_awayteam_score,
-          raw?.goals_home, raw?.goals_away,
-          raw?.event_raw?.match_hometeam_score,
-          raw?.event_raw?.match_awayteam_score
-        ],
-        corners: [
-          raw?.home_corners, raw?.away_corners,
-          raw?.corners_home, raw?.corners_away,
-          raw?.stats?.corners?.home, raw?.stats?.corners?.away,
-          raw?.event_raw?.home_corners, raw?.event_raw?.away_corners
-        ],
-        cards: [
-          raw?.home_cards, raw?.away_cards,
-          raw?.cards_home, raw?.cards_away,
-          raw?.stats?.cards?.home, raw?.stats?.cards?.away,
-          raw?.event_raw?.home_cards, raw?.event_raw?.away_cards
-        ]
-      }[type];
-  
-      return [
-        numberValue(sources?.[0], sources?.[2], sources?.[4], sources?.[6]),
-        numberValue(sources?.[1], sources?.[3], sources?.[5], sources?.[7])
+
+    function statisticFromArray(raw, label, side){
+      const collections = [
+        raw?.statistics,
+        raw?.stats,
+        raw?.event_raw?.statistics,
+        raw?.event_raw?.stats
       ];
-    }
-  
-    function ensureElements(card){
-      let status = card.querySelector(".cpHomeBestMatchStatus");
-      if (!status) {
-        status = document.createElement("div");
-        status.className = "cpHomeBestMatchStatus";
-        status.hidden = true;
-  
-        const body = card.querySelector(".cpHomeBestBody");
-        if (body) body.insertAdjacentElement("beforebegin", status);
+
+      for (const collection of collections) {
+        if (!Array.isArray(collection)) continue;
+
+        for (const item of collection) {
+          const name = cleanText(
+            item?.type,
+            item?.name,
+            item?.statistic,
+            item?.label
+          ).toLowerCase();
+
+          if (!name.includes(label)) continue;
+
+          return numeric(
+            side === "home"
+              ? (item?.home ?? item?.home_value ?? item?.value_home)
+              : (item?.away ?? item?.away_value ?? item?.value_away)
+          );
+        }
       }
-  
-      let events = card.querySelector(".cpHomeBestLiveEvents");
-      if (!events) {
-        events = document.createElement("div");
-        events.className = "cpHomeBestLiveEvents";
-        events.hidden = true;
-        events.innerHTML = `
-          <span data-best-event="goals"><i>⚽</i><small>GOLS</small><b>0 × 0</b></span>
-          <span data-best-event="corners"><i>⚑</i><small>ESCANTEIOS</small><b>0 × 0</b></span>
-          <span data-best-event="cards"><i>▯</i><small>CARTÕES</small><b>0 × 0</b></span>
-        `;
-  
-        const open = card.querySelector("#cpHomeBestOpen");
-        if (open) open.insertAdjacentElement("beforebegin", events);
-        else card.appendChild(events);
-      }
-  
-      return {status, events};
+
+      return 0;
     }
-  
+
+    function score(raw, side){
+      return numeric(
+        side === "home" ? raw?.home_score : raw?.away_score,
+        side === "home" ? raw?.match_hometeam_score : raw?.match_awayteam_score,
+        side === "home" ? raw?.goals_home : raw?.goals_away,
+        side === "home" ? raw?.score?.home : raw?.score?.away,
+        side === "home" ? raw?.goals?.home : raw?.goals?.away,
+        side === "home"
+          ? raw?.event_raw?.match_hometeam_score
+          : raw?.event_raw?.match_awayteam_score
+      );
+    }
+
+    function corners(raw, side){
+      return numeric(
+        side === "home" ? raw?.home_corners : raw?.away_corners,
+        side === "home" ? raw?.corners_home : raw?.corners_away,
+        side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
+        side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
+        side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
+        side === "home" ? raw?.event_raw?.home_corners : raw?.event_raw?.away_corners,
+        statisticFromArray(raw, "corner", side)
+      );
+    }
+
+    function cards(raw, side){
+      const yellow = numeric(
+        side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
+        side === "home" ? raw?.yellow_cards_home : raw?.yellow_cards_away,
+        side === "home" ? raw?.stats?.yellow_cards?.home : raw?.stats?.yellow_cards?.away,
+        statisticFromArray(raw, "yellow", side)
+      );
+
+      const red = numeric(
+        side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
+        side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
+        side === "home" ? raw?.stats?.red_cards?.home : raw?.stats?.red_cards?.away,
+        statisticFromArray(raw, "red", side)
+      );
+
+      const directTotal = numeric(
+        side === "home" ? raw?.home_cards : raw?.away_cards,
+        side === "home" ? raw?.cards_home : raw?.cards_away,
+        side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away,
+        statisticFromArray(raw, "card", side)
+      );
+
+      return directTotal || (yellow + red);
+    }
+
+    function element(id){
+      return document.getElementById(id);
+    }
+
+    function setText(id, value){
+      const node = element(id);
+      if (node) node.textContent = String(value);
+    }
+
+    function setStatus(type, text, extra = ""){
+      const bar = element("cpHomeBestStatusBar");
+      if (!bar) return;
+
+      bar.hidden = false;
+      bar.className = `cpHomeBestStatusBar is-${type}`;
+
+      setText("cpHomeBestStatusText", text);
+      setText("cpHomeBestStatusExtra", extra);
+    }
+
+    function clearStatus(){
+      const bar = element("cpHomeBestStatusBar");
+      if (bar) {
+        bar.hidden = true;
+        bar.className = "cpHomeBestStatusBar";
+      }
+    }
+
     function update(raw, normalized = {}){
-      const card = document.getElementById("cpHomeBest");
+      const card = element("cpHomeBest");
       if (!card || !raw) return;
-  
+
       window.__cpCurrentHomeBestRaw = raw;
       window.__cpCurrentHomeBestNormalized = normalized;
-  
-      const {status, events} = ensureElements(card);
-      const timeElement = document.getElementById("cpHomeBestTime");
-  
+
       const halfTime = isHalfTime(raw);
-      const live = isLive(raw);
       const finished = isFinished(raw);
-      const minute = liveMinute(raw);
+      const live = isLive(raw);
+      const minute = minuteText(raw);
       const until = minutesToKickoff(raw, normalized);
-  
-      card.classList.toggle("is-best-live", live || halfTime);
-      card.classList.toggle("is-best-soon", !live && !finished && until !== null && until >= 0 && until <= 20);
-  
-      if (halfTime) {
-        status.hidden = false;
-        status.className = "cpHomeBestMatchStatus is-live";
-        status.innerHTML = `<i></i><b>INTERVALO</b>`;
-        if (timeElement) timeElement.textContent = "INTERVALO";
+
+      const showMatchData = live || halfTime || finished;
+
+      card.classList.toggle("is-match-soon",
+        !live && !finished && until !== null && until >= 0 && until <= 20
+      );
+      card.classList.toggle("is-match-live", live && !halfTime);
+      card.classList.toggle("is-match-halftime", halfTime);
+      card.classList.toggle("is-match-finished", finished);
+      card.classList.toggle("has-match-data", showMatchData);
+
+      if (finished) {
+        setStatus("finished", "ENCERRADO");
+      } else if (halfTime) {
+        setStatus("halftime", "INTERVALO");
       } else if (live) {
-        const minuteLabel = minute !== null ? `${minute}'` : "AO VIVO";
-        status.hidden = false;
-        status.className = "cpHomeBestMatchStatus is-live";
-        status.innerHTML = `<i></i><b>AO VIVO</b><span>${minuteLabel}</span>`;
-        if (timeElement) timeElement.textContent = minuteLabel;
-      } else if (!finished && until !== null && until >= 0 && until <= 20) {
-        status.hidden = false;
-        status.className = "cpHomeBestMatchStatus is-soon";
-        status.innerHTML = `<i>●</i><b>O JOGO JÁ VAI COMEÇAR</b><span>${until} MIN</span>`;
-      } else if (finished) {
-        status.hidden = false;
-        status.className = "cpHomeBestMatchStatus is-finished";
-        status.innerHTML = `<b>PARTIDA ENCERRADA</b>`;
+        setStatus("live", "AO VIVO", minute);
+      } else if (until !== null && until >= 0 && until <= 20) {
+        setStatus(
+          "soon",
+          "A PARTIDA JÁ VAI COMEÇAR",
+          until === 0 ? "AGORA" : `${until} MIN`
+        );
       } else {
-        status.hidden = true;
+        clearStatus();
       }
-  
-      events.hidden = !(live || halfTime || finished);
-  
-      if (!events.hidden) {
-        for (const type of ["goals","corners","cards"]) {
-          const [home, away] = scorePair(raw, type);
-          const value = events.querySelector(
-            `[data-best-event="${type}"] b`
-          );
-          if (value) value.textContent = `${home} × ${away}`;
+
+      const scoreBox = element("cpHomeBestScore");
+      const versus = card.querySelector(".cpHomeBestVersus");
+      const stats = element("cpHomeBestLiveStats");
+      const timeElement = element("cpHomeBestTime");
+
+      if (showMatchData) {
+        if (scoreBox) scoreBox.hidden = false;
+        if (versus) versus.hidden = true;
+        if (stats) stats.hidden = false;
+
+        setText("cpHomeBestHomeScore", score(raw, "home"));
+        setText("cpHomeBestAwayScore", score(raw, "away"));
+        setText("cpHomeBestHomeCorners", corners(raw, "home"));
+        setText("cpHomeBestAwayCorners", corners(raw, "away"));
+        setText("cpHomeBestHomeCards", cards(raw, "home"));
+        setText("cpHomeBestAwayCards", cards(raw, "away"));
+
+        if (timeElement) {
+          timeElement.textContent = finished
+            ? "FIM"
+            : halfTime
+              ? "INTERVALO"
+              : minute || "AO VIVO";
+        }
+      } else {
+        if (scoreBox) scoreBox.hidden = true;
+        if (versus) versus.hidden = false;
+        if (stats) stats.hidden = true;
+
+        if (timeElement && normalized?.time) {
+          timeElement.textContent = normalized.time;
         }
       }
     }
-  
+
     window.cpUpdateHomeBestLiveCard = update;
-  
+
     setInterval(() => {
       if (window.__cpCurrentHomeBestRaw) {
         update(
@@ -20828,10 +20915,10 @@
           window.__cpCurrentHomeBestNormalized || {}
         );
       }
-    }, 30000);
+    }, 15000);
   })();
-  
-  
+
+
   /* =========================================================
      CORNER PRO — CORREÇÃO FINAL DA POSIÇÃO DA BARRA INFERIOR
      Mantém a barra presa ao rodapé da tela no iPhone/Safari.

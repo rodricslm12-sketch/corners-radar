@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-featured-games-visible-v3" />
-  <script src="script.js?v=cornerpro-featured-games-visible-v3" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-main-card-states-v10" />
+  <script src="script.js?v=cornerpro-main-card-states-v10" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -270,11 +270,40 @@
           <small>Buscando a melhor oportunidade...</small>
         </div>
 
+        <div class="cpHomeBestStatusBar" id="cpHomeBestStatusBar" hidden>
+          <i aria-hidden="true"></i>
+          <b id="cpHomeBestStatusText">PRÉ-JOGO</b>
+          <span id="cpHomeBestStatusExtra"></span>
+        </div>
+
         <div class="cpHomeBestBody">
           <time id="cpHomeBestTime">--:--</time>
-          <div class="cpHomeBestTeams"><strong id="cpHomeBestHome">Aguardando</strong><i>×</i><strong id="cpHomeBestAway">partidas</strong></div>
+          <div class="cpHomeBestTeams">
+            <strong id="cpHomeBestHome">Aguardando</strong>
+            <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
+              <b id="cpHomeBestHomeScore">0</b>
+              <i>×</i>
+              <b id="cpHomeBestAwayScore">0</b>
+            </div>
+            <i class="cpHomeBestVersus">×</i>
+            <strong id="cpHomeBestAway">partidas</strong>
+          </div>
           <div class="cpHomeBestConfidence"><b id="cpHomeBestConfidence">--%</b><small>CONFIANÇA</small></div>
         </div>
+
+        <div class="cpHomeBestLiveStats" id="cpHomeBestLiveStats" hidden>
+          <div>
+            <i>⚑</i>
+            <small>ESCANTEIOS</small>
+            <b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b>
+          </div>
+          <div>
+            <i>▯</i>
+            <small>CARTÕES</small>
+            <b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b>
+          </div>
+        </div>
+
         <button type="button" id="cpHomeBestOpen" disabled>
           <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
           <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
