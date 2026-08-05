@@ -19064,6 +19064,14 @@
           if(market) market.textContent=best.market;
           window.__cpPaintBestTeamColors?.(root,best);
           cpUpdateBestMarketTitle(root,best,marketType);
+
+          if (typeof window.cpUpdateHomeBestCloneCard === "function") {
+            window.cpUpdateHomeBestCloneCard(
+              root,
+              best.raw || best,
+              best
+            );
+          }
   
           // Cada slide mantém seus próprios 3 indicadores sincronizados.
           // A função também neutraliza estilos antigos que marcavam o 1º ponto.
@@ -20586,22 +20594,19 @@
   
   
   /* =========================================================
-     CORNER PRO — ESTADOS DO CARD PRINCIPAL V10
-     20 minutos antes, ao vivo, intervalo e encerrado.
-     Somente o card principal.
+     CORNER PRO — ESTADOS DO CARD PRINCIPAL V13
+     Funciona no card original e nos três clones do carrossel.
      ========================================================= */
-  (function installCornerProHomeBestMatchStatesV10(){
+  (function installCornerProHomeBestMatchStatesV13(){
     "use strict";
 
-    if (window.__cpHomeBestMatchStatesV10Installed) return;
-    window.__cpHomeBestMatchStatesV10Installed = true;
+    if (window.__cpHomeBestMatchStatesV13Installed) return;
+    window.__cpHomeBestMatchStatesV13Installed = true;
 
     function cleanText(...values){
       for (const value of values) {
         const text = String(value ?? "").trim();
-        if (text && !["undefined","null","NaN"].includes(text)) {
-          return text;
-        }
+        if (text && !["undefined","null","NaN"].includes(text)) return text;
       }
       return "";
     }
@@ -20615,6 +20620,21 @@
         if (Number.isFinite(number)) return number;
       }
       return 0;
+    }
+
+    function field(card, id){
+      if (!card) return null;
+
+      if (card.id === "cpHomeBest") {
+        return card.querySelector(`#${id}`) || document.getElementById(id);
+      }
+
+      return card.querySelector(`[data-clone-id="${id}"]`);
+    }
+
+    function setText(card, id, value){
+      const node = field(card, id);
+      if (node) node.textContent = String(value);
     }
 
     function statusText(raw){
@@ -20774,7 +20794,6 @@
         side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
         side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
         side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
-        side === "home" ? raw?.event_raw?.home_corners : raw?.event_raw?.away_corners,
         statisticFromArray(raw, "corner", side)
       );
     }
@@ -20794,99 +20813,96 @@
         statisticFromArray(raw, "red", side)
       );
 
-      const directTotal = numeric(
+      const total = numeric(
         side === "home" ? raw?.home_cards : raw?.away_cards,
         side === "home" ? raw?.cards_home : raw?.cards_away,
         side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away,
         statisticFromArray(raw, "card", side)
       );
 
-      return directTotal || (yellow + red);
+      return total || yellow + red;
     }
 
-    function element(id){
-      return document.getElementById(id);
-    }
-
-    function setText(id, value){
-      const node = element(id);
-      if (node) node.textContent = String(value);
-    }
-
-    function setStatus(type, text, extra = ""){
-      const bar = element("cpHomeBestStatusBar");
+    function setStatus(card, type, text, extra = ""){
+      const bar = field(card, "cpHomeBestStatusBar");
       if (!bar) return;
 
       bar.hidden = false;
       bar.className = `cpHomeBestStatusBar is-${type}`;
 
-      setText("cpHomeBestStatusText", text);
-      setText("cpHomeBestStatusExtra", extra);
+      setText(card, "cpHomeBestStatusText", text);
+      setText(card, "cpHomeBestStatusExtra", extra);
     }
 
-    function clearStatus(){
-      const bar = element("cpHomeBestStatusBar");
-      if (bar) {
-        bar.hidden = true;
-        bar.className = "cpHomeBestStatusBar";
-      }
+    function clearStatus(card){
+      const bar = field(card, "cpHomeBestStatusBar");
+      if (!bar) return;
+
+      bar.hidden = true;
+      bar.className = "cpHomeBestStatusBar";
     }
 
-    function update(raw, normalized = {}){
-      const card = element("cpHomeBest");
+    function updateCard(card, raw, normalized = {}){
       if (!card || !raw) return;
 
-      window.__cpCurrentHomeBestRaw = raw;
-      window.__cpCurrentHomeBestNormalized = normalized;
+      card.__cpCurrentRaw = raw;
+      card.__cpCurrentNormalized = normalized;
 
       const halfTime = isHalfTime(raw);
       const finished = isFinished(raw);
       const live = isLive(raw);
       const minute = minuteText(raw);
       const until = minutesToKickoff(raw, normalized);
-
       const showMatchData = live || halfTime || finished;
 
-      card.classList.toggle("is-match-soon",
-        !live && !finished && until !== null && until >= 0 && until <= 20
-      );
+      const soon =
+        !live &&
+        !finished &&
+        until !== null &&
+        until >= 0 &&
+        until <= 20;
+
+      card.classList.toggle("is-match-soon", soon);
       card.classList.toggle("is-match-live", live && !halfTime);
       card.classList.toggle("is-match-halftime", halfTime);
       card.classList.toggle("is-match-finished", finished);
       card.classList.toggle("has-match-data", showMatchData);
 
       if (finished) {
-        setStatus("finished", "ENCERRADO");
+        setStatus(card, "finished", "ENCERRADO");
       } else if (halfTime) {
-        setStatus("halftime", "INTERVALO");
+        setStatus(card, "halftime", "INTERVALO");
       } else if (live) {
-        setStatus("live", "AO VIVO", minute);
-      } else if (until !== null && until >= 0 && until <= 20) {
+        setStatus(card, "live", "AO VIVO", minute);
+      } else if (soon) {
         setStatus(
+          card,
           "soon",
           "A PARTIDA JÁ VAI COMEÇAR",
           until === 0 ? "AGORA" : `${until} MIN`
         );
       } else {
-        clearStatus();
+        clearStatus(card);
       }
 
-      const scoreBox = element("cpHomeBestScore");
-      const versus = card.querySelector(".cpHomeBestVersus");
-      const stats = element("cpHomeBestLiveStats");
-      const timeElement = element("cpHomeBestTime");
+      const scoreBox = field(card, "cpHomeBestScore");
+      const versus =
+        card.querySelector(".cpHomeBestVersus") ||
+        card.querySelector(".cpHomeBestTeams > i");
+      const stats = field(card, "cpHomeBestLiveStats");
+      const timeElement = field(card, "cpHomeBestTime");
 
       if (showMatchData) {
         if (scoreBox) scoreBox.hidden = false;
         if (versus) versus.hidden = true;
         if (stats) stats.hidden = false;
 
-        setText("cpHomeBestHomeScore", score(raw, "home"));
-        setText("cpHomeBestAwayScore", score(raw, "away"));
-        setText("cpHomeBestHomeCorners", corners(raw, "home"));
-        setText("cpHomeBestAwayCorners", corners(raw, "away"));
-        setText("cpHomeBestHomeCards", cards(raw, "home"));
-        setText("cpHomeBestAwayCards", cards(raw, "away"));
+        setText(card, "cpHomeBestHomeScore", score(raw, "home"));
+        setText(card, "cpHomeBestAwayScore", score(raw, "away"));
+        setText(card, "cpHomeBestHomeCorners", corners(raw, "home"));
+        setText(card, "cpHomeBestAwayCorners", corners(raw, "away"));
+        setText(card, "cpHomeBestHomeCards", cards(raw, "home"));
+        setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
 
         if (timeElement) {
           timeElement.textContent = finished
@@ -20906,16 +20922,29 @@
       }
     }
 
-    window.cpUpdateHomeBestLiveCard = update;
+    function updateAll(){
+      document
+        .querySelectorAll("#cpHomeBest,.cpHomeBestClone")
+        .forEach(card => {
+          if (card.__cpCurrentRaw) {
+            updateCard(
+              card,
+              card.__cpCurrentRaw,
+              card.__cpCurrentNormalized || {}
+            );
+          }
+        });
+    }
 
-    setInterval(() => {
-      if (window.__cpCurrentHomeBestRaw) {
-        update(
-          window.__cpCurrentHomeBestRaw,
-          window.__cpCurrentHomeBestNormalized || {}
-        );
-      }
-    }, 15000);
+    window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}){
+      const card = document.getElementById("cpHomeBest");
+      updateCard(card, raw, normalized);
+    };
+
+    window.cpUpdateHomeBestCloneCard = updateCard;
+    window.cpRefreshAllHomeBestStates = updateAll;
+
+    setInterval(updateAll, 15000);
   })();
 
 
