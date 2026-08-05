@@ -15732,27 +15732,22 @@ button.railFullBtn {
 
 
 /* =========================================================
-   CORNER PRO — ESTADOS VISÍVEIS NOS 3 CARDS V14
-   Somente card principal e clones.
+   CORNER PRO — AVISO E ESTADOS DO CARD V15
    ========================================================= */
 @media (max-width:980px){
-
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar{
-    width:max-content!important;
-    max-width:calc(100% - 20px)!important;
-    min-height:28px!important;
-    margin:2px auto 6px!important;
-    padding:5px 10px!important;
-
     display:flex!important;
+    position:relative!important;
+    inset:auto!important;
+    z-index:30!important;
+    width:max-content!important;
+    max-width:calc(100% - 18px)!important;
+    min-height:29px!important;
+    margin:3px auto 6px!important;
+    padding:5px 10px!important;
     align-items:center!important;
     justify-content:center!important;
     gap:6px!important;
-
-    position:relative!important;
-    inset:auto!important;
-    z-index:12!important;
-
     border-radius:999px!important;
     font-size:8.5px!important;
     line-height:1!important;
@@ -15774,105 +15769,26 @@ button.railFullBtn {
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-soon{
-    color:#80f337!important;
-    background:#0b2111!important;
-    border:1px solid rgba(128,243,55,.55)!important;
+    color:#83f63c!important;
+    background:#0b2411!important;
+    border:1px solid rgba(131,246,60,.62)!important;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-live{
     color:#fff!important;
     background:#df3e48!important;
-    border:1px solid rgba(255,255,255,.16)!important;
+    border:1px solid rgba(255,255,255,.18)!important;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-halftime{
-    color:#ffc94a!important;
+    color:#ffcb4b!important;
     background:#251b08!important;
-    border:1px solid rgba(255,201,74,.55)!important;
+    border:1px solid rgba(255,203,75,.62)!important;
   }
 
   :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestStatusBar.is-finished{
-    color:#dce3e1!important;
-    background:#111a1e!important;
-    border:1px solid #344249!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore{
-    align-items:center!important;
-    justify-content:center!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestScore[hidden]{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats{
-    width:100%!important;
-    margin:2px 0 7px!important;
-    padding:6px!important;
-
-    display:grid!important;
-    grid-template-columns:1fr 1fr!important;
-    gap:6px!important;
-
-    position:relative!important;
-    inset:auto!important;
-    z-index:10!important;
-
-    border:1px solid #1c2c32!important;
-    border-radius:11px!important;
-    background:#071014!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats[hidden]{
-    display:none!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats > div{
-    min-height:38px!important;
-    padding:5px 7px!important;
-    display:grid!important;
-    grid-template-columns:19px 1fr!important;
-    grid-template-rows:auto auto!important;
-    align-items:center!important;
-    column-gap:5px!important;
-    border-radius:8px!important;
-    background:#0a1519!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats i{
-    grid-row:1 / 3!important;
-    color:#80f337!important;
-    font-size:15px!important;
-    font-style:normal!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats small{
-    color:#8e9b9e!important;
-    font-size:7px!important;
-    font-weight:800!important;
-  }
-
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestLiveStats b{
-    color:#fff!important;
-    font-size:10.5px!important;
-    font-weight:900!important;
-  }
-
-  /* A altura acompanha qualquer slide visível com estado. */
-  .cpHomeSwipeViewport:has(.is-match-soon),
-  .cpHomeSwipeTrack:has(.is-match-soon),
-  .cpHomeSwipeTrack:has(.is-match-soon) > :is(#cpHomeBest,.cpHomeBestClone){
-    height:320px!important;
-    min-height:320px!important;
-    max-height:320px!important;
-  }
-
-  .cpHomeSwipeViewport:has(.has-match-data),
-  .cpHomeSwipeTrack:has(.has-match-data),
-  .cpHomeSwipeTrack:has(.has-match-data) > :is(#cpHomeBest,.cpHomeBestClone){
-    height:360px!important;
-    min-height:360px!important;
-    max-height:360px!important;
+    color:#e0e6e4!important;
+    background:#121b1f!important;
+    border:1px solid #39484f!important;
   }
 }

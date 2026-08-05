@@ -472,13 +472,11 @@
         cpPaintBestTeamColors(card, best);
       }
   
-      if (card) {
-        card.__cpCurrentRaw = best.raw || best;
-        card.__cpCurrentNormalized = best;
-      }
+      card.__cpCurrentRaw = best.raw || best;
+      card.__cpCurrentNormalized = best;
 
       if (typeof window.cpUpdateHomeBestLiveCard === "function") {
-        window.cpUpdateHomeBestLiveCard(best.raw || best, best);
+        window.cpUpdateHomeBestLiveCard(card.__cpCurrentRaw, card.__cpCurrentNormalized);
       }
   
       const open = $("#cpHomeBestOpen");
@@ -20602,37 +20600,32 @@
   
   
   /* =========================================================
-     CORNER PRO — ESTADOS DO CARD PRINCIPAL V14
-     Atualiza original e clones, inclusive após recriação do carrossel.
+     CORNER PRO — ESTADOS DO CARD PRINCIPAL V15
+     Aviso pré-jogo independente + atualização persistente.
      ========================================================= */
-  (function installCornerProHomeBestMatchStatesV14(){
+  (function installHomeBestStatesV15(){
     "use strict";
 
-    if (window.__cpHomeBestMatchStatesV14Installed) return;
-    window.__cpHomeBestMatchStatesV14Installed = true;
+    if (window.__cpHomeBestStatesV15Installed) return;
+    window.__cpHomeBestStatesV15Installed = true;
 
-    function cleanText(...values){
-      for (const value of values) {
-        const text = String(value ?? "").trim();
-        if (text && !["undefined","null","NaN"].includes(text)) return text;
-      }
-      return "";
+    function clean(value){
+      return String(value ?? "").trim();
     }
 
-    function numeric(...values){
+    function number(...values){
       for (const value of values) {
         if (value === null || value === undefined || value === "") continue;
         const found = String(value).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
         if (!found) continue;
-        const number = Number(found[0]);
-        if (Number.isFinite(number)) return number;
+        const parsed = Number(found[0]);
+        if (Number.isFinite(parsed)) return parsed;
       }
       return 0;
     }
 
     function field(card, id){
       if (!card) return null;
-
       return card.id === "cpHomeBest"
         ? card.querySelector(`#${id}`)
         : card.querySelector(`[data-clone-id="${id}"]`);
@@ -20643,71 +20636,7 @@
       if (node) node.textContent = String(value);
     }
 
-    function statusText(raw){
-      return cleanText(
-        raw?.status,
-        raw?.match_status,
-        raw?.event_status,
-        raw?.status_short,
-        raw?.fixture?.status?.short,
-        raw?.fixture?.status?.long,
-        raw?.event_raw?.match_status,
-        raw?.event_raw?.status
-      ).toLowerCase();
-    }
-
-    function isHalfTime(raw){
-      const status = statusText(raw);
-      return (
-        raw?.is_halftime === true ||
-        /(^|\s)ht(\s|$)|half.?time|intervalo|halftime|half time/.test(status)
-      );
-    }
-
-    function isFinished(raw){
-      const status = statusText(raw);
-      return (
-        raw?.is_finished === true ||
-        /(^|\s)ft(\s|$)|finished|encerrado|finalizado|after extra time|aet|penalties/.test(status)
-      );
-    }
-
-    function minuteText(raw){
-      const text = cleanText(
-        raw?.minute_label,
-        raw?.match_live,
-        raw?.event_raw?.match_live,
-        raw?.fixture?.status?.elapsed,
-        raw?.minute,
-        raw?.elapsed,
-        raw?.match_minute,
-        raw?.live_minute
-      );
-
-      const found = text.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
-
-      if (!found) return "";
-
-      return found[2]
-        ? `${found[1]}+${found[2]}'`
-        : `${found[1]}'`;
-    }
-
-    function isLive(raw){
-      if (isFinished(raw)) return false;
-      if (isHalfTime(raw)) return true;
-
-      const status = statusText(raw);
-
-      return (
-        raw?.is_live === true ||
-        raw?.live === true ||
-        /\blive\b|ao vivo|in.?play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
-        Boolean(minuteText(raw))
-      );
-    }
-
-    function manausDateParts(){
+    function nowManaus(){
       const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone:"America/Manaus",
         year:"numeric",
@@ -20722,46 +20651,80 @@
       return Object.fromEntries(parts.map(part => [part.type, part.value]));
     }
 
-    function selectedDate(raw){
-      const informed = cleanText(
-        raw?.match_date,
-        raw?.date,
-        raw?.event_date,
-        document.getElementById("date")?.value
-      ).slice(0,10);
-
-      if (informed) return informed;
-
-      const now = manausDateParts();
-      return `${now.year}-${now.month}-${now.day}`;
+    function visibleTime(card){
+      const node = field(card, "cpHomeBestTime");
+      const text = clean(node?.textContent);
+      const found = text.match(/(\d{1,2}):(\d{2})/);
+      return found
+        ? { hour:Number(found[1]), minute:Number(found[2]) }
+        : null;
     }
 
-    function minutesToKickoff(raw, normalized){
-      const date = selectedDate(raw);
+    function minutesUntilVisibleTime(card){
+      const time = visibleTime(card);
+      if (!time) return null;
 
-      const timeText = cleanText(
-        raw?.hora_manaus,
-        raw?.hora,
-        raw?.match_time,
-        raw?.time,
-        normalized?.time
-      );
+      const now = nowManaus();
+      const currentMinutes = Number(now.hour) * 60 + Number(now.minute);
+      const kickoffMinutes = time.hour * 60 + time.minute;
 
-      const found = timeText.match(/(\d{1,2}):(\d{2})/);
-      if (!found) return null;
-
-      const kickoff = new Date(
-        `${date}T${found[1].padStart(2,"0")}:${found[2]}:00-04:00`
-      );
-
-      if (!Number.isFinite(kickoff.getTime())) return null;
-
-      return Math.floor((kickoff.getTime() - Date.now()) / 60000);
+      return kickoffMinutes - currentMinutes;
     }
 
-    function statisticFromArray(raw, labels, side){
-      const names = Array.isArray(labels) ? labels : [labels];
+    function rawStatus(raw){
+      return clean(
+        raw?.match_status ??
+        raw?.status ??
+        raw?.event_status ??
+        raw?.status_short ??
+        raw?.fixture?.status?.short ??
+        raw?.event_raw?.match_status
+      ).toLowerCase();
+    }
 
+    function isFinished(raw){
+      const status = rawStatus(raw);
+      return raw?.is_finished === true ||
+        /\bft\b|finished|encerrado|finalizado|aet|penalties/.test(status);
+    }
+
+    function isHalfTime(raw){
+      const status = rawStatus(raw);
+      return raw?.is_halftime === true ||
+        /\bht\b|intervalo|half.?time|halftime/.test(status);
+    }
+
+    function minuteLabel(raw){
+      const source = clean(
+        raw?.minute_label ??
+        raw?.match_live ??
+        raw?.event_raw?.match_live ??
+        raw?.fixture?.status?.elapsed ??
+        raw?.minute ??
+        raw?.elapsed
+      );
+
+      const found = source.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
+      if (!found) return "";
+
+      return found[2]
+        ? `${found[1]}+${found[2]}'`
+        : `${found[1]}'`;
+    }
+
+    function isLive(raw){
+      if (isFinished(raw)) return false;
+      if (isHalfTime(raw)) return true;
+
+      const status = rawStatus(raw);
+      return raw?.is_live === true ||
+        raw?.live === true ||
+        /\blive\b|ao vivo|in.?play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
+        Boolean(minuteLabel(raw));
+    }
+
+    function statFromArray(raw, labels, side){
+      const wanted = Array.isArray(labels) ? labels : [labels];
       const collections = [
         raw?.statistics,
         raw?.stats,
@@ -20769,20 +20732,17 @@
         raw?.event_raw?.stats
       ];
 
-      for (const collection of collections) {
-        if (!Array.isArray(collection)) continue;
+      for (const list of collections) {
+        if (!Array.isArray(list)) continue;
 
-        for (const item of collection) {
-          const name = cleanText(
-            item?.type,
-            item?.name,
-            item?.statistic,
-            item?.label
+        for (const item of list) {
+          const name = clean(
+            item?.type ?? item?.name ?? item?.statistic ?? item?.label
           ).toLowerCase();
 
-          if (!names.some(label => name.includes(label))) continue;
+          if (!wanted.some(label => name.includes(label))) continue;
 
-          return numeric(
+          return number(
             side === "home"
               ? (item?.home ?? item?.home_value ?? item?.value_home)
               : (item?.away ?? item?.away_value ?? item?.value_away)
@@ -20794,8 +20754,9 @@
     }
 
     function score(raw, side){
-      return numeric(
+      return number(
         side === "home" ? raw?.home_score : raw?.away_score,
+        side === "home" ? raw?.score_home : raw?.score_away,
         side === "home" ? raw?.match_hometeam_score : raw?.match_awayteam_score,
         side === "home" ? raw?.goals_home : raw?.goals_away,
         side === "home" ? raw?.score?.home : raw?.score?.away,
@@ -20807,18 +20768,18 @@
     }
 
     function corners(raw, side){
-      return numeric(
+      return number(
         side === "home" ? raw?.home_corners : raw?.away_corners,
         side === "home" ? raw?.corners_home : raw?.corners_away,
         side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
         side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
         side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
-        statisticFromArray(raw, ["corner","escanteio"], side)
+        statFromArray(raw, ["corner","escanteio"], side)
       );
     }
 
     function cards(raw, side){
-      const direct = numeric(
+      const direct = number(
         side === "home" ? raw?.home_cards : raw?.away_cards,
         side === "home" ? raw?.cards_home : raw?.cards_away,
         side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away
@@ -20826,70 +20787,81 @@
 
       if (direct) return direct;
 
-      const yellow = numeric(
+      return number(
         side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
         side === "home" ? raw?.yellow_cards_home : raw?.yellow_cards_away,
-        statisticFromArray(raw, ["yellow","amarelo"], side)
-      );
-
-      const red = numeric(
+        statFromArray(raw, ["yellow","amarelo"], side)
+      ) + number(
         side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
         side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
-        statisticFromArray(raw, ["red","vermelho"], side)
+        statFromArray(raw, ["red","vermelho"], side)
       );
+    }
 
-      return yellow + red;
+    function ensureStatus(card){
+      let bar = field(card, "cpHomeBestStatusBar");
+
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.className = "cpHomeBestStatusBar";
+        bar.hidden = true;
+
+        if (card.id !== "cpHomeBest") {
+          bar.dataset.cloneId = "cpHomeBestStatusBar";
+        }
+
+        bar.innerHTML = `
+          <i aria-hidden="true"></i>
+          <b ${card.id === "cpHomeBest" ? 'id="cpHomeBestStatusText"' : 'data-clone-id="cpHomeBestStatusText"'}></b>
+          <span ${card.id === "cpHomeBest" ? 'id="cpHomeBestStatusExtra"' : 'data-clone-id="cpHomeBestStatusExtra"'}></span>
+        `;
+
+        const body = card.querySelector(".cpHomeBestBody");
+        if (body) body.insertAdjacentElement("beforebegin", bar);
+      }
+
+      return bar;
     }
 
     function setStatus(card, type, text, extra = ""){
-      const bar = field(card, "cpHomeBestStatusBar");
+      const bar = ensureStatus(card);
       if (!bar) return;
 
       bar.hidden = false;
       bar.className = `cpHomeBestStatusBar is-${type}`;
-
       setText(card, "cpHomeBestStatusText", text);
       setText(card, "cpHomeBestStatusExtra", extra);
     }
 
     function clearStatus(card){
-      const bar = field(card, "cpHomeBestStatusBar");
-      if (!bar) return;
-
-      bar.hidden = true;
-      bar.className = "cpHomeBestStatusBar";
+      const bar = ensureStatus(card);
+      if (bar) bar.hidden = true;
     }
 
-    function updateCard(card){
-      if (!card || !card.__cpCurrentRaw) return;
+    function update(card){
+      if (!card) return;
 
-      const raw = card.__cpCurrentRaw;
-      const normalized = card.__cpCurrentNormalized || {};
-
-      const halfTime = isHalfTime(raw);
+      const raw = card.__cpCurrentRaw || {};
+      const halftime = isHalfTime(raw);
       const finished = isFinished(raw);
       const live = isLive(raw);
-      const minute = minuteText(raw);
-      const until = minutesToKickoff(raw, normalized);
+      const minute = minuteLabel(raw);
+      const until = minutesUntilVisibleTime(card);
 
-      const soon =
-        !live &&
-        !finished &&
-        until !== null &&
-        until >= 0 &&
-        until <= 20;
+      const soon = !live && !finished &&
+        until !== null && until >= 0 && until <= 20;
 
-      const showMatchData = live || halfTime || finished;
+      const showData = live || halftime || finished;
 
       card.classList.toggle("is-match-soon", soon);
-      card.classList.toggle("is-match-live", live && !halfTime);
-      card.classList.toggle("is-match-halftime", halfTime);
+      card.classList.toggle("is-match-live", live && !halftime);
+      card.classList.toggle("is-match-halftime", halftime);
       card.classList.toggle("is-match-finished", finished);
-      card.classList.toggle("has-match-data", showMatchData);
+      card.classList.toggle("has-match-data", showData);
 
       if (finished) {
         setStatus(card, "finished", "ENCERRADO");
-      } else if (halfTime) {
+      } else if (halftime) {
         setStatus(card, "halftime", "INTERVALO");
       } else if (live) {
         setStatus(card, "live", "AO VIVO", minute);
@@ -20906,13 +20878,11 @@
 
       const scoreBox = field(card, "cpHomeBestScore");
       const statsBox = field(card, "cpHomeBestLiveStats");
-      const timeNode = field(card, "cpHomeBestTime");
-
       const versus =
         card.querySelector(".cpHomeBestVersus") ||
         card.querySelector(".cpHomeBestTeams > i");
 
-      if (showMatchData) {
+      if (showData) {
         if (scoreBox) scoreBox.hidden = false;
         if (statsBox) statsBox.hidden = false;
         if (versus) versus.hidden = true;
@@ -20923,29 +20893,17 @@
         setText(card, "cpHomeBestAwayCorners", corners(raw, "away"));
         setText(card, "cpHomeBestHomeCards", cards(raw, "home"));
         setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
-
-        if (timeNode) {
-          timeNode.textContent = finished
-            ? "FIM"
-            : halfTime
-              ? "INTERVALO"
-              : minute || "AO VIVO";
-        }
       } else {
         if (scoreBox) scoreBox.hidden = true;
         if (statsBox) statsBox.hidden = true;
         if (versus) versus.hidden = false;
-
-        if (timeNode && normalized?.time) {
-          timeNode.textContent = normalized.time;
-        }
       }
     }
 
     function updateAll(){
       document
         .querySelectorAll("#cpHomeBest,.cpHomeBestClone")
-        .forEach(updateCard);
+        .forEach(update);
     }
 
     window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}){
@@ -20954,7 +20912,7 @@
 
       card.__cpCurrentRaw = raw;
       card.__cpCurrentNormalized = normalized;
-      updateCard(card);
+      update(card);
     };
 
     window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}){
@@ -20962,10 +20920,8 @@
 
       card.__cpCurrentRaw = raw;
       card.__cpCurrentNormalized = normalized;
-      updateCard(card);
+      update(card);
     };
-
-    window.cpRefreshAllHomeBestStates = updateAll;
 
     const observer = new MutationObserver(() => {
       requestAnimationFrame(updateAll);
@@ -20973,17 +20929,8 @@
 
     function start(){
       const home = document.getElementById("cpMobileHome");
-
-      if (home) {
-        observer.observe(home, {
-          childList:true,
-          subtree:true
-        });
-      }
-
+      if (home) observer.observe(home, {childList:true, subtree:true});
       updateAll();
-      setTimeout(updateAll, 250);
-      setTimeout(updateAll, 1000);
     }
 
     if (document.readyState === "loading") {
