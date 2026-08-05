@@ -472,6 +472,11 @@
         cpPaintBestTeamColors(card, best);
       }
   
+      if (card) {
+        card.__cpCurrentRaw = best.raw || best;
+        card.__cpCurrentNormalized = best;
+      }
+
       if (typeof window.cpUpdateHomeBestLiveCard === "function") {
         window.cpUpdateHomeBestLiveCard(best.raw || best, best);
       }
@@ -19065,11 +19070,14 @@
           window.__cpPaintBestTeamColors?.(root,best);
           cpUpdateBestMarketTitle(root,best,marketType);
 
+          root.__cpCurrentRaw = best.raw || best;
+          root.__cpCurrentNormalized = best;
+
           if (typeof window.cpUpdateHomeBestCloneCard === "function") {
             window.cpUpdateHomeBestCloneCard(
               root,
-              best.raw || best,
-              best
+              root.__cpCurrentRaw,
+              root.__cpCurrentNormalized
             );
           }
   
@@ -20594,14 +20602,14 @@
   
   
   /* =========================================================
-     CORNER PRO — ESTADOS DO CARD PRINCIPAL V13
-     Funciona no card original e nos três clones do carrossel.
+     CORNER PRO — ESTADOS DO CARD PRINCIPAL V14
+     Atualiza original e clones, inclusive após recriação do carrossel.
      ========================================================= */
-  (function installCornerProHomeBestMatchStatesV13(){
+  (function installCornerProHomeBestMatchStatesV14(){
     "use strict";
 
-    if (window.__cpHomeBestMatchStatesV13Installed) return;
-    window.__cpHomeBestMatchStatesV13Installed = true;
+    if (window.__cpHomeBestMatchStatesV14Installed) return;
+    window.__cpHomeBestMatchStatesV14Installed = true;
 
     function cleanText(...values){
       for (const value of values) {
@@ -20614,9 +20622,9 @@
     function numeric(...values){
       for (const value of values) {
         if (value === null || value === undefined || value === "") continue;
-        const match = String(value).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
-        if (!match) continue;
-        const number = Number(match[0]);
+        const found = String(value).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+        if (!found) continue;
+        const number = Number(found[0]);
         if (Number.isFinite(number)) return number;
       }
       return 0;
@@ -20625,11 +20633,9 @@
     function field(card, id){
       if (!card) return null;
 
-      if (card.id === "cpHomeBest") {
-        return card.querySelector(`#${id}`) || document.getElementById(id);
-      }
-
-      return card.querySelector(`[data-clone-id="${id}"]`);
+      return card.id === "cpHomeBest"
+        ? card.querySelector(`#${id}`)
+        : card.querySelector(`[data-clone-id="${id}"]`);
     }
 
     function setText(card, id, value){
@@ -20645,7 +20651,8 @@
         raw?.status_short,
         raw?.fixture?.status?.short,
         raw?.fixture?.status?.long,
-        raw?.event_raw?.match_status
+        raw?.event_raw?.match_status,
+        raw?.event_raw?.status
       ).toLowerCase();
     }
 
@@ -20653,7 +20660,7 @@
       const status = statusText(raw);
       return (
         raw?.is_halftime === true ||
-        /\bht\b|half.?time|intervalo|halftime|half time/.test(status)
+        /(^|\s)ht(\s|$)|half.?time|intervalo|halftime|half time/.test(status)
       );
     }
 
@@ -20661,33 +20668,29 @@
       const status = statusText(raw);
       return (
         raw?.is_finished === true ||
-        /\bft\b|finished|encerrado|finalizado|after extra time|aet|penalties/.test(status)
+        /(^|\s)ft(\s|$)|finished|encerrado|finalizado|after extra time|aet|penalties/.test(status)
       );
     }
 
     function minuteText(raw){
-      const direct = cleanText(
+      const text = cleanText(
         raw?.minute_label,
         raw?.match_live,
         raw?.event_raw?.match_live,
-        raw?.fixture?.status?.elapsed
-      );
-
-      const directMatch = direct.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
-      if (directMatch) {
-        return directMatch[2]
-          ? `${directMatch[1]}+${directMatch[2]}'`
-          : `${directMatch[1]}'`;
-      }
-
-      const minute = numeric(
+        raw?.fixture?.status?.elapsed,
         raw?.minute,
         raw?.elapsed,
         raw?.match_minute,
         raw?.live_minute
       );
 
-      return minute > 0 && minute <= 130 ? `${minute}'` : "";
+      const found = text.match(/(\d{1,3})(?:\s*\+\s*(\d{1,2}))?/);
+
+      if (!found) return "";
+
+      return found[2]
+        ? `${found[1]}+${found[2]}'`
+        : `${found[1]}'`;
     }
 
     function isLive(raw){
@@ -20699,50 +20702,66 @@
       return (
         raw?.is_live === true ||
         raw?.live === true ||
-        /\blive\b|ao vivo|in play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
+        /\blive\b|ao vivo|in.?play|1st half|2nd half|\b1h\b|\b2h\b/.test(status) ||
         Boolean(minuteText(raw))
       );
     }
 
-    function selectedDate(){
-      return (
-        document.getElementById("date")?.value ||
-        new Intl.DateTimeFormat("en-CA", {
-          timeZone:"America/Manaus",
-          year:"numeric",
-          month:"2-digit",
-          day:"2-digit"
-        }).format(new Date())
-      );
+    function manausDateParts(){
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone:"America/Manaus",
+        year:"numeric",
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit",
+        hourCycle:"h23"
+      }).formatToParts(new Date());
+
+      return Object.fromEntries(parts.map(part => [part.type, part.value]));
     }
 
-    function minutesToKickoff(raw, normalized){
-      const date = cleanText(
+    function selectedDate(raw){
+      const informed = cleanText(
         raw?.match_date,
         raw?.date,
         raw?.event_date,
-        selectedDate()
+        document.getElementById("date")?.value
       ).slice(0,10);
 
-      const timeMatch = cleanText(
+      if (informed) return informed;
+
+      const now = manausDateParts();
+      return `${now.year}-${now.month}-${now.day}`;
+    }
+
+    function minutesToKickoff(raw, normalized){
+      const date = selectedDate(raw);
+
+      const timeText = cleanText(
         raw?.hora_manaus,
         raw?.hora,
         raw?.match_time,
         raw?.time,
         normalized?.time
-      ).match(/(\d{1,2}):(\d{2})/);
+      );
 
-      if (!date || !timeMatch) return null;
+      const found = timeText.match(/(\d{1,2}):(\d{2})/);
+      if (!found) return null;
 
       const kickoff = new Date(
-        `${date}T${timeMatch[1].padStart(2,"0")}:${timeMatch[2]}:00-04:00`
+        `${date}T${found[1].padStart(2,"0")}:${found[2]}:00-04:00`
       );
 
       if (!Number.isFinite(kickoff.getTime())) return null;
-      return Math.round((kickoff.getTime() - Date.now()) / 60000);
+
+      return Math.floor((kickoff.getTime() - Date.now()) / 60000);
     }
 
-    function statisticFromArray(raw, label, side){
+    function statisticFromArray(raw, labels, side){
+      const names = Array.isArray(labels) ? labels : [labels];
+
       const collections = [
         raw?.statistics,
         raw?.stats,
@@ -20761,7 +20780,7 @@
             item?.label
           ).toLowerCase();
 
-          if (!name.includes(label)) continue;
+          if (!names.some(label => name.includes(label))) continue;
 
           return numeric(
             side === "home"
@@ -20794,33 +20813,32 @@
         side === "home" ? raw?.match_hometeam_corner : raw?.match_awayteam_corner,
         side === "home" ? raw?.match_hometeam_corners : raw?.match_awayteam_corners,
         side === "home" ? raw?.stats?.corners?.home : raw?.stats?.corners?.away,
-        statisticFromArray(raw, "corner", side)
+        statisticFromArray(raw, ["corner","escanteio"], side)
       );
     }
 
     function cards(raw, side){
+      const direct = numeric(
+        side === "home" ? raw?.home_cards : raw?.away_cards,
+        side === "home" ? raw?.cards_home : raw?.cards_away,
+        side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away
+      );
+
+      if (direct) return direct;
+
       const yellow = numeric(
         side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
         side === "home" ? raw?.yellow_cards_home : raw?.yellow_cards_away,
-        side === "home" ? raw?.stats?.yellow_cards?.home : raw?.stats?.yellow_cards?.away,
-        statisticFromArray(raw, "yellow", side)
+        statisticFromArray(raw, ["yellow","amarelo"], side)
       );
 
       const red = numeric(
         side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
         side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
-        side === "home" ? raw?.stats?.red_cards?.home : raw?.stats?.red_cards?.away,
-        statisticFromArray(raw, "red", side)
+        statisticFromArray(raw, ["red","vermelho"], side)
       );
 
-      const total = numeric(
-        side === "home" ? raw?.home_cards : raw?.away_cards,
-        side === "home" ? raw?.cards_home : raw?.cards_away,
-        side === "home" ? raw?.stats?.cards?.home : raw?.stats?.cards?.away,
-        statisticFromArray(raw, "card", side)
-      );
-
-      return total || yellow + red;
+      return yellow + red;
     }
 
     function setStatus(card, type, text, extra = ""){
@@ -20842,18 +20860,17 @@
       bar.className = "cpHomeBestStatusBar";
     }
 
-    function updateCard(card, raw, normalized = {}){
-      if (!card || !raw) return;
+    function updateCard(card){
+      if (!card || !card.__cpCurrentRaw) return;
 
-      card.__cpCurrentRaw = raw;
-      card.__cpCurrentNormalized = normalized;
+      const raw = card.__cpCurrentRaw;
+      const normalized = card.__cpCurrentNormalized || {};
 
       const halfTime = isHalfTime(raw);
       const finished = isFinished(raw);
       const live = isLive(raw);
       const minute = minuteText(raw);
       const until = minutesToKickoff(raw, normalized);
-      const showMatchData = live || halfTime || finished;
 
       const soon =
         !live &&
@@ -20861,6 +20878,8 @@
         until !== null &&
         until >= 0 &&
         until <= 20;
+
+      const showMatchData = live || halfTime || finished;
 
       card.classList.toggle("is-match-soon", soon);
       card.classList.toggle("is-match-live", live && !halfTime);
@@ -20886,16 +20905,17 @@
       }
 
       const scoreBox = field(card, "cpHomeBestScore");
+      const statsBox = field(card, "cpHomeBestLiveStats");
+      const timeNode = field(card, "cpHomeBestTime");
+
       const versus =
         card.querySelector(".cpHomeBestVersus") ||
         card.querySelector(".cpHomeBestTeams > i");
-      const stats = field(card, "cpHomeBestLiveStats");
-      const timeElement = field(card, "cpHomeBestTime");
 
       if (showMatchData) {
         if (scoreBox) scoreBox.hidden = false;
+        if (statsBox) statsBox.hidden = false;
         if (versus) versus.hidden = true;
-        if (stats) stats.hidden = false;
 
         setText(card, "cpHomeBestHomeScore", score(raw, "home"));
         setText(card, "cpHomeBestAwayScore", score(raw, "away"));
@@ -20904,8 +20924,8 @@
         setText(card, "cpHomeBestHomeCards", cards(raw, "home"));
         setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
 
-        if (timeElement) {
-          timeElement.textContent = finished
+        if (timeNode) {
+          timeNode.textContent = finished
             ? "FIM"
             : halfTime
               ? "INTERVALO"
@@ -20913,11 +20933,11 @@
         }
       } else {
         if (scoreBox) scoreBox.hidden = true;
+        if (statsBox) statsBox.hidden = true;
         if (versus) versus.hidden = false;
-        if (stats) stats.hidden = true;
 
-        if (timeElement && normalized?.time) {
-          timeElement.textContent = normalized.time;
+        if (timeNode && normalized?.time) {
+          timeNode.textContent = normalized.time;
         }
       }
     }
@@ -20925,26 +20945,54 @@
     function updateAll(){
       document
         .querySelectorAll("#cpHomeBest,.cpHomeBestClone")
-        .forEach(card => {
-          if (card.__cpCurrentRaw) {
-            updateCard(
-              card,
-              card.__cpCurrentRaw,
-              card.__cpCurrentNormalized || {}
-            );
-          }
-        });
+        .forEach(updateCard);
     }
 
     window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}){
       const card = document.getElementById("cpHomeBest");
-      updateCard(card, raw, normalized);
+      if (!card) return;
+
+      card.__cpCurrentRaw = raw;
+      card.__cpCurrentNormalized = normalized;
+      updateCard(card);
     };
 
-    window.cpUpdateHomeBestCloneCard = updateCard;
+    window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}){
+      if (!card) return;
+
+      card.__cpCurrentRaw = raw;
+      card.__cpCurrentNormalized = normalized;
+      updateCard(card);
+    };
+
     window.cpRefreshAllHomeBestStates = updateAll;
 
-    setInterval(updateAll, 15000);
+    const observer = new MutationObserver(() => {
+      requestAnimationFrame(updateAll);
+    });
+
+    function start(){
+      const home = document.getElementById("cpMobileHome");
+
+      if (home) {
+        observer.observe(home, {
+          childList:true,
+          subtree:true
+        });
+      }
+
+      updateAll();
+      setTimeout(updateAll, 250);
+      setTimeout(updateAll, 1000);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start);
+    } else {
+      start();
+    }
+
+    setInterval(updateAll, 1000);
   })();
 
 
