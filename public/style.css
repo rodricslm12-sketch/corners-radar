@@ -15038,3 +15038,79 @@ button.railFullBtn {
     flex:none!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — CARDS DE JOGOS EM DESTAQUE MENORES V4
+   Somente os cards desta seção.
+   ========================================================= */
+@media (max-width:980px){
+
+  #cpHomeFeaturedGamesSection{
+    min-height:184px!important;
+    padding:12px 10px 10px!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames{
+    height:138px!important;
+    min-height:138px!important;
+    max-height:138px!important;
+    gap:8px!important;
+  }
+
+  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeGame,
+  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeSkeleton{
+    flex:0 0 106px!important;
+    width:106px!important;
+    min-width:106px!important;
+    max-width:106px!important;
+
+    height:132px!important;
+    min-height:132px!important;
+    max-height:132px!important;
+
+    padding:10px 8px!important;
+    border-radius:13px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame time{
+    min-width:54px!important;
+    height:27px!important;
+    padding:0 8px!important;
+    font-size:9px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .teams{
+    margin-top:13px!important;
+    gap:4px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .teams b{
+    font-size:9.5px!important;
+    line-height:1.18!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .teams i{
+    font-size:8px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame > small{
+    margin-top:auto!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame > strong{
+    font-size:9px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame > strong span{
+    font-size:6px!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame::after{
+    font-size:20px!important;
+    right:7px!important;
+    bottom:7px!important;
+  }
+}
