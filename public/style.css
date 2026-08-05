@@ -15497,3 +15497,21 @@ button.railFullBtn {
     text-overflow:ellipsis!important;
   }
 }
+
+
+
+/* V22 — diagnóstico discreto da conexão do card com o Match Center */
+@media (max-width:980px){
+  :is(#cpHomeBest,.cpHomeBestClone)[data-match-center-state="unavailable"]::after{
+    content:"";
+    position:absolute;
+    right:11px;
+    bottom:56px;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:#d7a43e;
+    opacity:.75;
+    pointer-events:none;
+  }
+}

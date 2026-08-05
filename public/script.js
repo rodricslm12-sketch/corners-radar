@@ -18255,7 +18255,7 @@
   
         // Congela a fotografia dos cards de cada mercado. O resultado da partida
         // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
-        const MOBILE_MARKET_LOCK_VERSION='v6-official-corner-pick';
+        const MOBILE_MARKET_LOCK_VERSION='v7-live-card-data';
         function mobileMarketDate(){
           const value=String(document.getElementById('date')?.value||'').trim();
           if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -18718,7 +18718,50 @@
               recent*1.5+
               Math.min(sample,6)*2;
           }
-          return {raw:g,id:gameId(g,index),time:gameTime(g),home:gameName(g,true),away:gameName(g,false),market:line,conf:confidence,projection,score};
+          const matchId = clean(
+            g?.match_id ??
+            g?.event_id ??
+            g?.event_key ??
+            g?.fixture_id ??
+            g?.id ??
+            g?.event_raw?.match_id ??
+            g?.event_raw?.event_id ??
+            g?.event_raw?.event_key ??
+            g?.event_raw?.id,
+            ""
+          );
+
+          const matchDate = clean(
+            g?.match_date ??
+            g?.event_date ??
+            g?.date ??
+            g?.event_raw?.match_date ??
+            g?.event_raw?.event_date ??
+            g?.event_raw?.date,
+            ""
+          );
+
+          return {
+            raw:g,
+            id:gameId(g,index),
+            match_id:matchId,
+            date:matchDate,
+            time:gameTime(g),
+            home:gameName(g,true),
+            away:gameName(g,false),
+            market:line,
+            conf:confidence,
+            projection,
+            score,
+            status:clean(
+              g?.match_status ??
+              g?.status ??
+              g?.event_status ??
+              g?.event_raw?.match_status ??
+              g?.event_raw?.status,
+              ""
+            )
+          };
         }
   
         function buildRankings(){
@@ -18749,6 +18792,50 @@
           rankings.corners=applyOfficialCornerLock(
             rankings.corners
           );
+
+          // Reidrata locks antigos/oficiais com o objeto real do jogo atual.
+          // Sem isso, o card conserva nome/horário, mas perde match_id e não
+          // consegue consultar /match_center.
+          const currentById = new Map();
+          games.forEach((game, index) => {
+            const item = marketItem(game, "corners", index);
+            currentById.set(String(item.id), game);
+            if (item.match_id) currentById.set(String(item.match_id), game);
+          });
+
+          const rehydrateRanking = (list, type) => (Array.isArray(list) ? list : [])
+            .map((item, index) => {
+              const raw =
+                item?.raw ||
+                currentById.get(String(item?.match_id || "")) ||
+                currentById.get(String(item?.id || "")) ||
+                games.find(game => {
+                  const home = gameName(game, true);
+                  const away = gameName(game, false);
+                  return home === item?.home && away === item?.away;
+                }) ||
+                null;
+
+              if (!raw) return item;
+
+              const fresh = marketItem(raw, type, index);
+
+              return {
+                ...item,
+                raw,
+                match_id: fresh.match_id,
+                date: fresh.date,
+                time: fresh.time || item.time,
+                status: fresh.status,
+                home: fresh.home || item.home,
+                away: fresh.away || item.away
+              };
+            });
+
+          rankings.corners = rehydrateRanking(rankings.corners, "corners");
+          rankings.goals = rehydrateRanking(rankings.goals, "goals");
+          rankings.cards = rehydrateRanking(rankings.cards, "cards");
+
           // Cada mercado deve ter um Top 1 próprio. Evita repetir automaticamente
           // o mesmo jogo do card de cantos quando há outra opção forte disponível.
           const used=new Set();
@@ -18773,11 +18860,42 @@
           marketRankings=rankings;
   
           writeMobileMarketLock({
-            ...rankings,
-            corners:rankings.corners.map(item=>({
+            corners: rankings.corners.map(item => ({
               ...item,
-              raw:null
-            }))
+              // Mantém somente os dados essenciais para o card ao vivo.
+              raw: item.raw ? {
+                match_id:
+                  item.raw?.match_id ??
+                  item.raw?.event_id ??
+                  item.raw?.event_key ??
+                  item.raw?.fixture_id ??
+                  item.raw?.id ??
+                  item.raw?.event_raw?.match_id ??
+                  null,
+                match_date:
+                  item.raw?.match_date ??
+                  item.raw?.event_date ??
+                  item.raw?.date ??
+                  item.raw?.event_raw?.match_date ??
+                  null,
+                match_time:
+                  item.raw?.match_time ??
+                  item.raw?.hora_manaus ??
+                  item.raw?.hora ??
+                  item.raw?.time ??
+                  item.raw?.event_raw?.match_time ??
+                  null,
+                match_status:
+                  item.raw?.match_status ??
+                  item.raw?.status ??
+                  item.raw?.event_raw?.match_status ??
+                  "",
+                casa: item.raw?.casa ?? item.home,
+                fora: item.raw?.fora ?? item.away
+              } : null
+            })),
+            goals: rankings.goals,
+            cards: rankings.cards
           });
   
           return rankings;
@@ -20701,7 +20819,7 @@
       normalized?.match_id ??
       normalized?.event_id ??
       normalized?.fixture_id ??
-      normalized?.id ??
+      (/^\d+$/.test(String(normalized?.id || "")) ? normalized.id : "") ??
       ""
     ).trim();
   }
@@ -21207,10 +21325,22 @@
     const card = document.getElementById("cpHomeBest");
     if (!card) return;
 
-    card.__cpCurrentRaw = raw || {};
+    const incoming = raw || {};
+    const previous = card.__cpCurrentRaw || {};
+    const previousIsRicher =
+      Boolean(previous?.live) ||
+      Boolean(previous?.finished) ||
+      previous?.minute ||
+      previous?.score ||
+      previous?.goals ||
+      previous?.corners;
+
+    card.__cpCurrentRaw = previousIsRicher
+      ? { ...incoming, ...previous }
+      : incoming;
     card.__cpCurrentNormalized = normalized || {};
 
-    const id = matchIdFrom(raw, normalized);
+    const id = matchIdFrom(card.__cpCurrentRaw, normalized);
     const cached = id ? liveCache.get(id)?.payload : null;
     if (cached) mergeLiveData(card, cached);
     else render(card);
@@ -21221,10 +21351,22 @@
   window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}) {
     if (!card) return;
 
-    card.__cpCurrentRaw = raw || {};
+    const incoming = raw || {};
+    const previous = card.__cpCurrentRaw || {};
+    const previousIsRicher =
+      Boolean(previous?.live) ||
+      Boolean(previous?.finished) ||
+      previous?.minute ||
+      previous?.score ||
+      previous?.goals ||
+      previous?.corners;
+
+    card.__cpCurrentRaw = previousIsRicher
+      ? { ...incoming, ...previous }
+      : incoming;
     card.__cpCurrentNormalized = normalized || {};
 
-    const id = matchIdFrom(raw, normalized);
+    const id = matchIdFrom(card.__cpCurrentRaw, normalized);
     const cached = id ? liveCache.get(id)?.payload : null;
     if (cached) mergeLiveData(card, cached);
     else render(card);
