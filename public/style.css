@@ -14893,78 +14893,86 @@ button.railFullBtn {
 
 
 /* =========================================================
-   CORNER PRO — JOGOS EM DESTAQUE RESTAURADO DEFINITIVO
-   Somente a seção #cpHomeFeaturedGamesSection.
+   CORNER PRO — JOGOS EM DESTAQUE VISÍVEL V3
+   Corrige o corte da rolagem da Dashboard mobile.
    ========================================================= */
 @media (max-width:980px){
+
+  .cpMobileHome{
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+
+  .cpHomeScroll{
+    display:flex!important;
+    flex:1 1 0!important;
+    flex-direction:column!important;
+    min-height:0!important;
+    height:0!important;
+    max-height:none!important;
+
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+
+    padding:
+      0
+      14px
+      calc(
+        var(--cp-global-tabs-nav-h,76px) +
+        env(safe-area-inset-bottom,0px) +
+        34px
+      )!important;
+  }
 
   #cpHomeFeaturedGamesSection{
     display:block!important;
     position:relative!important;
-    inset:auto!important;
-    z-index:1!important;
+    flex:none!important;
+    order:3!important;
 
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
     height:auto!important;
-    min-height:196px!important;
+    min-height:214px!important;
     max-height:none!important;
 
-    margin:14px 0 12px!important;
-    padding:13px 11px 12px!important;
+    margin:14px 0!important;
+    padding:14px 12px 13px!important;
 
+    overflow:visible!important;
     visibility:visible!important;
     opacity:1!important;
-    overflow:visible!important;
     pointer-events:auto!important;
 
-    background:linear-gradient(180deg,#050a0d,#020607)!important;
-    border:1px solid #17252b!important;
+    border:1px solid #182024!important;
     border-radius:16px!important;
+    background:linear-gradient(180deg,#030506,#040708)!important;
   }
 
-  #cpHomeFeaturedGamesSection[hidden]{
-    display:block!important;
+  .cpHomeMarketsSection{
+    order:2!important;
+    flex:none!important;
+  }
+
+  #cpHomeBest{
+    order:1!important;
+    flex:none!important;
   }
 
   #cpHomeFeaturedGamesSection .cpHomeSectionHead{
     display:flex!important;
-    align-items:center!important;
-    justify-content:space-between!important;
-    width:100%!important;
-    height:auto!important;
     min-height:28px!important;
-    margin:0 0 10px!important;
-    padding:0!important;
+    margin:0 0 12px!important;
     visibility:visible!important;
     opacity:1!important;
   }
 
   #cpHomeFeaturedGamesSection .cpHomeSectionHead h2{
     display:block!important;
-    margin:0!important;
-    color:#f5f7f6!important;
-    font-size:15px!important;
-    line-height:1.1!important;
-    font-weight:900!important;
-    text-transform:uppercase!important;
-  }
-
-  #cpHomeFeaturedGamesSection .cpHomeSectionHead h2::before{
-    content:"◎"!important;
-    display:inline-block!important;
-    margin-right:9px!important;
-    color:#80f337!important;
-    font-size:19px!important;
-  }
-
-  #cpHomeFeaturedGamesSection .cpHomeSectionHead button{
-    display:block!important;
-    margin-left:auto!important;
-    color:#80f337!important;
-    font-size:9px!important;
-    font-weight:900!important;
     visibility:visible!important;
     opacity:1!important;
   }
@@ -14976,17 +14984,18 @@ button.railFullBtn {
 
   #cpHomeFeaturedGamesSection #cpHomeGames{
     display:flex!important;
-    position:relative!important;
+    flex:none!important;
+
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
-    height:158px!important;
-    min-height:158px!important;
-    max-height:158px!important;
+    height:168px!important;
+    min-height:168px!important;
+    max-height:168px!important;
 
-    gap:9px!important;
+    gap:10px!important;
     margin:0!important;
-    padding:1px 1px 7px!important;
+    padding:1px 1px 8px!important;
 
     overflow-x:auto!important;
     overflow-y:hidden!important;
@@ -15006,35 +15015,26 @@ button.railFullBtn {
   #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeGame,
   #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeSkeleton{
     display:flex!important;
-    flex:0 0 118px!important;
-    width:118px!important;
-    min-width:118px!important;
-    max-width:118px!important;
-    height:150px!important;
-    min-height:150px!important;
-    max-height:150px!important;
+    flex:0 0 132px!important;
+    width:132px!important;
+    min-width:132px!important;
+    max-width:132px!important;
+    height:165px!important;
+    min-height:165px!important;
+    max-height:165px!important;
 
     visibility:visible!important;
     opacity:1!important;
-    pointer-events:auto!important;
     scroll-snap-align:start!important;
   }
 
-  #cpHomeFeaturedGamesSection #cpHomeGames > .cpHomeEmptyState{
-    display:flex!important;
-    flex:1 0 100%!important;
-    min-height:130px!important;
-    align-items:center!important;
-    justify-content:center!important;
-    flex-direction:column!important;
-    visibility:visible!important;
-    opacity:1!important;
+  #cpHomeMatchMini{
+    order:4!important;
+    flex:none!important;
   }
 
-  /* Mantém a seção dentro da área rolável da Dashboard. */
-  .cpHomeScroll{
-    display:block!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
+  .cpHomeLast{
+    order:5!important;
+    flex:none!important;
   }
 }

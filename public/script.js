@@ -20904,74 +20904,70 @@
 
 
 /* =========================================================
-   CORNER PRO — PROTEÇÃO DA SEÇÃO JOGOS EM DESTAQUE
-   Mantém a seção logo após Mercados em destaque.
+   CORNER PRO — GARANTIA DE JOGOS EM DESTAQUE V3
+   Não cria cards novos; preserva os cards preenchidos pelo app.
    ========================================================= */
-(function installFeaturedGamesSectionGuard(){
+(function installFeaturedGamesVisibilityV3(){
   "use strict";
 
-  if (window.__cpFeaturedGamesSectionGuardInstalled) return;
-  window.__cpFeaturedGamesSectionGuardInstalled = true;
+  if (window.__cpFeaturedGamesVisibilityV3Installed) return;
+  window.__cpFeaturedGamesVisibilityV3Installed = true;
 
-  function restoreFeaturedGamesSection(){
+  function apply(){
+    const scroll = document.querySelector(".cpHomeScroll");
+    const markets = document.querySelector(".cpHomeMarketsSection");
     const section =
-      document.getElementById("cpHomeFeaturedGamesSection");
+      document.getElementById("cpHomeFeaturedGamesSection") ||
+      document.getElementById("cpHomeGames")?.closest(".cpHomeSection");
+    const games = document.getElementById("cpHomeGames");
 
-    const markets =
-      document.querySelector(".cpHomeMarketsSection");
+    if (!scroll || !markets || !section || !games) return;
 
-    if (!section || !markets) return;
+    if (!section.id) {
+      section.id = "cpHomeFeaturedGamesSection";
+    }
+
+    section.classList.add("cpHomeFeaturedGamesSection");
 
     if (section.previousElementSibling !== markets) {
       markets.insertAdjacentElement("afterend", section);
     }
 
+    scroll.style.setProperty("display", "flex", "important");
+    scroll.style.setProperty("flex-direction", "column", "important");
+    scroll.style.setProperty("flex", "1 1 0", "important");
+    scroll.style.setProperty("height", "0", "important");
+    scroll.style.setProperty("min-height", "0", "important");
+    scroll.style.setProperty("overflow-y", "auto", "important");
+    scroll.style.setProperty("overflow-x", "hidden", "important");
+
     section.hidden = false;
     section.removeAttribute("aria-hidden");
-    section.style.removeProperty("display");
-    section.style.removeProperty("height");
-    section.style.removeProperty("max-height");
-    section.style.removeProperty("visibility");
-    section.style.removeProperty("opacity");
+    section.style.setProperty("display", "block", "important");
+    section.style.setProperty("height", "auto", "important");
+    section.style.setProperty("min-height", "214px", "important");
+    section.style.setProperty("visibility", "visible", "important");
+    section.style.setProperty("opacity", "1", "important");
 
-    const games = document.getElementById("cpHomeGames");
-
-    if (games) {
-      games.hidden = false;
-      games.removeAttribute("aria-hidden");
-      games.style.removeProperty("display");
-      games.style.removeProperty("height");
-      games.style.removeProperty("max-height");
-      games.style.removeProperty("visibility");
-      games.style.removeProperty("opacity");
-    }
-  }
-
-  function initialize(){
-    restoreFeaturedGamesSection();
-
-    const observer = new MutationObserver(() => {
-      restoreFeaturedGamesSection();
-    });
-
-    const home = document.getElementById("cpMobileHome");
-
-    if (home) {
-      observer.observe(home, {
-        childList:true,
-        subtree:true,
-        attributes:true,
-        attributeFilter:["hidden","style","class","aria-hidden"]
-      });
-    }
+    games.hidden = false;
+    games.removeAttribute("aria-hidden");
+    games.style.setProperty("display", "flex", "important");
+    games.style.setProperty("height", "168px", "important");
+    games.style.setProperty("min-height", "168px", "important");
+    games.style.setProperty("visibility", "visible", "important");
+    games.style.setProperty("opacity", "1", "important");
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initialize);
+    document.addEventListener("DOMContentLoaded", apply);
   } else {
-    initialize();
+    apply();
   }
 
-  setTimeout(restoreFeaturedGamesSection, 300);
-  setTimeout(restoreFeaturedGamesSection, 1200);
+  window.addEventListener("resize", apply);
+  window.addEventListener("orientationchange", apply);
+
+  setTimeout(apply, 250);
+  setTimeout(apply, 1000);
+  setTimeout(apply, 2500);
 })();
