@@ -53,7 +53,7 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v1";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v3-strict-under";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
@@ -7304,7 +7304,23 @@ function cornersEngineDecision({ game, home, away }) {
   }
 
   if (best.label.startsWith("UNDER")) {
-    confidence = Math.min(confidence, 69);
+    // V3: não achata todo UNDER em 69%.
+    // O teto varia com a quantidade de dados e com a força da evidência.
+    const underEvidenceBonus =
+      Math.min(6, Math.max(0, sampleGames - 3) * 1.5) +
+      (
+        Number.isFinite(normalizedOver95)
+          ? Math.min(
+              3,
+              Math.max(0, (0.34 - normalizedOver95) * 12)
+            )
+          : 0
+      );
+
+    confidence = Math.min(
+      confidence,
+      69 + underEvidenceBonus
+    );
   }
 
   confidence = engineClamp(
@@ -7340,7 +7356,7 @@ function cornersEngineDecision({ game, home, away }) {
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
       robust_under_evidence: robustUnderEvidence,
-      under_gate_version: "strict-v1",
+      under_gate_version: "strict-v3-per-game",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
@@ -7464,7 +7480,7 @@ const futureMarketReadyCache = new Map();
    ========================================================= */
 const MARKET_ENGINE_SNAPSHOT_VERSION =
   process.env.MARKET_ENGINE_SNAPSHOT_VERSION ||
-  "market-engine-snapshot-v1";
+  "market-engine-snapshot-v3-corner-lock-reset";
 
 const MARKET_ENGINE_SNAPSHOT_COLLECTION =
   process.env.MARKET_ENGINE_SNAPSHOT_COLLECTION ||
@@ -8841,10 +8857,19 @@ function loadCornerPregameLockStore() {
         fs.readFileSync(CORNER_PREGAME_LOCK_FILE, "utf8")
       );
 
+      const sameVersion =
+        parsed?.version === CORNER_PREGAME_LOCK_VERSION;
+
       cornerPregameLockStore = {
         version: CORNER_PREGAME_LOCK_VERSION,
+
+        // V3: locks antigos são descartados de propósito.
+        // Assim uma linha UNDER gravada por uma versão anterior
+        // não continua congelando o mercado de escanteios.
         locks:
-          parsed?.locks && typeof parsed.locks === "object"
+          sameVersion &&
+          parsed?.locks &&
+          typeof parsed.locks === "object"
             ? parsed.locks
             : {}
       };
@@ -8976,16 +9001,104 @@ function cornerPregameLockSnapshot(game, decision) {
     source:
       decision?.calculation_source ??
       decision?.extra?.calculation_source ??
-      ""
+      "",
+    sample_games: Number(
+      decision?.sample_games ??
+      decision?.extra?.sample_games ??
+      0
+    ),
+    robust_under_evidence: Boolean(
+      decision?.robust_under_evidence ??
+      decision?.extra?.robust_under_evidence
+    ),
+    lock_version: CORNER_PREGAME_LOCK_VERSION
   };
+}
+
+/*
+ * Um UNDER só pode virar linha fixa quando veio do motor completo,
+ * com amostra individual suficiente e evidência robusta.
+ * Isso é EXCLUSIVO de Escanteios.
+ */
+function cornerPregameDecisionCanLock(decision) {
+  if (!decision || decision.skip || decision.updating) return false;
+
+  const line = String(decision.line || "").trim().toUpperCase();
+
+  if (!/^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(line)) {
+    return false;
+  }
+
+  const source =
+    decision?.calculation_source ??
+    decision?.extra?.calculation_source ??
+    "";
+
+  const sampleGames = Number(
+    decision?.sample_games ??
+    decision?.extra?.sample_games ??
+    0
+  );
+
+  const robustUnder = Boolean(
+    decision?.robust_under_evidence ??
+    decision?.extra?.robust_under_evidence
+  );
+
+  if (line.startsWith("UNDER")) {
+    return (
+      source === "recent_form" &&
+      sampleGames >= 4 &&
+      robustUnder
+    );
+  }
+
+  // OVER pode ser travado com recent_form; fallback só é travado
+  // se já houver confiança/projeção suficientemente claras.
+  if (source === "recent_form") return sampleGames >= 3;
+
+  return (
+    Number(decision.confidence || 0) >= 66 &&
+    Number(decision.projection || 0) >= 9.6
+  );
+}
+
+function cornerPregameExistingLockIsValid(lock) {
+  if (!lock?.line) return false;
+
+  if (
+    lock.lock_version &&
+    lock.lock_version !== CORNER_PREGAME_LOCK_VERSION
+  ) {
+    return false;
+  }
+
+  const line = String(lock.line || "").trim().toUpperCase();
+
+  if (line.startsWith("UNDER")) {
+    return (
+      lock.source === "recent_form" &&
+      Number(lock.sample_games || 0) >= 4 &&
+      Boolean(lock.robust_under_evidence)
+    );
+  }
+
+  return /^(OVER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(line);
 }
 
 function cornerPregameApplyLock(game, decision) {
   const store = loadCornerPregameLockStore();
   const key = cornerPregameLockKey(game);
-  const existing = store.locks[key];
+  let existing = store.locks[key];
   const live = cornerPregameLockIsLive(game);
   const finished = cornerPregameLockIsFinished(game);
+
+  // Remove imediatamente lock antigo/fraco do próprio jogo.
+  if (existing && !cornerPregameExistingLockIsValid(existing)) {
+    delete store.locks[key];
+    saveCornerPregameLockStore();
+    existing = null;
+  }
 
   if ((live || finished) && existing?.line) {
     return {
@@ -9019,10 +9132,7 @@ function cornerPregameApplyLock(game, decision) {
     !live &&
     !finished &&
     decision &&
-    !decision.skip &&
-    decision.line &&
-    decision.line !== "DADOS EM ATUALIZAÇÃO" &&
-    decision.line !== "SEM APOSTA"
+    cornerPregameDecisionCanLock(decision)
   ) {
     if (!existing?.line) {
       const snapshot = cornerPregameLockSnapshot(

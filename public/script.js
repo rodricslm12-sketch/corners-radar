@@ -2292,7 +2292,7 @@
         game?.id ??
         `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
   
-      return `cornerProPregameLine:v3:${String(id)}`;
+      return `cornerProPregameLine:v4-server-authority:${String(id)}`;
     }
   
     function readCornerLocalLineLock(game) {
@@ -2455,6 +2455,23 @@
             serverDecision.pregame_locked_at || null,
           learning_samples:
             Number(serverDecision.learning_samples || 0),
+          calculation_source:
+            clean(
+              serverDecision.calculation_source ??
+              serverDecision.extra?.calculation_source,
+              ""
+            ),
+          sample_games:
+            Number(
+              serverDecision.sample_games ??
+              serverDecision.extra?.sample_games ??
+              0
+            ),
+          robust_under_evidence:
+            Boolean(
+              serverDecision.robust_under_evidence ??
+              serverDecision.extra?.robust_under_evidence
+            ),
           updating:
             Boolean(serverDecision.updating),
           future_waiting_data:
@@ -2463,12 +2480,10 @@
             Boolean(serverDecision.future_data_ready)
         };
   
-        return marketType === "corners"
-          ? applyCornerLocalLineLock(
-              game,
-              serverRecommendation
-            )
-          : serverRecommendation;
+        // V11: decisões vindas do servidor NÃO passam por uma segunda
+        // trava em localStorage. O server é a única autoridade do lock
+        // pré-jogo de Escanteios.
+        return serverRecommendation;
       }
       const originalConfidence = Number(game?.confidence || 68);
       const current = analysisCurrentStats(game, marketType);
@@ -2832,17 +2847,19 @@
                     marketType === "corners" &&
                     recommendation.source === "server"
                       ? (
-                          recommendation.pregame_locked &&
-                          marketLiveStatus(game).live
-                            ? "✦ IA • LINHA PRÉ-JOGO"
+                          isUpdating
+                            ? "✦ IA • COLETANDO DADOS"
                             : recommendation.pregame_locked &&
-                              marketLiveStatus(game).finished
+                              (
+                                marketLiveStatus(game).live ||
+                                marketLiveStatus(game).finished
+                              )
                               ? "✦ IA • LINHA PRÉ-JOGO"
                               : Number(
                                   recommendation.learning_samples || 0
                                 ) >= 8
                                   ? "✦ IA • APRENDIZADO ATIVO"
-                                  : "✦ IA • COLETANDO DADOS"
+                                  : "✦ IA DO SERVIDOR"
                         )
                       : recommendation.source === "server" &&
                         isUpdating
