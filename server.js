@@ -53,7 +53,7 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v3-strict-under";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v4-confidence-gate";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
@@ -7151,12 +7151,14 @@ function cornersEngineDecision({ game, home, away }) {
       : null;
 
   const robustUnderEvidence =
-    homeGames >= 4 &&
-    awayGames >= 4 &&
+    hasCornerAverages &&
+    homeGames >= 5 &&
+    awayGames >= 5 &&
+    Number.isFinite(rawRecentProjection) &&
     Number.isFinite(pressureHits) &&
     pressureHits <= 1 &&
     Number.isFinite(normalizedOver95) &&
-    normalizedOver95 <= 0.34;
+    normalizedOver95 <= 0.30;
 
   const candidates = [
     {
@@ -7232,23 +7234,32 @@ function cornersEngineDecision({ game, home, away }) {
     } else if (candidate.label === "OVER 11.5") {
       projectionGate = projection >= 11.75;
     } else if (candidate.label === "UNDER 9.5") {
+      // UNDER 9.5 é uma linha agressiva: só entra com amostra forte
+      // e projeção realmente baixa. Nunca entra por simples piso do motor.
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        sampleGames >= 4 &&
-        projection <= 8.35;
+        sampleGames >= 5 &&
+        Number.isFinite(rawRecentProjection) &&
+        rawRecentProjection <= 7.95 &&
+        projection <= 8.05 &&
+        normalizedOver95 <= 0.25;
     } else if (candidate.label === "UNDER 10.5") {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        sampleGames >= 4 &&
-        projection <= 9.35;
+        sampleGames >= 5 &&
+        Number.isFinite(rawRecentProjection) &&
+        projection <= 9.10 &&
+        normalizedOver95 <= 0.28;
     } else if (candidate.label === "UNDER 11.5") {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        sampleGames >= 4 &&
-        projection <= 10.05;
+        sampleGames >= 5 &&
+        Number.isFinite(rawRecentProjection) &&
+        projection <= 9.85 &&
+        normalizedOver95 <= 0.30;
     }
 
     return {
@@ -7323,9 +7334,12 @@ function cornersEngineDecision({ game, home, away }) {
     );
   }
 
+  // V4: NÃO força mais qualquer leitura de cantos para 62%.
+  // engineDecision() já possui o MIN_CONFIDENCE oficial.
+  // Se a confiança calculada for menor, a saída correta será SEM APOSTA.
   confidence = engineClamp(
     confidence,
-    62,
+    0,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
@@ -7356,7 +7370,8 @@ function cornersEngineDecision({ game, home, away }) {
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
       robust_under_evidence: robustUnderEvidence,
-      under_gate_version: "strict-v3-per-game",
+      corner_engine_version: "corners-strict-v4-confidence-gate",
+      under_gate_version: "strict-v4-confidence-gate",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
@@ -7714,7 +7729,20 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
 
     const oldGame = storedById.get(id);
     const currentDecision = game?.[decisionField];
-    const oldDecision = oldGame?.[decisionField];
+    let oldDecision = oldGame?.[decisionField];
+
+    // V4 — invalidação CIRÚRGICA apenas de corners_ai antigo.
+    // goals_ai, btts_ai, handicap_ai e cards_ai continuam preservados.
+    if (decisionField === "corners_ai") {
+      const oldCornerVersion =
+        oldDecision?.corner_engine_version ??
+        oldDecision?.extra?.corner_engine_version ??
+        "";
+
+      if (oldCornerVersion !== "corners-strict-v4-confidence-gate") {
+        oldDecision = null;
+      }
+    }
 
     // Uma análise nova válida pode substituir a anterior.
     if (marketEngineDecisionIsStable(currentDecision)) {
@@ -7748,7 +7776,18 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
     const id = marketEngineGameIdentity(oldGame);
     if (seen.has(id)) continue;
 
-    const oldDecision = oldGame?.[decisionField];
+    let oldDecision = oldGame?.[decisionField];
+
+    if (decisionField === "corners_ai") {
+      const oldCornerVersion =
+        oldDecision?.corner_engine_version ??
+        oldDecision?.extra?.corner_engine_version ??
+        "";
+
+      if (oldCornerVersion !== "corners-strict-v4-confidence-gate") {
+        oldDecision = null;
+      }
+    }
 
     if (!marketEngineDecisionIsStable(oldDecision)) continue;
 
@@ -9011,6 +9050,10 @@ function cornerPregameLockSnapshot(game, decision) {
       decision?.robust_under_evidence ??
       decision?.extra?.robust_under_evidence
     ),
+    corner_engine_version:
+      decision?.corner_engine_version ??
+      decision?.extra?.corner_engine_version ??
+      "corners-strict-v4-confidence-gate",
     lock_version: CORNER_PREGAME_LOCK_VERSION
   };
 }
@@ -9046,10 +9089,26 @@ function cornerPregameDecisionCanLock(decision) {
   );
 
   if (line.startsWith("UNDER")) {
+    const projection = Number(decision?.projection);
+
+    if (line === "UNDER 9.5") {
+      return (
+        source === "recent_form" &&
+        sampleGames >= 5 &&
+        robustUnder &&
+        Number.isFinite(projection) &&
+        projection <= 8.05 &&
+        Number(decision.confidence || 0) >=
+          MULTI_MARKET_ENGINE.MIN_CONFIDENCE
+      );
+    }
+
     return (
       source === "recent_form" &&
-      sampleGames >= 4 &&
-      robustUnder
+      sampleGames >= 5 &&
+      robustUnder &&
+      Number(decision.confidence || 0) >=
+        MULTI_MARKET_ENGINE.MIN_CONFIDENCE
     );
   }
 
@@ -9076,10 +9135,26 @@ function cornerPregameExistingLockIsValid(lock) {
   const line = String(lock.line || "").trim().toUpperCase();
 
   if (line.startsWith("UNDER")) {
+    const projection = Number(lock.projection);
+
+    if (line === "UNDER 9.5") {
+      return (
+        lock.source === "recent_form" &&
+        Number(lock.sample_games || 0) >= 5 &&
+        Boolean(lock.robust_under_evidence) &&
+        Number.isFinite(projection) &&
+        projection <= 8.05 &&
+        Number(lock.confidence || 0) >=
+          MULTI_MARKET_ENGINE.MIN_CONFIDENCE
+      );
+    }
+
     return (
       lock.source === "recent_form" &&
-      Number(lock.sample_games || 0) >= 4 &&
-      Boolean(lock.robust_under_evidence)
+      Number(lock.sample_games || 0) >= 5 &&
+      Boolean(lock.robust_under_evidence) &&
+      Number(lock.confidence || 0) >=
+        MULTI_MARKET_ENGINE.MIN_CONFIDENCE
     );
   }
 
