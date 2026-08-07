@@ -7488,6 +7488,54 @@ const MARKET_ENGINE_DECISION_FIELDS = {
   handicap: "handicap_ai"
 };
 
+/*
+ * MARKET ENGINE ISOLATION V2
+ * Cada lista de /market_engines expõe apenas a decisão da própria IA.
+ */
+function marketEngineMarketFromDecisionField(decisionField) {
+  return Object.entries(MARKET_ENGINE_DECISION_FIELDS)
+    .find(([, field]) => field === decisionField)?.[0] || "";
+}
+
+function marketEngineStripForeignDecisions(game, decisionField) {
+  const isolated = { ...(game || {}) };
+
+  for (const field of Object.values(MARKET_ENGINE_DECISION_FIELDS)) {
+    if (field !== decisionField) delete isolated[field];
+  }
+
+  isolated.market_engine =
+    marketEngineMarketFromDecisionField(decisionField);
+  isolated.market_decision_field = decisionField;
+  isolated.market_isolated = true;
+
+  return isolated;
+}
+
+function marketEngineIsolatePayload(payload) {
+  const isolated = { ...(payload || {}) };
+
+  for (const [market, decisionField] of Object.entries(
+    MARKET_ENGINE_DECISION_FIELDS
+  )) {
+    isolated[market] = (
+      Array.isArray(payload?.[market])
+        ? payload[market]
+        : []
+    ).map(game =>
+      marketEngineStripForeignDecisions(
+        game,
+        decisionField
+      )
+    );
+  }
+
+  isolated.market_contract_version = "market-isolation-v2";
+  isolated.market_lists_are_isolated = true;
+
+  return isolated;
+}
+
 let marketEnginePrewarmRunning = false;
 
 function marketEngineSnapshotPath(date) {
@@ -7654,24 +7702,32 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
 
     // Uma análise nova válida pode substituir a anterior.
     if (marketEngineDecisionIsStable(currentDecision)) {
-      return game;
+      return marketEngineStripForeignDecisions(
+        game,
+        decisionField
+      );
     }
 
-    // Se a nova leitura falhou/virou "SEM APOSTA", preserva a última válida.
+    // Se a leitura atual falhou, mantém somente a última decisão
+    // válida DO MESMO MERCADO.
     if (marketEngineDecisionIsStable(oldDecision)) {
-      return {
+      return marketEngineStripForeignDecisions({
         ...oldGame,
         ...game,
-        [decisionField]: marketEnginePreserveDecision(oldDecision),
+        [decisionField]:
+          marketEnginePreserveDecision(oldDecision),
         analysis_snapshot_preserved: true
-      };
+      }, decisionField);
     }
 
-    return game;
+    return marketEngineStripForeignDecisions(
+      game,
+      decisionField
+    );
   });
 
-  // Se a API deixou de devolver temporariamente um jogo que já tinha análise
-  // válida, ele continua disponível naquele dia.
+  // Jogo temporariamente ausente: preserva apenas o snapshot
+  // do próprio mercado, sem decisões estrangeiras.
   for (const oldGame of stored) {
     const id = marketEngineGameIdentity(oldGame);
     if (seen.has(id)) continue;
@@ -7680,18 +7736,22 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
 
     if (!marketEngineDecisionIsStable(oldDecision)) continue;
 
-    merged.push({
-      ...oldGame,
-      [decisionField]: marketEnginePreserveDecision(oldDecision),
-      analysis_snapshot_preserved: true,
-      upstream_temporarily_missing: true
-    });
+    merged.push(
+      marketEngineStripForeignDecisions({
+        ...oldGame,
+        [decisionField]:
+          marketEnginePreserveDecision(oldDecision),
+        analysis_snapshot_preserved: true,
+        upstream_temporarily_missing: true
+      }, decisionField)
+    );
   }
 
   return merged;
 }
 
 async function mergeAndSaveMarketEngineSnapshot(date, payload) {
+  payload = marketEngineIsolatePayload(payload);
   const previous = await readMarketEngineSnapshot(date);
 
   if (!previous) {

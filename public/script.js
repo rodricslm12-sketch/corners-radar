@@ -8,6 +8,11 @@
     if (window.__cpMobileControllerV9) return;
     window.__cpMobileControllerV9 = true;
     window.__cornerProMobileLoaderV6 = true;
+
+    // V10 — autoridade única dos mercados mobile.
+    // Bloqueia módulos antigos que reescreviam card e dados em paralelo.
+    window.__cpMobileMarketCarouselV1 = true;
+    window.__cpMobileDirectLoaderInstalled = true;
   
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -84,7 +89,8 @@
       matchPollTimer: null,
       touchStartX: 0,
       touchStartY: 0,
-      loading: false
+      loading: false,
+      engineDate: ""
     };
   
     function clean(value, fallback = "") {
@@ -165,41 +171,107 @@
       return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "--:--";
     }
   
+    const ENGINE_DECISION_FIELD = Object.freeze({
+      corners: "corners_ai",
+      goals: "goals_ai",
+      cards: "cards_ai",
+      btts: "btts_ai",
+      handicap: "handicap_ai"
+    });
+
+    function ownMarketDecision(game, type) {
+      const field = ENGINE_DECISION_FIELD[type];
+      if (!field) return null;
+      const decision = game?.[field];
+      return decision && typeof decision === "object" ? decision : null;
+    }
+
     function confidence(game, type) {
+      const decision = ownMarketDecision(game, type);
+
+      // IA: confiança vem apenas do próprio mercado.
+      if (decision) {
+        if (Boolean(decision.skip) || Boolean(decision.updating)) return 0;
+
+        let value = numberFrom(decision.confidence);
+        if (value === null) return 0;
+        if (value > 0 && value <= 1) value *= 100;
+        while (value > 100) value /= 10;
+
+        return Math.max(0, Math.min(95, Math.round(value)));
+      }
+
+      // Mercados genéricos fora dos cinco motores.
       let value = null;
-      if (type === "goals") {
-        value = numberFrom(game?.goals?.confidence, game?.goals_confidence, game?.over25_prob, game?.goal_prob);
-      } else if (type === "cards") {
-        value = numberFrom(game?.cards?.confidence, game?.cards_confidence, game?.over35_cards_prob, game?.card_prob);
-      } else if (type === "pregame") {
-        value = numberFrom(game?.pregame?.confidence, game?.winner_confidence, game?.confidence, game?.ai_score);
-      } else {
-        value = numberFrom(game?.over95_prob_adj, game?.over95_prob, game?.confidence, game?.ai_score, game?.score);
+
+      if (type === "pregame") {
+        value = numberFrom(
+          game?.pregame?.confidence,
+          game?.winner_confidence,
+          game?.confidence,
+          game?.ai_score
+        );
+      } else if (type === "combined") {
+        value = numberFrom(
+          game?.combined?.confidence,
+          game?.confidence,
+          game?.ai_score
+        );
+      } else if (type === "props") {
+        value = numberFrom(
+          game?.props?.confidence,
+          game?.confidence,
+          game?.ai_score
+        );
       }
-  
-      if (value === null) {
-        const projection = numberFrom(game?.proj_cantos, game?.projCorners, game?.projection) ?? 10;
-        value = 58 + Math.max(0, projection - 9.5) * 7;
-      }
+
+      if (value === null) return 0;
       if (value > 0 && value <= 1) value *= 100;
       while (value > 100) value /= 10;
-      return Math.max(5, Math.min(95, Math.round(value)));
+
+      return Math.max(0, Math.min(95, Math.round(value)));
     }
-  
+
     function line(game, type) {
-      if (type === "goals") return clean(game?.goals?.line ?? game?.goals_line ?? game?.goal_line, "OVER 2.5").toUpperCase();
-      if (type === "cards") return clean(game?.cards?.line ?? game?.cards_line ?? game?.card_line, "OVER 3.5").toUpperCase();
-      if (type === "pregame") return clean(game?.pregame?.line ?? game?.best_market ?? game?.winner_market, "DUPLA CHANCE").toUpperCase();
-      if (type === "combined") return clean(game?.combined?.line ?? game?.combo_line, "CASA + OVER 1.5").toUpperCase();
-      if (type === "props") return clean(game?.props?.line ?? game?.player_prop_line, "CHUTES NO GOL").toUpperCase();
-  
-      const projection = numberFrom(game?.proj_cantos, game?.projCorners, game?.projection) ?? 10.2;
-      if (projection >= 12.5) return "OVER 11.5";
-      if (projection >= 11.4) return "OVER 10.5";
-      if (projection >= 10.3) return "OVER 9.5";
-      return "OVER 8.5";
+      const decision = ownMarketDecision(game, type);
+
+      // A linha exibida vem exclusivamente do motor correspondente.
+      if (decision) {
+        return clean(
+          decision.line,
+          decision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
+        ).toUpperCase();
+      }
+
+      // Não fabrica linha de outro mercado quando o motor ainda não respondeu.
+      if (ENGINE_DECISION_FIELD[type]) {
+        return "DADOS EM ATUALIZAÇÃO";
+      }
+
+      if (type === "pregame") {
+        return clean(
+          game?.pregame?.line ?? game?.best_market ?? game?.winner_market,
+          "DUPLA CHANCE"
+        ).toUpperCase();
+      }
+
+      if (type === "combined") {
+        return clean(
+          game?.combined?.line ?? game?.combo_line,
+          "CASA + OVER 1.5"
+        ).toUpperCase();
+      }
+
+      if (type === "props") {
+        return clean(
+          game?.props?.line ?? game?.player_prop_line,
+          "CHUTES NO GOL"
+        ).toUpperCase();
+      }
+
+      return "SEM APOSTA";
     }
-  
+
     function normalize(game, type, index) {
       const home = team(game, "home");
       const away = team(game, "away");
@@ -485,6 +557,10 @@
       }
   
       const best = list[0];
+
+      // Compatibilidade com consumidores antigos: sempre a lista ativa.
+      window.__cpMobileDirectGames = list;
+
       const setText = (selector, value) => {
         const element = $(selector);
         if (element) element.textContent = value;
@@ -615,43 +691,39 @@
       }
   
       state.all = raw;
-  
-      state.corners = buildMarket(
-        cornerEngineGames.length
-          ? cornerEngineGames
-          : hotGames.length
-            ? hotGames
-            : raw,
-        "corners"
-      );
-  
-      state.goals = buildMarket(
-        goalEngineGames.length ? goalEngineGames : raw,
-        "goals"
-      );
-  
-      state.btts = buildMarket(
-        bttsEngineGames.length ? bttsEngineGames : raw,
-        "goals"
-      );
-  
-      state.handicap = buildMarket(
-        handicapEngineGames.length
-          ? handicapEngineGames
-          : raw,
-        "pregame"
-      );
-  
-      state.cards = buildMarket(
-        cardEngineGames.length ? cardEngineGames : raw,
-        "cards"
-      );
+
+      const engineDateChanged = state.engineDate !== date;
+
+      if (engineDateChanged) {
+        state.engineDate = date;
+        state.corners = [];
+        state.goals = [];
+        state.btts = [];
+        state.handicap = [];
+        state.cards = [];
+      }
+
+      // Fonte oficial dos cinco mercados: /market_engines.
+      // Nunca usa /quentes ou /mercados como substituto de outra IA.
+      const acceptEngineMarket = (key, games, type) => {
+        if (Array.isArray(games) && games.length) {
+          state[key] = buildMarket(games, type);
+        }
+      };
+
+      acceptEngineMarket("corners", cornerEngineGames, "corners");
+      acceptEngineMarket("goals", goalEngineGames, "goals");
+      acceptEngineMarket("btts", bttsEngineGames, "btts");
+      acceptEngineMarket("handicap", handicapEngineGames, "handicap");
+      acceptEngineMarket("cards", cardEngineGames, "cards");
+
+      // Mercados genéricos continuam usando a base comum.
       state.pregame = buildMarket(raw, "pregame");
       state.combined = buildMarket(raw, "combined");
       state.props = buildMarket(raw, "props");
-  
+
       window.__cornerProAllGames = raw;
-      window.__cpMobileDirectGames = state.corners;
+      window.__cpMobileDirectGames = activeList();
       renderActive();
       restartAutoSlide();
     }
@@ -661,7 +733,7 @@
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
   
-      const games = (state.btts || state.goals || []).slice(0, 5);
+      const games = (state.btts || []).slice(0, 5);
       const settlementEntries = [];
       const liveEntries = [];
   
@@ -1271,7 +1343,7 @@
       if (!body) return;
   
       const requestedLine = clean(selectedLine, "IA");
-      const sourceGames = state.handicap || state.pregame || [];
+      const sourceGames = state.handicap || [];
   
       let preparedGames = sourceGames
         .map((game, originalIndex) => ({
@@ -18233,6 +18305,8 @@
          DASHBOARD MOBILE V3 — apenas monta a nova home no celular.
          ========================================================= */
       (function setupCornerProMobileHome(){
+        // LEGACY: desativado quando o Controller V9 está presente.
+        if (window.__cpMobileControllerV9) return;
         const mq=window.matchMedia('(max-width:700px)');
         if(!mq.matches) return;
         const $=(s,r=document)=>r.querySelector(s);
@@ -19922,6 +19996,8 @@
          - Mostra erro/sem jogos em vez de skeleton infinito.
          ========================================================= */
       (function installCornerProMobileDirectLoader(){
+        // LEGACY: não pode sobrescrever o resultado de /market_engines.
+        if (window.__cpMobileControllerV9) return;
         if (window.__cpMobileDirectLoaderInstalled) return;
         window.__cpMobileDirectLoaderInstalled = true;
   
