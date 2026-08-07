@@ -16313,3 +16313,246 @@ button.railFullBtn {
     font-size:9px!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO — CARD PRINCIPAL CLEAN V37
+   SOMENTE:
+   - card principal e clones
+   - avatar/usuário do cabeçalho mobile
+   Não altera mercados, listas, lógica ou navegação.
+   ========================================================= */
+@media (max-width:980px){
+
+  /* ---------- CARD PRINCIPAL: fundo clean, sem clarão central ---------- */
+  .cpHomeSwipeViewport,
+  .cpHomeSwipeViewport.is-soon,
+  .cpHomeSwipeViewport.is-live,
+  .cpHomeSwipeViewport.is-halftime,
+  .cpHomeSwipeViewport.is-finished,
+  .cpHomeSwipeTrack,
+  #cpHomeBest,
+  .cpHomeBestClone{
+    --cp-card-height:204px!important;
+    height:204px!important;
+    min-height:204px!important;
+    max-height:204px!important;
+  }
+
+  #cpHomeBest,
+  .cpHomeBestClone,
+  #cpHomeBest[data-market],
+  .cpHomeBestClone[data-market]{
+    border:0!important;
+    outline:0!important;
+    border-radius:16px!important;
+
+    /* SEM radial-gradient no meio: elimina a "bola/clarão". */
+    background:
+      linear-gradient(180deg,#0b1519 0%,#081114 52%,#060d10 100%)!important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.024),
+      inset 0 -18px 34px rgba(0,0,0,.10),
+      0 11px 26px rgba(0,0,0,.28)!important;
+  }
+
+  #cpHomeBest::before,
+  #cpHomeBest::after,
+  .cpHomeBestClone::before,
+  .cpHomeBestClone::after{
+    content:none!important;
+    display:none!important;
+    background:none!important;
+    box-shadow:none!important;
+    filter:none!important;
+  }
+
+  /* ---------- BODY: um pouco mais compacto ---------- */
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestBody{
+    height:111px!important;
+    min-height:111px!important;
+    max-height:111px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeMarketDots{
+    top:43px!important;
+  }
+
+  /* ---------- TIMES: remove completamente as caixas das iniciais ---------- */
+  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge.home,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge.away{
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    width:0!important;
+    height:0!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    box-shadow:none!important;
+    pointer-events:none!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams.cpBestTeamsProfessional{
+    top:61px!important;
+    height:48px!important;
+    min-height:48px!important;
+    max-height:48px!important;
+    padding:0 13px!important;
+
+    /* só nomes + X, sem linha reservada para badge */
+    grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr)!important;
+    grid-template-rows:48px!important;
+    column-gap:7px!important;
+    align-items:center!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestHome,
+  :is(#cpHomeBest,.cpHomeBestClone) [data-clone-id="cpHomeBestHome"]{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestAway,
+  :is(#cpHomeBest,.cpHomeBestClone) [data-clone-id="cpHomeBestAway"]{
+    grid-column:3!important;
+    grid-row:1!important;
+  }
+
+  /* Nomes maiores, fortes e limpos. */
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong{
+    width:100%!important;
+    max-width:170px!important;
+    height:40px!important;
+    min-height:40px!important;
+    margin:0!important;
+    padding:0 4px 8px!important;
+
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+
+    color:#f7f9f8!important;
+    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+    font-size:15.2px!important;
+    line-height:1.05!important;
+    font-weight:900!important;
+    letter-spacing:-.38px!important;
+
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    text-align:center!important;
+    text-shadow:0 1px 10px rgba(0,0,0,.28)!important;
+  }
+
+  /* pequeno traço verde elegante sob o nome */
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong::after{
+    left:31%!important;
+    right:31%!important;
+    bottom:1px!important;
+    height:2px!important;
+    border-radius:999px!important;
+    background:#7cff30!important;
+    box-shadow:0 0 5px rgba(124,255,48,.10)!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestVersus,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > i{
+    grid-column:2!important;
+    grid-row:1!important;
+    margin:0!important;
+    color:#899497!important;
+    font-size:13px!important;
+    font-weight:750!important;
+  }
+
+  /* botão acompanha a redução do card */
+  :is(#cpHomeBest,.cpHomeBestClone) #cpHomeBestOpen,
+  .cpHomeBestClone [data-clone-id="cpHomeBestOpen"]{
+    bottom:10px!important;
+    height:34px!important;
+    min-height:34px!important;
+    max-height:34px!important;
+    border-color:rgba(116,255,45,.13)!important;
+    background:linear-gradient(180deg,#0a1416,#071012)!important;
+  }
+
+  /* ---------- USUÁRIO DO TOPO: sem círculo/borda ---------- */
+  .cpHomeHeaderAuth{
+    position:relative!important;
+    border:0!important;
+    outline:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    overflow:visible!important;
+  }
+
+  .cpHomeHeaderAuth::before{
+    content:"👤"!important;
+    display:block!important;
+    font-size:27px!important;
+    line-height:1!important;
+    filter:grayscale(1) brightness(2)!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+
+  /* mantém somente o ponto verde de status */
+  .cpHomeHeaderAuth::after{
+    content:""!important;
+    position:absolute!important;
+    right:0!important;
+    bottom:4px!important;
+    width:9px!important;
+    height:9px!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:#79ff2c!important;
+    box-shadow:0 0 9px rgba(121,255,44,.55)!important;
+  }
+
+  #cpHomeAuthButton,
+  .cpHomeHeaderAuth button,
+  .cpHomeHeaderAuth img{
+    border:0!important;
+    outline:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
+
+@media (max-width:390px){
+  .cpHomeSwipeViewport,
+  .cpHomeSwipeViewport.is-soon,
+  .cpHomeSwipeViewport.is-live,
+  .cpHomeSwipeViewport.is-halftime,
+  .cpHomeSwipeViewport.is-finished,
+  .cpHomeSwipeTrack,
+  #cpHomeBest,
+  .cpHomeBestClone{
+    --cp-card-height:198px!important;
+    height:198px!important;
+    min-height:198px!important;
+    max-height:198px!important;
+  }
+
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams > strong{
+    max-width:145px!important;
+    font-size:13.5px!important;
+    letter-spacing:-.3px!important;
+  }
+
+  .cpHomeHeaderAuth::before{
+    font-size:25px!important;
+  }
+}
