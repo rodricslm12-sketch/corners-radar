@@ -7382,6 +7382,335 @@ const FUTURE_MARKET_READY_CACHE_TTL_MS =
 
 const futureMarketReadyCache = new Map();
 
+/* =========================================================
+   CORNER PRO — SNAPSHOT PERSISTENTE DOS MERCADOS V1
+   - Uma análise válida nunca volta para "SEM APOSTA".
+   - O snapshot é separado por DATA + JOGO + MERCADO.
+   - Firestore é a fonte persistente; disco é fallback local.
+   - O dia seguinte é pré-calculado automaticamente.
+   ========================================================= */
+const MARKET_ENGINE_SNAPSHOT_VERSION =
+  process.env.MARKET_ENGINE_SNAPSHOT_VERSION ||
+  "market-engine-snapshot-v1";
+
+const MARKET_ENGINE_SNAPSHOT_COLLECTION =
+  process.env.MARKET_ENGINE_SNAPSHOT_COLLECTION ||
+  "market_engine_snapshots";
+
+const MARKET_ENGINE_PREWARM_INTERVAL_MIN = Math.max(
+  30,
+  Number(process.env.MARKET_ENGINE_PREWARM_INTERVAL_MIN || 60)
+);
+
+const MARKET_ENGINE_PREWARM_START_DELAY_MS = Math.max(
+  5000,
+  Number(process.env.MARKET_ENGINE_PREWARM_START_DELAY_MS || 15000)
+);
+
+const MARKET_ENGINE_DECISION_FIELDS = {
+  corners: "corners_ai",
+  goals: "goals_ai",
+  cards: "cards_ai",
+  btts: "btts_ai",
+  handicap: "handicap_ai"
+};
+
+let marketEnginePrewarmRunning = false;
+
+function marketEngineSnapshotPath(date) {
+  return path.join(
+    CACHE_DIR,
+    `market-engines-${date}-${MARKET_ENGINE_SNAPSHOT_VERSION}.json`
+  );
+}
+
+function marketEngineSnapshotId(date) {
+  return firestoreSafeId(
+    `${date}-${MARKET_ENGINE_SNAPSHOT_VERSION}`
+  );
+}
+
+function marketEngineDateShift(date, days = 1) {
+  const base = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(base.getTime())) return date;
+  base.setUTCDate(base.getUTCDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+function marketEngineGameIdentity(game) {
+  return String(
+    game?.match_id ??
+    game?.event_id ??
+    game?.event_key ??
+    game?.fixture_id ??
+    game?.event_raw?.match_id ??
+    game?.event_raw?.event_id ??
+    [
+      game?.casa || game?.home || "",
+      game?.fora || game?.away || "",
+      game?.hora || game?.hora_manaus || game?.match_time || ""
+    ].join("|")
+  );
+}
+
+function marketEngineDecisionIsStable(decision) {
+  if (!decision || typeof decision !== "object") return false;
+
+  const line = String(decision.line || "").trim().toUpperCase();
+
+  return Boolean(
+    !decision.skip &&
+    !decision.updating &&
+    line &&
+    line !== "SEM APOSTA" &&
+    line !== "DADOS EM ATUALIZAÇÃO" &&
+    line !== "ANALISANDO PARTIDA"
+  );
+}
+
+function marketEnginePreserveDecision(storedDecision) {
+  if (!marketEngineDecisionIsStable(storedDecision)) {
+    return storedDecision;
+  }
+
+  return {
+    ...storedDecision,
+    snapshot_preserved: true,
+    snapshot_locked: true,
+    preserved_at: new Date().toISOString()
+  };
+}
+
+async function readMarketEngineSnapshot(date) {
+  const docId = marketEngineSnapshotId(date);
+
+  // 1) Firestore: persiste mesmo se o Render reiniciar.
+  try {
+    const snap = await db
+      .collection(MARKET_ENGINE_SNAPSHOT_COLLECTION)
+      .doc(docId)
+      .get();
+
+    if (snap.exists) {
+      const data = snap.data();
+      if (
+        data?.version === MARKET_ENGINE_SNAPSHOT_VERSION &&
+        data?.date === date &&
+        data?.payload &&
+        typeof data.payload === "object"
+      ) {
+        return data.payload;
+      }
+    }
+  } catch (err) {
+    console.warn(
+      "Snapshot de mercados: leitura Firestore falhou; usando disco:",
+      err?.message || err
+    );
+  }
+
+  // 2) Disco local: fallback de desenvolvimento/contingência.
+  const fp = marketEngineSnapshotPath(date);
+
+  if (!fs.existsSync(fp)) return null;
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(fp, "utf-8"));
+
+    if (
+      parsed?.version === MARKET_ENGINE_SNAPSHOT_VERSION &&
+      parsed?.date === date &&
+      parsed?.payload &&
+      typeof parsed.payload === "object"
+    ) {
+      return parsed.payload;
+    }
+  } catch {}
+
+  return null;
+}
+
+async function writeMarketEngineSnapshot(date, payload) {
+  if (!payload || typeof payload !== "object") return;
+
+  const wrapper = {
+    version: MARKET_ENGINE_SNAPSHOT_VERSION,
+    date,
+    saved_at: new Date().toISOString(),
+    saved_at_ms: Date.now(),
+    payload: firestoreSanitize(payload)
+  };
+
+  try {
+    await db
+      .collection(MARKET_ENGINE_SNAPSHOT_COLLECTION)
+      .doc(marketEngineSnapshotId(date))
+      .set(wrapper, { merge: false });
+  } catch (err) {
+    console.warn(
+      "Snapshot de mercados: gravação Firestore falhou; mantendo disco:",
+      err?.message || err
+    );
+  }
+
+  try {
+    fs.writeFileSync(
+      marketEngineSnapshotPath(date),
+      JSON.stringify(wrapper, null, 2)
+    );
+  } catch {}
+}
+
+function mergeMarketEngineList(incomingList, storedList, decisionField) {
+  const incoming = Array.isArray(incomingList) ? incomingList : [];
+  const stored = Array.isArray(storedList) ? storedList : [];
+
+  const storedById = new Map(
+    stored.map(game => [marketEngineGameIdentity(game), game])
+  );
+
+  const seen = new Set();
+
+  const merged = incoming.map(game => {
+    const id = marketEngineGameIdentity(game);
+    seen.add(id);
+
+    const oldGame = storedById.get(id);
+    const currentDecision = game?.[decisionField];
+    const oldDecision = oldGame?.[decisionField];
+
+    // Uma análise nova válida pode substituir a anterior.
+    if (marketEngineDecisionIsStable(currentDecision)) {
+      return game;
+    }
+
+    // Se a nova leitura falhou/virou "SEM APOSTA", preserva a última válida.
+    if (marketEngineDecisionIsStable(oldDecision)) {
+      return {
+        ...oldGame,
+        ...game,
+        [decisionField]: marketEnginePreserveDecision(oldDecision),
+        analysis_snapshot_preserved: true
+      };
+    }
+
+    return game;
+  });
+
+  // Se a API deixou de devolver temporariamente um jogo que já tinha análise
+  // válida, ele continua disponível naquele dia.
+  for (const oldGame of stored) {
+    const id = marketEngineGameIdentity(oldGame);
+    if (seen.has(id)) continue;
+
+    const oldDecision = oldGame?.[decisionField];
+
+    if (!marketEngineDecisionIsStable(oldDecision)) continue;
+
+    merged.push({
+      ...oldGame,
+      [decisionField]: marketEnginePreserveDecision(oldDecision),
+      analysis_snapshot_preserved: true,
+      upstream_temporarily_missing: true
+    });
+  }
+
+  return merged;
+}
+
+async function mergeAndSaveMarketEngineSnapshot(date, payload) {
+  const previous = await readMarketEngineSnapshot(date);
+
+  if (!previous) {
+    await writeMarketEngineSnapshot(date, payload);
+    return {
+      ...payload,
+      snapshot_date: date,
+      snapshot_saved: true
+    };
+  }
+
+  const merged = {
+    ...previous,
+    ...payload,
+    date,
+    generated_at: payload.generated_at || new Date().toISOString()
+  };
+
+  for (const [market, decisionField] of Object.entries(
+    MARKET_ENGINE_DECISION_FIELDS
+  )) {
+    merged[market] = mergeMarketEngineList(
+      payload?.[market],
+      previous?.[market],
+      decisionField
+    );
+  }
+
+  merged.snapshot_date = date;
+  merged.snapshot_saved = true;
+  merged.snapshot_preserves_valid_analysis = true;
+
+  await writeMarketEngineSnapshot(date, merged);
+
+  return merged;
+}
+
+async function prewarmTomorrowMarketEngines() {
+  if (marketEnginePrewarmRunning) return;
+
+  marketEnginePrewarmRunning = true;
+
+  const today = futureMarketTodayManaus();
+  const tomorrow = marketEngineDateShift(today, 1);
+
+  try {
+    console.log(
+      `[market-prewarm] Preparando análises de ${tomorrow}...`
+    );
+
+    const payload = await buildAllMarketEngines({
+      date: tomorrow
+    });
+
+    const counts = Object.fromEntries(
+      Object.keys(MARKET_ENGINE_DECISION_FIELDS).map(market => [
+        market,
+        (Array.isArray(payload?.[market])
+          ? payload[market]
+          : []
+        ).filter(game =>
+          marketEngineDecisionIsStable(
+            game?.[MARKET_ENGINE_DECISION_FIELDS[market]]
+          )
+        ).length
+      ])
+    );
+
+    console.log(
+      `[market-prewarm] ${tomorrow} pronto:`,
+      counts
+    );
+  } catch (err) {
+    console.warn(
+      `[market-prewarm] Falha ao preparar ${tomorrow}:`,
+      err?.message || err
+    );
+  } finally {
+    marketEnginePrewarmRunning = false;
+  }
+}
+
+function installMarketEnginePrewarm() {
+  setTimeout(() => {
+    prewarmTomorrowMarketEngines().catch(() => {});
+  }, MARKET_ENGINE_PREWARM_START_DELAY_MS);
+
+  setInterval(() => {
+    prewarmTomorrowMarketEngines().catch(() => {});
+  }, MARKET_ENGINE_PREWARM_INTERVAL_MIN * 60 * 1000);
+}
+
 function futureMarketTodayManaus() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Manaus",
@@ -7890,7 +8219,7 @@ async function buildAllMarketEngines({ date }) {
 
   const learningModel = loadCornerLearningModel();
 
-  return {
+  const payload = {
     date,
     generated_at: new Date().toISOString(),
     corner_learning: {
@@ -7923,6 +8252,11 @@ async function buildAllMarketEngines({ date }) {
     btts: rank(analyzed, "btts_ai"),
     handicap: rank(analyzed, "handicap_ai")
   };
+
+  // Persiste a última recomendação válida de cada jogo/mercado.
+  // Se uma atualização futura ou ao vivo vier como "SEM APOSTA",
+  // a recomendação anteriormente publicada permanece no card.
+  return await mergeAndSaveMarketEngineSnapshot(date, payload);
 }
 
 
@@ -8020,6 +8354,22 @@ app.get("/market_engines", async (req, res) => {
 
     return res.json(payload);
   } catch (err) {
+    // Se a API ou um motor falhar temporariamente, não apaga as análises.
+    const snapshot = await readMarketEngineSnapshot(date);
+
+    if (snapshot) {
+      res.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate"
+      );
+
+      return res.json({
+        ...snapshot,
+        snapshot_fallback: true,
+        snapshot_fallback_reason: String(err?.message || err)
+      });
+    }
+
     return res.status(500).json({
       error: "Erro ao calcular os motores dos mercados",
       details: String(err?.message || err)
@@ -9568,6 +9918,10 @@ app.get("/", (req, res) => res.send("Servidor rodando com API ⚽"));
 // ---------------- Start ----------------
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
+
+  // Prepara automaticamente as análises do dia seguinte e as mantém
+  // persistidas no Firestore antes da virada do dia.
+  installMarketEnginePrewarm();
   console.log(`- Teste sem cache: /quentes?date=YYYY-MM-DD&fresh=1`);
   console.log(`- IA: ${OPENAI_API_KEY ? "ON (key ok)" : "OFF (sem OPENAI_API_KEY)"}`);
   console.log(`- Modelo IA: ${OPENAI_MODEL}`);
