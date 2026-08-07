@@ -16556,3 +16556,185 @@ button.railFullBtn {
     font-size:25px!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO — PERFIL MOBILE FIX V38
+   Corrige duplicação do usuário no topo.
+   SOMENTE cabeçalho/perfil. Não altera card nem mercados.
+   ========================================================= */
+@media (max-width:980px){
+
+  /* O wrapper apenas ocupa a coluna correta. Nunca desenha usuário. */
+  .cpHomeHeaderAuth{
+    grid-column:4!important;
+    position:relative!important;
+    justify-self:end!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+
+    width:48px!important;
+    min-width:48px!important;
+    height:48px!important;
+    margin:0!important;
+    padding:0!important;
+
+    border:0!important;
+    outline:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+  }
+
+  /* Mata definitivamente o usuário duplicado criado no wrapper. */
+  .cpHomeHeaderAuth::before,
+  .cpHomeHeaderAuth::after{
+    content:none!important;
+    display:none!important;
+  }
+
+  /* Um único botão de usuário, totalmente sem círculo externo. */
+  #cpHomeAuthButton{
+    position:relative!important;
+    inset:auto!important;
+
+    width:42px!important;
+    min-width:42px!important;
+    height:42px!important;
+
+    margin:0!important;
+    padding:0!important;
+
+    display:grid!important;
+    place-items:center!important;
+
+    border:0!important;
+    outline:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible!important;
+    transform:none!important;
+  }
+
+  /* Remove desenhos antigos do próprio botão. */
+  #cpHomeAuthButton::before,
+  #cpHomeAuthButton::after{
+    content:none!important;
+    display:none!important;
+  }
+
+  /* Se houver foto Google: mostra limpa, sem anel/borda. */
+  #cpHomeAuthPhoto{
+    position:absolute!important;
+    inset:5px!important;
+    width:32px!important;
+    height:32px!important;
+    border:0!important;
+    outline:0!important;
+    border-radius:50%!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    object-fit:cover!important;
+    z-index:3!important;
+  }
+
+  #cpHomeAuthPhoto[hidden]{
+    display:none!important;
+  }
+
+  /* Fallback: apenas a silhueta branca de usuário, sem bola ao redor. */
+  .cpHomeAuthFallback{
+    position:relative!important;
+    width:30px!important;
+    height:30px!important;
+
+    display:grid!important;
+    place-items:center!important;
+
+    border:0!important;
+    outline:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+
+    font-size:0!important;
+    opacity:1!important;
+    z-index:2!important;
+  }
+
+  .cpHomeAuthFallback::before{
+    content:""!important;
+    position:absolute!important;
+    top:2px!important;
+    left:50%!important;
+    width:11px!important;
+    height:11px!important;
+    transform:translateX(-50%)!important;
+    border-radius:50%!important;
+    background:#fff!important;
+  }
+
+  .cpHomeAuthFallback::after{
+    content:""!important;
+    position:absolute!important;
+    left:50%!important;
+    bottom:2px!important;
+    width:24px!important;
+    height:12px!important;
+    transform:translateX(-50%)!important;
+    border-radius:14px 14px 6px 6px!important;
+    background:#fff!important;
+  }
+
+  /* Se existe foto válida, esconde o fallback. */
+  .cpHomeHeaderAuth.is-authenticated:not(.has-photo-error) .cpHomeAuthFallback{
+    opacity:0!important;
+  }
+
+  /* Pontinho verde: único indicador de status. */
+  #cpHomeAuthButton > i{
+    position:absolute!important;
+    right:0!important;
+    bottom:2px!important;
+
+    width:9px!important;
+    height:9px!important;
+
+    border:0!important;
+    border-radius:50%!important;
+    background:#78ff2d!important;
+    box-shadow:0 0 9px rgba(120,255,45,.55)!important;
+    z-index:5!important;
+  }
+
+  /* Premium/autenticado não ganha anel novamente. */
+  .cpHomeHeaderAuth.is-authenticated #cpHomeAuthButton,
+  .cpHomeHeaderAuth.is-premium #cpHomeAuthButton{
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
+
+@media (max-width:390px){
+  .cpHomeHeaderAuth{
+    width:44px!important;
+    min-width:44px!important;
+    height:44px!important;
+  }
+
+  #cpHomeAuthButton{
+    width:40px!important;
+    min-width:40px!important;
+    height:40px!important;
+  }
+
+  .cpHomeAuthFallback{
+    width:28px!important;
+    height:28px!important;
+  }
+}
