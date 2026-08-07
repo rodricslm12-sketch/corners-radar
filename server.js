@@ -6877,6 +6877,54 @@ function cornersStoreStableDecision(game, decision) {
   const incomingQuality = cornersDecisionQuality(decision);
   const existingQuality = cornersDecisionQuality(existing?.decision);
 
+  const existingLine = String(existing?.decision?.line || "").toUpperCase();
+  const incomingLine = String(decision?.line || "").toUpperCase();
+
+  const existingIsOver = existingLine.startsWith("OVER");
+  const incomingIsUnder = incomingLine.startsWith("UNDER");
+
+  const incomingSource =
+    decision?.calculation_source ||
+    decision?.extra?.calculation_source ||
+    "";
+
+  const incomingSampleGames = Number(
+    decision?.sample_games ??
+    decision?.extra?.sample_games ??
+    0
+  );
+
+  const incomingProjection = Number(decision?.projection);
+
+  const incomingRobustUnder = Boolean(
+    decision?.robust_under_evidence ??
+    decision?.extra?.robust_under_evidence
+  );
+
+  const canReplaceOverWithUnder =
+    incomingSource === "recent_form" &&
+    incomingSampleGames >= 4 &&
+    incomingRobustUnder &&
+    Number.isFinite(incomingProjection) &&
+    incomingProjection <= 9.35 &&
+    incomingQuality >= existingQuality + 0.75;
+
+  if (
+    existing &&
+    existing.expires > Date.now() &&
+    existingIsOver &&
+    incomingIsUnder &&
+    !canReplaceOverWithUnder
+  ) {
+    return {
+      ...existing.decision,
+      stable_cache_used: true,
+      under_flip_blocked: true,
+      reason:
+        `${existing.decision.reason} A leitura OVER foi preservada porque o novo UNDER ainda não possui evidência robusta suficiente.`
+    };
+  }
+
   if (
     existing &&
     existing.expires > Date.now() &&
@@ -6899,6 +6947,11 @@ function cornersStoreStableDecision(game, decision) {
 }
 
 
+/*
+ * Fallback de cantos permanece propositalmente conservador:
+ * nunca gera UNDER 10.5/11.5. UNDER só pode surgir do motor completo
+ * com recent_form + evidência robusta + gate de projeção.
+ */
 function cornersFallbackLineFromProjection(projection) {
   if (!Number.isFinite(projection)) {
     return null;
@@ -7178,6 +7231,24 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate = projection >= 10.75;
     } else if (candidate.label === "OVER 11.5") {
       projectionGate = projection >= 11.75;
+    } else if (candidate.label === "UNDER 9.5") {
+      projectionGate =
+        source === "recent_form" &&
+        robustUnderEvidence &&
+        sampleGames >= 4 &&
+        projection <= 8.35;
+    } else if (candidate.label === "UNDER 10.5") {
+      projectionGate =
+        source === "recent_form" &&
+        robustUnderEvidence &&
+        sampleGames >= 4 &&
+        projection <= 9.35;
+    } else if (candidate.label === "UNDER 11.5") {
+      projectionGate =
+        source === "recent_form" &&
+        robustUnderEvidence &&
+        sampleGames >= 4 &&
+        projection <= 10.05;
     }
 
     return {
@@ -7268,6 +7339,8 @@ function cornersEngineDecision({ game, home, away }) {
         Number.isFinite(normalizedOver95)
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
+      robust_under_evidence: robustUnderEvidence,
+      under_gate_version: "strict-v1",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
