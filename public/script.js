@@ -90,12 +90,7 @@
       touchStartX: 0,
       touchStartY: 0,
       loading: false,
-      engineDate: "",
-
-      // V15 — evita precisar atualizar o navegador várias vezes.
-      loadRetryTimer: null,
-      loadRetryAttempt: 0,
-      loadRetryDate: ""
+      engineDate: ""
     };
   
 
@@ -671,81 +666,16 @@
       startAutoSlide();
     }
   
-
-    function stopLoadRetry() {
-      if (state.loadRetryTimer) {
-        clearTimeout(state.loadRetryTimer);
-        state.loadRetryTimer = null;
-      }
-    }
-
-    function engineMarketReady(type = state.activeMarket) {
-      const list = state[type];
-      return Array.isArray(list) && list.length > 0;
-    }
-
-    function scheduleLoadRetry(reason = "") {
-      if (!mobileMedia.matches || document.hidden) return;
-      if (engineMarketReady()) {
-        stopLoadRetry();
-        state.loadRetryAttempt = 0;
-        return;
-      }
-
-      const date = state.date;
-      if (state.loadRetryDate !== date) {
-        stopLoadRetry();
-        state.loadRetryDate = date;
-        state.loadRetryAttempt = 0;
-      }
-
-      // Substitui as 3–4 atualizações manuais:
-      // 1.2s, 2.4s, 4s, 6s, 8s e 10s.
-      const delays = [1200, 2400, 4000, 6000, 8000, 10000];
-
-      if (state.loadRetryAttempt >= delays.length) {
-        stopLoadRetry();
-        return;
-      }
-
-      if (state.loadRetryTimer) return;
-
-      const delay = delays[state.loadRetryAttempt++];
-
-      state.loadRetryTimer = setTimeout(async () => {
-        state.loadRetryTimer = null;
-
-        // Se o usuário mudou a data, não usa retry antigo.
-        if (date !== state.date) return;
-
-        try {
-          await loadData({ fromRetry: true });
-        } catch (error) {
-          console.warn(
-            "[Mobile V15 retry]",
-            reason || error?.message || error
-          );
-        }
-
-        if (!engineMarketReady()) {
-          scheduleLoadRetry("market_engines ainda preparando os dados");
-        } else {
-          state.loadRetryAttempt = 0;
-          stopLoadRetry();
-        }
-      }, delay);
-    }
-
-    async function loadData(options = {}) {
+    async function loadData() {
       if (state.loading) return;
       setLoading(true);
   
       const stamp = Date.now();
       const date = state.date;
       const [hotResult, marketResult, enginesResult] = await Promise.allSettled([
-        getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=15`),
-        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=15`),
-        getJson(`/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=15`)
+        getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=11`),
+        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`),
+        getJson(`/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`)
       ]);
   
       const hotGames = hotResult.status === "fulfilled"
@@ -802,26 +732,6 @@
       acceptEngineMarket("btts", bttsEngineGames, "btts");
       acceptEngineMarket("handicap", handicapEngineGames, "handicap");
       acceptEngineMarket("cards", cardEngineGames, "cards");
-
-      const anyEngineReady =
-        cornerEngineGames.length ||
-        goalEngineGames.length ||
-        cardEngineGames.length ||
-        bttsEngineGames.length ||
-        handicapEngineGames.length;
-
-      // Se /market_engines respondeu antes de terminar o processamento,
-      // não exige F5 do usuário. O próprio app tenta novamente.
-      if (!anyEngineReady || !engineMarketReady()) {
-        scheduleLoadRetry(
-          enginesResult.status === "rejected"
-            ? "market_engines indisponível na primeira tentativa"
-            : "market_engines ainda processando"
-        );
-      } else {
-        state.loadRetryAttempt = 0;
-        stopLoadRetry();
-      }
 
       // Mercados genéricos continuam usando a base comum.
       state.pregame = buildMarket(raw, "pregame");
@@ -4028,21 +3938,7 @@
   
       card?.addEventListener("mouseenter", stopAutoSlide);
       card?.addEventListener("mouseleave", startAutoSlide);
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          stopAutoSlide();
-          stopLoadRetry();
-        } else {
-          startAutoSlide();
-
-          // Safari/iPhone pode suspender a primeira chamada de rede.
-          // Ao voltar ao app, busca os dados novamente sem precisar F5.
-          if (!engineMarketReady()) {
-            state.loadRetryAttempt = 0;
-            scheduleLoadRetry("app voltou ao primeiro plano");
-          }
-        }
-      });
+      document.addEventListener("visibilitychange", () => document.hidden ? stopAutoSlide() : startAutoSlide());
       mobileMedia.addEventListener?.("change", event => event.matches ? startAutoSlide() : stopAutoSlide());
     }
   
@@ -4055,17 +3951,9 @@
       bind();
       try {
         await loadData();
-
-        if (!engineMarketReady()) {
-          scheduleLoadRetry("primeiro carregamento sem mercado pronto");
-        }
       } catch (error) {
-        console.error("[Mobile V15]", error);
-
-        // Não obriga o usuário a atualizar a página.
-        // Mantém o estado de análise e tenta de novo automaticamente.
-        setLoading(false);
-        scheduleLoadRetry("falha no primeiro carregamento");
+        console.error("[Mobile V9]", error);
+        showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
       }
     }
   
