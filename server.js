@@ -53,11 +53,14 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v4-confidence-gate";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v5-preserve-history";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
 );
+
+const CORNER_PREGAME_LOCK_COLLECTION =
+  "corner_pregame_locks_v2";
 
 const OFFICIAL_CORNER_PICK_FILE = path.join(
   __dirname,
@@ -8276,9 +8279,10 @@ async function buildAllMarketEngines({ date }) {
         rawCornersDecision
       );
 
-      const lockedCornersDecision = cornerPregameApplyLock(
+      const lockedCornersDecision = await cornerPregameApplyLock(
         game,
-        learnedCornersDecision
+        learnedCornersDecision,
+        date
       );
 
       const corners_ai = futureMarketDecisionGate({
@@ -8896,21 +8900,17 @@ function loadCornerPregameLockStore() {
         fs.readFileSync(CORNER_PREGAME_LOCK_FILE, "utf8")
       );
 
-      const sameVersion =
-        parsed?.version === CORNER_PREGAME_LOCK_VERSION;
+      const parsedLocks =
+        parsed?.locks && typeof parsed.locks === "object"
+          ? parsed.locks
+          : {};
 
       cornerPregameLockStore = {
         version: CORNER_PREGAME_LOCK_VERSION,
 
-        // V3: locks antigos são descartados de propósito.
-        // Assim uma linha UNDER gravada por uma versão anterior
-        // não continua congelando o mercado de escanteios.
-        locks:
-          sameVersion &&
-          parsed?.locks &&
-          typeof parsed.locks === "object"
-            ? parsed.locks
-            : {}
+        // V5: preserva o histórico já publicado.
+        // Locks antigos só são reavaliados enquanto a partida ainda é pré-jogo.
+        locks: parsedLocks
       };
 
       return cornerPregameLockStore;
@@ -9161,20 +9161,169 @@ function cornerPregameExistingLockIsValid(lock) {
   return /^(OVER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(line);
 }
 
-function cornerPregameApplyLock(game, decision) {
+
+async function readCornerPregamePersistentLock(game) {
+  const key = cornerPregameLockKey(game);
+
+  try {
+    const snap = await db
+      .collection(CORNER_PREGAME_LOCK_COLLECTION)
+      .doc(firestoreSafeId(key))
+      .get();
+
+    if (!snap.exists) return null;
+
+    const data = snap.data();
+
+    if (
+      data &&
+      typeof data === "object" &&
+      data.line &&
+      /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/i.test(
+        String(data.line)
+      )
+    ) {
+      return data;
+    }
+  } catch (error) {
+    console.warn(
+      "[corner-pregame-lock] Firestore read falhou:",
+      error?.message || error
+    );
+  }
+
+  return null;
+}
+
+async function writeCornerPregamePersistentLock(game, snapshot, date = "") {
+  if (!snapshot?.line) return;
+
+  const key = cornerPregameLockKey(game);
+
+  const persistent = firestoreSanitize({
+    ...snapshot,
+    date: date || "",
+    persisted_at: new Date().toISOString(),
+    persistent_version: "corner-lock-firestore-v2"
+  });
+
+  try {
+    await db
+      .collection(CORNER_PREGAME_LOCK_COLLECTION)
+      .doc(firestoreSafeId(key))
+      .set(persistent, { merge: true });
+  } catch (error) {
+    console.warn(
+      "[corner-pregame-lock] Firestore write falhou:",
+      error?.message || error
+    );
+  }
+}
+
+async function recoverCornerPregameFromMarketSnapshots(date, game) {
+  const identity = marketEngineGameIdentity(game);
+
+  const versions = [
+    MARKET_ENGINE_SNAPSHOT_VERSION,
+    "market-engine-snapshot-v3-corner-lock-reset",
+    "market-engine-snapshot-v1"
+  ];
+
+  for (const version of [...new Set(versions)]) {
+    try {
+      const docId = firestoreSafeId(`${date}-${version}`);
+
+      const snap = await db
+        .collection(MARKET_ENGINE_SNAPSHOT_COLLECTION)
+        .doc(docId)
+        .get();
+
+      if (!snap.exists) continue;
+
+      const data = snap.data();
+      const corners = Array.isArray(data?.payload?.corners)
+        ? data.payload.corners
+        : [];
+
+      const found = corners.find(item =>
+        marketEngineGameIdentity(item) === identity
+      );
+
+      const decision = found?.corners_ai;
+
+      if (
+        marketEngineDecisionIsStable(decision) &&
+        /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/i.test(
+          String(decision.line || "")
+        )
+      ) {
+        return cornerPregameLockSnapshot(
+          game,
+          decision
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "[corner-pregame-lock] Snapshot recovery falhou:",
+        error?.message || error
+      );
+    }
+  }
+
+  return null;
+}
+
+async function cornerPregameApplyLock(game, decision, date = "") {
   const store = loadCornerPregameLockStore();
   const key = cornerPregameLockKey(game);
   let existing = store.locks[key];
+
   const live = cornerPregameLockIsLive(game);
   const finished = cornerPregameLockIsFinished(game);
 
-  // Remove imediatamente lock antigo/fraco do próprio jogo.
-  if (existing && !cornerPregameExistingLockIsValid(existing)) {
-    delete store.locks[key];
-    saveCornerPregameLockStore();
-    existing = null;
+  // V6 — Firestore é a memória permanente do pré-jogo de Escanteios.
+  // O arquivo local continua apenas como cache rápido.
+  if (!existing?.line) {
+    const persistent =
+      await readCornerPregamePersistentLock(game);
+
+    if (persistent?.line) {
+      existing = persistent;
+      store.locks[key] = persistent;
+    }
   }
 
+  // Se houve deploy antigo que perdeu o lock dedicado, tenta recuperar
+  // a última linha publicada nos snapshots persistentes de mercado.
+  if (
+    (live || finished) &&
+    !existing?.line &&
+    date
+  ) {
+    const recovered =
+      await recoverCornerPregameFromMarketSnapshots(
+        date,
+        game
+      );
+
+    if (recovered?.line) {
+      existing = {
+        ...recovered,
+        recovered_from_market_snapshot: true
+      };
+
+      store.locks[key] = existing;
+      saveCornerPregameLockStore();
+
+      await writeCornerPregamePersistentLock(
+        game,
+        existing,
+        date
+      );
+    }
+  }
+
+  // Depois que o jogo começou, uma linha publicada jamais desaparece.
   if ((live || finished) && existing?.line) {
     return {
       ...decision,
@@ -9183,11 +9332,25 @@ function cornerPregameApplyLock(game, decision) {
       confidence: existing.confidence,
       score: existing.score,
       reason:
-        `${existing.reason} Recomendação pré-jogo preservada após o início da partida.`,
+        `${existing.reason || decision?.reason || ""} Recomendação pré-jogo preservada após o início da partida.`,
       skip: false,
       pregame_locked: true,
-      pregame_locked_at: existing.selected_at
+      historical_pregame_lock: true,
+      persistent_pregame_lock: true,
+      pregame_locked_at: existing.selected_at || null
     };
+  }
+
+  // Regras novas só podem invalidar lock enquanto ainda é pré-jogo.
+  if (
+    !live &&
+    !finished &&
+    existing &&
+    !cornerPregameExistingLockIsValid(existing)
+  ) {
+    delete store.locks[key];
+    saveCornerPregameLockStore();
+    existing = null;
   }
 
   if ((live || finished) && !existing?.line) {
@@ -9218,12 +9381,25 @@ function cornerPregameApplyLock(game, decision) {
       store.locks[key] = snapshot;
       saveCornerPregameLockStore();
 
+      await writeCornerPregamePersistentLock(
+        game,
+        snapshot,
+        date
+      );
+
       return {
         ...decision,
         pregame_locked: true,
+        persistent_pregame_lock: true,
         pregame_locked_at: snapshot.selected_at
       };
     }
+
+    await writeCornerPregamePersistentLock(
+      game,
+      existing,
+      date
+    );
 
     return {
       ...decision,
@@ -9235,6 +9411,7 @@ function cornerPregameApplyLock(game, decision) {
         `${existing.reason} Primeira recomendação pré-jogo mantida.`,
       skip: false,
       pregame_locked: true,
+      persistent_pregame_lock: true,
       pregame_locked_at: existing.selected_at
     };
   }
