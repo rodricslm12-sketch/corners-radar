@@ -95,56 +95,9 @@
       // V15 — evita precisar atualizar o navegador várias vezes.
       loadRetryTimer: null,
       loadRetryAttempt: 0,
-      loadRetryDate: "",
-
-      // V16 — loader da abertura.
-      bootLoaderVisible: false,
-      bootLoaderFinished: false
+      loadRetryDate: ""
     };
   
-
-
-    function cpBootLoaderEnsure() {
-      if (!mobileMedia.matches || state.bootLoaderFinished) return;
-
-      let loader = document.getElementById("cpAppBootLoader");
-
-      if (!loader) {
-        loader = document.createElement("div");
-        loader.id = "cpAppBootLoader";
-        loader.setAttribute("role", "status");
-        loader.setAttribute("aria-label", "Carregando jogos e análises");
-        loader.innerHTML = `
-          <div class="cpAppBootDots" aria-hidden="true">
-            <i></i><i></i><i></i><i></i><i></i>
-          </div>
-        `;
-        document.body.appendChild(loader);
-      }
-
-      state.bootLoaderVisible = true;
-      loader.hidden = false;
-      loader.classList.remove("is-leaving");
-      document.documentElement.classList.add("cpBootLock");
-      document.body.classList.add("cpBootLock");
-    }
-
-    function cpBootLoaderFinish() {
-      if (state.bootLoaderFinished) return;
-
-      state.bootLoaderFinished = true;
-      state.bootLoaderVisible = false;
-
-      const loader = document.getElementById("cpAppBootLoader");
-
-      document.documentElement.classList.remove("cpBootLock");
-      document.body.classList.remove("cpBootLock");
-
-      if (!loader) return;
-
-      loader.classList.add("is-leaving");
-      setTimeout(() => loader.remove(), 260);
-    }
 
     const CP_FAVORITE_TEAMS_KEY = "cornerProFavoriteTeams:v1";
     function cpNormalizeFavoriteTeam(name){return String(name||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");}
@@ -626,9 +579,6 @@
   
       const best = list[0];
 
-      // Defesa extra: se já existe jogo real para o mercado ativo, libera a tela.
-      cpBootLoaderFinish();
-
       // Compatibilidade com consumidores antigos: sempre a lista ativa.
       window.__cpMobileDirectGames = list;
 
@@ -755,9 +705,6 @@
 
       if (state.loadRetryAttempt >= delays.length) {
         stopLoadRetry();
-
-        // Segurança: nunca deixa uma tela preta infinita.
-        cpBootLoaderFinish();
         return;
       }
 
@@ -774,11 +721,8 @@
         try {
           await loadData({ fromRetry: true });
         } catch (error) {
-          // V16 — libera a trava para a próxima tentativa realmente executar.
-          setLoading(false);
-
           console.warn(
-            "[Mobile V16 retry]",
+            "[Mobile V15 retry]",
             reason || error?.message || error
           );
         }
@@ -877,9 +821,6 @@
       } else {
         state.loadRetryAttempt = 0;
         stopLoadRetry();
-
-        // /market_engines já devolveu partidas do mercado ativo.
-        cpBootLoaderFinish();
       }
 
       // Mercados genéricos continuam usando a base comum.
@@ -4107,10 +4048,6 @@
   
     async function start() {
       if (!mobileMedia.matches || !$("#cpMobileHome")) return;
-
-      // V16 — overlay cobre tudo enquanto os dados carregam por trás.
-      cpBootLoaderEnsure();
-
       state.date = $("#date")?.value || todayManaus();
       const hiddenDate = $("#date");
       if (hiddenDate) hiddenDate.value = state.date;
@@ -4123,7 +4060,7 @@
           scheduleLoadRetry("primeiro carregamento sem mercado pronto");
         }
       } catch (error) {
-        console.error("[Mobile V16]", error);
+        console.error("[Mobile V15]", error);
 
         // Não obriga o usuário a atualizar a página.
         // Mantém o estado de análise e tenta de novo automaticamente.
