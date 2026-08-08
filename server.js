@@ -53,7 +53,7 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v5-preserve-history";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v7-auto-under-debias";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
@@ -7163,6 +7163,28 @@ function cornersEngineDecision({ game, home, away }) {
     Number.isFinite(normalizedOver95) &&
     normalizedOver95 <= 0.30;
 
+  // V7 — validação independente para UNDER na IA AUTOMÁTICA.
+  // Usa apenas o perfil individual de cantos dos dois times.
+  // Não altera as linhas manuais da tela de Escanteios.
+  const homeCornerLoad =
+    hasCornerAverages
+      ? (home.cornersForAvg + home.cornersAgainstAvg) / 2
+      : null;
+
+  const awayCornerLoad =
+    hasCornerAverages
+      ? (away.cornersForAvg + away.cornersAgainstAvg) / 2
+      : null;
+
+  const automaticUnderProfileStrong =
+    robustUnderEvidence &&
+    Number.isFinite(homeCornerLoad) &&
+    Number.isFinite(awayCornerLoad) &&
+    homeCornerLoad <= 4.75 &&
+    awayCornerLoad <= 4.75 &&
+    Number.isFinite(rawRecentProjection) &&
+    rawRecentProjection <= 8.35;
+
   const candidates = [
     {
       label: "OVER 8.5",
@@ -7201,27 +7223,31 @@ function cornersEngineDecision({ game, home, away }) {
       direction: "UNDER",
       line: 9.5,
       estimatedOdd: 1.72,
-      ambitionBonus: 7,
-      minProbability: 0.54,
-      riskPenalty: robustUnderEvidence ? 0 : 30
+
+      // V7 — IA automática:
+      // UNDER não recebe mais bônus de seleção.
+      // Antes o +7 fazia UNDER 9.5 vencer a comparação com frequência.
+      ambitionBonus: -8,
+      minProbability: 0.64,
+      riskPenalty: robustUnderEvidence ? 4 : 40
     },
     {
       label: "UNDER 10.5",
       direction: "UNDER",
       line: 10.5,
       estimatedOdd: 1.55,
-      ambitionBonus: 2,
-      minProbability: 0.62,
-      riskPenalty: robustUnderEvidence ? 0 : 24
+      ambitionBonus: -6,
+      minProbability: 0.68,
+      riskPenalty: robustUnderEvidence ? 3 : 34
     },
     {
       label: "UNDER 11.5",
       direction: "UNDER",
       line: 11.5,
       estimatedOdd: 1.40,
-      ambitionBonus: 0,
-      minProbability: 0.70,
-      riskPenalty: robustUnderEvidence ? 0 : 22
+      ambitionBonus: -5,
+      minProbability: 0.74,
+      riskPenalty: robustUnderEvidence ? 2 : 30
     }
   ].map(candidate => {
     let projectionGate = true;
@@ -7242,6 +7268,7 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
+        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         rawRecentProjection <= 7.95 &&
@@ -7251,6 +7278,7 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
+        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         projection <= 9.10 &&
@@ -7259,6 +7287,7 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
+        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         projection <= 9.85 &&
@@ -7307,6 +7336,47 @@ function cornersEngineDecision({ game, home, away }) {
 
   const best = comparison.best;
 
+  // V7 — trava final exclusiva da IA automática de Escanteios.
+  // Se a melhor opção for UNDER, ela precisa passar um segundo teste.
+  // Caso contrário, a IA NÃO transforma a leitura fraca em UNDER 9.5.
+  if (
+    best.label.startsWith("UNDER") &&
+    !automaticUnderProfileStrong
+  ) {
+    return cornersUsePreviousOrUpdating(
+      game,
+      {
+        market: "ESCANTEIOS",
+        skip: true,
+        updating: true,
+        projection,
+        confidence: 0,
+        score: 0,
+        line: "DADOS EM ATUALIZAÇÃO",
+        reason:
+          "A IA automática ainda não encontrou evidência independente suficiente para recomendar uma linha UNDER.",
+        extra: {
+          sample_games: sampleGames,
+          calculation_source: source,
+          automatic_under_blocked: true,
+          automatic_under_profile_strong: false,
+          raw_recent_projection:
+            Number.isFinite(rawRecentProjection)
+              ? Number(rawRecentProjection.toFixed(2))
+              : null,
+          home_corner_load:
+            Number.isFinite(homeCornerLoad)
+              ? Number(homeCornerLoad.toFixed(2))
+              : null,
+          away_corner_load:
+            Number.isFinite(awayCornerLoad)
+              ? Number(awayCornerLoad.toFixed(2))
+              : null
+        }
+      }
+    );
+  }
+
   let confidence =
     54 +
     best.probability * 28 +
@@ -7338,13 +7408,51 @@ function cornersEngineDecision({ game, home, away }) {
   }
 
   // V4: NÃO força mais qualquer leitura de cantos para 62%.
-  // engineDecision() já possui o MIN_CONFIDENCE oficial.
-  // Se a confiança calculada for menor, a saída correta será SEM APOSTA.
   confidence = engineClamp(
     confidence,
     0,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
+
+  // V7 — UNDER automático precisa de confiança REAL acima do piso genérico.
+  // Isso elimina o padrão artificial UNDER 9.5 / 62%.
+  const automaticUnderMinConfidence =
+    best.label === "UNDER 9.5"
+      ? 70
+      : best.label === "UNDER 10.5"
+        ? 68
+        : best.label === "UNDER 11.5"
+          ? 66
+          : 0;
+
+  if (
+    best.label.startsWith("UNDER") &&
+    confidence < automaticUnderMinConfidence
+  ) {
+    return cornersUsePreviousOrUpdating(
+      game,
+      {
+        market: "ESCANTEIOS",
+        skip: true,
+        updating: true,
+        projection,
+        confidence: 0,
+        score: 0,
+        line: "DADOS EM ATUALIZAÇÃO",
+        reason:
+          `A linha ${best.label} foi descartada porque a confiança real (${Math.round(confidence)}%) ficou abaixo do mínimo automático (${automaticUnderMinConfidence}%).`,
+        extra: {
+          sample_games: sampleGames,
+          calculation_source: source,
+          automatic_under_blocked: true,
+          automatic_under_min_confidence:
+            automaticUnderMinConfidence,
+          raw_automatic_confidence:
+            Number(confidence.toFixed(1))
+        }
+      }
+    );
+  }
 
   const decision = engineDecision({
     market: "ESCANTEIOS",
@@ -7373,8 +7481,10 @@ function cornersEngineDecision({ game, home, away }) {
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
       robust_under_evidence: robustUnderEvidence,
-      corner_engine_version: "corners-strict-v4-confidence-gate",
-      under_gate_version: "strict-v4-confidence-gate",
+      automatic_under_profile_strong:
+        automaticUnderProfileStrong,
+      corner_engine_version: "corners-auto-v7-under-debias",
+      under_gate_version: "automatic-v7-under-debias",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
@@ -9128,6 +9238,18 @@ function cornerPregameExistingLockIsValid(lock) {
   if (
     lock.lock_version &&
     lock.lock_version !== CORNER_PREGAME_LOCK_VERSION
+  ) {
+    return false;
+  }
+
+  const lockEngineVersion =
+    lock.corner_engine_version || "";
+
+  // V7: enquanto ainda é pré-jogo, uma decisão UNDER criada pela IA antiga
+  // deve ser recalculada. Ao vivo/encerrado continua preservado pelo fluxo V6.
+  if (
+    String(lock.line || "").toUpperCase().startsWith("UNDER") &&
+    lockEngineVersion !== "corners-auto-v7-under-debias"
   ) {
     return false;
   }
