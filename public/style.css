@@ -16876,3 +16876,17 @@ button.railFullBtn {
     100%{opacity:.08;transform:translateX(-16px) scale(.60)}
   }
 }
+
+
+/* V18 — loader mais rápido */
+@media (max-width:980px){
+  #cpAppBootLoader{
+    transition:opacity .16s ease!important;
+  }
+  #cpAppBootLoader.is-leaving{
+    opacity:0!important;
+  }
+  .cpAppBootDots i{
+    animation-duration:.78s!important;
+  }
+}

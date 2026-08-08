@@ -203,7 +203,7 @@
       return [];
     }
   
-    async function getJson(url, timeoutMs = 18000) {
+    async function getJson(url, timeoutMs = 8000) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
@@ -751,7 +751,7 @@
 
       // Substitui as 3–4 atualizações manuais:
       // 1.2s, 2.4s, 4s, 6s, 8s e 10s.
-      const delays = [1200, 2400, 4000, 6000, 8000, 10000];
+      const delays = [500, 1000, 1700, 2600, 3500, 4500];
 
       if (state.loadRetryAttempt >= delays.length) {
         stopLoadRetry();
@@ -833,6 +833,13 @@
       }
   
       state.all = raw;
+
+      // V18 — velocidade:
+      // assim que a lista-base de jogos do dia chegou, libera o dashboard.
+      // Os motores de IA continuam atualizando em segundo plano.
+      if (Array.isArray(raw) && raw.length > 0) {
+        cpBootLoaderFinish();
+      }
 
       const engineDateChanged = state.engineDate !== date;
 
