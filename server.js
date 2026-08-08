@@ -53,14 +53,11 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v8-no-under-fallback";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v4-confidence-gate";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
 );
-
-const CORNER_PREGAME_LOCK_COLLECTION =
-  "corner_pregame_locks_v2";
 
 const OFFICIAL_CORNER_PICK_FILE = path.join(
   __dirname,
@@ -6988,10 +6985,13 @@ function cornersFallbackLineFromProjection(projection) {
     };
   }
 
-  // V8 — IA automática de Escanteios:
-  // projeção baixa NÃO vira mais UNDER 9.5 por fallback.
-  // UNDER só pode nascer do motor completo, com recent_form,
-  // amostra suficiente e evidência robusta.
+  if (projection <= 7.45) {
+    return {
+      line: "UNDER 9.5",
+      confidence: 62
+    };
+  }
+
   return null;
 }
 
@@ -7000,20 +7000,12 @@ function cornersUsePreviousOrUpdating(game, draftDecision) {
   const existing = cornersStableDecisionCache.get(key);
 
   if (existing && existing.expires > Date.now()) {
-    const cachedLine = String(existing?.decision?.line || "").toUpperCase();
-    const cachedWasFallback = Boolean(existing?.decision?.fallback_line_used);
-
-    // V8 — não reaproveita UNDER antigo criado pelo fallback de 62%.
-    if (!(cachedLine.startsWith("UNDER") && cachedWasFallback)) {
-      return {
-        ...existing.decision,
-        stable_cache_used: true,
-        reason:
-          `${existing.decision.reason} Última leitura válida mantida durante a atualização dos dados.`
-      };
-    }
-
-    cornersStableDecisionCache.delete(key);
+    return {
+      ...existing.decision,
+      stable_cache_used: true,
+      reason:
+        `${existing.decision.reason} Última leitura válida mantida durante a atualização dos dados.`
+    };
   }
 
   const projection = Number(draftDecision?.projection);
@@ -7168,28 +7160,6 @@ function cornersEngineDecision({ game, home, away }) {
     Number.isFinite(normalizedOver95) &&
     normalizedOver95 <= 0.30;
 
-  // V7 — validação independente para UNDER na IA AUTOMÁTICA.
-  // Usa apenas o perfil individual de cantos dos dois times.
-  // Não altera as linhas manuais da tela de Escanteios.
-  const homeCornerLoad =
-    hasCornerAverages
-      ? (home.cornersForAvg + home.cornersAgainstAvg) / 2
-      : null;
-
-  const awayCornerLoad =
-    hasCornerAverages
-      ? (away.cornersForAvg + away.cornersAgainstAvg) / 2
-      : null;
-
-  const automaticUnderProfileStrong =
-    robustUnderEvidence &&
-    Number.isFinite(homeCornerLoad) &&
-    Number.isFinite(awayCornerLoad) &&
-    homeCornerLoad <= 4.75 &&
-    awayCornerLoad <= 4.75 &&
-    Number.isFinite(rawRecentProjection) &&
-    rawRecentProjection <= 8.35;
-
   const candidates = [
     {
       label: "OVER 8.5",
@@ -7228,31 +7198,27 @@ function cornersEngineDecision({ game, home, away }) {
       direction: "UNDER",
       line: 9.5,
       estimatedOdd: 1.72,
-
-      // V7 — IA automática:
-      // UNDER não recebe mais bônus de seleção.
-      // Antes o +7 fazia UNDER 9.5 vencer a comparação com frequência.
-      ambitionBonus: -8,
-      minProbability: 0.64,
-      riskPenalty: robustUnderEvidence ? 4 : 40
+      ambitionBonus: 7,
+      minProbability: 0.54,
+      riskPenalty: robustUnderEvidence ? 0 : 30
     },
     {
       label: "UNDER 10.5",
       direction: "UNDER",
       line: 10.5,
       estimatedOdd: 1.55,
-      ambitionBonus: -6,
-      minProbability: 0.68,
-      riskPenalty: robustUnderEvidence ? 3 : 34
+      ambitionBonus: 2,
+      minProbability: 0.62,
+      riskPenalty: robustUnderEvidence ? 0 : 24
     },
     {
       label: "UNDER 11.5",
       direction: "UNDER",
       line: 11.5,
       estimatedOdd: 1.40,
-      ambitionBonus: -5,
-      minProbability: 0.74,
-      riskPenalty: robustUnderEvidence ? 2 : 30
+      ambitionBonus: 0,
+      minProbability: 0.70,
+      riskPenalty: robustUnderEvidence ? 0 : 22
     }
   ].map(candidate => {
     let projectionGate = true;
@@ -7273,7 +7239,6 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         rawRecentProjection <= 7.95 &&
@@ -7283,7 +7248,6 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         projection <= 9.10 &&
@@ -7292,7 +7256,6 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate =
         source === "recent_form" &&
         robustUnderEvidence &&
-        automaticUnderProfileStrong &&
         sampleGames >= 5 &&
         Number.isFinite(rawRecentProjection) &&
         projection <= 9.85 &&
@@ -7341,47 +7304,6 @@ function cornersEngineDecision({ game, home, away }) {
 
   const best = comparison.best;
 
-  // V7 — trava final exclusiva da IA automática de Escanteios.
-  // Se a melhor opção for UNDER, ela precisa passar um segundo teste.
-  // Caso contrário, a IA NÃO transforma a leitura fraca em UNDER 9.5.
-  if (
-    best.label.startsWith("UNDER") &&
-    !automaticUnderProfileStrong
-  ) {
-    return cornersUsePreviousOrUpdating(
-      game,
-      {
-        market: "ESCANTEIOS",
-        skip: true,
-        updating: true,
-        projection,
-        confidence: 0,
-        score: 0,
-        line: "DADOS EM ATUALIZAÇÃO",
-        reason:
-          "A IA automática ainda não encontrou evidência independente suficiente para recomendar uma linha UNDER.",
-        extra: {
-          sample_games: sampleGames,
-          calculation_source: source,
-          automatic_under_blocked: true,
-          automatic_under_profile_strong: false,
-          raw_recent_projection:
-            Number.isFinite(rawRecentProjection)
-              ? Number(rawRecentProjection.toFixed(2))
-              : null,
-          home_corner_load:
-            Number.isFinite(homeCornerLoad)
-              ? Number(homeCornerLoad.toFixed(2))
-              : null,
-          away_corner_load:
-            Number.isFinite(awayCornerLoad)
-              ? Number(awayCornerLoad.toFixed(2))
-              : null
-        }
-      }
-    );
-  }
-
   let confidence =
     54 +
     best.probability * 28 +
@@ -7413,51 +7335,13 @@ function cornersEngineDecision({ game, home, away }) {
   }
 
   // V4: NÃO força mais qualquer leitura de cantos para 62%.
+  // engineDecision() já possui o MIN_CONFIDENCE oficial.
+  // Se a confiança calculada for menor, a saída correta será SEM APOSTA.
   confidence = engineClamp(
     confidence,
     0,
     MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
-
-  // V7 — UNDER automático precisa de confiança REAL acima do piso genérico.
-  // Isso elimina o padrão artificial UNDER 9.5 / 62%.
-  const automaticUnderMinConfidence =
-    best.label === "UNDER 9.5"
-      ? 70
-      : best.label === "UNDER 10.5"
-        ? 68
-        : best.label === "UNDER 11.5"
-          ? 66
-          : 0;
-
-  if (
-    best.label.startsWith("UNDER") &&
-    confidence < automaticUnderMinConfidence
-  ) {
-    return cornersUsePreviousOrUpdating(
-      game,
-      {
-        market: "ESCANTEIOS",
-        skip: true,
-        updating: true,
-        projection,
-        confidence: 0,
-        score: 0,
-        line: "DADOS EM ATUALIZAÇÃO",
-        reason:
-          `A linha ${best.label} foi descartada porque a confiança real (${Math.round(confidence)}%) ficou abaixo do mínimo automático (${automaticUnderMinConfidence}%).`,
-        extra: {
-          sample_games: sampleGames,
-          calculation_source: source,
-          automatic_under_blocked: true,
-          automatic_under_min_confidence:
-            automaticUnderMinConfidence,
-          raw_automatic_confidence:
-            Number(confidence.toFixed(1))
-        }
-      }
-    );
-  }
 
   const decision = engineDecision({
     market: "ESCANTEIOS",
@@ -7486,10 +7370,8 @@ function cornersEngineDecision({ game, home, away }) {
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
       robust_under_evidence: robustUnderEvidence,
-      automatic_under_profile_strong:
-        automaticUnderProfileStrong,
-      corner_engine_version: "corners-auto-v8-no-under-fallback",
-      under_gate_version: "automatic-v8-no-under-fallback",
+      corner_engine_version: "corners-strict-v4-confidence-gate",
+      under_gate_version: "strict-v4-confidence-gate",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
@@ -8394,10 +8276,9 @@ async function buildAllMarketEngines({ date }) {
         rawCornersDecision
       );
 
-      const lockedCornersDecision = await cornerPregameApplyLock(
+      const lockedCornersDecision = cornerPregameApplyLock(
         game,
-        learnedCornersDecision,
-        date
+        learnedCornersDecision
       );
 
       const corners_ai = futureMarketDecisionGate({
@@ -9015,17 +8896,21 @@ function loadCornerPregameLockStore() {
         fs.readFileSync(CORNER_PREGAME_LOCK_FILE, "utf8")
       );
 
-      const parsedLocks =
-        parsed?.locks && typeof parsed.locks === "object"
-          ? parsed.locks
-          : {};
+      const sameVersion =
+        parsed?.version === CORNER_PREGAME_LOCK_VERSION;
 
       cornerPregameLockStore = {
         version: CORNER_PREGAME_LOCK_VERSION,
 
-        // V5: preserva o histórico já publicado.
-        // Locks antigos só são reavaliados enquanto a partida ainda é pré-jogo.
-        locks: parsedLocks
+        // V3: locks antigos são descartados de propósito.
+        // Assim uma linha UNDER gravada por uma versão anterior
+        // não continua congelando o mercado de escanteios.
+        locks:
+          sameVersion &&
+          parsed?.locks &&
+          typeof parsed.locks === "object"
+            ? parsed.locks
+            : {}
       };
 
       return cornerPregameLockStore;
@@ -9247,18 +9132,6 @@ function cornerPregameExistingLockIsValid(lock) {
     return false;
   }
 
-  const lockEngineVersion =
-    lock.corner_engine_version || "";
-
-  // V7: enquanto ainda é pré-jogo, uma decisão UNDER criada pela IA antiga
-  // deve ser recalculada. Ao vivo/encerrado continua preservado pelo fluxo V6.
-  if (
-    String(lock.line || "").toUpperCase().startsWith("UNDER") &&
-    lockEngineVersion !== "corners-auto-v8-no-under-fallback"
-  ) {
-    return false;
-  }
-
   const line = String(lock.line || "").trim().toUpperCase();
 
   if (line.startsWith("UNDER")) {
@@ -9288,169 +9161,20 @@ function cornerPregameExistingLockIsValid(lock) {
   return /^(OVER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(line);
 }
 
-
-async function readCornerPregamePersistentLock(game) {
-  const key = cornerPregameLockKey(game);
-
-  try {
-    const snap = await db
-      .collection(CORNER_PREGAME_LOCK_COLLECTION)
-      .doc(firestoreSafeId(key))
-      .get();
-
-    if (!snap.exists) return null;
-
-    const data = snap.data();
-
-    if (
-      data &&
-      typeof data === "object" &&
-      data.line &&
-      /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/i.test(
-        String(data.line)
-      )
-    ) {
-      return data;
-    }
-  } catch (error) {
-    console.warn(
-      "[corner-pregame-lock] Firestore read falhou:",
-      error?.message || error
-    );
-  }
-
-  return null;
-}
-
-async function writeCornerPregamePersistentLock(game, snapshot, date = "") {
-  if (!snapshot?.line) return;
-
-  const key = cornerPregameLockKey(game);
-
-  const persistent = firestoreSanitize({
-    ...snapshot,
-    date: date || "",
-    persisted_at: new Date().toISOString(),
-    persistent_version: "corner-lock-firestore-v2"
-  });
-
-  try {
-    await db
-      .collection(CORNER_PREGAME_LOCK_COLLECTION)
-      .doc(firestoreSafeId(key))
-      .set(persistent, { merge: true });
-  } catch (error) {
-    console.warn(
-      "[corner-pregame-lock] Firestore write falhou:",
-      error?.message || error
-    );
-  }
-}
-
-async function recoverCornerPregameFromMarketSnapshots(date, game) {
-  const identity = marketEngineGameIdentity(game);
-
-  const versions = [
-    MARKET_ENGINE_SNAPSHOT_VERSION,
-    "market-engine-snapshot-v3-corner-lock-reset",
-    "market-engine-snapshot-v1"
-  ];
-
-  for (const version of [...new Set(versions)]) {
-    try {
-      const docId = firestoreSafeId(`${date}-${version}`);
-
-      const snap = await db
-        .collection(MARKET_ENGINE_SNAPSHOT_COLLECTION)
-        .doc(docId)
-        .get();
-
-      if (!snap.exists) continue;
-
-      const data = snap.data();
-      const corners = Array.isArray(data?.payload?.corners)
-        ? data.payload.corners
-        : [];
-
-      const found = corners.find(item =>
-        marketEngineGameIdentity(item) === identity
-      );
-
-      const decision = found?.corners_ai;
-
-      if (
-        marketEngineDecisionIsStable(decision) &&
-        /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/i.test(
-          String(decision.line || "")
-        )
-      ) {
-        return cornerPregameLockSnapshot(
-          game,
-          decision
-        );
-      }
-    } catch (error) {
-      console.warn(
-        "[corner-pregame-lock] Snapshot recovery falhou:",
-        error?.message || error
-      );
-    }
-  }
-
-  return null;
-}
-
-async function cornerPregameApplyLock(game, decision, date = "") {
+function cornerPregameApplyLock(game, decision) {
   const store = loadCornerPregameLockStore();
   const key = cornerPregameLockKey(game);
   let existing = store.locks[key];
-
   const live = cornerPregameLockIsLive(game);
   const finished = cornerPregameLockIsFinished(game);
 
-  // V6 — Firestore é a memória permanente do pré-jogo de Escanteios.
-  // O arquivo local continua apenas como cache rápido.
-  if (!existing?.line) {
-    const persistent =
-      await readCornerPregamePersistentLock(game);
-
-    if (persistent?.line) {
-      existing = persistent;
-      store.locks[key] = persistent;
-    }
+  // Remove imediatamente lock antigo/fraco do próprio jogo.
+  if (existing && !cornerPregameExistingLockIsValid(existing)) {
+    delete store.locks[key];
+    saveCornerPregameLockStore();
+    existing = null;
   }
 
-  // Se houve deploy antigo que perdeu o lock dedicado, tenta recuperar
-  // a última linha publicada nos snapshots persistentes de mercado.
-  if (
-    (live || finished) &&
-    !existing?.line &&
-    date
-  ) {
-    const recovered =
-      await recoverCornerPregameFromMarketSnapshots(
-        date,
-        game
-      );
-
-    if (recovered?.line) {
-      existing = {
-        ...recovered,
-        recovered_from_market_snapshot: true
-      };
-
-      store.locks[key] = existing;
-      saveCornerPregameLockStore();
-
-      await writeCornerPregamePersistentLock(
-        game,
-        existing,
-        date
-      );
-    }
-  }
-
-  // Depois que o jogo começou, uma linha publicada jamais desaparece.
   if ((live || finished) && existing?.line) {
     return {
       ...decision,
@@ -9459,25 +9183,11 @@ async function cornerPregameApplyLock(game, decision, date = "") {
       confidence: existing.confidence,
       score: existing.score,
       reason:
-        `${existing.reason || decision?.reason || ""} Recomendação pré-jogo preservada após o início da partida.`,
+        `${existing.reason} Recomendação pré-jogo preservada após o início da partida.`,
       skip: false,
       pregame_locked: true,
-      historical_pregame_lock: true,
-      persistent_pregame_lock: true,
-      pregame_locked_at: existing.selected_at || null
+      pregame_locked_at: existing.selected_at
     };
-  }
-
-  // Regras novas só podem invalidar lock enquanto ainda é pré-jogo.
-  if (
-    !live &&
-    !finished &&
-    existing &&
-    !cornerPregameExistingLockIsValid(existing)
-  ) {
-    delete store.locks[key];
-    saveCornerPregameLockStore();
-    existing = null;
   }
 
   if ((live || finished) && !existing?.line) {
@@ -9508,25 +9218,12 @@ async function cornerPregameApplyLock(game, decision, date = "") {
       store.locks[key] = snapshot;
       saveCornerPregameLockStore();
 
-      await writeCornerPregamePersistentLock(
-        game,
-        snapshot,
-        date
-      );
-
       return {
         ...decision,
         pregame_locked: true,
-        persistent_pregame_lock: true,
         pregame_locked_at: snapshot.selected_at
       };
     }
-
-    await writeCornerPregamePersistentLock(
-      game,
-      existing,
-      date
-    );
 
     return {
       ...decision,
@@ -9538,7 +9235,6 @@ async function cornerPregameApplyLock(game, decision, date = "") {
         `${existing.reason} Primeira recomendação pré-jogo mantida.`,
       skip: false,
       pregame_locked: true,
-      persistent_pregame_lock: true,
       pregame_locked_at: existing.selected_at
     };
   }

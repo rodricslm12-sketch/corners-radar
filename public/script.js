@@ -5,8 +5,8 @@
    (() => {
     "use strict";
   
-    if (window.__cpMobileControllerV12Clean) return;
-    window.__cpMobileControllerV12Clean = true;
+    if (window.__cpMobileControllerV9) return;
+    window.__cpMobileControllerV9 = true;
     window.__cornerProMobileLoaderV6 = true;
 
     // V10 — autoridade única dos mercados mobile.
@@ -93,18 +93,6 @@
       engineDate: ""
     };
   
-
-    const CP_FAVORITE_TEAMS_KEY = "cornerProFavoriteTeams:v1";
-    function cpNormalizeFavoriteTeam(name){return String(name||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");}
-    function cpReadFavoriteTeams(){try{const d=JSON.parse(localStorage.getItem(CP_FAVORITE_TEAMS_KEY)||"[]");return new Set(Array.isArray(d)?d.map(cpNormalizeFavoriteTeam).filter(Boolean):[]);}catch(_){return new Set();}}
-    function cpIsFavoriteTeam(name){return cpReadFavoriteTeams().has(cpNormalizeFavoriteTeam(name));}
-    function cpToggleFavoriteTeam(name){const k=cpNormalizeFavoriteTeam(name);if(!k)return;const s=cpReadFavoriteTeams();s.has(k)?s.delete(k):s.add(k);try{localStorage.setItem(CP_FAVORITE_TEAMS_KEY,JSON.stringify([...s]));}catch(_){}}
-    function cpFavoriteStarHtml(name){const a=cpIsFavoriteTeam(name);return `<span class="cpTeamFavorite${a?" is-favorite":""}" data-cp-favorite-team="${escapeHtml(name)}" role="button" tabindex="0" aria-pressed="${a?"true":"false"}" aria-label="${a?"Remover":"Adicionar"} ${escapeHtml(name)} dos favoritos" title="${a?"Remover dos favoritos":"Favoritar time"}">${a?"★":"☆"}</span>`;}
-    function cpRefreshFavoriteStars(root=document){root.querySelectorAll("[data-cp-favorite-team]").forEach(b=>{const n=b.dataset.cpFavoriteTeam||"";const a=cpIsFavoriteTeam(n);b.classList.toggle("is-favorite",a);b.textContent=a?"★":"☆";b.setAttribute("aria-pressed",a?"true":"false");});}
-    document.addEventListener("click",e=>{const b=e.target.closest("[data-cp-favorite-team]");if(!b)return;e.preventDefault();e.stopPropagation();cpToggleFavoriteTeam(b.dataset.cpFavoriteTeam||"");cpRefreshFavoriteStars();},true);
-    document.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const b=e.target.closest("[data-cp-favorite-team]");if(!b)return;e.preventDefault();e.stopPropagation();cpToggleFavoriteTeam(b.dataset.cpFavoriteTeam||"");cpRefreshFavoriteStars();},true);
-    (()=>{if(document.getElementById("cpFavoriteTeamsStyle"))return;const s=document.createElement("style");s.id="cpFavoriteTeamsStyle";s.textContent=`.cpTeamFavorite{display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 auto;width:auto!important;height:auto!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0 0 0 5px!important;color:rgba(255,255,255,.45);font-size:18px;line-height:1;cursor:pointer;vertical-align:-1px;transition:transform .16s ease,color .16s ease,filter .16s ease}.cpTeamFavorite:hover,.cpTeamFavorite:focus-visible{transform:scale(1.12);outline:none;color:#ffd86a}.cpTeamFavorite.is-favorite{color:#ffc83d!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 0 5px rgba(255,200,61,.35))}#cpHomeBestHome,#cpHomeBestAway,[data-clone-id='cpHomeBestHome'],[data-clone-id='cpHomeBestAway']{display:inline-flex;align-items:center;justify-content:center;min-width:0}.cpHomeGame .teams b{display:flex!important;align-items:center;justify-content:center;max-width:100%;min-width:0;overflow:visible!important}.cpHomeGame .teams b .cpTeamName{display:block;min-width:0;max-width:calc(100% - 19px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cpHomeGame .cpTeamFavorite{font-size:14px!important;margin-left:4px!important}`;document.head.appendChild(s);})();
-
     function clean(value, fallback = "") {
       const text = String(value ?? "").trim();
       return text && !["undefined", "null", "NaN"].includes(text) ? text : fallback;
@@ -504,16 +492,12 @@
         awayBadge.textContent = initials(game.away);
         homeBadge.style.setProperty("--team-accent", homeColor);
         awayBadge.style.setProperty("--team-accent", awayColor);
-      }      if (homeEl) {
-        homeEl.style.setProperty("--team-accent", homeColor);
-        homeEl.innerHTML = `<span class="cpTeamName">${escapeHtml(game.home)}</span>${cpFavoriteStarHtml(game.home)}`;
       }
-      if (awayEl) {
-        awayEl.style.setProperty("--team-accent", awayColor);
-        awayEl.innerHTML = `<span class="cpTeamName">${escapeHtml(game.away)}</span>${cpFavoriteStarHtml(game.away)}`;
-      }
+  
+      if (homeEl) homeEl.style.setProperty("--team-accent", homeColor);
+      if (awayEl) awayEl.style.setProperty("--team-accent", awayColor);
+  
       cpUpdateBestMarketTitle(card, game, state.activeMarket);
-      cpRefreshFavoriteStars(card);
     }
   
     window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
@@ -615,7 +599,7 @@
         games.innerHTML = list.slice(0, 6).map((game, index) => `
           <button type="button" class="cpHomeGame${index === 0 ? " is-first" : ""}" data-v9-game="${index}">
             <time>${escapeHtml(game.time)}</time>
-            <div class="teams"><b><span class="cpTeamName">${escapeHtml(game.home)}</span>${cpFavoriteStarHtml(game.home)}</b><i>×</i><b><span class="cpTeamName">${escapeHtml(game.away)}</span>${cpFavoriteStarHtml(game.away)}</b></div>
+            <div class="teams"><b>${escapeHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}</b></div>
             <small>${escapeHtml(game.line)}</small>
             <strong><span>CONFIANÇA</span>${game.confidence}%</strong>
           </button>`).join("");
@@ -2245,10 +2229,7 @@
         if (effective >= 11.1) return "OVER 10.5";
         if (effective >= 10.0) return "OVER 9.5";
         if (effective >= 8.9) return "OVER 8.5";
-
-        // V12 CLEAN — nunca inventa UNDER no cliente.
-        // A IA automática de Escanteios vem exclusivamente de corners_ai.
-        return "ANALISANDO PARTIDA";
+        return "UNDER 9.5";
       }
   
       if (marketType === "goals") {
@@ -2586,21 +2567,95 @@
       }
   
       if (marketType === "corners") {
-        // V12 CLEAN — a opção IA de Escanteios é 100% server-authority.
-        // Se corners_ai não veio do /market_engines, o frontend NÃO calcula
-        // uma linha própria e, principalmente, NÃO fabrica UNDER 9.5.
-        return {
-          line: "ANALISANDO PARTIDA",
-          projection: "0.0",
-          confidence: 0,
-          reason:
-            "Aguardando a análise oficial de Escanteios calculada pelo servidor.",
-          skip: true,
-          updating: true,
-          source: "server_wait"
+        const homeCreates = analysisNumber(raw, [
+          "home_corners_avg",
+          "stats.home.corners_for_avg",
+          "homeCornersAvg"
+        ]);
+  
+        const awayCreates = analysisNumber(raw, [
+          "away_corners_avg",
+          "stats.away.corners_for_avg",
+          "awayCornersAvg"
+        ]);
+  
+        const homeAllows = analysisNumber(raw, [
+          "home_corners_against_avg",
+          "stats.home.corners_against_avg"
+        ]);
+  
+        const awayAllows = analysisNumber(raw, [
+          "away_corners_against_avg",
+          "stats.away.corners_against_avg"
+        ]);
+  
+        const available = [homeCreates, awayCreates, homeAllows, awayAllows]
+          .filter(Number.isFinite);
+  
+        const statisticalBase = available.length
+          ? available.reduce((sum, value) => sum + value, 0) / 2
+          : 8.4 + factorA * 4.4;
+  
+        const identityAdjustment =
+          (factorB - .5) * 1.8 +
+          (factorC - .5) * 1.1;
+  
+        let projection = statisticalBase + identityAdjustment;
+  
+        if (Number.isFinite(current.total)) {
+          projection = Math.max(current.total, projection);
+        }
+  
+        projection = Math.max(7.0, Math.min(14.8, projection));
+  
+        const line = analysisLineFromTotal(
+          marketType,
+          current.total,
+          projection,
+          game
+        );
+  
+        const lineValue = analysisLineNumber(line) || 9.5;
+        const confidence = Math.round(Math.max(59, Math.min(90,
+          63 + Math.abs(projection - lineValue) * 7 +
+          (originalConfidence - 68) * .18 +
+          factorC * 4
+        )));
+  
+        const calculatedCornerDecision = {
+          line,
+          projection: projection.toFixed(1),
+          confidence,
+          reason: Number.isFinite(current.total)
+            ? `A partida está em andamento. A linha pré-jogo original será preservada.`
+            : `Projeção própria de ${projection.toFixed(1)} escanteios para este jogo, usando pressão, criação e perfil das equipes.`,
+          skip: false,
+          source: "calculated"
         };
+  
+        const lockedCornerDecision =
+          applyCornerLocalLineLock(
+            game,
+            calculatedCornerDecision
+          );
+  
+        if (
+          marketLiveStatus(game).live &&
+          !lockedCornerDecision?.pregame_locked
+        ) {
+          return {
+            ...calculatedCornerDecision,
+            line: "SEM RECOMENDAÇÃO PRÉ-JOGO",
+            confidence: 0,
+            skip: true,
+            reason:
+              "O jogo já começou e nenhuma linha pré-jogo foi registrada. O app não criará uma nova entrada ao vivo."
+          };
+        }
+  
+        return lockedCornerDecision;
       }
-
+  
       const homeCards = analysisNumber(raw, [
         "home_cards_avg",
         "stats.home.cards_avg",
