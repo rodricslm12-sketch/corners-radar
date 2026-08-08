@@ -53,7 +53,7 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v7-auto-under-debias";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v8-no-under-fallback";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
@@ -6988,13 +6988,10 @@ function cornersFallbackLineFromProjection(projection) {
     };
   }
 
-  if (projection <= 7.45) {
-    return {
-      line: "UNDER 9.5",
-      confidence: 62
-    };
-  }
-
+  // V8 — IA automática de Escanteios:
+  // projeção baixa NÃO vira mais UNDER 9.5 por fallback.
+  // UNDER só pode nascer do motor completo, com recent_form,
+  // amostra suficiente e evidência robusta.
   return null;
 }
 
@@ -7003,12 +7000,20 @@ function cornersUsePreviousOrUpdating(game, draftDecision) {
   const existing = cornersStableDecisionCache.get(key);
 
   if (existing && existing.expires > Date.now()) {
-    return {
-      ...existing.decision,
-      stable_cache_used: true,
-      reason:
-        `${existing.decision.reason} Última leitura válida mantida durante a atualização dos dados.`
-    };
+    const cachedLine = String(existing?.decision?.line || "").toUpperCase();
+    const cachedWasFallback = Boolean(existing?.decision?.fallback_line_used);
+
+    // V8 — não reaproveita UNDER antigo criado pelo fallback de 62%.
+    if (!(cachedLine.startsWith("UNDER") && cachedWasFallback)) {
+      return {
+        ...existing.decision,
+        stable_cache_used: true,
+        reason:
+          `${existing.decision.reason} Última leitura válida mantida durante a atualização dos dados.`
+      };
+    }
+
+    cornersStableDecisionCache.delete(key);
   }
 
   const projection = Number(draftDecision?.projection);
@@ -7483,8 +7488,8 @@ function cornersEngineDecision({ game, home, away }) {
       robust_under_evidence: robustUnderEvidence,
       automatic_under_profile_strong:
         automaticUnderProfileStrong,
-      corner_engine_version: "corners-auto-v7-under-debias",
-      under_gate_version: "automatic-v7-under-debias",
+      corner_engine_version: "corners-auto-v8-no-under-fallback",
+      under_gate_version: "automatic-v8-no-under-fallback",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
       selected_expected_value:
@@ -9249,7 +9254,7 @@ function cornerPregameExistingLockIsValid(lock) {
   // deve ser recalculada. Ao vivo/encerrado continua preservado pelo fluxo V6.
   if (
     String(lock.line || "").toUpperCase().startsWith("UNDER") &&
-    lockEngineVersion !== "corners-auto-v7-under-debias"
+    lockEngineVersion !== "corners-auto-v8-no-under-fallback"
   ) {
     return false;
   }

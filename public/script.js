@@ -5,8 +5,8 @@
    (() => {
     "use strict";
   
-    if (window.__cpMobileControllerV9) return;
-    window.__cpMobileControllerV9 = true;
+    if (window.__cpMobileControllerV12Clean) return;
+    window.__cpMobileControllerV12Clean = true;
     window.__cornerProMobileLoaderV6 = true;
 
     // V10 — autoridade única dos mercados mobile.
@@ -2229,7 +2229,10 @@
         if (effective >= 11.1) return "OVER 10.5";
         if (effective >= 10.0) return "OVER 9.5";
         if (effective >= 8.9) return "OVER 8.5";
-        return "UNDER 9.5";
+
+        // V12 CLEAN — nunca inventa UNDER no cliente.
+        // A IA automática de Escanteios vem exclusivamente de corners_ai.
+        return "ANALISANDO PARTIDA";
       }
   
       if (marketType === "goals") {
@@ -2567,95 +2570,21 @@
       }
   
       if (marketType === "corners") {
-        const homeCreates = analysisNumber(raw, [
-          "home_corners_avg",
-          "stats.home.corners_for_avg",
-          "homeCornersAvg"
-        ]);
-  
-        const awayCreates = analysisNumber(raw, [
-          "away_corners_avg",
-          "stats.away.corners_for_avg",
-          "awayCornersAvg"
-        ]);
-  
-        const homeAllows = analysisNumber(raw, [
-          "home_corners_against_avg",
-          "stats.home.corners_against_avg"
-        ]);
-  
-        const awayAllows = analysisNumber(raw, [
-          "away_corners_against_avg",
-          "stats.away.corners_against_avg"
-        ]);
-  
-        const available = [homeCreates, awayCreates, homeAllows, awayAllows]
-          .filter(Number.isFinite);
-  
-        const statisticalBase = available.length
-          ? available.reduce((sum, value) => sum + value, 0) / 2
-          : 8.4 + factorA * 4.4;
-  
-        const identityAdjustment =
-          (factorB - .5) * 1.8 +
-          (factorC - .5) * 1.1;
-  
-        let projection = statisticalBase + identityAdjustment;
-  
-        if (Number.isFinite(current.total)) {
-          projection = Math.max(current.total, projection);
-        }
-  
-        projection = Math.max(7.0, Math.min(14.8, projection));
-  
-        const line = analysisLineFromTotal(
-          marketType,
-          current.total,
-          projection,
-          game
-        );
-  
-        const lineValue = analysisLineNumber(line) || 9.5;
-        const confidence = Math.round(Math.max(59, Math.min(90,
-          63 + Math.abs(projection - lineValue) * 7 +
-          (originalConfidence - 68) * .18 +
-          factorC * 4
-        )));
-  
-        const calculatedCornerDecision = {
-          line,
-          projection: projection.toFixed(1),
-          confidence,
-          reason: Number.isFinite(current.total)
-            ? `A partida está em andamento. A linha pré-jogo original será preservada.`
-            : `Projeção própria de ${projection.toFixed(1)} escanteios para este jogo, usando pressão, criação e perfil das equipes.`,
-          skip: false,
-          source: "calculated"
+        // V12 CLEAN — a opção IA de Escanteios é 100% server-authority.
+        // Se corners_ai não veio do /market_engines, o frontend NÃO calcula
+        // uma linha própria e, principalmente, NÃO fabrica UNDER 9.5.
+        return {
+          line: "ANALISANDO PARTIDA",
+          projection: "0.0",
+          confidence: 0,
+          reason:
+            "Aguardando a análise oficial de Escanteios calculada pelo servidor.",
+          skip: true,
+          updating: true,
+          source: "server_wait"
         };
-  
-        const lockedCornerDecision =
-          applyCornerLocalLineLock(
-            game,
-            calculatedCornerDecision
-          );
-  
-        if (
-          marketLiveStatus(game).live &&
-          !lockedCornerDecision?.pregame_locked
-        ) {
-          return {
-            ...calculatedCornerDecision,
-            line: "SEM RECOMENDAÇÃO PRÉ-JOGO",
-            confidence: 0,
-            skip: true,
-            reason:
-              "O jogo já começou e nenhuma linha pré-jogo foi registrada. O app não criará uma nova entrada ao vivo."
-          };
-        }
-  
-        return lockedCornerDecision;
       }
-  
+
       const homeCards = analysisNumber(raw, [
         "home_cards_avg",
         "stats.home.cards_avg",
