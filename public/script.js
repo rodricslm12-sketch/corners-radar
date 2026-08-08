@@ -146,13 +146,6 @@
       setTimeout(() => loader.remove(), 260);
     }
 
-
-    (() => {
-      document.getElementById("cpAppBootLoader")?.remove();
-      document.documentElement.classList.remove("cpBootLock");
-      document.body?.classList.remove("cpBootLock");
-    })();
-
     const CP_FAVORITE_TEAMS_KEY = "cornerProFavoriteTeams:v1";
     function cpNormalizeFavoriteTeam(name){return String(name||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");}
     function cpReadFavoriteTeams(){try{const d=JSON.parse(localStorage.getItem(CP_FAVORITE_TEAMS_KEY)||"[]");return new Set(Array.isArray(d)?d.map(cpNormalizeFavoriteTeam).filter(Boolean):[]);}catch(_){return new Set();}}
@@ -577,77 +570,15 @@
   
     window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
   
-
-    function cpDateCardLoaderShow() {
-      const card = $("#cpHomeBest");
-      if (!card) return;
-
-      card.classList.remove("is-loading-initial", "is-loading-date");
-      const legacy = $("#cpHomeInitialLoading");
-      if (legacy) legacy.hidden = true;
-
-      let loader = card.querySelector(".cpDateCardDotsLoader");
-
-      if (!loader) {
-        loader = document.createElement("div");
-        loader.className = "cpDateCardDotsLoader";
-        loader.setAttribute("role", "status");
-        loader.setAttribute("aria-label", "Carregando jogos da data selecionada");
-        loader.innerHTML = `
-          <div class="cpDateCardDots" aria-hidden="true">
-            <i></i><i></i><i></i><i></i><i></i>
-          </div>
-        `;
-        card.appendChild(loader);
-      }
-
-      window.__cpMobileSelectedDateLoading = true;
-      card.classList.add("is-date-dots-loading");
-      card.setAttribute("aria-busy", "true");
-      loader.hidden = false;
-      loader.classList.remove("is-leaving");
-    }
-
-    function cpDateCardLoaderHide() {
-      const card = $("#cpHomeBest");
-      if (!card) return;
-
-      window.__cpMobileSelectedDateLoading = false;
-      card.classList.remove(
-        "is-date-dots-loading",
-        "is-loading-initial",
-        "is-loading-date"
-      );
-      card.setAttribute("aria-busy", "false");
-
-      const legacy = $("#cpHomeInitialLoading");
-      if (legacy) legacy.hidden = true;
-
-      const loader = card.querySelector(".cpDateCardDotsLoader");
-      if (!loader) return;
-
-      loader.classList.add("is-leaving");
-      setTimeout(() => {
-        loader.hidden = true;
-        loader.classList.remove("is-leaving");
-      }, 160);
-    }
-
-    window.CornerProDateCardLoaderShow = cpDateCardLoaderShow;
-    window.CornerProDateCardLoaderHide = cpDateCardLoaderHide;
-
     function setLoading(active) {
-      // V20 — controla apenas a requisição. Nenhum segundo loader visual.
       state.loading = active;
-
       const card = $("#cpHomeBest");
-      if (card && !card.classList.contains("is-date-dots-loading")) {
-        card.classList.remove("is-loading-initial", "is-loading-date");
+      if (card) {
+        card.classList.toggle("is-loading-initial", active);
         card.setAttribute("aria-busy", active ? "true" : "false");
       }
-
-      const legacy = $("#cpHomeInitialLoading");
-      if (legacy) legacy.hidden = true;
+      const loading = $("#cpHomeInitialLoading");
+      if (loading) loading.hidden = !active;
     }
   
     function showEmpty(title, subtitle) {
@@ -695,9 +626,8 @@
   
       const best = list[0];
 
-      if (window.__cpMobileSelectedDateLoading) cpDateCardLoaderHide();
-
       // Defesa extra: se já existe jogo real para o mercado ativo, libera a tela.
+      cpBootLoaderFinish();
 
       // Compatibilidade com consumidores antigos: sempre a lista ativa.
       window.__cpMobileDirectGames = list;
@@ -827,6 +757,7 @@
         stopLoadRetry();
 
         // Segurança: nunca deixa uma tela preta infinita.
+        cpBootLoaderFinish();
         return;
       }
 
@@ -948,6 +879,7 @@
         stopLoadRetry();
 
         // /market_engines já devolveu partidas do mercado ativo.
+        cpBootLoaderFinish();
       }
 
       // Mercados genéricos continuam usando a base comum.
@@ -3900,8 +3832,6 @@
         paintDate();
         close();
         stopAutoSlide();
-
-        cpDateCardLoaderShow();
   
         try {
           await loadData();
@@ -3911,8 +3841,6 @@
             "FALHA AO CARREGAR",
             "Não foi possível buscar os jogos desta data."
           );
-        } finally {
-          cpDateCardLoaderHide();
         }
       };
   
@@ -4179,7 +4107,10 @@
   
     async function start() {
       if (!mobileMedia.matches || !$("#cpMobileHome")) return;
-      // V20 — sem loader fullscreen; o loader visual fica só no card ao trocar a data.
+
+      // V16 — overlay cobre tudo enquanto os dados carregam por trás.
+      cpBootLoaderEnsure();
+
       state.date = $("#date")?.value || todayManaus();
       const hiddenDate = $("#date");
       if (hiddenDate) hiddenDate.value = state.date;
@@ -19184,35 +19115,50 @@
         function setMobileLoading(mode='initial'){
           const card=$('#cpHomeBest');
           const button=$('#cpHomeBestOpen');
+          // Procura o texto somente dentro do card principal.
+          // Depois que o carrossel cria os clones, um seletor global poderia alterar
+          // o botão do clone e deixar o card visível preso em "CARREGANDO...".
           const text=card?.querySelector('.cpHomeBestOpenText');
           const games=$('#cpHomeGames');
-
-          if(!card)return;
-
-          if(mode==='initial'){
-            // V20 — nenhum loading visual adicional na abertura.
-            card.classList.remove('is-loading-initial','is-loading-date');
-            $('#cpHomeInitialLoading')?.setAttribute('hidden','');
-            return;
-          }
-
-          if(mode==='selected'){
-            window.CornerProDateCardLoaderShow?.();
-            if(button)button.disabled=true;
-            return;
-          }
-
-          if(mode==='loaded'){
-            window.CornerProDateCardLoaderHide?.();
-          }else if(window.__cpMobileSelectedDateLoading){
-            return;
-          }
-
+  
+          if(!card||!button)return;
+  
           card.classList.remove('is-loading-initial','is-loading-date');
+  
+          if(mode==='initial'){
+            card.classList.add('is-loading-initial');
+            card.setAttribute('aria-busy','true');
+            button.disabled=true;
+            if(text)text.textContent='AGUARDE UM MOMENTO';
+            if(games){
+              games.classList.add('is-loading');
+              games.innerHTML='<div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div>';
+            }
+            return;
+          }
+  
+          if(mode==='selected'){
+            // Trava o estado de análise para que uma renderização com os jogos
+            // antigos não devolva o botão para "VER ANÁLISE COMPLETA".
+            window.__cpMobileSelectedDateLoading = true;
+            card.classList.add('is-loading-date');
+            card.setAttribute('aria-busy','true');
+            button.disabled=true;
+            if(text)text.textContent='ANALISANDO DATA SELECIONADA...';
+            return;
+          }
+  
+          if(mode==='loaded'){
+            // Somente a chegada dos novos dados libera a mensagem.
+            window.__cpMobileSelectedDateLoading = false;
+          }else if(window.__cpMobileSelectedDateLoading){
+            // Ignora chamadas prematuras de "done" feitas durante a troca.
+            return;
+          }
+  
           card.setAttribute('aria-busy','false');
-          if(button)button.disabled=false;
+          button.disabled=false;
           games?.classList.remove('is-loading');
-          $('#cpHomeInitialLoading')?.setAttribute('hidden','');
           if(text)text.textContent='VER ANÁLISE COMPLETA →';
         }
         window.CornerProMobileHomeLoading=setMobileLoading;
@@ -19685,7 +19631,7 @@
           syncSwipeHeight();
         }),{passive:true});
   
-        setMobileLoading('done');
+        setMobileLoading('initial');
         let checks=0;
         const timer=setInterval(()=>{checks++;render();if(rawGames().length||checks>=120)clearInterval(timer)},250);
         const observer=new MutationObserver(()=>{clearTimeout(window.__cpHomeRenderTimer);window.__cpHomeRenderTimer=setTimeout(render,140)});
@@ -19745,8 +19691,12 @@
             window.CornerProMobileHomeLoading('selected');
           }if(input){input.value=ymd;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
           const url=new URL(location.href);url.searchParams.set('date',ymd);url.hash='';history.replaceState({},'',url.pathname+url.search);updateTrigger();close();
-          // V20 — o evento change acima é a única autoridade de carregamento.
-          return;
+          try{
+            if(typeof window.CornerProReloadRealGames==='function'){await window.CornerProReloadRealGames(ymd);return;}
+            if(typeof window.loadAll==='function'){await window.loadAll({date:ymd,fresh:true});return;}
+            if(typeof loadAll==='function'){await loadAll({date:ymd,fresh:true});return;}
+            location.reload();
+          }catch(err){console.error('Calendário mobile:',err);location.reload();}
         }
   
         trigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();open();});
@@ -20459,10 +20409,14 @@
         }, true);
   
         const dateInput = $('#date');
-        // V20 — removido: o fluxo oficial já carrega a data uma única vez.
+        dateInput?.addEventListener('change',()=>setTimeout(()=>load(true),80));
   
         function start(){
-          // V20 — módulo legado sem requisição automática.
+          setTimeout(()=>load(false),350);
+          setTimeout(()=>{
+            const card = $('#cpHomeBest');
+            if (card?.classList.contains('is-loading-initial')) load(true);
+          },3500);
         }
   
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
