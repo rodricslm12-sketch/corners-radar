@@ -16738,3 +16738,72 @@ button.railFullBtn {
     height:28px!important;
   }
 }
+
+
+/* =========================================================
+   V14 — FAVORITOS SEM QUEBRAR "JOGOS EM DESTAQUE"
+   A estrela não altera o tamanho/fluxo do card.
+   ========================================================= */
+@media (max-width:980px){
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .teams{
+    width:100%!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .teams b{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    overflow:visible!important;
+    white-space:normal!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .cpTeamName{
+    display:block!important;
+    min-width:0!important;
+    max-width:calc(100% - 18px)!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .cpTeamFavorite{
+    position:static!important;
+    flex:0 0 auto!important;
+    width:14px!important;
+    min-width:14px!important;
+    height:14px!important;
+    margin:0!important;
+    padding:0!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:rgba(255,255,255,.44)!important;
+    font-size:14px!important;
+    line-height:1!important;
+    transform:none!important;
+  }
+
+  #cpHomeFeaturedGamesSection .cpHomeGame .cpTeamFavorite.is-favorite{
+    color:#ffc83d!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:drop-shadow(0 0 4px rgba(255,200,61,.32))!important;
+  }
+}

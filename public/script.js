@@ -99,10 +99,11 @@
     function cpReadFavoriteTeams(){try{const d=JSON.parse(localStorage.getItem(CP_FAVORITE_TEAMS_KEY)||"[]");return new Set(Array.isArray(d)?d.map(cpNormalizeFavoriteTeam).filter(Boolean):[]);}catch(_){return new Set();}}
     function cpIsFavoriteTeam(name){return cpReadFavoriteTeams().has(cpNormalizeFavoriteTeam(name));}
     function cpToggleFavoriteTeam(name){const k=cpNormalizeFavoriteTeam(name);if(!k)return;const s=cpReadFavoriteTeams();s.has(k)?s.delete(k):s.add(k);try{localStorage.setItem(CP_FAVORITE_TEAMS_KEY,JSON.stringify([...s]));}catch(_){}}
-    function cpFavoriteStarHtml(name){const a=cpIsFavoriteTeam(name);return `<button type="button" class="cpTeamFavorite${a?" is-favorite":""}" data-cp-favorite-team="${escapeHtml(name)}" aria-pressed="${a?"true":"false"}" title="${a?"Remover dos favoritos":"Favoritar time"}">${a?"★":"☆"}</button>`;}
+    function cpFavoriteStarHtml(name){const a=cpIsFavoriteTeam(name);return `<span class="cpTeamFavorite${a?" is-favorite":""}" data-cp-favorite-team="${escapeHtml(name)}" role="button" tabindex="0" aria-pressed="${a?"true":"false"}" aria-label="${a?"Remover":"Adicionar"} ${escapeHtml(name)} dos favoritos" title="${a?"Remover dos favoritos":"Favoritar time"}">${a?"★":"☆"}</span>`;}
     function cpRefreshFavoriteStars(root=document){root.querySelectorAll("[data-cp-favorite-team]").forEach(b=>{const n=b.dataset.cpFavoriteTeam||"";const a=cpIsFavoriteTeam(n);b.classList.toggle("is-favorite",a);b.textContent=a?"★":"☆";b.setAttribute("aria-pressed",a?"true":"false");});}
     document.addEventListener("click",e=>{const b=e.target.closest("[data-cp-favorite-team]");if(!b)return;e.preventDefault();e.stopPropagation();cpToggleFavoriteTeam(b.dataset.cpFavoriteTeam||"");cpRefreshFavoriteStars();},true);
-    (()=>{if(document.getElementById("cpFavoriteTeamsStyle"))return;const s=document.createElement("style");s.id="cpFavoriteTeamsStyle";s.textContent=`.cpTeamFavorite{appearance:none;border:0;background:transparent;padding:0 2px;margin-left:5px;color:rgba(255,255,255,.45);font-size:18px;line-height:1;cursor:pointer;vertical-align:-1px;transition:.16s}.cpTeamFavorite:hover,.cpTeamFavorite:focus-visible{transform:scale(1.15);outline:none;color:#ffd86a}.cpTeamFavorite.is-favorite{color:#ffc83d;filter:drop-shadow(0 0 6px rgba(255,200,61,.45))}#cpHomeBestHome,#cpHomeBestAway,[data-clone-id='cpHomeBestHome'],[data-clone-id='cpHomeBestAway']{display:inline-flex;align-items:center;justify-content:center}.cpHomeGame .teams b{display:inline-flex;align-items:center}.cpHomeGame .cpTeamFavorite{font-size:15px;margin-left:3px}`;document.head.appendChild(s);})();
+    document.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const b=e.target.closest("[data-cp-favorite-team]");if(!b)return;e.preventDefault();e.stopPropagation();cpToggleFavoriteTeam(b.dataset.cpFavoriteTeam||"");cpRefreshFavoriteStars();},true);
+    (()=>{if(document.getElementById("cpFavoriteTeamsStyle"))return;const s=document.createElement("style");s.id="cpFavoriteTeamsStyle";s.textContent=`.cpTeamFavorite{display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 auto;width:auto!important;height:auto!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0 0 0 5px!important;color:rgba(255,255,255,.45);font-size:18px;line-height:1;cursor:pointer;vertical-align:-1px;transition:transform .16s ease,color .16s ease,filter .16s ease}.cpTeamFavorite:hover,.cpTeamFavorite:focus-visible{transform:scale(1.12);outline:none;color:#ffd86a}.cpTeamFavorite.is-favorite{color:#ffc83d!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 0 5px rgba(255,200,61,.35))}#cpHomeBestHome,#cpHomeBestAway,[data-clone-id='cpHomeBestHome'],[data-clone-id='cpHomeBestAway']{display:inline-flex;align-items:center;justify-content:center;min-width:0}.cpHomeGame .teams b{display:flex!important;align-items:center;justify-content:center;max-width:100%;min-width:0;overflow:visible!important}.cpHomeGame .teams b .cpTeamName{display:block;min-width:0;max-width:calc(100% - 19px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cpHomeGame .cpTeamFavorite{font-size:14px!important;margin-left:4px!important}`;document.head.appendChild(s);})();
 
     function clean(value, fallback = "") {
       const text = String(value ?? "").trim();
@@ -505,11 +506,11 @@
         awayBadge.style.setProperty("--team-accent", awayColor);
       }      if (homeEl) {
         homeEl.style.setProperty("--team-accent", homeColor);
-        homeEl.innerHTML = `<span>${escapeHtml(game.home)}</span>${cpFavoriteStarHtml(game.home)}`;
+        homeEl.innerHTML = `<span class="cpTeamName">${escapeHtml(game.home)}</span>${cpFavoriteStarHtml(game.home)}`;
       }
       if (awayEl) {
         awayEl.style.setProperty("--team-accent", awayColor);
-        awayEl.innerHTML = `<span>${escapeHtml(game.away)}</span>${cpFavoriteStarHtml(game.away)}`;
+        awayEl.innerHTML = `<span class="cpTeamName">${escapeHtml(game.away)}</span>${cpFavoriteStarHtml(game.away)}`;
       }
       cpUpdateBestMarketTitle(card, game, state.activeMarket);
       cpRefreshFavoriteStars(card);
@@ -614,7 +615,7 @@
         games.innerHTML = list.slice(0, 6).map((game, index) => `
           <button type="button" class="cpHomeGame${index === 0 ? " is-first" : ""}" data-v9-game="${index}">
             <time>${escapeHtml(game.time)}</time>
-            <div class="teams"><b>${escapeHtml(game.home)}${cpFavoriteStarHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}${cpFavoriteStarHtml(game.away)}</b></div>
+            <div class="teams"><b><span class="cpTeamName">${escapeHtml(game.home)}</span>${cpFavoriteStarHtml(game.home)}</b><i>×</i><b><span class="cpTeamName">${escapeHtml(game.away)}</span>${cpFavoriteStarHtml(game.away)}</b></div>
             <small>${escapeHtml(game.line)}</small>
             <strong><span>CONFIANÇA</span>${game.confidence}%</strong>
           </button>`).join("");
