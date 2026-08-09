@@ -1064,6 +1064,92 @@
       }
     }
 
+
+    function cprRenderBaseGamesImmediately(raw) {
+      if (!Array.isArray(raw) || !raw.length) return false;
+
+      // Usa Gols só como apresentação inicial, mas os nomes/horários vêm
+      // diretamente da lista-base e não dependem de goals_ai.
+      const baseList = buildMarket(raw, "goals");
+      if (!baseList.length) return false;
+
+      const best = baseList[0];
+
+      // Se o motor ainda não respondeu, o jogo aparece mesmo assim.
+      if (
+        !best.line ||
+        best.line === "DADOS EM ATUALIZAÇÃO" ||
+        best.line === "SEM APOSTA"
+      ) {
+        best.line = "ANALISANDO";
+      }
+
+      if (!Number(best.confidence)) {
+        best.confidence = Math.max(
+          60,
+          Math.min(
+            82,
+            Math.round(
+              numberFrom(
+                best?.raw?.over95_prob_adj,
+                best?.raw?.over95_prob,
+                best?.raw?.ai_score,
+                64
+              ) || 64
+            )
+          )
+        );
+      }
+
+      // Força a Home nova a receber o jogo sem esperar renderActive.
+      cprSyncHero(best, baseList);
+
+      // Mantém a lista-base disponível para cliques e favoritos.
+      window.__cpMobileDirectGames = baseList;
+
+      return true;
+    }
+
+    async function cprFirstBaseGames(date, stamp) {
+      const urls = [
+        `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=36`,
+        `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=36`
+      ];
+
+      return await new Promise((resolve, reject) => {
+        let pending = urls.length;
+        const errors = [];
+        let done = false;
+
+        urls.forEach((url, index) => {
+          getJson(url, index === 0 ? 10000 : 14000)
+            .then(payload => {
+              if (done) return;
+
+              const games = extract(payload);
+              if (games.length) {
+                done = true;
+                resolve(games);
+                return;
+              }
+
+              errors.push(new Error(`Fonte ${index + 1} retornou sem jogos.`));
+              pending -= 1;
+              if (!pending && !done) {
+                reject(errors[0] || new Error("Nenhuma fonte retornou jogos."));
+              }
+            })
+            .catch(error => {
+              errors.push(error);
+              pending -= 1;
+              if (!pending && !done) {
+                reject(errors[0] || error);
+              }
+            });
+        });
+      });
+    }
+
     async function loadSecondaryDataInBackground(date, stamp) {
       // Mercado completo pode ser pesado. Nunca bloqueia a Home.
       Promise.allSettled([
@@ -1086,6 +1172,10 @@
             }
 
             window.__cornerProAllGames = marketGames;
+
+            // Atualiza também a Home isolada diretamente.
+            cprRenderBaseGamesImmediately(marketGames);
+
             window.__cpMobileDirectGames = activeList();
             renderActive({ animate: false });
           }
@@ -1102,33 +1192,22 @@
       const date = state.date;
 
       try {
-        // V33 — rota realmente rápida.
-        // ai=0 é fundamental para impedir /quentes de acionar o funil pesado.
-        const fastPayload = await getJson(
-          `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=33`,
-          13000
-        );
+        // V36 — /quentes e /mercados correm em paralelo.
+        // A PRIMEIRA fonte que trouxer jogos já libera o card principal.
+        const raw = await cprFirstBaseGames(date, stamp);
 
         if (state.date !== date) {
           setLoading(false);
           return;
         }
 
-        const raw = extract(fastPayload);
-
-        if (!raw.length) {
-          throw new Error("A rota rápida não devolveu jogos.");
-        }
-
         state.all = raw;
         state.engineDate = date;
 
-        // Base instantânea para a Home.
         state.pregame = buildMarket(raw, "pregame");
         state.combined = buildMarket(raw, "combined");
         state.props = buildMarket(raw, "props");
 
-        // Escanteios é manual.
         state.corners = buildMarket(raw, "corners").map((game, index) => {
           const source = raw[index] || game.raw || game;
           const p = numberFrom(
@@ -1148,27 +1227,45 @@
           };
         });
 
-        // Fallback visual imediato enquanto os motores especializados chegam.
+        // Mantém todos os mercados navegáveis enquanto a IA específica chega.
         state.goals = buildMarket(raw, "goals");
         state.cards = buildMarket(raw, "cards");
         state.btts = buildMarket(raw, "btts");
         state.handicap = buildMarket(raw, "handicap");
 
-        // V35 — mantém os dois mercados sempre disponíveis na Home.
-        if (!state.btts.length) state.btts = buildMarket(state.pregame, "btts");
-        if (!state.handicap.length) state.handicap = buildMarket(state.pregame, "handicap");
+        if (!state.btts.length) state.btts = buildMarket(raw, "pregame");
+        if (!state.handicap.length) state.handicap = buildMarket(raw, "pregame");
 
         window.__cornerProAllGames = raw;
-        window.__cpMobileDirectGames = activeList();
+
+        // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
+        cprRenderBaseGamesImmediately(raw);
 
         setLoading(false);
+
+        // Depois sincroniza a lógica antiga/mercado ativo.
         renderActive({ animate: false });
         restartAutoSlide();
 
-        // Tudo pesado depois, sem bloquear a Home.
+        // Dados pesados continuam em background.
         loadSecondaryDataInBackground(date, stamp);
       } catch (error) {
         setLoading(false);
+
+        // Não deixa "Carregando jogos..." eternamente.
+        const games = $("#cprFeaturedGames");
+        if (games) {
+          games.innerHTML =
+            '<div class="cprEmpty">Não foi possível carregar os jogos. Tentando novamente...</div>';
+        }
+
+        // Retry curto, sem recarregar a página.
+        setTimeout(() => {
+          if (!state.loading && state.date === date) {
+            loadData().catch(() => {});
+          }
+        }, 2200);
+
         throw error;
       }
     }

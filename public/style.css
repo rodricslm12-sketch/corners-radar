@@ -18299,3 +18299,103 @@ button.railFullBtn {
     display:flex!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO V36 — SCROLL NATIVO DA PÁGINA
+   Remove scroll interno que prendia ao tentar voltar para cima.
+   ========================================================= */
+@media (max-width:980px){
+
+  html{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+  }
+
+  body{
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:100dvh!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+    touch-action:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    background:#000!important;
+  }
+
+  body.cp-app,
+  body.mobileMode,
+  body.cpBootLock{
+    position:relative!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #cpMobileHome.cpMobileHome{
+    position:relative!important;
+    inset:auto!important;
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:100dvh!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overscroll-behavior:auto!important;
+  }
+
+  #cpMobileHome > .cpHomeHeader{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    flex:none!important;
+  }
+
+  #cpMobileHome > .cprHome{
+    position:relative!important;
+    inset:auto!important;
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0 auto!important;
+    overflow:visible!important;
+    overscroll-behavior:auto!important;
+    touch-action:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:94px!important;
+  }
+
+  /* Nav flutua sobre o documento, sem criar um segundo scroll. */
+  #cpMobileHome > .cpHomeBottom{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:0!important;
+    transform:translateX(-50%)!important;
+    width:min(100%,430px)!important;
+    z-index:1000!important;
+  }
+
+  /* Evita qualquer overlay antigo interceptando gesto vertical. */
+  #cpAppBootLoader,
+  .cpMainCardDateLoader[hidden],
+  .cpHomeInitialLoading[hidden]{
+    pointer-events:none!important;
+  }
+
+  .cprMarkets{
+    /* Só a faixa de mercados recebe gesto horizontal. */
+    touch-action:pan-x pan-y!important;
+  }
+}
