@@ -48,9 +48,9 @@
       },
       handicap: {
         label: "HANDICAP ASIÁTICO",
-        title: "⚖ MELHOR HANDICAP ASIÁTICO",
+        title: "⚖ HANDICAP ASIÁTICO",
         icon: "⚖",
-        lines: ["IA", "-1.0", "-0.75", "-0.5", "-0.25", "+0.25", "+0.5", "+0.75", "+1.0"]
+        lines: ["-2.0", "-1.5", "-1.0", "-0.5", "0.0", "+0.5", "+1.0", "+1.5", "+2.0"]
       },
       cards: {
         label: "CARTÕES",
@@ -2006,16 +2006,20 @@
       return (1.53 + Math.max(0, 82 - confidence) / 100).toFixed(2);
     }
   
-    function renderHandicapMarket(layer, selectedLine = "IA") {
+    function renderHandicapMarket(layer, selectedLine = "-1.0") {
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
-  
-      const requestedLine = clean(
-        selectedLine,
-        marketType === "corners" ? MARKET.corners.lines[0] : "IA"
-      );
-      const sourceGames = state.handicap || [];
-  
+
+      // V39 — somente Handicap: linhas manuais e sem IA.
+      const requestedLine = MARKET.handicap.lines.includes(selectedLine)
+        ? selectedLine
+        : "-1.0";
+
+      const sourceGames =
+        (Array.isArray(state.handicap) && state.handicap.length)
+          ? state.handicap
+          : (Array.isArray(state.pregame) ? state.pregame : []);
+
       let preparedGames = sourceGames
         .map((game, originalIndex) => ({
           game,
@@ -2184,23 +2188,23 @@
           </button>`;
       }).join("");
   
-      const explanationLine = requestedLine === "IA" ? "-1.0" : requestedLine;
+      const explanationLine = requestedLine;
       const explainRule = handicapLineRule(explanationLine, "TIME");
   
       body.innerHTML = `
         <section class="cpHandicapIntro">
           <div class="cpHandicapIntroIcon">⚖</div>
-          <p>Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente o time e o handicap mais adequados antes da partida.</p>
+          <p>Escolha manualmente a linha de handicap asiático que deseja analisar.</p>
         </section>
   
         <div class="cpHandicapLines">
           ${MARKET.handicap.lines.map(item => `
-            <button type="button" class="${item === requestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${item === "IA" ? "✦ IA" : escapeHtml(item)}</button>
+            <button type="button" class="${item === requestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
           `).join("")}
         </div>
   
         <section class="cpHandicapExplain">
-          <h3>${requestedLine === "IA" ? "COMO FUNCIONA A ANÁLISE AUTOMÁTICA?" : `COMO FUNCIONA ${escapeHtml(requestedLine)}?`}</h3>
+          <h3>${`COMO FUNCIONA ${escapeHtml(requestedLine)}?`}</h3>
           <div class="cpHandicapExplainGrid">
             <p>${
               requestedLine === "IA"
@@ -2238,7 +2242,7 @@
         </div>
   
         <div class="cpHandicapTitle">
-          <h2>${requestedLine === "IA" ? "SUGESTÕES PRÉ-JOGO" : "MELHORES OPORTUNIDADES"}</h2>
+          <h2>MELHORES OPORTUNIDADES</h2>
           <button type="button">VER TODOS ›</button>
         </div>
   
@@ -2249,7 +2253,7 @@
         <div class="cpHandicapList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
   
         <button type="button" class="cpHandicapAllGames">
-          <span>☷</span><b>${requestedLine === "IA" ? "VER TODAS AS SUGESTÕES AUTOMÁTICAS" : `VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(requestedLine)})`}</b><i>›</i>
+          <span>☷</span><b>${`VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(requestedLine)})`}</b><i>›</i>
         </button>
   
         <section class="cpHandicapBottomExplain">
@@ -3694,7 +3698,7 @@
         if (marketType === "btts") {
           renderBttsMarket(layer);
         } else if (marketType === "handicap") {
-          renderHandicapMarket(layer, "IA");
+          renderHandicapMarket(layer, "-1.0");
         } else if (["goals", "corners", "cards"].includes(marketType)) {
           renderDetailedMarket(
             layer,
