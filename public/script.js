@@ -703,6 +703,79 @@
     }
 
 
+
+    const CPR_FAVORITES_KEY = "cornerProFavoriteTeams:v2";
+
+    function cprNormalizeTeamKey(name) {
+      return String(name || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    }
+
+    function cprReadFavorites() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CPR_FAVORITES_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function cprWriteFavorites(items) {
+      try {
+        localStorage.setItem(CPR_FAVORITES_KEY, JSON.stringify(items));
+      } catch {}
+    }
+
+    function cprIsFavorite(name) {
+      const key = cprNormalizeTeamKey(name);
+      if (!key) return false;
+      return cprReadFavorites().some(item => cprNormalizeTeamKey(item) === key);
+    }
+
+    function cprToggleFavorite(name) {
+      const cleanName = String(name || "").trim();
+      if (!cleanName) return false;
+
+      const key = cprNormalizeTeamKey(cleanName);
+      const favorites = cprReadFavorites();
+      const index = favorites.findIndex(item => cprNormalizeTeamKey(item) === key);
+
+      if (index >= 0) {
+        favorites.splice(index, 1);
+        cprWriteFavorites(favorites);
+        return false;
+      }
+
+      favorites.push(cleanName);
+      cprWriteFavorites(favorites);
+      return true;
+    }
+
+    function cprPaintFavoriteButtons(game) {
+      if (!game) return;
+
+      const homeBtn = document.querySelector('[data-cpr-fav="home"]');
+      const awayBtn = document.querySelector('[data-cpr-fav="away"]');
+
+      [
+        [homeBtn, game.home],
+        [awayBtn, game.away]
+      ].forEach(([button, name]) => {
+        if (!button) return;
+        const active = cprIsFavorite(name);
+        button.classList.toggle("is-active", active);
+        button.textContent = active ? "★" : "☆";
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+        button.title = active
+          ? `Remover ${name} dos favoritos`
+          : `Favoritar ${name}`;
+      });
+    }
+
     function cprText(selector, value) {
       const el = $(selector);
       if (el) el.textContent = value;
@@ -769,6 +842,7 @@
 
       cprBadge(game, "home");
       cprBadge(game, "away");
+      cprPaintFavoriteButtons(game);
 
       const projection = cpRefProjection(game);
       const cornerAvg = cpRefCornersAverage(game);
@@ -1079,6 +1153,10 @@
         state.cards = buildMarket(raw, "cards");
         state.btts = buildMarket(raw, "btts");
         state.handicap = buildMarket(raw, "handicap");
+
+        // V35 — mantém os dois mercados sempre disponíveis na Home.
+        if (!state.btts.length) state.btts = buildMarket(state.pregame, "btts");
+        if (!state.handicap.length) state.handicap = buildMarket(state.pregame, "handicap");
 
         window.__cornerProAllGames = raw;
         window.__cpMobileDirectGames = activeList();
@@ -4218,6 +4296,28 @@
           return;
         }
   
+        const cprFavorite = event.target.closest("[data-cpr-fav]");
+        if (cprFavorite) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const best = activeList()[0];
+          if (!best) return;
+
+          const side = cprFavorite.dataset.cprFav;
+          const teamName = side === "away" ? best.away : best.home;
+          const active = cprToggleFavorite(teamName);
+
+          cprFavorite.classList.toggle("is-active", active);
+          cprFavorite.textContent = active ? "★" : "☆";
+          cprFavorite.setAttribute("aria-pressed", active ? "true" : "false");
+          cprFavorite.title = active
+            ? `Remover ${teamName} dos favoritos`
+            : `Favoritar ${teamName}`;
+
+          return;
+        }
+
         const homeMarket = event.target.closest("[data-home-market]");
         if (homeMarket) {
           event.preventDefault();

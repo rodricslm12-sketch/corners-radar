@@ -17866,3 +17866,436 @@ button.railFullBtn {
     height:168px!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO V34 — ROLAGEM REAL + ESCALA FINAL MOBILE
+   Corrige conflito antigo: cpMobileHome era fixed/overflow hidden
+   e somente .cpHomeScroll podia rolar. Agora .cprHome é o scroll.
+   ========================================================= */
+@media (max-width:980px){
+
+  /* Shell continua ocupando a viewport, mas vira coluna real. */
+  #cpMobileHome.cpMobileHome{
+    position:fixed!important;
+    inset:0!important;
+    width:100%!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    background:#000!important;
+  }
+
+  /* Header não cresce nem empurra a Home. */
+  #cpMobileHome > .cpHomeHeader{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 72px!important;
+    width:100%!important;
+    height:72px!important;
+    min-height:72px!important;
+    max-height:72px!important;
+    margin:0!important;
+    padding:7px 17px 6px!important;
+  }
+
+  /* Área antiga permanece escondida. */
+  #cpMobileHome > .cpHomeScroll{
+    display:none!important;
+  }
+
+  /* Esta passa a ser a ÚNICA área de rolagem da Dashboard. */
+  #cpMobileHome > .cprHome{
+    position:relative!important;
+    inset:auto!important;
+    flex:1 1 auto!important;
+    width:100%!important;
+    max-width:430px!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    margin:0 auto!important;
+    padding:4px 9px calc(92px + env(safe-area-inset-bottom,0px))!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+    scrollbar-width:none!important;
+  }
+
+  #cpMobileHome > .cprHome::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  /* Bottom nav não participa da altura rolável. */
+  #cpMobileHome > .cpHomeBottom{
+    position:absolute!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    transform:none!important;
+    width:100%!important;
+    max-width:none!important;
+    flex:none!important;
+    height:70px!important;
+    z-index:90!important;
+  }
+
+  /* ===== ESCALA DO CARD MAIS PRÓXIMA DA REFERÊNCIA ===== */
+
+  .cprHero{
+    height:396px!important;
+    min-height:396px!important;
+    max-height:396px!important;
+    border-radius:14px!important;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(0,5,8,.20) 0%,
+        rgba(0,4,6,.03) 38%,
+        rgba(0,0,0,.28) 57%,
+        rgba(0,0,0,.91) 100%
+      ),
+      url('/images/fundo.jpeg') center 48%/cover no-repeat!important;
+  }
+
+  .cprHeroTop{
+    top:9px!important;
+    left:12px!important;
+    right:12px!important;
+  }
+
+  .cprHeroTop strong{
+    font-size:11px!important;
+  }
+
+  .cprHeroTop span{
+    min-width:72px!important;
+    height:29px!important;
+    font-size:10px!important;
+    border-radius:8px!important;
+  }
+
+  .cprTime{
+    top:43px!important;
+    left:12px!important;
+  }
+
+  .cprTime b,
+  .cprTime span{
+    height:29px!important;
+  }
+
+  .cprTime b{
+    min-width:64px!important;
+    padding:0 9px!important;
+    font-size:13px!important;
+  }
+
+  .cprTime span{
+    padding:0 10px!important;
+    font-size:9px!important;
+  }
+
+  .cprMatch{
+    top:66px!important;
+    left:10px!important;
+    right:10px!important;
+    height:150px!important;
+    grid-template-columns:1fr 42px 1fr!important;
+  }
+
+  .cprBadgeBox{
+    width:67px!important;
+    height:67px!important;
+  }
+
+  .cprBadgeBox img{
+    width:64px!important;
+    height:64px!important;
+  }
+
+  .cprBadgeBox > span{
+    width:59px!important;
+    height:59px!important;
+    border-radius:13px!important;
+    font-size:19px!important;
+  }
+
+  .cprFav{
+    right:-4px!important;
+    top:-2px!important;
+    font-size:18px!important;
+  }
+
+  .cprTeam h2{
+    max-width:116px!important;
+    margin-top:1px!important;
+    font-size:15px!important;
+  }
+
+  .cprVs{
+    margin-top:-12px!important;
+    font-size:24px!important;
+  }
+
+  .cprForm{
+    margin-top:6px!important;
+    gap:4px!important;
+  }
+
+  .cprForm i{
+    width:15px!important;
+    height:15px!important;
+    font-size:6.5px!important;
+  }
+
+  .cprStats{
+    left:11px!important;
+    right:11px!important;
+    bottom:51px!important;
+    height:111px!important;
+    border-radius:10px!important;
+  }
+
+  .cprStats article{
+    padding:8px 5px!important;
+  }
+
+  .cprStats small{
+    font-size:7px!important;
+  }
+
+  .cprStats article > b{
+    margin-top:4px!important;
+    font-size:17px!important;
+  }
+
+  .cprStats hr{
+    margin:6px 0!important;
+  }
+
+  .cprMiniBars{
+    height:9px!important;
+    margin:-9px 0 0 72%!important;
+  }
+
+  .cprGauge{
+    width:58px!important;
+    height:58px!important;
+    margin:4px auto 2px!important;
+  }
+
+  .cprGauge::after{
+    inset:7px!important;
+  }
+
+  .cprGauge b{
+    font-size:17px!important;
+  }
+
+  .cprConfidence > span{
+    min-width:55px!important;
+    height:16px!important;
+    padding:0 8px!important;
+    font-size:6.5px!important;
+  }
+
+  .cprOpen{
+    left:11px!important;
+    right:11px!important;
+    bottom:8px!important;
+    height:36px!important;
+    padding:0 11px!important;
+    grid-template-columns:23px 1fr 18px!important;
+    border-radius:7px!important;
+  }
+
+  .cprOpen span{
+    font-size:16px!important;
+  }
+
+  .cprOpen b{
+    font-size:10px!important;
+  }
+
+  .cprOpen i{
+    font-size:21px!important;
+  }
+
+  /* ===== MERCADOS MAIS COMPACTOS ===== */
+
+  .cprSection{
+    margin-top:9px!important;
+    padding:10px 9px!important;
+    border-radius:13px!important;
+  }
+
+  .cprSection header{
+    margin-bottom:8px!important;
+  }
+
+  .cprSection header h2{
+    font-size:12px!important;
+  }
+
+  .cprSection header button{
+    font-size:8px!important;
+  }
+
+  .cprMarkets{
+    gap:5px!important;
+  }
+
+  .cprMarkets > button{
+    height:154px!important;
+    padding:9px 3px 7px!important;
+    border-radius:9px!important;
+  }
+
+  .cprMarkets > button > span{
+    height:37px!important;
+    font-size:27px!important;
+  }
+
+  .cprMarkets > button > b{
+    font-size:9px!important;
+  }
+
+  .cprMarkets > button > small{
+    margin-top:5px!important;
+    font-size:6.5px!important;
+  }
+
+  .cprSpark{
+    height:14px!important;
+    margin-top:5px!important;
+  }
+
+  .cprMarkets p{
+    margin-top:5px!important;
+    font-size:6.5px!important;
+  }
+
+  .cprMarkets strong{
+    height:22px!important;
+    font-size:6.5px!important;
+  }
+
+  .cprMarkets em{
+    font-size:5.5px!important;
+  }
+
+  .cprDots{
+    margin-top:7px!important;
+  }
+
+  .cprFeatured{
+    min-height:104px!important;
+  }
+}
+
+@media (max-width:390px){
+  #cpMobileHome > .cpHomeHeader{
+    flex-basis:68px!important;
+    height:68px!important;
+    min-height:68px!important;
+    max-height:68px!important;
+  }
+
+  .cprHero{
+    height:382px!important;
+    min-height:382px!important;
+    max-height:382px!important;
+  }
+
+  .cprMatch{
+    top:64px!important;
+    height:143px!important;
+  }
+
+  .cprStats{
+    height:106px!important;
+  }
+
+  .cprMarkets > button{
+    height:148px!important;
+  }
+}
+
+
+/* =========================================================
+   CORNER PRO V35 — FAVORITOS + 5 MERCADOS
+   ========================================================= */
+@media (max-width:980px){
+
+  /* Estrela clicável e persistente */
+  .cprFav{
+    z-index:8!important;
+    cursor:pointer!important;
+    touch-action:manipulation!important;
+    -webkit-tap-highlight-color:transparent!important;
+    transition:transform .14s ease,color .14s ease,text-shadow .14s ease!important;
+  }
+
+  .cprFav:active{
+    transform:scale(.88)!important;
+  }
+
+  .cprFav.is-active{
+    color:#9aff00!important;
+    text-shadow:
+      0 0 7px rgba(154,255,0,.85),
+      0 0 15px rgba(154,255,0,.42)!important;
+  }
+
+  /* Cinco mercados sem esmagar os cards */
+  .cprMarkets{
+    display:flex!important;
+    grid-template-columns:none!important;
+    gap:6px!important;
+    width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    padding:0 2px 4px!important;
+    scroll-snap-type:x proximity!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+    touch-action:pan-x!important;
+  }
+
+  .cprMarkets::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  .cprMarkets > button{
+    flex:0 0 calc((100% - 18px)/4)!important;
+    min-width:calc((100% - 18px)/4)!important;
+    max-width:calc((100% - 18px)/4)!important;
+    scroll-snap-align:start!important;
+  }
+
+  /* Ambas marcam usa o mesmo verde neon */
+  .cprMarkets > button[data-home-market="btts"] > span{
+    color:#9aff00!important;
+    font-size:30px!important;
+  }
+
+  .cprMarkets > button[data-home-market="btts"] > b{
+    line-height:1.05!important;
+    text-align:center!important;
+  }
+
+  /* Handicap continua explicitamente visível/ativo */
+  .cprMarkets > button[data-home-market="handicap"]{
+    display:flex!important;
+  }
+
+  .cprMarkets > button[data-home-market="btts"]{
+    display:flex!important;
+  }
+}
