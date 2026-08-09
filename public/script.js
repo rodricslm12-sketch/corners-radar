@@ -130,12 +130,46 @@
       }
     }
   
-    function extract(payload) {
-      if (Array.isArray(payload)) return payload;
-      if (!payload || typeof payload !== "object") return [];
-      for (const key of ["games", "jogos", "matches", "data", "items", "results", "top6", "quentes", "mercados"]) {
-        if (Array.isArray(payload[key])) return payload[key];
+    function extract(payload, seen = new Set()) {
+      if (Array.isArray(payload)) {
+        return payload.filter(item => item && typeof item === "object");
       }
+
+      if (!payload || typeof payload !== "object") return [];
+      if (seen.has(payload)) return [];
+      seen.add(payload);
+
+      const preferredKeys = [
+        "games", "jogos", "matches", "data", "items", "list",
+        "results", "top", "top6", "quentes", "mercados",
+        "recommendations", "opportunities"
+      ];
+
+      for (const key of preferredKeys) {
+        const value = payload[key];
+
+        if (Array.isArray(value) && value.length) {
+          return value.filter(item => item && typeof item === "object");
+        }
+
+        if (value && typeof value === "object") {
+          const nested = extract(value, seen);
+          if (nested.length) return nested;
+        }
+      }
+
+      // Último fallback: percorre qualquer ramo do JSON.
+      for (const value of Object.values(payload)) {
+        if (!value || typeof value !== "object") continue;
+
+        if (Array.isArray(value) && value.some(item => item && typeof item === "object")) {
+          return value.filter(item => item && typeof item === "object");
+        }
+
+        const nested = extract(value, seen);
+        if (nested.length) return nested;
+      }
+
       return [];
     }
   
@@ -1068,14 +1102,39 @@
     function cprRenderBaseGamesImmediately(raw) {
       if (!Array.isArray(raw) || !raw.length) return false;
 
-      // Usa Gols só como apresentação inicial, mas os nomes/horários vêm
-      // diretamente da lista-base e não dependem de goals_ai.
-      const baseList = buildMarket(raw, "goals");
+      const baseList = raw
+        .map((item, index) => {
+          // Se já veio normalizado pela parte antiga, preserva.
+          if (
+            item &&
+            typeof item === "object" &&
+            item.home &&
+            item.away &&
+            ("raw" in item || "line" in item || "confidence" in item)
+          ) {
+            return {
+              ...item,
+              raw: item.raw || item,
+              time: item.time || gameTime(item.raw || item),
+              line: item.line || "ANALISANDO",
+              confidence: Number(item.confidence || 0) || 64
+            };
+          }
+
+          return normalize(item, "goals", index);
+        })
+        .filter(item =>
+          item &&
+          item.home &&
+          item.away &&
+          !/^casa$/i.test(item.home) &&
+          !/^fora$/i.test(item.away)
+        );
+
       if (!baseList.length) return false;
 
       const best = baseList[0];
 
-      // Se o motor ainda não respondeu, o jogo aparece mesmo assim.
       if (
         !best.line ||
         best.line === "DADOS EM ATUALIZAÇÃO" ||
@@ -1101,14 +1160,60 @@
         );
       }
 
-      // Força a Home nova a receber o jogo sem esperar renderActive.
       cprSyncHero(best, baseList);
 
-      // Mantém a lista-base disponível para cliques e favoritos.
+      // Espelha também no estado da Home para favoritos/cliques.
+      if (!Array.isArray(state.goals) || !state.goals.length) {
+        state.goals = baseList;
+      }
+
       window.__cpMobileDirectGames = baseList;
 
       return true;
     }
+
+    function cprExistingGamesFromApp() {
+      const candidates = [
+        window.__cpMobileDirectGames,
+        window.__cornerProAllGames,
+        state.goals,
+        state.pregame,
+        state.corners,
+        state.cards,
+        state.handicap,
+        state.btts
+      ];
+
+      for (const candidate of candidates) {
+        if (Array.isArray(candidate) && candidate.length) {
+          const real = candidate.filter(item => {
+            const source = item?.raw || item || {};
+            const home = item?.home || team(source, "home");
+            const away = item?.away || team(source, "away");
+
+            return (
+              home &&
+              away &&
+              !/^casa$/i.test(home) &&
+              !/^fora$/i.test(away) &&
+              !/^time a$/i.test(home) &&
+              !/^time b$/i.test(away)
+            );
+          });
+
+          if (real.length) return real;
+        }
+      }
+
+      return [];
+    }
+
+    function cprBridgeExistingGames() {
+      const games = cprExistingGamesFromApp();
+      if (!games.length) return false;
+      return cprRenderBaseGamesImmediately(games);
+    }
+
 
     async function cprFirstBaseGames(date, stamp) {
       const urls = [
@@ -1240,6 +1345,7 @@
 
         // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
         cprRenderBaseGamesImmediately(raw);
+        cprBridgeExistingGames();
 
         setLoading(false);
 
@@ -4573,6 +4679,17 @@
   
     async function start() {
       if (!mobileMedia.matches || !$("#cpMobileHome")) return;
+
+      // V37 — ponte entre a lógica antiga (que já possui os jogos)
+      // e a Home visual nova.
+      let cprBridgeAttempts = 0;
+      const cprBridgeTimer = setInterval(() => {
+        cprBridgeAttempts += 1;
+
+        if (cprBridgeExistingGames() || cprBridgeAttempts >= 80) {
+          clearInterval(cprBridgeTimer);
+        }
+      }, 250);
 
       const cprOpen = $("#cprOpen");
       if (cprOpen && !cprOpen.dataset.bound) {
