@@ -32,7 +32,7 @@
         label: "ESCANTEIOS",
         title: "⚑ ANÁLISE DE ESCANTEIOS",
         icon: "⚑",
-        lines: ["IA", "OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
+        lines: ["OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
       },
       goals: {
         label: "GOLS",
@@ -545,6 +545,126 @@
       );
     }
   
+
+    function cpRefNum(...values) {
+      for (const value of values) {
+        const n = Number(String(value ?? "").replace(",", ".").replace("%", ""));
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    }
+
+    function cpRefBadgeUrl(game, side) {
+      const raw = game?.raw || game || {};
+      const home = side === "home";
+      const values = home
+        ? [
+            raw.home_badge, raw.team_home_badge, raw.home_team_badge,
+            raw.home_logo, raw.home_team_logo, raw.hometeam_logo,
+            raw.event_raw?.team_home_badge, raw.event_raw?.home_badge,
+            raw.event_raw?.home_team_logo
+          ]
+        : [
+            raw.away_badge, raw.team_away_badge, raw.away_team_badge,
+            raw.away_logo, raw.away_team_logo, raw.awayteam_logo,
+            raw.event_raw?.team_away_badge, raw.event_raw?.away_badge,
+            raw.event_raw?.away_team_logo
+          ];
+      return clean(values.find(v => /^https?:\/\//i.test(String(v || ""))) || "", "");
+    }
+
+    function cpRefInitials(name) {
+      const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+      return (parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] || "--").slice(0,2)).toUpperCase();
+    }
+
+    function cpRefSetShield(game, side) {
+      const name = side === "home" ? game.home : game.away;
+      const img = $(side === "home" ? "#cpHomeBestHomeBadge" : "#cpHomeBestAwayBadge");
+      const fallback = $(side === "home" ? "#cpHomeBestHomeFallback" : "#cpHomeBestAwayFallback");
+      const url = cpRefBadgeUrl(game, side);
+      if (fallback) fallback.textContent = cpRefInitials(name);
+      if (!img) return;
+      if (!url) {
+        img.hidden = true;
+        if (fallback) fallback.hidden = false;
+        return;
+      }
+      img.onload = () => { img.hidden = false; if (fallback) fallback.hidden = true; };
+      img.onerror = () => { img.hidden = true; if (fallback) fallback.hidden = false; };
+      img.src = url;
+    }
+
+    function cpRefProjection(game) {
+      const raw = game?.raw || {};
+      if (state.activeMarket === "goals") {
+        return cpRefNum(
+          raw.goals_ai?.projection, raw.goal_projection, raw.projected_goals,
+          raw.goals_projection, raw.avg_goals, raw.goal_avg
+        );
+      }
+      if (state.activeMarket === "cards") {
+        return cpRefNum(raw.cards_ai?.projection, raw.card_projection, raw.projected_cards, raw.avg_cards);
+      }
+      return cpRefNum(raw.corners_ai?.projection, raw.proj_cantos, raw.projected_corners);
+    }
+
+    function cpRefGoalsAverage(game) {
+      const raw = game?.raw || {};
+      return cpRefNum(
+        raw.goals_avg, raw.avg_goals, raw.goal_avg, raw.goals_average,
+        raw.real?.goalsAvg, raw.stats?.goals_avg
+      );
+    }
+
+    function cpRefCornersAverage(game) {
+      const raw = game?.raw || {};
+      return cpRefNum(
+        raw.corners_ai?.projection, raw.proj_cantos, raw.projected_corners,
+        raw.real?.recentCombinedAvg
+      );
+    }
+
+    function cpRefUpdateHero(game) {
+      cpRefSetShield(game, "home");
+      cpRefSetShield(game, "away");
+
+      const projection = cpRefProjection(game);
+      const corners = cpRefCornersAverage(game);
+      const goals = cpRefGoalsAverage(game);
+      const confidenceValue = Math.max(0, Math.min(95, Number(game.confidence || 0)));
+
+      const projectionLabel = $("#cpRefProjectionLabel");
+      const projectionEl = $("#cpRefProjection");
+      const cornersEl = $("#cpRefCornersAvg");
+      const goalsEl = $("#cpRefGoalsAvg");
+      const trendEl = $("#cpRefTrend");
+      const gauge = $("#cpRefGauge");
+      const confidenceLabel = $("#cpRefConfidenceLabel");
+      const dayLabel = $("#cpHomeBestDayLabel");
+
+      if (projectionLabel) {
+        projectionLabel.textContent = state.activeMarket === "goals"
+          ? "PROJEÇÃO DE GOLS"
+          : state.activeMarket === "cards"
+            ? "PROJEÇÃO DE CARTÕES"
+            : "PROJEÇÃO DE CANTOS";
+      }
+      if (projectionEl) projectionEl.textContent = projection === null ? "—" : projection.toFixed(2).replace(/\.00$/, "");
+      if (cornersEl) cornersEl.textContent = corners === null ? "—" : corners.toFixed(1);
+      if (goalsEl) goalsEl.textContent = goals === null ? "—" : goals.toFixed(1);
+
+      const trend = confidenceValue >= 72 ? "ALTA" : confidenceValue >= 62 ? "MÉDIA" : "CAUTELA";
+      if (trendEl) trendEl.textContent = `↗ ${trend}`;
+      if (confidenceLabel) confidenceLabel.textContent = trend;
+      if (gauge) gauge.style.setProperty("--ref-confidence", confidenceValue);
+
+      if (dayLabel) {
+        const today = todayManaus();
+        dayLabel.textContent = state.date === today ? "HOJE" : state.date.split("-").reverse().slice(0,2).join("/");
+      }
+    }
+
     function renderActive({ animate = false, direction = 1 } = {}) {
       const list = activeList();
       const meta = MARKET[state.activeMarket] || MARKET.corners;
@@ -578,6 +698,7 @@
       if (card) {
         card.dataset.market = state.activeMarket;
         cpPaintBestTeamColors(card, best);
+        cpRefUpdateHero(best);
       }
   
       card.__cpCurrentRaw = best.raw || best;
@@ -1342,7 +1463,10 @@
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
   
-      const requestedLine = clean(selectedLine, "IA");
+      const requestedLine = clean(
+        selectedLine,
+        marketType === "corners" ? MARKET.corners.lines[0] : "IA"
+      );
       const sourceGames = state.handicap || [];
   
       let preparedGames = sourceGames
@@ -2906,7 +3030,10 @@
       body.innerHTML = `
         <section class="cpAnalysisIntro">
           <div class="cpAnalysisIntroIcon">${icon}</div>
-          <p>Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente a melhor leitura pré-jogo de ${marketName.toLowerCase()}.</p>
+          <p>${marketType === "corners"
+            ? "Escolha manualmente a linha de escanteios que deseja analisar."
+            : `Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente a melhor leitura pré-jogo de ${marketName.toLowerCase()}.`
+          }</p>
         </section>
   
         <div class="cpAnalysisLines">
@@ -3022,7 +3149,11 @@
         } else if (marketType === "handicap") {
           renderHandicapMarket(layer, "IA");
         } else if (["goals", "corners", "cards"].includes(marketType)) {
-          renderDetailedMarket(layer, marketType, "IA");
+          renderDetailedMarket(
+            layer,
+            marketType,
+            marketType === "corners" ? MARKET.corners.lines[0] : "IA"
+          );
         } else {
           if (body?.dataset.defaultHtml) body.innerHTML = body.dataset.defaultHtml;
         const grid = $("#cpMobileOddsGrid");

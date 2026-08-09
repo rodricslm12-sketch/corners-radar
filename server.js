@@ -2417,6 +2417,21 @@ function exclusionFlags({ home, away, perfil }) {
   return flags;
 }
 
+
+function badgeFromEvent(e, side) {
+  const home = side === "home";
+  const values = home
+    ? [
+        e?.team_home_badge, e?.home_team_badge, e?.home_badge,
+        e?.match_hometeam_badge, e?.home_team_logo, e?.hometeam_logo
+      ]
+    : [
+        e?.team_away_badge, e?.away_team_badge, e?.away_badge,
+        e?.match_awayteam_badge, e?.away_team_logo, e?.awayteam_logo
+      ];
+  return values.find(v => /^https?:\/\//i.test(String(v || ""))) || null;
+}
+
 // ---------------- LITE ----------------
 function liteFromEvent(e, league, posHome = null, posAway = null, lite_reason = "no_base"){
   // 🚫 Confronto direto entre equipes do Top 5 nunca entra, nem em modo LITE
@@ -2444,6 +2459,8 @@ function liteFromEvent(e, league, posHome = null, posAway = null, lite_reason = 
     match_id: e.match_id || null,
     casa,
     fora,
+    home_badge: badgeFromEvent(e, "home"),
+    away_badge: badgeFromEvent(e, "away"),
     liga: league.name,
     league_id: league.id,
     hora,
@@ -4140,6 +4157,8 @@ if (isEuropeanClassic(casaN, foraN)) {
         match_id,
         casa: casaN,
         fora: foraN,
+        home_badge: badgeFromEvent(e, "home"),
+        away_badge: badgeFromEvent(e, "away"),
         liga: league.name,
         league_id: league.id,
         hora,
@@ -9470,6 +9489,8 @@ function officialCornerSnapshot(game) {
     match_id: game?.match_id ?? game?.event_key ?? null,
     casa: game?.casa || "",
     fora: game?.fora || "",
+    home_badge: game?.home_badge || null,
+    away_badge: game?.away_badge || null,
     hora:
       game?.kickoff_manaus ??
       game?.hora_manaus ??

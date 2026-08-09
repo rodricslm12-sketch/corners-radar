@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-main-card-elegant-v25-20260807" />
-  <script src="script.js?v=cornerpro-image-ref-v24-20260807" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-reference-v30-20260809" />
+  <script src="script.js?v=cornerpro-reference-v30-20260809" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -254,68 +254,94 @@
     <main class="cpHomeScroll">
 
       <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
-        <div class="cpHomeSwipeGuide" aria-hidden="true"><span>←</span><b>DESLIZE PARA OS LADOS</b><span>→</span></div>
-        <div class="cpHomeMarketDots" aria-label="Mercado do card">
-          <button type="button" class="active" data-cp-home-dot="corners" aria-label="Escanteios"></button>
-          <button type="button" data-cp-home-dot="goals" aria-label="Gols"></button>
-          <button type="button" data-cp-home-dot="cards" aria-label="Cartões"></button>
+        <div class="cpHomeBestTop">
+          <b id="cpHomeBestTitle">🔥 MELHOR APOSTA • GOLS</b>
+          <span id="cpHomeBestMarket">ANALISANDO</span>
         </div>
-        <div class="cpHomeBestTop"><b id="cpHomeBestTitle">⚑ MELHOR APOSTA DE ESCANTEIOS</b><span id="cpHomeBestMarket">ANALISANDO</span></div>
 
         <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
-          <strong>ANALISANDO JOGOS DO DIA</strong>
-          <div class="cpHomeLoadingDots" aria-hidden="true">
-            <i></i><i></i><i></i><i></i><i></i>
-          </div>
-          <small>Buscando a melhor oportunidade...</small>
+          <div class="cpRefLoadingDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
         </div>
 
         <div class="cpHomeBestStatusBar" id="cpHomeBestStatusBar" hidden>
-          <i aria-hidden="true"></i>
-          <b id="cpHomeBestStatusText">PRÉ-JOGO</b>
-          <span id="cpHomeBestStatusExtra"></span>
+          <i aria-hidden="true"></i><b id="cpHomeBestStatusText">PRÉ-JOGO</b><span id="cpHomeBestStatusExtra"></span>
         </div>
 
-        <div class="cpHomeBestBody">
+        <div class="cpRefTimeRow">
           <time id="cpHomeBestTime">--:--</time>
-          <div class="cpHomeBestTeams">
-            <strong id="cpHomeBestHome">Aguardando</strong>
-            <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
-              <b id="cpHomeBestHomeScore">0</b>
-              <i>×</i>
-              <b id="cpHomeBestAwayScore">0</b>
+          <span id="cpHomeBestDayLabel">HOJE</span>
+        </div>
+
+        <div class="cpRefMatchStage">
+          <div class="cpRefTeam cpRefTeamHome">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestHomeBadge" class="cpRefShield" alt="Escudo do time mandante" hidden>
+              <span id="cpHomeBestHomeFallback" class="cpRefShieldFallback">CA</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="home" aria-label="Favoritar mandante">☆</button>
             </div>
-            <i class="cpHomeBestVersus">×</i>
-            <strong id="cpHomeBestAway">partidas</strong>
+            <strong id="cpHomeBestHome">Aguardando</strong>
+            <div class="cpRefForm" id="cpHomeBestHomeForm"><i>V</i><i>V</i><i>E</i><i>D</i><i>V</i></div>
           </div>
-          <div class="cpHomeBestConfidence"><b id="cpHomeBestConfidence">--%</b><small>CONFIANÇA</small></div>
+
+          <div class="cpRefVersus">VS</div>
+
+          <div class="cpRefTeam cpRefTeamAway">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestAwayBadge" class="cpRefShield" alt="Escudo do time visitante" hidden>
+              <span id="cpHomeBestAwayFallback" class="cpRefShieldFallback">FO</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <strong id="cpHomeBestAway">partidas</strong>
+            <div class="cpRefForm" id="cpHomeBestAwayForm"><i>V</i><i>E</i><i>V</i><i>D</i><i>V</i></div>
+          </div>
+        </div>
+
+        <div class="cpRefStatsPanel">
+          <div class="cpRefStatsCol">
+            <small id="cpRefProjectionLabel">PROJEÇÃO</small>
+            <b id="cpRefProjection">—</b>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b id="cpRefCornersAvg">—</b>
+          </div>
+
+          <div class="cpRefConfidenceCol">
+            <small>CONFIANÇA</small>
+            <div class="cpRefGauge" id="cpRefGauge" style="--ref-confidence:0">
+              <strong id="cpHomeBestConfidence">—%</strong>
+            </div>
+            <span id="cpRefConfidenceLabel">ANALISANDO</span>
+          </div>
+
+          <div class="cpRefStatsCol cpRefStatsRight">
+            <small>TENDÊNCIA</small>
+            <b id="cpRefTrend">—</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b id="cpRefGoalsAvg">—</b>
+          </div>
         </div>
 
         <div class="cpHomeBestLiveStats" id="cpHomeBestLiveStats" hidden>
-          <div>
-            <i>⚽</i>
-            <small>GOLS</small>
-            <b><span id="cpHomeBestHomeGoals">0</span> × <span id="cpHomeBestAwayGoals">0</span></b>
-          </div>
-          <div>
-            <i>⚑</i>
-            <small>ESCANTEIOS</small>
-            <b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b>
-          </div>
-          <div>
-            <i>▯</i>
-            <small>CARTÕES</small>
-            <b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b>
-          </div>
+          <div><i>⚽</i><small>GOLS</small><b><span id="cpHomeBestHomeGoals">0</span> × <span id="cpHomeBestAwayGoals">0</span></b></div>
+          <div><i>⚑</i><small>ESCANTEIOS</small><b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b></div>
+          <div><i>▯</i><small>CARTÕES</small><b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b></div>
         </div>
 
         <button type="button" id="cpHomeBestOpen" disabled>
           <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
           <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
+          <i aria-hidden="true">›</i>
         </button>
+
+        <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
+          <b id="cpHomeBestHomeScore">0</b><i>×</i><b id="cpHomeBestAwayScore">0</b>
+        </div>
+        <i class="cpHomeBestVersus" hidden>×</i>
+        <div class="cpHomeBestTeams" hidden></div>
+        <div class="cpHomeMarketDots" hidden></div>
       </section>
 
-      
       <section class="cpHomeSection cpHomeMarketsSection">
         <div class="cpHomeSectionHead">
           <div>
