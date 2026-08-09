@@ -19,7 +19,7 @@
     const mobileMedia = window.matchMedia("(max-width: 980px)");
   
     const MARKET_ORDER = ["corners", "goals", "cards"];
-    const AUTO_SLIDE_MS = 5200;
+    const AUTO_SLIDE_MS = 9000;
   
     const MARKET = {
       pregame: {
@@ -83,7 +83,7 @@
       pregame: [],
       combined: [],
       props: [],
-      activeMarket: "corners",
+      activeMarket: "goals",
       selected: null,
       autoTimer: null,
       matchPollTimer: null,
@@ -139,7 +139,7 @@
       return [];
     }
   
-    async function getJson(url, timeoutMs = 18000) {
+    async function getJson(url, timeoutMs = 9000) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
@@ -371,7 +371,41 @@
     }
   
     function activeList() {
-      return state[state.activeMarket] || state.corners || [];
+      const direct = state[state.activeMarket];
+      if (Array.isArray(direct) && direct.length) return direct;
+
+      // V32 — enquanto a IA específica ainda carrega,
+      // a Home usa os jogos-base do dia em vez de ficar vazia.
+      if (Array.isArray(state.pregame) && state.pregame.length) {
+        return state.pregame.map((game, index) => {
+          const raw = game.raw || game;
+          const normalized = normalize(raw, state.activeMarket, index);
+
+          // Escanteios é manual: não precisa esperar corners_ai.
+          if (state.activeMarket === "corners") {
+            normalized.line = MARKET.corners.lines[0];
+            normalized.confidence = Math.max(
+              60,
+              Math.min(
+                82,
+                Math.round(
+                  numberFrom(
+                    raw?.over95_prob_adj,
+                    raw?.over95_prob,
+                    raw?.ai_score,
+                    game.confidence,
+                    64
+                  ) || 64
+                )
+              )
+            );
+          }
+
+          return normalized;
+        });
+      }
+
+      return [];
     }
   
     function cpBestTeamColor(teamName, fallback = "#5f7f91") {
@@ -710,7 +744,16 @@
 
       const meta = MARKET[state.activeMarket] || MARKET.goals;
       cprText("#cprTitle", `🔥 MELHOR APOSTA • ${meta.label}`);
-      cprText("#cprMarket", game.line || "ANÁLISE");
+      const heroLine =
+        state.activeMarket === "corners"
+          ? (game.line && !game.line.includes("ATUALIZAÇÃO")
+              ? game.line
+              : MARKET.corners.lines[0])
+          : (game.line === "DADOS EM ATUALIZAÇÃO" || game.line === "SEM APOSTA"
+              ? "ANALISANDO"
+              : (game.line || "ANALISANDO"));
+
+      cprText("#cprMarket", heroLine);
       cprText("#cprTime", game.time || "--:--");
       cprText("#cprHomeName", game.home || "Mandante");
       cprText("#cprAwayName", game.away || "Visitante");
@@ -730,7 +773,21 @@
       const projection = cpRefProjection(game);
       const cornerAvg = cpRefCornersAverage(game);
       const goalsAvg = cpRefGoalsAverage(game);
-      const confidence = Math.max(0, Math.min(95, Math.round(Number(game.confidence || 0))));
+      const confidence = Math.max(
+        0,
+        Math.min(
+          95,
+          Math.round(
+            Number(
+              game.confidence ||
+              game?.raw?.over95_prob_adj ||
+              game?.raw?.over95_prob ||
+              game?.raw?.ai_score ||
+              64
+            )
+          )
+        )
+      );
 
       const projectionLabel =
         state.activeMarket === "goals"
@@ -893,82 +950,149 @@
       startAutoSlide();
     }
   
+    async function loadMarketEnginesInBackground(date, stamp) {
+      try {
+        const payload = await getJson(
+          `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=33`,
+          12000
+        );
+
+        // Se o usuário já trocou de data, ignora resposta antiga.
+        if (state.date !== date) return;
+
+        state.cornerLearning = payload?.corner_learning || null;
+
+        const cornerGames = extract(payload?.corners);
+        const goalGames = extract(payload?.goals);
+        const cardGames = extract(payload?.cards);
+        const bttsGames = extract(payload?.btts);
+        const handicapGames = extract(payload?.handicap);
+
+        // Escanteios agora é manual. A lista-base sempre fica disponível;
+        // se o servidor devolver dados extras, preservamos esses dados.
+        if (cornerGames.length) {
+          state.corners = buildMarket(cornerGames, "corners");
+        }
+
+        if (goalGames.length) state.goals = buildMarket(goalGames, "goals");
+        if (cardGames.length) state.cards = buildMarket(cardGames, "cards");
+        if (bttsGames.length) state.btts = buildMarket(bttsGames, "btts");
+        if (handicapGames.length) state.handicap = buildMarket(handicapGames, "handicap");
+
+        window.__cpMobileDirectGames = activeList();
+
+        // Atualiza silenciosamente a Home com o dado específico que chegou.
+        renderActive({ animate: false });
+      } catch (error) {
+        // A Home já está aberta com os jogos-base.
+        // Falha de um motor não pode apagar nem travar os jogos.
+        console.warn("[Corner Pro V32 engines]", error?.message || error);
+      }
+    }
+
+    async function loadSecondaryDataInBackground(date, stamp) {
+      // Mercado completo pode ser pesado. Nunca bloqueia a Home.
+      Promise.allSettled([
+        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=33`, 18000),
+        loadMarketEnginesInBackground(date, stamp)
+      ]).then(([marketResult]) => {
+        if (state.date !== date) return;
+
+        if (marketResult.status === "fulfilled") {
+          const marketGames = extract(marketResult.value);
+          if (marketGames.length) {
+            state.all = marketGames;
+            state.pregame = buildMarket(marketGames, "pregame");
+            state.combined = buildMarket(marketGames, "combined");
+            state.props = buildMarket(marketGames, "props");
+
+            // Escanteios manual permanece disponível imediatamente.
+            if (!state.corners?.length) {
+              state.corners = buildMarket(marketGames, "corners");
+            }
+
+            window.__cornerProAllGames = marketGames;
+            window.__cpMobileDirectGames = activeList();
+            renderActive({ animate: false });
+          }
+        }
+      }).catch(() => {});
+    }
+
     async function loadData() {
       if (state.loading) return;
+
       setLoading(true);
-  
+
       const stamp = Date.now();
       const date = state.date;
-      const [hotResult, marketResult, enginesResult] = await Promise.allSettled([
-        getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&v=11`),
-        getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`),
-        getJson(`/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=11`)
-      ]);
-  
-      const hotGames = hotResult.status === "fulfilled"
-        ? extract(hotResult.value)
-        : [];
-  
-      const marketGames = marketResult.status === "fulfilled"
-        ? extract(marketResult.value)
-        : [];
-  
-      const enginePayload = enginesResult.status === "fulfilled"
-        ? (enginesResult.value || {})
-        : {};
-  
-      state.cornerLearning =
-        enginePayload.corner_learning || null;
-  
-      const cornerEngineGames = extract(enginePayload.corners);
-      const goalEngineGames = extract(enginePayload.goals);
-      const cardEngineGames = extract(enginePayload.cards);
-      const bttsEngineGames = extract(enginePayload.btts);
-      const handicapEngineGames = extract(enginePayload.handicap);
-  
-      const raw = marketGames.length ? marketGames : hotGames;
-  
-      if (!raw.length && !hotGames.length) {
-        const error = hotResult.status === "rejected" ? hotResult.reason : marketResult.reason;
-        if (error) throw error;
-      }
-  
-      state.all = raw;
 
-      const engineDateChanged = state.engineDate !== date;
+      try {
+        // V33 — rota realmente rápida.
+        // ai=0 é fundamental para impedir /quentes de acionar o funil pesado.
+        const fastPayload = await getJson(
+          `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=33`,
+          13000
+        );
 
-      if (engineDateChanged) {
-        state.engineDate = date;
-        state.corners = [];
-        state.goals = [];
-        state.btts = [];
-        state.handicap = [];
-        state.cards = [];
-      }
-
-      // Fonte oficial dos cinco mercados: /market_engines.
-      // Nunca usa /quentes ou /mercados como substituto de outra IA.
-      const acceptEngineMarket = (key, games, type) => {
-        if (Array.isArray(games) && games.length) {
-          state[key] = buildMarket(games, type);
+        if (state.date !== date) {
+          setLoading(false);
+          return;
         }
-      };
 
-      acceptEngineMarket("corners", cornerEngineGames, "corners");
-      acceptEngineMarket("goals", goalEngineGames, "goals");
-      acceptEngineMarket("btts", bttsEngineGames, "btts");
-      acceptEngineMarket("handicap", handicapEngineGames, "handicap");
-      acceptEngineMarket("cards", cardEngineGames, "cards");
+        const raw = extract(fastPayload);
 
-      // Mercados genéricos continuam usando a base comum.
-      state.pregame = buildMarket(raw, "pregame");
-      state.combined = buildMarket(raw, "combined");
-      state.props = buildMarket(raw, "props");
+        if (!raw.length) {
+          throw new Error("A rota rápida não devolveu jogos.");
+        }
 
-      window.__cornerProAllGames = raw;
-      window.__cpMobileDirectGames = activeList();
-      renderActive();
-      restartAutoSlide();
+        state.all = raw;
+        state.engineDate = date;
+
+        // Base instantânea para a Home.
+        state.pregame = buildMarket(raw, "pregame");
+        state.combined = buildMarket(raw, "combined");
+        state.props = buildMarket(raw, "props");
+
+        // Escanteios é manual.
+        state.corners = buildMarket(raw, "corners").map((game, index) => {
+          const source = raw[index] || game.raw || game;
+          const p = numberFrom(
+            source?.over95_prob_adj,
+            source?.over95_prob,
+            source?.ai_score,
+            64
+          );
+
+          return {
+            ...game,
+            line: MARKET.corners.lines[0],
+            confidence: Math.max(
+              60,
+              Math.min(82, Math.round(Number.isFinite(p) ? p : 64))
+            )
+          };
+        });
+
+        // Fallback visual imediato enquanto os motores especializados chegam.
+        state.goals = buildMarket(raw, "goals");
+        state.cards = buildMarket(raw, "cards");
+        state.btts = buildMarket(raw, "btts");
+        state.handicap = buildMarket(raw, "handicap");
+
+        window.__cornerProAllGames = raw;
+        window.__cpMobileDirectGames = activeList();
+
+        setLoading(false);
+        renderActive({ animate: false });
+        restartAutoSlide();
+
+        // Tudo pesado depois, sem bloquear a Home.
+        loadSecondaryDataInBackground(date, stamp);
+      } catch (error) {
+        setLoading(false);
+        throw error;
+      }
     }
   
   
@@ -4270,7 +4394,7 @@
       try {
         await loadData();
       } catch (error) {
-        console.error("[Mobile V9]", error);
+        console.error("[Mobile V32]", error);
         showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
       }
     }
