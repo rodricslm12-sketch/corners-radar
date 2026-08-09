@@ -944,14 +944,31 @@
 
       const games = $("#cprFeaturedGames");
       if (games) {
-        games.innerHTML = (list || []).slice(0, 4).map((item, index) => `
-          <button type="button" class="cprFeaturedCard" data-v9-game="${index}">
-            <time>${escapeHtml(item.time || "--:--")}</time>
-            <div><b>${escapeHtml(item.home)}</b><i>×</i><b>${escapeHtml(item.away)}</b></div>
-            <small>${escapeHtml(item.line || "")}</small>
-            <span>›</span>
-          </button>
-        `).join("") || '<div class="cprEmpty">Nenhum jogo disponível.</div>';
+        const featuredSource =
+          (Array.isArray(list) && list.length)
+            ? list
+            : cprExistingGamesFromApp();
+
+        if (featuredSource.length) {
+          games.innerHTML = featuredSource.slice(0, 6).map((item, index) => `
+            <button type="button" class="cprFeaturedCard" data-v9-game="${index}">
+              <time>${escapeHtml(item.time || gameTime(item.raw || item) || "--:--")}</time>
+              <div>
+                <b>${escapeHtml(item.home || team(item.raw || item, "home"))}</b>
+                <i>×</i>
+                <b>${escapeHtml(item.away || team(item.raw || item, "away"))}</b>
+              </div>
+              <small>${escapeHtml(
+                item.line &&
+                item.line !== "DADOS EM ATUALIZAÇÃO" &&
+                item.line !== "SEM APOSTA"
+                  ? item.line
+                  : ""
+              )}</small>
+              <span>›</span>
+            </button>
+          `).join("");
+        }
       }
     }
 
@@ -1376,11 +1393,14 @@
       } catch (error) {
         setLoading(false);
 
-        // Não deixa "Carregando jogos..." eternamente.
-        const games = $("#cprFeaturedGames");
-        if (games) {
-          games.innerHTML =
-            '<div class="cprEmpty">Não foi possível carregar os jogos. Tentando novamente...</div>';
+        // V40 — se os jogos já apareceram na Home, uma falha tardia
+        // de atualização não pode apagar "Jogos em destaque".
+        if (!cprHomeVisualReady) {
+          const games = $("#cprFeaturedGames");
+          if (games) {
+            games.innerHTML =
+              '<div class="cprEmpty">Não foi possível carregar os jogos. Tentando novamente...</div>';
+          }
         }
 
         // Retry curto, sem recarregar a página.
