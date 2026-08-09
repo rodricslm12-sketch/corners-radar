@@ -16839,3 +16839,632 @@ button.railFullBtn {
   .cpHomeBest{height:520px!important;min-height:520px!important;max-height:520px!important}
   .cpRefMatchStage{top:105px!important;height:190px!important}.cpRefShieldWrap{width:92px!important;height:92px!important}.cpRefShield{width:84px!important;height:84px!important}.cpRefShieldFallback{width:78px!important;height:78px!important;font-size:25px!important}.cpRefTeam>strong{font-size:18px!important;max-width:126px!important}.cpRefStatsPanel{height:137px!important}.cpRefStatsCol b{font-size:20px!important}.cpRefGauge{width:70px!important;height:70px!important}.cpHomeMarkets>button{height:192px!important}.cpHomeMarkets>button em{margin-top:30px!important}
 }
+
+
+/* =========================================================
+   CORNER PRO V31 — HOME VISUAL ISOLADA
+   Nenhuma regra antiga do card principal entra nesta árvore.
+   ========================================================= */
+@media (max-width:980px){
+  #cpMobileHome > .cpHomeScroll{
+    display:none!important;
+  }
+
+  .cprHome{
+    display:block!important;
+    width:100%!important;
+    max-width:430px!important;
+    margin:0 auto!important;
+    padding:8px 10px 100px!important;
+    background:#000!important;
+    color:#fff!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+  }
+
+  .cprHero{
+    position:relative!important;
+    height:575px!important;
+    overflow:hidden!important;
+    border:1px solid #29373e!important;
+    border-radius:18px!important;
+    background:
+      linear-gradient(180deg,rgba(0,5,8,.24) 0%,rgba(0,5,8,.05) 45%,rgba(0,0,0,.62) 74%,rgba(0,0,0,.96) 100%),
+      url('/images/fundo.jpeg') center 42%/cover no-repeat!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.04),
+      0 15px 34px rgba(0,0,0,.45)!important;
+  }
+
+  .cprHeroTop{
+    position:absolute!important;
+    z-index:5!important;
+    left:14px!important;
+    right:14px!important;
+    top:14px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+  }
+
+  .cprHeroTop strong{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:#fff!important;
+    font-size:13px!important;
+    font-weight:900!important;
+  }
+
+  .cprHeroTop span{
+    flex:none!important;
+    min-width:88px!important;
+    height:38px!important;
+    padding:0 10px!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid #72bf00!important;
+    border-radius:10px!important;
+    background:rgba(5,18,8,.82)!important;
+    color:#9aff00!important;
+    font-size:12px!important;
+    font-weight:950!important;
+  }
+
+  .cprTime{
+    position:absolute!important;
+    z-index:5!important;
+    top:63px!important;
+    left:14px!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  .cprTime b,
+  .cprTime span{
+    height:39px!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid #43545c!important;
+    background:rgba(2,9,12,.82)!important;
+  }
+
+  .cprTime b{
+    min-width:82px!important;
+    padding:0 12px!important;
+    border-radius:9px 0 0 9px!important;
+    color:#9aff00!important;
+    font-size:16px!important;
+    font-weight:950!important;
+  }
+
+  .cprTime span{
+    padding:0 14px!important;
+    border-left:0!important;
+    border-radius:0 9px 9px 0!important;
+    color:#7ba6c4!important;
+    font-size:12px!important;
+    font-weight:850!important;
+  }
+
+  .cprMatch{
+    position:absolute!important;
+    z-index:4!important;
+    left:14px!important;
+    right:14px!important;
+    top:116px!important;
+    height:218px!important;
+    display:grid!important;
+    grid-template-columns:1fr 58px 1fr!important;
+    align-items:center!important;
+    gap:2px!important;
+  }
+
+  .cprTeam{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+  }
+
+  .cprBadgeBox{
+    position:relative!important;
+    width:118px!important;
+    height:118px!important;
+    display:grid!important;
+    place-items:center!important;
+  }
+
+  .cprBadgeBox img{
+    width:106px!important;
+    height:106px!important;
+    object-fit:contain!important;
+    filter:drop-shadow(0 7px 14px rgba(0,0,0,.75))!important;
+  }
+
+  .cprBadgeBox img[hidden]{display:none!important}
+
+  .cprBadgeBox > span{
+    width:92px!important;
+    height:92px!important;
+    display:grid!important;
+    place-items:center!important;
+    border:2px solid rgba(154,255,0,.72)!important;
+    border-radius:22px!important;
+    background:linear-gradient(145deg,rgba(20,31,35,.95),rgba(4,12,7,.96))!important;
+    color:#fff!important;
+    font-size:29px!important;
+    font-weight:950!important;
+    box-shadow:0 8px 25px rgba(0,0,0,.55)!important;
+  }
+
+  .cprBadgeBox > span[hidden]{display:none!important}
+
+  .cprFav{
+    position:absolute!important;
+    top:4px!important;
+    right:-1px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    color:#a5adb0!important;
+    font-size:26px!important;
+    line-height:1!important;
+  }
+
+  .cprTeam h2{
+    width:100%!important;
+    max-width:148px!important;
+    margin:3px 0 0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:#fff!important;
+    font-size:20px!important;
+    line-height:1.08!important;
+    font-weight:900!important;
+    text-shadow:0 3px 10px #000!important;
+  }
+
+  .cprVs{
+    margin-top:-26px!important;
+    color:#fff!important;
+    font-size:31px!important;
+    font-weight:950!important;
+    text-shadow:0 3px 11px #000!important;
+  }
+
+  .cprForm{
+    margin-top:10px!important;
+    display:flex!important;
+    gap:6px!important;
+  }
+
+  .cprForm i{
+    width:22px!important;
+    height:22px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:50%!important;
+    background:#58a924!important;
+    color:#fff!important;
+    font-size:9px!important;
+    font-style:normal!important;
+    font-weight:950!important;
+  }
+  .cprForm i:nth-child(3){background:#eaa300!important;color:#111!important}
+  .cprForm i:nth-child(4){background:#e03030!important}
+
+  .cprStats{
+    position:absolute!important;
+    z-index:5!important;
+    left:14px!important;
+    right:14px!important;
+    bottom:70px!important;
+    height:150px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr 1fr!important;
+    border:1px solid #33434b!important;
+    border-radius:13px!important;
+    overflow:hidden!important;
+    background:linear-gradient(180deg,rgba(8,19,24,.96),rgba(4,10,13,.97))!important;
+    box-shadow:0 10px 24px rgba(0,0,0,.35)!important;
+  }
+
+  .cprStats article{
+    position:relative!important;
+    padding:13px 10px!important;
+    text-align:center!important;
+  }
+
+  .cprStats article + article{
+    border-left:1px solid #35454d!important;
+  }
+
+  .cprStats small{
+    display:block!important;
+    color:#b5bdc0!important;
+    font-size:9px!important;
+    line-height:1.1!important;
+    font-weight:750!important;
+    white-space:nowrap!important;
+  }
+
+  .cprStats article > b{
+    display:block!important;
+    margin-top:7px!important;
+    color:#9aff00!important;
+    font-size:23px!important;
+    line-height:1!important;
+    font-weight:950!important;
+  }
+
+  .cprStats hr{
+    margin:10px 0 9px!important;
+    border:0!important;
+    border-top:1px solid #27353b!important;
+  }
+
+  .cprMiniBars{
+    height:13px!important;
+    margin:-13px 0 0 68%!important;
+    display:flex!important;
+    align-items:flex-end!important;
+    gap:2px!important;
+  }
+
+  .cprMiniBars i{
+    width:3px!important;
+    border-radius:2px!important;
+    background:#9aff00!important;
+  }
+  .cprMiniBars i:nth-child(1){height:4px!important}
+  .cprMiniBars i:nth-child(2){height:7px!important}
+  .cprMiniBars i:nth-child(3){height:10px!important}
+  .cprMiniBars i:nth-child(4){height:13px!important}
+
+  .cprConfidence{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+  }
+
+  .cprGauge{
+    --p:0;
+    position:relative!important;
+    width:80px!important;
+    height:80px!important;
+    margin:7px auto 3px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:50%!important;
+    background:conic-gradient(#9aff00 calc(var(--p)*1%),#2d3a20 0)!important;
+  }
+
+  .cprGauge::after{
+    content:""!important;
+    position:absolute!important;
+    inset:10px!important;
+    border-radius:50%!important;
+    background:#091014!important;
+  }
+
+  .cprGauge b{
+    position:relative!important;
+    z-index:2!important;
+    color:#fff!important;
+    font-size:23px!important;
+    font-weight:950!important;
+  }
+
+  .cprConfidence > span{
+    min-width:72px!important;
+    height:20px!important;
+    padding:0 12px!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid rgba(154,255,0,.48)!important;
+    border-radius:999px!important;
+    color:#9aff00!important;
+    font-size:8px!important;
+    font-weight:950!important;
+  }
+
+  .cprOpen{
+    position:absolute!important;
+    z-index:6!important;
+    left:14px!important;
+    right:14px!important;
+    bottom:12px!important;
+    height:49px!important;
+    display:grid!important;
+    grid-template-columns:30px 1fr 25px!important;
+    align-items:center!important;
+    padding:0 13px!important;
+    border:0!important;
+    border-radius:10px!important;
+    background:linear-gradient(180deg,#a7ff00,#78dc00)!important;
+    color:#071000!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 7px 20px rgba(0,0,0,.35)!important;
+  }
+
+  .cprOpen span{font-size:22px!important}
+  .cprOpen b{font-size:13px!important;font-weight:950!important}
+  .cprOpen i{font-size:27px!important;font-style:normal!important;text-align:right!important}
+
+  .cprLoading{
+    position:absolute!important;
+    z-index:30!important;
+    inset:0!important;
+    display:grid!important;
+    place-items:center!important;
+    background:rgba(0,0,0,.93)!important;
+  }
+
+  .cprLoading[hidden]{display:none!important}
+
+  .cprLoading > div{
+    display:flex!important;
+    gap:8px!important;
+  }
+
+  .cprLoading i{
+    width:8px!important;
+    height:8px!important;
+    border-radius:50%!important;
+    background:#72ff21!important;
+    animation:cprLoader .8s ease-in-out infinite!important;
+  }
+  .cprLoading i:nth-child(2){animation-delay:.08s!important}
+  .cprLoading i:nth-child(3){animation-delay:.16s!important}
+  .cprLoading i:nth-child(4){animation-delay:.24s!important}
+  .cprLoading i:nth-child(5){animation-delay:.32s!important}
+
+  @keyframes cprLoader{
+    0%,100%{opacity:.18;transform:translateX(7px) scale(.72)}
+    50%{opacity:1;transform:translateX(-5px) scale(1.14)}
+  }
+
+  .cprSection{
+    margin-top:14px!important;
+    padding:14px 11px 13px!important;
+    border:1px solid #17262d!important;
+    border-radius:17px!important;
+    background:linear-gradient(180deg,#03080a,#020506)!important;
+  }
+
+  .cprSection header{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    margin-bottom:13px!important;
+  }
+
+  .cprSection header h2{
+    margin:0!important;
+    color:#fff!important;
+    font-size:15px!important;
+    font-weight:900!important;
+  }
+
+  .cprSection header h2::first-letter{color:#9aff00!important}
+
+  .cprSection header button{
+    margin-left:auto!important;
+    padding:0!important;
+    border:0!important;
+    background:none!important;
+    color:#9aff00!important;
+    font-size:10px!important;
+    font-weight:900!important;
+  }
+
+  .cprMarkets{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+
+  .cprMarkets > button{
+    position:relative!important;
+    min-width:0!important;
+    height:218px!important;
+    padding:14px 5px 10px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    border:1px solid #2b3940!important;
+    border-radius:12px!important;
+    background:linear-gradient(180deg,#081117,#030708)!important;
+    color:#fff!important;
+  }
+
+  .cprMarkets > button.is-hot{
+    border-color:rgba(154,255,0,.82)!important;
+    box-shadow:0 0 15px rgba(154,255,0,.13)!important;
+  }
+
+  .cprMarkets em{
+    position:absolute!important;
+    left:7px!important;
+    top:7px!important;
+    padding:3px 6px!important;
+    border-radius:5px!important;
+    background:#9aff00!important;
+    color:#152200!important;
+    font-size:7px!important;
+    font-style:normal!important;
+    font-weight:950!important;
+  }
+
+  .cprMarkets > button > span{
+    height:55px!important;
+    display:grid!important;
+    place-items:center!important;
+    color:#9aff00!important;
+    font-size:39px!important;
+  }
+
+  .cprMarkets > button:nth-child(3) > span{color:#ffc900!important}
+
+  .cprMarkets > button > b{
+    margin-top:4px!important;
+    font-size:12px!important;
+    font-weight:900!important;
+  }
+
+  .cprMarkets > button > small{
+    margin-top:8px!important;
+    color:#9aff00!important;
+    font-size:8.5px!important;
+    font-weight:850!important;
+    white-space:nowrap!important;
+  }
+
+  .cprMarkets p{
+    margin:8px 0 0!important;
+    color:#aeb6b8!important;
+    font-size:8px!important;
+  }
+
+  .cprMarkets strong{
+    width:100%!important;
+    height:30px!important;
+    margin-top:auto!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid rgba(154,255,0,.30)!important;
+    border-radius:7px!important;
+    color:#9aff00!important;
+    font-size:8px!important;
+    font-weight:900!important;
+  }
+
+  .cprSpark{
+    width:84%!important;
+    height:23px!important;
+    margin-top:8px!important;
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:space-between!important;
+    border-bottom:1px solid rgba(154,255,0,.16)!important;
+  }
+
+  .cprSpark i{
+    width:4px!important;
+    border-radius:4px!important;
+    background:#9aff00!important;
+  }
+  .cprSpark i:nth-child(1){height:6px!important}
+  .cprSpark i:nth-child(2){height:10px!important}
+  .cprSpark i:nth-child(3){height:5px!important}
+  .cprSpark i:nth-child(4){height:13px!important}
+  .cprSpark i:nth-child(5){height:16px!important}
+  .cprSpark.is-yellow i{background:#ffc000!important}
+
+  .cprDots{
+    margin-top:12px!important;
+    display:flex!important;
+    justify-content:center!important;
+    gap:8px!important;
+  }
+
+  .cprDots i{
+    width:8px!important;
+    height:8px!important;
+    border-radius:50%!important;
+    background:#626a6d!important;
+  }
+  .cprDots i.active{background:#9aff00!important}
+
+  .cprFeatured{
+    min-height:128px!important;
+  }
+
+  .cprFeaturedGames{
+    display:flex!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    scrollbar-width:none!important;
+  }
+
+  .cprFeaturedGames::-webkit-scrollbar{display:none!important}
+
+  .cprFeaturedCard{
+    position:relative!important;
+    flex:0 0 128px!important;
+    height:142px!important;
+    padding:11px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    border:1px solid #2b3940!important;
+    border-radius:11px!important;
+    background:linear-gradient(180deg,#081117,#030708)!important;
+    color:#fff!important;
+    text-align:left!important;
+  }
+
+  .cprFeaturedCard time{
+    color:#9aff00!important;
+    font-size:11px!important;
+    font-weight:950!important;
+  }
+
+  .cprFeaturedCard div{
+    flex:1!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    gap:2px!important;
+  }
+
+  .cprFeaturedCard div b{
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:11px!important;
+  }
+
+  .cprFeaturedCard div i{
+    color:#8e999d!important;
+    font-style:normal!important;
+  }
+
+  .cprFeaturedCard small{
+    color:#9aff00!important;
+    font-size:10px!important;
+    font-weight:900!important;
+  }
+
+  .cprFeaturedCard > span{
+    position:absolute!important;
+    right:8px!important;
+    bottom:6px!important;
+    color:#9aff00!important;
+    font-size:24px!important;
+  }
+
+  .cprEmpty{
+    width:100%!important;
+    padding:20px!important;
+    color:#909a9e!important;
+    text-align:center!important;
+    font-size:12px!important;
+  }
+}
+
+@media (max-width:390px){
+  .cprHero{height:548px!important}
+  .cprMatch{top:112px!important;height:202px!important}
+  .cprBadgeBox{width:100px!important;height:100px!important}
+  .cprBadgeBox img{width:90px!important;height:90px!important}
+  .cprBadgeBox > span{width:82px!important;height:82px!important;font-size:25px!important}
+  .cprTeam h2{max-width:126px!important;font-size:18px!important}
+  .cprStats{height:143px!important}
+  .cprStats article > b{font-size:20px!important}
+  .cprGauge{width:72px!important;height:72px!important}
+  .cprMarkets > button{height:205px!important}
+}

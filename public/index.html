@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-reference-v30-20260809" />
-  <script src="script.js?v=cornerpro-reference-v30-20260809" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-v31-isolated-20260809" />
+  <script src="script.js?v=cornerpro-v31-isolated-20260809" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -397,6 +397,136 @@
       <section class="cpHomeSection cpHomeLast">
         <div class="cpHomeSectionHead"><h2>Próximos jogos</h2><button type="button">VER TODOS ›</button></div>
         <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
+      </section>
+
+    </main>
+
+    <!-- HOME VISUAL V31 — isolada dos estilos antigos -->
+    <main class="cprHome" id="cpReferenceHome" aria-label="Corner Pro Dashboard">
+      <section class="cprHero" id="cprHero">
+        <div class="cprHeroTop">
+          <strong id="cprTitle">🔥 MELHOR APOSTA • GOLS</strong>
+          <span id="cprMarket">ANALISANDO</span>
+        </div>
+
+        <div class="cprTime">
+          <b id="cprTime">--:--</b>
+          <span id="cprDay">HOJE</span>
+        </div>
+
+        <div class="cprMatch">
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprHomeBadge" alt="Escudo mandante" hidden>
+              <span id="cprHomeBadgeFallback">CA</span>
+              <button type="button" class="cprFav" data-cpr-fav="home" aria-label="Favoritar mandante">☆</button>
+            </div>
+            <h2 id="cprHomeName">Aguardando</h2>
+            <div class="cprForm" id="cprHomeForm">
+              <i>V</i><i>V</i><i>E</i><i>D</i><i>V</i>
+            </div>
+          </article>
+
+          <div class="cprVs">VS</div>
+
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprAwayBadge" alt="Escudo visitante" hidden>
+              <span id="cprAwayBadgeFallback">FO</span>
+              <button type="button" class="cprFav" data-cpr-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <h2 id="cprAwayName">partidas</h2>
+            <div class="cprForm" id="cprAwayForm">
+              <i>V</i><i>E</i><i>V</i><i>D</i><i>V</i>
+            </div>
+          </article>
+        </div>
+
+        <div class="cprStats">
+          <article>
+            <small id="cprProjectionLabel">PROJEÇÃO DE GOLS</small>
+            <b id="cprProjection">—</b>
+            <div class="cprMiniBars"><i></i><i></i><i></i><i></i></div>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b><span class="cprFlag">⚑</span> <span id="cprCornersAvg">—</span></b>
+          </article>
+
+          <article class="cprConfidence">
+            <small>CONFIANÇA</small>
+            <div class="cprGauge" id="cprGauge" style="--p:0">
+              <b id="cprConfidence">0%</b>
+            </div>
+            <span id="cprConfidenceLabel">ANALISANDO</span>
+          </article>
+
+          <article>
+            <small>TENDÊNCIA</small>
+            <b id="cprTrend">↗ —</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b><span>⚽</span> <span id="cprGoalsAvg">—</span></b>
+          </article>
+        </div>
+
+        <button type="button" class="cprOpen" id="cprOpen">
+          <span>▥</span>
+          <b>VER ANÁLISE COMPLETA</b>
+          <i>›</i>
+        </button>
+
+        <div class="cprLoading" id="cprLoading">
+          <div><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <section class="cprSection cprMarketsSection">
+        <header>
+          <h2>◎ MERCADOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
+
+        <div class="cprMarkets">
+          <button type="button" class="is-hot" data-home-market="corners">
+            <em>HOT</em><span>⚑</span><b>ESCANTEIOS</b>
+            <small>9.5 • 10.5 • 11.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>18 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="goals">
+            <span>⚽</span><b>GOLS</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>24 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="cards">
+            <span>▯</span><b>CARTÕES</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark is-yellow"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>31 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="handicap">
+            <span>⌁</span><b>HANDICAP</b>
+            <small>-1.0 • +1.0 • 0.0</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>16 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+        </div>
+
+        <div class="cprDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
+      </section>
+
+      <section class="cprSection cprFeatured">
+        <header>
+          <h2>☆ JOGOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
+        <div class="cprFeaturedGames" id="cprFeaturedGames">
+          <div class="cprEmpty">Carregando jogos...</div>
+        </div>
       </section>
     </main>
 </section>

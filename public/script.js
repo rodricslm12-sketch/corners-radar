@@ -511,6 +511,9 @@
       }
       const loading = $("#cpHomeInitialLoading");
       if (loading) loading.hidden = !active;
+
+      const refLoading = $("#cprLoading");
+      if (refLoading) refLoading.hidden = !active;
     }
   
     function showEmpty(title, subtitle) {
@@ -665,6 +668,121 @@
       }
     }
 
+
+    function cprText(selector, value) {
+      const el = $(selector);
+      if (el) el.textContent = value;
+    }
+
+    function cprBadge(game, side) {
+      const img = $(side === "home" ? "#cprHomeBadge" : "#cprAwayBadge");
+      const fallback = $(side === "home" ? "#cprHomeBadgeFallback" : "#cprAwayBadgeFallback");
+      const name = side === "home" ? game.home : game.away;
+      const url = typeof cpRefBadgeUrl === "function" ? cpRefBadgeUrl(game, side) : "";
+
+      if (fallback) fallback.textContent = cpRefInitials(name);
+
+      if (!img) return;
+      if (!url) {
+        img.hidden = true;
+        if (fallback) fallback.hidden = false;
+        return;
+      }
+
+      img.onload = () => {
+        img.hidden = false;
+        if (fallback) fallback.hidden = true;
+      };
+      img.onerror = () => {
+        img.hidden = true;
+        if (fallback) fallback.hidden = false;
+      };
+      img.src = url;
+    }
+
+    function cprMetric(value, digits = 1) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toFixed(digits).replace(/\.0$/, "") : "—";
+    }
+
+    function cprSyncHero(game, list) {
+      if (!game) return;
+
+      const meta = MARKET[state.activeMarket] || MARKET.goals;
+      cprText("#cprTitle", `🔥 MELHOR APOSTA • ${meta.label}`);
+      cprText("#cprMarket", game.line || "ANÁLISE");
+      cprText("#cprTime", game.time || "--:--");
+      cprText("#cprHomeName", game.home || "Mandante");
+      cprText("#cprAwayName", game.away || "Visitante");
+
+      const today = todayManaus();
+      const selected = String(state.date || "");
+      cprText(
+        "#cprDay",
+        selected === today
+          ? "HOJE"
+          : selected.split("-").reverse().slice(0, 2).join("/")
+      );
+
+      cprBadge(game, "home");
+      cprBadge(game, "away");
+
+      const projection = cpRefProjection(game);
+      const cornerAvg = cpRefCornersAverage(game);
+      const goalsAvg = cpRefGoalsAverage(game);
+      const confidence = Math.max(0, Math.min(95, Math.round(Number(game.confidence || 0))));
+
+      const projectionLabel =
+        state.activeMarket === "goals"
+          ? "PROJEÇÃO DE GOLS"
+          : state.activeMarket === "cards"
+            ? "PROJEÇÃO DE CARTÕES"
+            : "PROJEÇÃO DE CANTOS";
+
+      cprText("#cprProjectionLabel", projectionLabel);
+      cprText("#cprProjection", cprMetric(projection, 2));
+      cprText("#cprCornersAvg", cprMetric(cornerAvg, 1));
+      cprText("#cprGoalsAvg", cprMetric(goalsAvg, 1));
+      cprText("#cprConfidence", `${confidence}%`);
+
+      const trend =
+        confidence >= 72 ? "ALTA" :
+        confidence >= 62 ? "MÉDIA" :
+        "CAUTELA";
+
+      cprText("#cprTrend", `↗ ${trend}`);
+      cprText("#cprConfidenceLabel", trend);
+
+      const gauge = $("#cprGauge");
+      if (gauge) gauge.style.setProperty("--p", confidence);
+
+      const loader = $("#cprLoading");
+      if (loader) loader.hidden = true;
+
+      const games = $("#cprFeaturedGames");
+      if (games) {
+        games.innerHTML = (list || []).slice(0, 4).map((item, index) => `
+          <button type="button" class="cprFeaturedCard" data-v9-game="${index}">
+            <time>${escapeHtml(item.time || "--:--")}</time>
+            <div><b>${escapeHtml(item.home)}</b><i>×</i><b>${escapeHtml(item.away)}</b></div>
+            <small>${escapeHtml(item.line || "")}</small>
+            <span>›</span>
+          </button>
+        `).join("") || '<div class="cprEmpty">Nenhum jogo disponível.</div>';
+      }
+    }
+
+    function cprShowEmpty() {
+      const loader = $("#cprLoading");
+      if (loader) loader.hidden = true;
+      cprText("#cprMarket", "SEM JOGOS");
+      cprText("#cprHomeName", "Nenhuma");
+      cprText("#cprAwayName", "partida");
+      cprText("#cprConfidence", "0%");
+      const games = $("#cprFeaturedGames");
+      if (games) games.innerHTML = '<div class="cprEmpty">Nenhuma partida encontrada para esta data.</div>';
+    }
+
     function renderActive({ animate = false, direction = 1 } = {}) {
       const list = activeList();
       const meta = MARKET[state.activeMarket] || MARKET.corners;
@@ -673,6 +791,7 @@
   
       if (!list.length) {
         showEmpty("SEM JOGOS", "Nenhuma partida encontrada para esta data.");
+        cprShowEmpty();
         return;
       }
   
@@ -700,6 +819,9 @@
         cpPaintBestTeamColors(card, best);
         cpRefUpdateHero(best);
       }
+
+      // V31 — alimenta a Home visual isolada.
+      cprSyncHero(best, list);
   
       card.__cpCurrentRaw = best.raw || best;
       card.__cpCurrentNormalized = best;
@@ -4130,6 +4252,16 @@
   
     async function start() {
       if (!mobileMedia.matches || !$("#cpMobileHome")) return;
+
+      const cprOpen = $("#cprOpen");
+      if (cprOpen && !cprOpen.dataset.bound) {
+        cprOpen.dataset.bound = "1";
+        cprOpen.addEventListener("click", event => {
+          event.preventDefault();
+          const best = activeList()[0];
+          if (best) openMatch(best);
+        });
+      }
       state.date = $("#date")?.value || todayManaus();
       const hiddenDate = $("#date");
       if (hiddenDate) hiddenDate.value = state.date;
