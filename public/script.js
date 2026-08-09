@@ -570,20 +570,32 @@
   
     window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
   
+    // V38 — depois que o primeiro jogo apareceu, o loader visual da Home
+    // nunca mais pode voltar por causa de refresh/retry em background.
+    let cprHomeVisualReady = false;
+
     function setLoading(active) {
       state.loading = active;
+
       const card = $("#cpHomeBest");
       if (card) {
-        card.classList.toggle("is-loading-initial", active);
-        card.setAttribute("aria-busy", active ? "true" : "false");
+        card.classList.toggle("is-loading-initial", active && !cprHomeVisualReady);
+        card.setAttribute(
+          "aria-busy",
+          active && !cprHomeVisualReady ? "true" : "false"
+        );
       }
+
       const loading = $("#cpHomeInitialLoading");
-      if (loading) loading.hidden = !active;
+      if (loading) loading.hidden = !(active && !cprHomeVisualReady);
 
       const refLoading = $("#cprLoading");
-      if (refLoading) refLoading.hidden = !active;
+      if (refLoading) {
+        // O loader da Home é one-shot: só existe antes do primeiro jogo.
+        refLoading.hidden = !(active && !cprHomeVisualReady);
+      }
     }
-  
+
     function showEmpty(title, subtitle) {
       setLoading(false);
       const games = $("#cpHomeGames");
@@ -848,6 +860,12 @@
 
     function cprSyncHero(game, list) {
       if (!game) return;
+
+      // V38 — a partir do primeiro jogo real, bloqueia qualquer retorno
+      // do overlay de carregamento durante atualizações em background.
+      cprHomeVisualReady = true;
+      const permanentLoader = $("#cprLoading");
+      if (permanentLoader) permanentLoader.hidden = true;
 
       const meta = MARKET[state.activeMarket] || MARKET.goals;
       cprText("#cprTitle", `🔥 MELHOR APOSTA • ${meta.label}`);
@@ -1366,11 +1384,13 @@
         }
 
         // Retry curto, sem recarregar a página.
-        setTimeout(() => {
-          if (!state.loading && state.date === date) {
-            loadData().catch(() => {});
-          }
-        }, 2200);
+        if (!cprHomeVisualReady) {
+          setTimeout(() => {
+            if (!state.loading && state.date === date && !cprHomeVisualReady) {
+              loadData().catch(() => {});
+            }
+          }, 2200);
+        }
 
         throw error;
       }
@@ -4686,7 +4706,7 @@
       const cprBridgeTimer = setInterval(() => {
         cprBridgeAttempts += 1;
 
-        if (cprBridgeExistingGames() || cprBridgeAttempts >= 80) {
+        if (cprHomeVisualReady || cprBridgeExistingGames() || cprBridgeAttempts >= 40) {
           clearInterval(cprBridgeTimer);
         }
       }, 250);
