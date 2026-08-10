@@ -8662,13 +8662,21 @@ function mobileFastGameFromEvent(e) {
 
   const league = leagueMetaFromEvent(e);
   const hora = cleanText(e?.match_time ?? e?.time ?? e?.event_time ?? "—") || "—";
-  // V43 — FAST PATH serve apenas para listar partidas rapidamente.
-  // Não cria projeção, probabilidade, confiança ou estatística sintética.
   const bigMatch = isBigTeam(casa) || isBigTeam(fora);
-  const proj_cantos = null;
-  const over95_prob = null;
-  const lateralizacao = null;
-  const perfil_laterais = null;
+  const proj_cantos = projCornersHeuristic(league?.baseCorners ?? 9.6, bigMatch, null, null);
+  const over95_prob = probFromProjection(proj_cantos);
+  const lateralizacao = lateralizacaoIndex(
+    casa,
+    fora,
+    league?.baseCorners ?? 9.6,
+    proj_cantos
+  );
+  const perfil_laterais = perfilLaterais(lateralizacao);
+  const adjusted = aplicarAntiRed({
+    over95_prob,
+    score: (league?.importance ?? 72) + Math.round((over95_prob - 50) * 0.6),
+    perfil: perfil_laterais
+  });
 
   return normalizeTeamsOnGame({
     mode: "semi",
@@ -8680,24 +8688,32 @@ function mobileFastGameFromEvent(e) {
     hora,
     pos_home: null,
     pos_away: null,
-    proj_cantos: null,
-    over95_prob: null,
-    over95_prob_adj: null,
-    score: null,
-    score_adj: null,
-    perfil_laterais: null,
-    lateralizacao_index: null,
-    nivel: "AGUARDANDO DADOS",
+    proj_cantos,
+    over95_prob,
+    over95_prob_adj: adjusted.over95_prob_adj,
+    score: adjusted.score_adj,
+    score_adj: adjusted.score_adj,
+    perfil_laterais,
+    lateralizacao_index: lateralizacao,
+    nivel: nivelFromProb(adjusted.over95_prob_adj),
     sources: {
       event: true,
       h2h: false,
       stats: false,
       odds: false,
-      mobile_fast: true,
-      synthetic_statistics: false
+      mobile_fast: true
     },
-    flags: ["mobile_fast_initial", "awaiting_real_statistics"],
-    comment: "Partida carregada. Aguardando dados estatísticos reais dos motores do servidor."
+    flags: ["mobile_fast_initial"],
+    comment: commentLiteFrom({
+      match_id,
+      casa,
+      fora,
+      proj_cantos,
+      over95_prob: adjusted.over95_prob_adj,
+      bigMatch,
+      perfil_laterais,
+      leagueBase: league?.baseCorners
+    })
   });
 }
 
