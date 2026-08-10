@@ -801,6 +801,92 @@
       return true;
     }
 
+    function cprEnsureMatchCenterFavoriteStyles() {
+      if (document.getElementById("cprMatchCenterFavoriteStyles")) return;
+
+      const style = document.createElement("style");
+      style.id = "cprMatchCenterFavoriteStyles";
+      style.textContent = `
+        .cpV8MatchHero .cpV8HomeTeam,
+        .cpV8MatchHero .cpV8AwayTeam{
+          display:flex;
+          align-items:center;
+          gap:8px;
+          min-width:0;
+        }
+
+        .cpV8MatchHero .cpV8HomeTeam{ justify-content:flex-start; }
+        .cpV8MatchHero .cpV8AwayTeam{ justify-content:flex-end; }
+
+        .cpV8MatchHero .cpMatchTeamName{
+          min-width:0;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+
+        .cpV8MatchHero .cpMatchTeamFav{
+          appearance:none;
+          -webkit-appearance:none;
+          width:34px;
+          height:34px;
+          min-width:34px;
+          border-radius:50%;
+          border:1px solid rgba(150,170,180,.45);
+          background:rgba(5,15,20,.58);
+          color:#b9c4c8;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          font-size:25px;
+          line-height:1;
+          padding:0;
+          margin:0;
+          cursor:pointer;
+          transition:transform .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease;
+        }
+
+        .cpV8MatchHero .cpMatchTeamFav:active{ transform:scale(.9); }
+
+        .cpV8MatchHero .cpMatchTeamFav.is-active{
+          color:#7dff22;
+          border-color:#7dff22;
+          box-shadow:0 0 14px rgba(125,255,34,.28);
+          background:rgba(20,55,15,.72);
+        }
+
+        @media (max-width:520px){
+          .cpV8MatchHero .cpV8HomeTeam,
+          .cpV8MatchHero .cpV8AwayTeam{ gap:5px; }
+
+          .cpV8MatchHero .cpMatchTeamFav{
+            width:30px;
+            height:30px;
+            min-width:30px;
+            font-size:22px;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    function cprMatchFavoriteButton(teamName, side) {
+      const name = String(teamName || "").trim();
+      const active = cprIsFavorite(name);
+      const safeName = escapeHtml(name);
+
+      return `
+        <button
+          type="button"
+          class="cpMatchTeamFav ${active ? "is-active" : ""}"
+          data-cpr-match-fav="${side}"
+          data-cpr-match-team="${safeName}"
+          aria-label="${active ? `Remover ${safeName} dos favoritos` : `Favoritar ${safeName}`}"
+          aria-pressed="${active ? "true" : "false"}"
+          title="${active ? `Remover ${safeName} dos favoritos` : `Favoritar ${safeName}`}"
+        >${active ? "★" : "☆"}</button>`;
+    }
+
     function cprPaintFavoriteButtons(game) {
       if (!game) return;
 
@@ -4035,6 +4121,7 @@
     }
   
     async function openMatch(game) {
+      cprEnsureMatchCenterFavoriteStyles();
       if (!game) return;
   
       state.selected = game;
@@ -4401,9 +4488,15 @@
           <section class="cpV8MatchHero">
             <time>${minuteLabel}</time>
             <div class="cpV8ScoreRow">
-              <strong class="cpV8HomeTeam">${escapeHtml(homeName)}</strong>
+              <strong class="cpV8HomeTeam">
+                <span class="cpMatchTeamName">${escapeHtml(homeName)}</span>
+                ${cprMatchFavoriteButton(homeName, "home")}
+              </strong>
               <i>${phase.live || phase.finished ? `${homeScore} × ${awayScore}` : "×"}</i>
-              <strong class="cpV8AwayTeam">${escapeHtml(awayName)}</strong>
+              <strong class="cpV8AwayTeam">
+                ${cprMatchFavoriteButton(awayName, "away")}
+                <span class="cpMatchTeamName">${escapeHtml(awayName)}</span>
+              </strong>
             </div>
             <span>${escapeHtml(selectedLine || game.line)}</span>
             <b>${escapeHtml(phase.statusText.toUpperCase())}</b>
@@ -4798,6 +4891,39 @@
           return;
         }
   
+        const matchFavorite = event.target.closest("[data-cpr-match-fav]");
+        if (matchFavorite) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const teamName = String(matchFavorite.dataset.cprMatchTeam || "").trim();
+          if (!teamName) return;
+
+          const active = cprToggleFavorite(teamName);
+
+          document.querySelectorAll("[data-cpr-match-fav]").forEach(button => {
+            if (
+              cprNormalizeTeamKey(button.dataset.cprMatchTeam) !==
+              cprNormalizeTeamKey(teamName)
+            ) return;
+
+            button.classList.toggle("is-active", active);
+            button.textContent = active ? "★" : "☆";
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+            button.setAttribute(
+              "aria-label",
+              active
+                ? `Remover ${teamName} dos favoritos`
+                : `Favoritar ${teamName}`
+            );
+            button.title = active
+              ? `Remover ${teamName} dos favoritos`
+              : `Favoritar ${teamName}`;
+          });
+
+          return;
+        }
+
         const cprFavorite = event.target.closest("[data-cpr-fav]");
         if (cprFavorite) {
           event.preventDefault();
