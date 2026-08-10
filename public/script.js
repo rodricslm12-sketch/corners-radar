@@ -2178,27 +2178,37 @@
           "SEM APOSTA"
         ]);
 
-        return {
-          skip:
-            Boolean(serverDecision.skip) ||
-            !validServerLines.has(serverLine),
-          side,
-          line:
-            validServerLines.has(serverLine)
-              ? serverLine
-              : "SEM APOSTA",
-          confidence: Number(serverDecision.confidence || 0),
-          score: Number(serverDecision.score || 0),
-          teamName: clean(
-            serverDecision.team,
-            side === "home" ? game.home : game.away
-          ),
-          reason: clean(
-            serverDecision.reason,
-            "Decisão calculada pelo servidor."
-          ),
-          source: "server"
-        };
+        const serverStillUpdating =
+          Boolean(serverDecision.updating) ||
+          serverLine === "DADOS EM ATUALIZAÇÃO" ||
+          serverLine === "ANALISANDO PARTIDA";
+
+        // IMPORTANTE: "DADOS EM ATUALIZAÇÃO" não é uma decisão de SEM APOSTA.
+        // Nessa situação deixamos o fallback do próprio Handicap, logo abaixo,
+        // analisar odds/tabela/médias que já existirem no jogo.
+        if (!serverStillUpdating) {
+          return {
+            skip:
+              Boolean(serverDecision.skip) ||
+              !validServerLines.has(serverLine),
+            side,
+            line:
+              validServerLines.has(serverLine)
+                ? serverLine
+                : "SEM APOSTA",
+            confidence: Number(serverDecision.confidence || 0),
+            score: Number(serverDecision.score || 0),
+            teamName: clean(
+              serverDecision.team,
+              side === "home" ? game.home : game.away
+            ),
+            reason: clean(
+              serverDecision.reason,
+              "Decisão calculada pelo servidor."
+            ),
+            source: "server"
+          };
+        }
       }
       const homeOdds = handicapRawNumber(raw, [
         "home_od", "odds.home", "home_odd", "odd_home",

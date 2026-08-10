@@ -8154,7 +8154,13 @@ function futureMarketDecisionGate({
     (
       market === "handicap"
         ? (oddsReady || handicapHistoricalReady)
-        : profileSignals >= 1
+        : market === "btts"
+          // BTTS já possui fallback próprio por projeção de gols/odds.
+          // Se o motor conseguiu publicar AMBAS SIM/NÃO, não bloqueia
+          // a decisão apenas porque o perfil futuro ainda não atingiu
+          // o selo de pronto. Isso evita "AGUARDANDO DADOS" eterno.
+          ? true
+          : profileSignals >= 1
     );
 
   if (dataReady) {
