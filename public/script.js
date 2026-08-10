@@ -2212,12 +2212,14 @@
       }
       const homeOdds = handicapRawNumber(raw, [
         "home_od", "odds.home", "home_odd", "odd_home",
-        "match_hometeam_odd", "odds.1"
+        "match_hometeam_odd", "odds.1", "odd1",
+        "handicap_ai.odds.home"
       ]);
   
       const awayOdds = handicapRawNumber(raw, [
         "away_od", "odds.away", "away_odd", "odd_away",
-        "match_awayteam_odd", "odds.2"
+        "match_awayteam_odd", "odds.2", "odd2",
+        "handicap_ai.odds.away"
       ]);
   
       const homePos = handicapRawNumber(raw, [
@@ -2233,23 +2235,23 @@
       const homeGoals = handicapRawNumber(raw, [
         "home_goals_avg", "home.avg_goals",
         "stats.home.goals_for_avg", "home_scored_avg",
-        "homeGoalsAvg"
+        "homeGoalsAvg", "engine_profiles.home.goalsForAvg"
       ]);
   
       const awayGoals = handicapRawNumber(raw, [
         "away_goals_avg", "away.avg_goals",
         "stats.away.goals_for_avg", "away_scored_avg",
-        "awayGoalsAvg"
+        "awayGoalsAvg", "engine_profiles.away.goalsForAvg"
       ]);
   
       const homeConcedes = handicapRawNumber(raw, [
         "home_concedes_avg", "stats.home.goals_against_avg",
-        "homeConcedesAvg"
+        "homeConcedesAvg", "engine_profiles.home.goalsAgainstAvg"
       ]);
   
       const awayConcedes = handicapRawNumber(raw, [
         "away_concedes_avg", "stats.away.goals_against_avg",
-        "awayConcedesAvg"
+        "awayConcedesAvg", "engine_profiles.away.goalsAgainstAvg"
       ]);
   
       const hasOdds = Number.isFinite(homeOdds) && Number.isFinite(awayOdds);
@@ -2263,14 +2265,17 @@
         (hasGoals ? 2 : 0);
   
       if (dataQuality < 3) {
+        // Não converte um servidor ainda atualizando em "SEM APOSTA" falso.
+        // Sem dados mínimos, mantém o estado de atualização para o próximo poll.
         return {
           skip: true,
+          updating: true,
           side: "home",
-          line: "SEM APOSTA",
+          line: "DADOS EM ATUALIZAÇÃO",
           confidence: 0,
           score: -999,
           teamName: "",
-          reason: "Dados insuficientes para uma recomendação confiável."
+          reason: "Aguardando a base estatística do Handicap Asiático."
         };
       }
   
@@ -2534,8 +2539,8 @@
   
             <div class="cpHandicapPick">
               ${recommendationBadge}
-              <strong>${recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
-              <p>${escapeHtml(rule.headline)}</p>
+              <strong>${recommendation.updating ? "AGUARDANDO DADOS" : recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
+              <p>${recommendation.updating ? "A IA está concluindo a leitura deste confronto." : escapeHtml(rule.headline)}</p>
               <small>${escapeHtml(recommendation.reason)}</small>
               <span class="cpSettlementSlot"></span>
             </div>

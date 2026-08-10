@@ -6734,17 +6734,36 @@ function bttsEngineDecision({ game, home, away, oddsInfo, goalsDecision }) {
   }
 
   if (line === "SEM APOSTA") {
-    return engineDecision({
-      market: "AMBAS MARCAM",
-      skip: true,
-      reason: "Os indicadores de SIM e NÃO ficaram muito próximos."
-    });
+    // V79 — BTTS nunca fica preso em "AGUARDANDO" quando já existe
+    // uma projeção real calculada. Em cenário equilibrado publica a leitura
+    // mais conservadora do próprio índice, com confiança mínima controlada.
+    const diff = Math.abs(yesIndex - noIndex);
+    if (Number.isFinite(fallbackProjection) || hasBtts) {
+      if (yesIndex > noIndex) {
+        line = "AMBAS SIM";
+      } else if (noIndex > yesIndex) {
+        line = "AMBAS NÃO";
+      } else {
+        line = Number(fallbackProjection || 0) >= 2.35
+          ? "AMBAS SIM"
+          : "AMBAS NÃO";
+      }
+
+      confidence = 62 + Math.min(4, diff * 0.25);
+      source = source === "fallback" ? "fallback_conservative" : source;
+    } else {
+      return engineDecision({
+        market: "AMBAS MARCAM",
+        skip: true,
+        reason: "Não há base estatística mínima para definir SIM ou NÃO."
+      });
+    }
   }
 
   confidence = engineClamp(
     confidence + Math.max(0, quality - 2) * 0.7,
     62,
-    source === "fallback" ? 72 : MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+    (source === "fallback" || source === "fallback_conservative") ? 72 : MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
   return engineDecision({
@@ -8111,7 +8130,10 @@ function futureMarketDecisionGate({
         Number.isFinite(Number(oddsInfo.away)) ||
         Number.isFinite(Number(oddsInfo.draw)) ||
         Number.isFinite(Number(oddsInfo.odd_home)) ||
-        Number.isFinite(Number(oddsInfo.odd_away))
+        Number.isFinite(Number(oddsInfo.odd_away)) ||
+        Number.isFinite(Number(oddsInfo.odd1)) ||
+        Number.isFinite(Number(oddsInfo.odd2)) ||
+        Number.isFinite(Number(oddsInfo.oddX))
       )
     );
 

@@ -18629,3 +18629,14 @@ button.railFullBtn {
     font-size:21px!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V79 — ESTADOS BTTS + HANDICAP
+   Apenas evita que atualização seja visualmente confundida com SEM APOSTA.
+   ========================================================= */
+@media (max-width:980px){
+  .cpHandicapOpportunity.is-updating .cpHandicapPick strong,
+  .cpBttsOpportunity.is-updating .cpBttsPick strong{
+    opacity:.88!important;
+  }
+}
