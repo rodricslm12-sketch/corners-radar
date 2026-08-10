@@ -1403,12 +1403,17 @@
       const rows = games.map((game, index) => {
         const decision = game?.raw?.btts_ai || {};
         const decisionLine = clean(decision.line, "SEM APOSTA").toUpperCase();
+        const phase = marketLiveStatus(game);
+        const isFinished = Boolean(phase.finished);
         
         /* Correção exclusiva do Ambas Marcam:
            a variável era usada sem ter sido criada. */
         const isUpdating =
-          decisionLine === "DADOS EM ATUALIZAÇÃO" ||
-          decisionLine === "ANALISANDO PARTIDA";
+          !isFinished &&
+          (
+            decisionLine === "DADOS EM ATUALIZAÇÃO" ||
+            decisionLine === "ANALISANDO PARTIDA"
+          );
 
         const isNoBet = Boolean(decision.skip) || decisionLine === "SEM APOSTA";
   
@@ -1430,7 +1435,7 @@
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
         const settlementKey = `btts-${index}`;
   
-        if (!isNoBet && !isUpdating) {
+        if (!isFinished && !isNoBet && !isUpdating) {
           settlementEntries.push({
             key: settlementKey,
             game,
@@ -1473,14 +1478,14 @@
             </div>
             <div class="cpBttsPick">
               <span class="cpBttsEngineBadge">✦ IA DO SERVIDOR</span>
-              <strong>${isUpdating ? "ANALISANDO PARTIDA" : isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
-              <small>${isUpdating ? "A IA está coletando dados." : isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
-              <b>${odd}</b>
+              <strong>${isFinished ? "ENCERRADO" : isUpdating ? "ANALISANDO PARTIDA" : isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
+              <small>${isFinished ? "Partida encerrada. Abra para ver o resultado final." : isUpdating ? "A IA está coletando dados." : isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
+              <b>${isFinished ? "—" : odd}</b>
               <span class="cpSettlementSlot">${isNoBet ? "" : ""}</span>
             </div>
-            <div class="cpBttsGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--btts:${confidence}">
-              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
-              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+            <div class="cpBttsGauge ${(isFinished || isNoBet || isUpdating) ? "is-disabled" : ""}" style="--btts:${confidence}">
+              <span>${(isFinished || isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
+              <small>${isFinished ? "FINALIZADO" : isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
             <i class="cpBttsArrow">›</i>
           </button>`;
@@ -3042,8 +3047,12 @@
         const line = requestedLine === "IA"
           ? recommendation.line
           : requestedLine;
+
+        const phase = marketLiveStatus(game);
+        const isFinished = Boolean(phase.finished);
   
         const isUpdating =
+          !isFinished &&
           requestedLine === "IA" &&
           (
             line === "DADOS EM ATUALIZAÇÃO" ||
@@ -3064,7 +3073,7 @@
         const rule = analysisRule(marketType, line);
         const settlementKey = `analysis-${marketType}-${originalIndex}-${rowIndex}`;
   
-        if (!isNoBet) {
+        if (!isNoBet && !isFinished) {
           settlementEntries.push({
             key: settlementKey,
             game,
@@ -3136,27 +3145,44 @@
                   }</span>`
                 : ""}
               <strong>${
-                isUpdating
-                  ? "ANALISANDO PARTIDA"
-                  : isNoBet
-                    ? "SEM APOSTA"
-                    : escapeHtml(line)
+                isFinished
+                  ? "ENCERRADO"
+                  : isUpdating
+                    ? "ANALISANDO PARTIDA"
+                    : isNoBet
+                      ? "SEM APOSTA"
+                      : escapeHtml(line)
               }</strong>
-              <p>${escapeHtml((isNoBet || isUpdating) ? recommendation.reason : rule.headline)}</p>
-              <small>${escapeHtml(recommendation.reason)}</small>
+              <p>${escapeHtml(
+                isFinished
+                  ? "Partida encerrada. Abra o jogo para ver o resultado e as estatísticas finais."
+                  : (isNoBet || isUpdating)
+                    ? recommendation.reason
+                    : rule.headline
+              )}</p>
+              <small>${escapeHtml(
+                isFinished
+                  ? (
+                      recommendation?.line &&
+                      !["SEM APOSTA","DADOS EM ATUALIZAÇÃO","ANALISANDO PARTIDA"].includes(String(recommendation.line).toUpperCase())
+                        ? `Linha pré-jogo: ${recommendation.line}`
+                        : "Sem recomendação pré-jogo registrada."
+                    )
+                  : recommendation.reason
+              )}</small>
               <span class="cpSettlementSlot"></span>
             </div>
   
             <div class="cpAnalysisOdd">
-              <small>${(isNoBet || isUpdating) ? "Status" : "Odd estimada"}</small>
-              <b>${(isNoBet || isUpdating) ? "—" : analysisOdd(confidence, game, marketType)}</b>
+              <small>${isFinished ? "Status" : (isNoBet || isUpdating) ? "Status" : "Odd estimada"}</small>
+              <b>${isFinished ? "FINAL" : (isNoBet || isUpdating) ? "—" : analysisOdd(confidence, game, marketType)}</b>
             </div>
-  
-            <div class="cpAnalysisGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--analysis:${confidence}">
-              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
-              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+
+            <div class="cpAnalysisGauge ${(isFinished || isNoBet || isUpdating) ? "is-disabled" : ""}" style="--analysis:${confidence}">
+              <span>${(isFinished || isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
+              <small>${isFinished ? "FINALIZADO" : isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
             </div>
-  
+
             <i class="cpAnalysisArrow">›</i>
           </button>`;
       }).join("");
