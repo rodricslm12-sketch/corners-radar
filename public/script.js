@@ -38,7 +38,7 @@
         label: "GOLS",
         title: "⚽ ANÁLISE DE GOLS",
         icon: "⚽",
-        lines: ["IA", "OVER 1.5", "OVER 2.5", "OVER 3.5", "UNDER 2.5", "UNDER 3.5", "AMBAS SIM", "AMBAS NÃO"]
+        lines: ["IA", "OVER 1.5", "OVER 2.5", "OVER 3.5", "UNDER 2.5", "UNDER 3.5"]
       },
       btts: {
         label: "AMBAS MARCAM",
@@ -1488,6 +1488,58 @@
       return { finished, live };
     }
 
+    const BTTS_HISTORY_KEY = "cornerPro:btts-history:v1";
+
+    function bttsMatchKey(game) {
+      const raw = game?.raw || game || {};
+      const id = clean(
+        raw?.match_id ?? raw?.fixture_id ?? raw?.event_id ??
+        raw?.event_key ?? raw?.id ?? game?.id,
+        ""
+      );
+      if (id) return `id:${id}`;
+
+      return [
+        clean(game?.date ?? raw?.date ?? raw?.match_date, ""),
+        clean(game?.time ?? raw?.time ?? raw?.match_time, ""),
+        clean(game?.home ?? raw?.home_name ?? raw?.match_hometeam_name, ""),
+        clean(game?.away ?? raw?.away_name ?? raw?.match_awayteam_name, "")
+      ].join("|").toLowerCase();
+    }
+
+    function bttsHistoryRead() {
+      try {
+        const value = JSON.parse(localStorage.getItem(BTTS_HISTORY_KEY) || "{}");
+        return value && typeof value === "object" ? value : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function bttsHistoryGet(game) {
+      const key = bttsMatchKey(game);
+      if (!key) return null;
+      return bttsHistoryRead()[key] || null;
+    }
+
+    function bttsHistorySave(game, choice, confidence = null, source = "") {
+      if (!choice) return;
+      const key = bttsMatchKey(game);
+      if (!key) return;
+
+      const history = bttsHistoryRead();
+      history[key] = {
+        choice,
+        confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : null,
+        source: String(source || ""),
+        savedAt: Date.now()
+      };
+
+      try {
+        localStorage.setItem(BTTS_HISTORY_KEY, JSON.stringify(history));
+      } catch (_) {}
+    }
+
     function bttsDecisionForGame(game) {
       const raw = game?.raw || game || {};
       const decision = raw?.btts_ai && typeof raw.btts_ai === "object"
@@ -1533,14 +1585,27 @@
         }
       }
 
-      if (stateInfo.finished && !choice) {
+      // Guarda a indicação enquanto a partida ainda não terminou.
+      if (!stateInfo.finished && choice) {
+        bttsHistorySave(game, choice, probability, source);
+      }
+
+      if (stateInfo.finished) {
+        const stored = bttsHistoryGet(game);
+        const finalChoice = choice || stored?.choice || "";
+
         return {
-          choice: "",
-          confidence: probability,
+          choice: finalChoice,
+          confidence:
+            stored?.confidence !== null && stored?.confidence !== undefined
+              ? Number(stored.confidence)
+              : probability,
           odd: "—",
           state: "finished",
-          reason: "Partida encerrada. Abra o jogo para ver o resultado final.",
-          source: "final"
+          reason: finalChoice
+            ? `Indicação pré-jogo: AMBAS MARCAM – ${finalChoice}.`
+            : "Partida encerrada sem indicação pré-jogo registrada para Ambas Marcam.",
+          source: finalChoice ? "history" : "final"
         };
       }
 
@@ -1628,14 +1693,16 @@
         const settlementKey = `btts-${index}`;
         const liveKey = `live-btts-${index}`;
 
-        if (isPick && choice) {
+        if ((isPick || isFinished) && choice) {
           settlementEntries.push({
             key: settlementKey,
             game,
             marketType: "btts",
             line: `AMBAS ${choice}`
           });
+        }
 
+        if (isPick && choice) {
           liveEntries.push({
             key: liveKey,
             game,
@@ -1647,7 +1714,7 @@
 
         const title =
           isFinished
-            ? "ENCERRADO"
+            ? (choice ? `AMBAS MARCAM – ${choice}` : "ENCERRADO")
             : isUpdating
               ? "AGUARDANDO DADOS"
               : isNoBet
@@ -1656,7 +1723,7 @@
 
         const gaugeText =
           isFinished
-            ? "FINALIZADO"
+            ? (choice ? "RESULTADO FINAL" : "SEM ENTRADA")
             : isUpdating
               ? "AGUARDANDO DADOS"
               : isNoBet
@@ -1668,9 +1735,11 @@
             ? "✦ IA DO SERVIDOR"
             : rec.source === "probability"
               ? "✦ DADOS DO SERVIDOR"
-              : rec.source === "final"
-                ? "✓ RESULTADO FINAL"
-                : "✦ AGUARDANDO SERVIDOR";
+              : rec.source === "history"
+                ? "✓ INDICAÇÃO PRÉ-JOGO"
+                : rec.source === "final"
+                  ? "✓ RESULTADO FINAL"
+                  : "✦ AGUARDANDO SERVIDOR";
 
         return `
           <button
@@ -1685,7 +1754,7 @@
             data-settlement-market="btts"
             data-settlement-line="${choice ? `AMBAS ${choice}` : ""}"
             data-btts-choice="${choice ? (choice === "SIM" ? "sim" : "não") : "none"}"
-            data-btts-ai="${isPick ? "1" : "0"}"
+            data-btts-ai="${(isPick || (isFinished && choice)) ? "1" : "0"}"
             data-btts-state="${rec.state}"
             data-live-key="${liveKey}"
           >
@@ -1705,15 +1774,15 @@
               <span class="cpBttsEngineBadge">${engineLabel}</span>
               <strong>${escapeHtml(title)}</strong>
               <small>${escapeHtml(rec.reason)}</small>
-              <b>${isPick ? rec.odd : "—"}</b>
-              <span class="cpSettlementSlot"></span>
+              <b>${isFinished ? "FINAL" : isPick ? rec.odd : "—"}</b>
+              <span class="cpSettlementSlot">${isFinished && choice ? "VERIFICANDO…" : ""}</span>
             </div>
 
             <div
               class="cpBttsGauge ${!isPick ? "is-disabled" : ""}"
               style="--btts:${confidence ?? 0}"
             >
-              <span>${isPick && confidence !== null ? `${confidence}%` : "—"}</span>
+              <span>${isFinished ? "—" : isPick && confidence !== null ? `${confidence}%` : "—"}</span>
               <small>${gaugeText}</small>
             </div>
 
@@ -3151,17 +3220,8 @@
       }
   
       if (marketType === "goals") {
-        const score = analysisCurrentStats(game, "goals");
-  
-        if (
-          Number.isFinite(score.home) &&
-          Number.isFinite(score.away) &&
-          score.home > 0 &&
-          score.away > 0
-        ) {
-          return "AMBAS SIM";
-        }
-  
+        // V46 — "Ambas Marcam" é um mercado separado.
+        // Esta tela trabalha apenas com linhas de gols OVER/UNDER.
         if (effective >= 3.55) return "OVER 3.5";
         if (effective >= 2.65) return "OVER 2.5";
         if (effective >= 1.75) return "OVER 1.5";
