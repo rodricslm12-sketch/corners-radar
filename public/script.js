@@ -1417,72 +1417,276 @@
     }
   
   
+    function bttsRealProbability(game) {
+      const raw = game?.raw || game || {};
+      const candidates = [
+        raw?.btts_ai?.probability,
+        raw?.btts_ai?.prob,
+        raw?.btts_ai?.confidence,
+        raw?.markets?.prob?.btts,
+        raw?.btts_prob,
+        raw?.prob_btts,
+        raw?.ambas_marcam_prob,
+        raw?.both_teams_score_prob,
+        raw?.goals?.btts_prob,
+        raw?.markets?.btts_prob
+      ];
+
+      for (const value of candidates) {
+        let n = numberFrom(value);
+        if (n === null) continue;
+        if (n > 0 && n <= 1) n *= 100;
+        while (n > 100) n /= 10;
+        if (n >= 0 && n <= 100) return Math.round(n);
+      }
+      return null;
+    }
+
+    function bttsRealOdd(game, choice) {
+      const raw = game?.raw || game || {};
+      const decision = raw?.btts_ai || {};
+      const yes = choice === "SIM";
+      const candidates = yes
+        ? [
+            decision?.odd, decision?.odds, decision?.yes_odd,
+            raw?.btts_yes_odd, raw?.btts_sim_odd,
+            raw?.odds?.btts_yes, raw?.markets?.odds?.btts_yes
+          ]
+        : [
+            decision?.odd, decision?.odds, decision?.no_odd,
+            raw?.btts_no_odd, raw?.btts_nao_odd,
+            raw?.odds?.btts_no, raw?.markets?.odds?.btts_no
+          ];
+
+      for (const value of candidates) {
+        const n = numberFrom(value);
+        if (n !== null && n > 1 && n < 100) return n.toFixed(2);
+      }
+      return "—";
+    }
+
+    function bttsGameState(game) {
+      const raw = game?.raw || game || {};
+      const status = clean(
+        raw?.status ?? raw?.status_raw ?? raw?.match_status ??
+        raw?.event_status ?? game?.status,
+        ""
+      ).toLowerCase();
+
+      const finished =
+        Boolean(raw?.finished) ||
+        /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
+
+      const live =
+        !finished &&
+        (
+          Boolean(raw?.live) ||
+          /live|ao vivo|1st|2nd|half|interval/.test(status) ||
+          Number(raw?.minute ?? raw?.match_minute ?? raw?.elapsed) > 0
+        );
+
+      return { finished, live };
+    }
+
+    function bttsDecisionForGame(game) {
+      const raw = game?.raw || game || {};
+      const decision = raw?.btts_ai && typeof raw.btts_ai === "object"
+        ? raw.btts_ai
+        : {};
+
+      const stateInfo = bttsGameState(game);
+      const explicitLine = clean(decision?.line, "").toUpperCase();
+      const explicitSkip = Boolean(decision?.skip);
+      const updating =
+        Boolean(decision?.updating) ||
+        explicitLine === "DADOS EM ATUALIZAÇÃO" ||
+        explicitLine === "ANALISANDO PARTIDA";
+
+      const probability = bttsRealProbability(game);
+
+      let choice = "";
+      let source = "";
+      let reason = clean(decision?.reason, "");
+
+      if (!explicitSkip && !updating && explicitLine) {
+        if (explicitLine.includes("NÃO") || explicitLine.includes("NAO")) {
+          choice = "NÃO";
+          source = "server";
+        } else if (
+          explicitLine.includes("SIM") ||
+          explicitLine.includes("AMBAS MARCAM")
+        ) {
+          choice = "SIM";
+          source = "server";
+        }
+      }
+
+      if (!choice && probability !== null && !stateInfo.finished) {
+        if (probability >= 60) {
+          choice = "SIM";
+          source = "probability";
+          if (!reason) reason = `Probabilidade real de ambas marcarem: ${probability}%.`;
+        } else if (probability <= 40) {
+          choice = "NÃO";
+          source = "probability";
+          if (!reason) reason = `Probabilidade real de ambas marcarem: ${probability}%.`;
+        }
+      }
+
+      if (stateInfo.finished && !choice) {
+        return {
+          choice: "",
+          confidence: probability,
+          odd: "—",
+          state: "finished",
+          reason: "Partida encerrada. Abra o jogo para ver o resultado final.",
+          source: "final"
+        };
+      }
+
+      if (updating && !choice) {
+        return {
+          choice: "",
+          confidence: probability,
+          odd: "—",
+          state: "updating",
+          reason: "Aguardando dados reais do servidor para este mercado.",
+          source: "updating"
+        };
+      }
+
+      if (explicitSkip && !choice) {
+        return {
+          choice: "",
+          confidence: probability,
+          odd: "—",
+          state: "no-bet",
+          reason: reason || "Sem vantagem estatística suficiente para uma entrada.",
+          source: "server"
+        };
+      }
+
+      if (!choice) {
+        return {
+          choice: "",
+          confidence: probability,
+          odd: "—",
+          state: probability === null ? "updating" : "no-bet",
+          reason: probability === null
+            ? "Aguardando dados reais do servidor para este mercado."
+            : `Probabilidade BTTS em ${probability}%: sem vantagem suficiente para SIM ou NÃO.`,
+          source: probability === null ? "updating" : "probability"
+        };
+      }
+
+      let confidence = probability;
+      if (confidence === null) {
+        confidence = numberFrom(decision?.confidence);
+        if (confidence !== null) {
+          if (confidence > 0 && confidence <= 1) confidence *= 100;
+          while (confidence > 100) confidence /= 10;
+          confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+        }
+      }
+
+      return {
+        choice,
+        confidence,
+        odd: bttsRealOdd(game, choice),
+        state: stateInfo.live ? "live" : "pick",
+        reason: reason || (
+          choice === "SIM"
+            ? "Os dados reais indicam boa chance de as duas equipes marcarem."
+            : "Os dados reais indicam boa chance de pelo menos uma equipe não marcar."
+        ),
+        source
+      };
+    }
+
     function renderBttsMarket(layer) {
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
-  
-      const games = (state.btts || []).slice(0, 5);
+
+      const games = Array.isArray(state.btts) ? state.btts.slice(0, 12) : [];
       const settlementEntries = [];
       const liveEntries = [];
-  
-      const rows = games.map((game, index) => {
-        const decision = game?.raw?.btts_ai || {};
-        const decisionLine = clean(decision.line, "SEM APOSTA").toUpperCase();
-        
-        /* Correção exclusiva do Ambas Marcam:
-           a variável era usada sem ter sido criada. */
-        const isUpdating =
-          decisionLine === "DADOS EM ATUALIZAÇÃO" ||
-          decisionLine === "ANALISANDO PARTIDA";
 
-        const isNoBet = Boolean(decision.skip) || decisionLine === "SEM APOSTA";
-  
-        const choice = decisionLine.includes("NÃO")
-          ? "NÃO"
-          : "SIM";
-  
-        const confidence = (isNoBet || isUpdating)
-          ? 0
-          : Math.max(
-              62,
-              Math.min(89, Number(decision.confidence || game.confidence || 72))
-            );
-  
-        const odd = (isNoBet || isUpdating)
-          ? "—"
-          : (1.48 + ((100 - confidence) / 100)).toFixed(2);
+      const rows = games.map((game, index) => {
+        const rec = bttsDecisionForGame(game);
+        const isPick = rec.state === "pick" || rec.state === "live";
+        const isUpdating = rec.state === "updating";
+        const isNoBet = rec.state === "no-bet";
+        const isFinished = rec.state === "finished";
+        const choice = rec.choice || "";
+        const confidence =
+          Number.isFinite(Number(rec.confidence))
+            ? Math.max(0, Math.min(100, Math.round(Number(rec.confidence))))
+            : null;
+
         const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
         const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
         const settlementKey = `btts-${index}`;
-  
-        if (!isNoBet && !isUpdating) {
+        const liveKey = `live-btts-${index}`;
+
+        if (isPick && choice) {
           settlementEntries.push({
             key: settlementKey,
             game,
             marketType: "btts",
             line: `AMBAS ${choice}`
           });
+
+          liveEntries.push({
+            key: liveKey,
+            game,
+            marketType: "btts",
+            line: `AMBAS ${choice}`,
+            side: ""
+          });
         }
-  
-        const liveKey = `live-btts-${index}`;
-        liveEntries.push({
-          key: liveKey,
-          game,
-          marketType: isNoBet ? "" : "btts",
-          line: isNoBet ? "" : `AMBAS ${choice}`,
-          side: ""
-        });
-  
+
+        const title =
+          isFinished
+            ? "ENCERRADO"
+            : isUpdating
+              ? "AGUARDANDO DADOS"
+              : isNoBet
+                ? "SEM APOSTA"
+                : `AMBAS MARCAM – ${choice}`;
+
+        const gaugeText =
+          isFinished
+            ? "FINALIZADO"
+            : isUpdating
+              ? "AGUARDANDO DADOS"
+              : isNoBet
+                ? "SEM ENTRADA"
+                : "CONFIANÇA";
+
+        const engineLabel =
+          rec.source === "server"
+            ? "✦ IA DO SERVIDOR"
+            : rec.source === "probability"
+              ? "✦ DADOS DO SERVIDOR"
+              : rec.source === "final"
+                ? "✓ RESULTADO FINAL"
+                : "✦ AGUARDANDO SERVIDOR";
+
         return `
           <button
             type="button"
-            class="cpBttsOpportunity ${isUpdating ? "is-updating" : isNoBet ? "is-no-bet" : ""}"
+            class="cpBttsOpportunity ${
+              isFinished ? "is-finished" :
+              isUpdating ? "is-updating" :
+              isNoBet ? "is-no-bet" : "is-pick"
+            }"
             data-v9-game="${index}"
             data-settlement-key="${settlementKey}"
             data-settlement-market="btts"
-            data-settlement-line="AMBAS ${choice}"
-            data-btts-choice="${isNoBet ? "none" : choice.toLowerCase()}"
-            data-btts-ai="${(isNoBet || isUpdating) ? "0" : "1"}"
+            data-settlement-line="${choice ? `AMBAS ${choice}` : ""}"
+            data-btts-choice="${choice ? (choice === "SIM" ? "sim" : "não") : "none"}"
+            data-btts-ai="${isPick ? "1" : "0"}"
+            data-btts-state="${rec.state}"
             data-live-key="${liveKey}"
           >
             <div class="cpBttsMatch">
@@ -1496,34 +1700,40 @@
                 <span class="cpBttsBadge away">${awayInitial}</span>
               </div>
             </div>
+
             <div class="cpBttsPick">
-              <span class="cpBttsEngineBadge">✦ IA DO SERVIDOR</span>
-              <strong>${isUpdating ? "ANALISANDO PARTIDA" : isNoBet ? "SEM APOSTA" : `AMBAS MARCAM – ${choice}`}</strong>
-              <small>${isUpdating ? "A IA está coletando dados." : isNoBet ? escapeHtml(decision.reason || "Sem vantagem segura.") : "Odd média"}</small>
-              <b>${odd}</b>
-              <span class="cpSettlementSlot">${isNoBet ? "" : ""}</span>
+              <span class="cpBttsEngineBadge">${engineLabel}</span>
+              <strong>${escapeHtml(title)}</strong>
+              <small>${escapeHtml(rec.reason)}</small>
+              <b>${isPick ? rec.odd : "—"}</b>
+              <span class="cpSettlementSlot"></span>
             </div>
-            <div class="cpBttsGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--btts:${confidence}">
-              <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
-              <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+
+            <div
+              class="cpBttsGauge ${!isPick ? "is-disabled" : ""}"
+              style="--btts:${confidence ?? 0}"
+            >
+              <span>${isPick && confidence !== null ? `${confidence}%` : "—"}</span>
+              <small>${gaugeText}</small>
             </div>
+
             <i class="cpBttsArrow">›</i>
           </button>`;
       }).join("");
-  
+
       body.innerHTML = `
         <section class="cpBttsIntro">
           <div class="cpBttsIntroIcon">◎</div>
-          <p>Escolha a opção desejada para ver os melhores jogos com base na nossa análise.</p>
+          <p>Escolha SIM ou NÃO para ver somente os jogos realmente classificados nessa opção.</p>
         </section>
-  
+
         <div class="cpBttsTabs">
           <button type="button" class="active" data-btts-tab="ai">IA</button>
           <button type="button" data-btts-tab="all">TODOS</button>
           <button type="button" data-btts-tab="yes">SIM</button>
           <button type="button" data-btts-tab="no">NÃO</button>
         </div>
-  
+
         <section class="cpBttsExplain">
           <h3>COMO FUNCIONA AMBAS MARCAM? <span>ⓘ</span></h3>
           <div>
@@ -1537,18 +1747,24 @@
             </article>
           </div>
         </section>
-  
+
         <div class="cpBttsTitle">
           <h2>MELHORES OPORTUNIDADES</h2>
           <button type="button">VER TODOS ›</button>
         </div>
-  
-        <div class="cpBttsList">${rows || '<div class="cpBttsEmpty">A IA não encontrou oportunidade segura nesta data.</div>'}</div>
-  
+
+        <div class="cpBttsList">
+          ${rows || '<div class="cpBttsEmpty">Nenhum jogo disponível para esta data.</div>'}
+        </div>
+
+        <div class="cpBttsFilterEmpty" hidden>
+          Nenhuma oportunidade disponível nesta opção.
+        </div>
+
         <button type="button" class="cpBttsAllGames">
-          <span>☷</span><b>VER TODOS OS JOGOS NESTA LINHA (AMBAS MARCAM)</b><i>›</i>
+          <span>☷</span><b>VER TODOS OS JOGOS DE AMBAS MARCAM</b><i>›</i>
         </button>
-  
+
         <section class="cpBttsBottomExplain">
           <h3>EXPLICAÇÃO DAS OPÇÕES</h3>
           <div>
@@ -1556,12 +1772,19 @@
             <article><i>×</i><p><b>AMBAS MARCAM – NÃO</b><br>Pelo menos uma das equipes termina a partida sem marcar.</p></article>
           </div>
         </section>`;
-  
+
       settlementRefreshCards(body, settlementEntries);
       marketStartLiveRefresh(body, liveEntries);
+
+      const cards = $$(".cpBttsOpportunity", body);
+      cards.forEach(card => {
+        card.hidden = card.dataset.bttsAi !== "1";
+      });
+
+      const empty = $(".cpBttsFilterEmpty", body);
+      if (empty) empty.hidden = cards.some(card => !card.hidden);
     }
-  
-  
+
     function handicapScore(game) {
       const raw = game?.raw || {};
       const home = numberFrom(
@@ -4624,13 +4847,19 @@
         const bttsTab = event.target.closest("[data-btts-tab]");
         if (bttsTab) {
           event.preventDefault();
-          $$(".cpBttsTabs button").forEach(button => button.classList.toggle("active", button === bttsTab));
+
+          const marketBody = bttsTab.closest(".cpMobileMarketsBody") || document;
+          $$(".cpBttsTabs button", marketBody).forEach(button =>
+            button.classList.toggle("active", button === bttsTab)
+          );
+
           const mode = bttsTab.dataset.bttsTab;
-  
-          $$(".cpBttsOpportunity").forEach(card => {
+          const cards = $$(".cpBttsOpportunity", marketBody);
+
+          cards.forEach(card => {
             const choice = card.dataset.bttsChoice;
             const hasAiPick = card.dataset.bttsAi === "1";
-  
+
             card.hidden =
               mode === "ai"
                 ? !hasAiPick
@@ -4640,9 +4869,13 @@
                     ? choice !== "não"
                     : false;
           });
+
+          const empty = $(".cpBttsFilterEmpty", marketBody);
+          if (empty) empty.hidden = cards.some(card => !card.hidden);
+
           return;
         }
-  
+
         const gameButton = event.target.closest("[data-v9-game], [data-v8-game]");
         if (gameButton) {
           event.preventDefault();
