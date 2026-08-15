@@ -1,5 +1,5 @@
 /* =========================================================
-   CORNER PRO MOBILE CONTROLLER V9
+   CORNER PRO MOBILE CONTROLLER V54 — MARKET SYNC FIX
    Home mobile, carrossel automático, mercados e Match Center.
    ========================================================= */
    (() => {
@@ -1298,6 +1298,29 @@
         window.__cpMobileDirectGames = activeList();
         renderActive({ animate: false });
 
+        // V54 — se o usuário já estiver dentro de Ambas/Handicap,
+        // atualiza a tela aberta assim que a IA chega. Antes o state mudava,
+        // mas o HTML do mercado permanecia congelado em "AGUARDANDO DADOS".
+        const openMarketLayer = $("#cpMobileMarketsLayer");
+        const marketLayerIsOpen = Boolean(
+          openMarketLayer &&
+          (
+            openMarketLayer.classList.contains("is-open") ||
+            openMarketLayer.getAttribute("aria-hidden") === "false"
+          )
+        );
+
+        if (marketLayerIsOpen) {
+          if (state.activeMarket === "btts" && bttsGames.length) {
+            renderBttsMarket(openMarketLayer);
+          } else if (state.activeMarket === "handicap" && handicapGames.length) {
+            const activeHandicapLine =
+              $(".cpHandicapLines button.active", openMarketLayer)?.dataset?.handicapLine ||
+              "IA";
+            renderHandicapMarket(openMarketLayer, activeHandicapLine);
+          }
+        }
+
         console.info(`[Corner Pro engines] ${source} aplicado`, {
           btts: bttsGames.length,
           handicap: handicapGames.length,
@@ -1618,8 +1641,9 @@
             // Atualiza também a Home isolada diretamente.
             cprRenderBaseGamesImmediately(marketGames);
 
-            window.__cpMobileDirectGames = state.corners;
-            state.activeMarket = "corners";
+            // V54 — não rouba o mercado que o usuário já abriu.
+            // /mercados é atualização de dados, não navegação.
+            window.__cpMobileDirectGames = activeList();
             renderActive({ animate: false });
           }
         }
