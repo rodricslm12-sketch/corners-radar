@@ -1266,17 +1266,11 @@
       startAutoSlide();
     }
   
-    async function loadMarketEnginesInBackground(date, stamp) {
-      try {
-        const payload = await getJson(
-          `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=52`,
-          25000
-        );
+    function loadMarketEnginesInBackground(date, stamp) {
+      const applyEnginePayload = (payload, source = "full") => {
+        if (state.date !== date || !payload || typeof payload !== "object") return;
 
-        // Se o usuário já trocou de data, ignora resposta antiga.
-        if (state.date !== date) return;
-
-        state.cornerLearning = payload?.corner_learning || null;
+        state.cornerLearning = payload?.corner_learning || state.cornerLearning || null;
 
         const cornerGames = extract(payload?.corners);
         const goalGames = extract(payload?.goals);
@@ -1284,8 +1278,6 @@
         const bttsGames = extract(payload?.btts);
         const handicapGames = extract(payload?.handicap);
 
-        // V52 — IA de escanteios restaurada. O servidor escolhe automaticamente
-        // a melhor linha; as linhas manuais continuam disponíveis como alternativa.
         if (cornerGames.length) {
           const engineCorners = buildMarket(cornerGames, "corners");
           if (state.officialCornerBest) {
@@ -1304,16 +1296,41 @@
         if (handicapGames.length) state.handicap = buildMarket(handicapGames, "handicap");
 
         window.__cpMobileDirectGames = activeList();
-
-        // Atualiza silenciosamente a Home com o dado específico que chegou.
         renderActive({ animate: false });
-      } catch (error) {
-        // A Home já está aberta com os jogos-base.
-        // Falha de um motor não pode apagar nem travar os jogos.
-        console.warn("[Corner Pro V32 engines]", error?.message || error);
-      }
-    }
 
+        console.info(`[Corner Pro engines] ${source} aplicado`, {
+          btts: bttsGames.length,
+          handicap: handicapGames.length,
+          corners: cornerGames.length
+        });
+      };
+
+      // V53 — FAST PATH: BTTS + Handicap não podem depender do motor completo.
+      // O motor completo faz muitas chamadas (ligas, standings, H2H, odds, recentes)
+      // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
+      // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
+      getJson(
+        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=53`,
+        35000
+      )
+        .then(payload => applyEnginePayload(payload, "fast"))
+        .catch(error => {
+          console.warn("[Corner Pro fast engines]", error?.message || error);
+        });
+
+      // Motor completo continua em paralelo, mas não bloqueia a tela nem o /mercados.
+      getJson(
+        `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=53`,
+        90000
+      )
+        .then(payload => applyEnginePayload(payload, "full"))
+        .catch(error => {
+          console.warn("[Corner Pro full engines]", error?.message || error);
+        });
+
+      // Retorna imediatamente para não prender Promise.allSettled de dados secundários.
+      return Promise.resolve();
+    }
 
     function cprRenderBaseGamesImmediately(raw) {
       if (!Array.isArray(raw) || !raw.length) return false;

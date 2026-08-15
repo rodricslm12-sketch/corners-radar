@@ -8817,6 +8817,8 @@ function mobileFastGameFromEvent(e) {
   return normalizeTeamsOnGame({
     mode: "semi",
     match_id,
+    home_team_id: e?.match_hometeam_id ?? e?.home_team_key ?? e?.home_team_id ?? e?.teams?.home?.id ?? null,
+    away_team_id: e?.match_awayteam_id ?? e?.away_team_key ?? e?.away_team_id ?? e?.teams?.away?.id ?? null,
     casa,
     fora,
     liga: league?.name || cleanText(e?.league_name) || "Liga",
@@ -8891,6 +8893,125 @@ async function buildMobileFastList(date) {
 }
 
 
+
+
+// =========================================================
+// V53 — MOTORES RÁPIDOS PARA AMBAS MARCAM + HANDICAP
+// Não depende do funil completo de todas as ligas/standings.
+// Usa os eventos rápidos do dia + forma recente + odds reais quando disponíveis.
+// =========================================================
+const FAST_MARKET_ENGINE_MAX_GAMES = Number(process.env.FAST_MARKET_ENGINE_MAX_GAMES || 14);
+const FAST_MARKET_ENGINE_CONCURRENCY = Math.max(3, Number(process.env.FAST_MARKET_ENGINE_CONCURRENCY || 6));
+
+async function buildFastBttsHandicapEngines({ date }) {
+  const cacheKey = `fast-btts-handicap:${date}`;
+  const cached = cacheGet(cacheKey);
+  if (cached && typeof cached === "object") return cached;
+
+  const baseGames = (await buildMobileFastList(date)).slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
+
+  const analyzed = await mapLimit(
+    baseGames,
+    FAST_MARKET_ENGINE_CONCURRENCY,
+    async game => {
+      const [oddsResult, homeResult, awayResult] = await Promise.allSettled([
+        game.match_id ? getOdds1x2(game.match_id) : Promise.resolve(null),
+        engineRecentEventsByTeam(game.home_team_id, date, 8),
+        engineRecentEventsByTeam(game.away_team_id, date, 8)
+      ]);
+
+      const oddsInfo = oddsResult.status === "fulfilled" ? oddsResult.value : null;
+      const homeMatches = homeResult.status === "fulfilled" && Array.isArray(homeResult.value)
+        ? homeResult.value
+        : [];
+      const awayMatches = awayResult.status === "fulfilled" && Array.isArray(awayResult.value)
+        ? awayResult.value
+        : [];
+
+      const [homeProfile, awayProfile] = await Promise.all([
+        engineRecentProfile(game.casa, homeMatches, MULTI_MARKET_ENGINE.RECENT_N),
+        engineRecentProfile(game.fora, awayMatches, MULTI_MARKET_ENGINE.RECENT_N)
+      ]);
+
+      const goals_ai = goalsEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile,
+        oddsInfo
+      });
+
+      const btts_ai = bttsEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile,
+        oddsInfo,
+        goalsDecision: goals_ai
+      });
+
+      const handicapHistoryBlock = {
+        firstTeam_lastResults: homeMatches,
+        secondTeam_lastResults: awayMatches
+      };
+
+      const handicap_ai = handicapDecision({
+        game,
+        oddsInfo,
+        h2hBlock: handicapHistoryBlock,
+        posHome: game.pos_home,
+        posAway: game.pos_away
+      });
+
+      return {
+        ...game,
+        btts_ai,
+        handicap_ai,
+        engine_profiles: {
+          home: homeProfile,
+          away: awayProfile
+        },
+        fast_market_engine: true
+      };
+    }
+  );
+
+  const rankByDecision = (items, field) => items.slice().sort((a, b) => {
+    const da = a?.[field] || {};
+    const db = b?.[field] || {};
+    if (Boolean(da.skip) !== Boolean(db.skip)) return da.skip ? 1 : -1;
+    return Number(db.score || 0) - Number(da.score || 0);
+  });
+
+  const payload = {
+    ok: true,
+    fast: true,
+    date,
+    btts: rankByDecision(analyzed, "btts_ai"),
+    handicap: rankByDecision(analyzed, "handicap_ai")
+  };
+
+  cacheSet(cacheKey, payload, 5 * 60 * 1000);
+  return payload;
+}
+
+app.get("/market_engines_fast", async (req, res) => {
+  const date = req.query.date || toISODate();
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
+  try {
+    const payload = await withTimeout(
+      buildFastBttsHandicapEngines({ date }),
+      30000,
+      "motores rápidos BTTS/Handicap"
+    );
+    return res.json(payload);
+  } catch (err) {
+    console.warn("[market_engines_fast]", err?.message || err);
+    return res.status(500).json({
+      error: "Erro ao calcular motores rápidos",
+      details: String(err?.message || err)
+    });
+  }
+});
 
 // =========================================================
 // DIAGNÓSTICO DE CARREGAMENTO — MOBILE V7
