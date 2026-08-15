@@ -624,7 +624,12 @@
 
     function cpRefNum(...values) {
       for (const value of values) {
-        const n = Number(String(value ?? "").replace(",", ".").replace("%", ""));
+        if (value === null || value === undefined) continue;
+
+        const text = String(value).trim();
+        if (!text) continue;
+
+        const n = Number(text.replace(",", ".").replace("%", ""));
         if (Number.isFinite(n)) return n;
       }
       return null;
@@ -701,6 +706,33 @@
       );
     }
 
+    function cprCornerTop1DecisionReady(game) {
+      if (state.activeMarket !== "corners") return true;
+
+      const raw = game?.raw || game || {};
+      const decision = raw?.corners_ai;
+
+      if (!decision || typeof decision !== "object") return false;
+      if (decision.skip || decision.updating) return false;
+
+      const line = String(decision.line || "").toUpperCase().trim();
+      if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return false;
+
+      const conf = cpRefNum(decision.confidence);
+      const proj = cpRefNum(
+        decision.projection,
+        raw.proj_cantos,
+        raw.projected_corners
+      );
+
+      return (
+        conf !== null &&
+        conf > 0 &&
+        proj !== null &&
+        proj > 0
+      );
+    }
+
     function cpRefUpdateHero(game) {
       cpRefSetShield(game, "home");
       cpRefSetShield(game, "away");
@@ -730,10 +762,36 @@
       if (cornersEl) cornersEl.textContent = corners === null ? "—" : corners.toFixed(1);
       if (goalsEl) goalsEl.textContent = goals === null ? "—" : goals.toFixed(1);
 
-      const trend = confidenceValue >= 72 ? "ALTA" : confidenceValue >= 62 ? "MÉDIA" : "CAUTELA";
-      if (trendEl) trendEl.textContent = `↗ ${trend}`;
+      const cornerReady = cprCornerTop1DecisionReady(game);
+      const waitingTop1 =
+        state.activeMarket === "corners" &&
+        (!cornerReady || state.officialCornerLoading);
+
+      const trend = waitingTop1
+        ? "ANALISANDO"
+        : confidenceValue >= 72
+          ? "ALTA"
+          : confidenceValue >= 62
+            ? "MÉDIA"
+            : "CAUTELA";
+
+      if (waitingTop1) {
+        if (projectionEl) projectionEl.textContent = "—";
+        if (cornersEl) cornersEl.textContent = "—";
+        if (goalsEl && goals === null) goalsEl.textContent = "—";
+      }
+
+      if (trendEl) {
+        trendEl.textContent = waitingTop1 ? "💭 ANALISANDO" : `↗ ${trend}`;
+      }
+
       if (confidenceLabel) confidenceLabel.textContent = trend;
-      if (gauge) gauge.style.setProperty("--ref-confidence", confidenceValue);
+      if (gauge) {
+        gauge.style.setProperty(
+          "--ref-confidence",
+          waitingTop1 ? 0 : confidenceValue
+        );
+      }
 
       if (dayLabel) {
         const today = todayManaus();
@@ -1001,22 +1059,47 @@
             ? "PROJEÇÃO DE CARTÕES"
             : "PROJEÇÃO DE CANTOS";
 
+      const cornerReady = cprCornerTop1DecisionReady(game);
+      const waitingTop1 =
+        state.activeMarket === "corners" &&
+        (
+          !cornerReady ||
+          state.officialCornerLoading ||
+          heroLine === "ANALISANDO TOP 1"
+        );
+
       cprText("#cprProjectionLabel", projectionLabel);
-      cprText("#cprProjection", cprMetric(projection, 2));
-      cprText("#cprCornersAvg", cprMetric(cornerAvg, 1));
-      cprText("#cprGoalsAvg", cprMetric(goalsAvg, 1));
-      cprText("#cprConfidence", confidence > 0 ? `${confidence}%` : "—");
+      cprText(
+        "#cprProjection",
+        waitingTop1 ? "—" : cprMetric(projection, 2)
+      );
+      cprText(
+        "#cprCornersAvg",
+        waitingTop1 ? "—" : cprMetric(cornerAvg, 1)
+      );
+      cprText(
+        "#cprGoalsAvg",
+        waitingTop1 && goalsAvg === null ? "—" : cprMetric(goalsAvg, 1)
+      );
+      cprText(
+        "#cprConfidence",
+        waitingTop1 ? "—" : (confidence > 0 ? `${confidence}%` : "—")
+      );
 
       const trend =
+        waitingTop1 ? "ANALISANDO" :
         confidence >= 72 ? "ALTA" :
         confidence >= 62 ? "MÉDIA" :
         "CAUTELA";
 
-      cprText("#cprTrend", `↗ ${trend}`);
+      cprText(
+        "#cprTrend",
+        waitingTop1 ? "💭 ANALISANDO" : `↗ ${trend}`
+      );
       cprText("#cprConfidenceLabel", trend);
 
       const gauge = $("#cprGauge");
-      if (gauge) gauge.style.setProperty("--p", confidence);
+      if (gauge) gauge.style.setProperty("--p", waitingTop1 ? 0 : confidence);
 
       const loader = $("#cprLoading");
       if (loader) loader.hidden = true;
@@ -1274,7 +1357,25 @@
         best.confidence = 0;
       }
 
-      cprSyncHero(best, baseList);
+      // V51 — a lista-base pode atualizar "Jogos em destaque", mas NUNCA
+      // pode substituir o Top 1 oficial depois que a IA aprovou uma partida.
+      if (state.officialCornerNoOpportunity) {
+        // Mantém "SEM ENTRADA" no card principal.
+      } else if (
+        state.activeMarket === "corners" &&
+        state.officialCornerBest
+      ) {
+        const official = state.officialCornerBest;
+        const heroList = [
+          official,
+          ...baseList.filter(item => String(item.id) !== String(official.id))
+        ];
+        cprSyncHero(official, heroList);
+      } else {
+        // Enquanto a rota oficial ainda pensa, podemos mostrar os nomes do
+        // primeiro jogo, mas métricas permanecem em "— / ANALISANDO".
+        cprSyncHero(best, baseList);
+      }
 
       // Espelha também no estado da Home para favoritos/cliques.
       if (!Array.isArray(state.goals) || !state.goals.length) {
@@ -1406,6 +1507,18 @@
       if (!date) return;
       state.officialCornerLoading = true;
       state.officialCornerNoOpportunity = false;
+
+      // Estado visual correto durante o processamento:
+      // nenhum "0", nenhum "CAUTELA" e nenhuma confiança inventada.
+      cprText("#cprMarket", "ANALISANDO TOP 1");
+      cprText("#cprProjection", "—");
+      cprText("#cprCornersAvg", "—");
+      cprText("#cprConfidence", "—");
+      cprText("#cprTrend", "💭 ANALISANDO");
+      cprText("#cprConfidenceLabel", "ANALISANDO");
+
+      const gauge = $("#cprGauge");
+      if (gauge) gauge.style.setProperty("--p", 0);
 
       try {
         const favorites = cprFavoritesForTop1Query();
