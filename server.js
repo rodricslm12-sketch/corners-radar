@@ -7381,7 +7381,10 @@ function cornersEngineDecision({ game, home, away }) {
     };
   });
 
-  const comparison = cornersCompareLines(candidates);
+  // V52 — OVER 8.5 continua disponível no modo manual, mas a IA automática
+  // prioriza linhas 9.5+ para evitar recomendações excessivamente baixas.
+  const aiCandidates = candidates.filter(candidate => candidate.label !== "OVER 8.5");
+  const comparison = cornersCompareLines(aiCandidates);
 
   if (!comparison.best) {
     return cornersUsePreviousOrUpdating(

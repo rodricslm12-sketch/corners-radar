@@ -32,7 +32,7 @@
         label: "ESCANTEIOS",
         title: "⚑ ANÁLISE DE ESCANTEIOS",
         icon: "⚑",
-        lines: ["OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
+        lines: ["IA", "OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
       },
       goals: {
         label: "GOLS",
@@ -852,6 +852,12 @@
       return true;
     }
 
+    function cprMarketFavoriteStar(teamName) {
+      const name = String(teamName || "").trim();
+      if (!name || !cprIsFavorite(name)) return "";
+      return `<span class="cpMarketFavoriteStar" title="Time favorito" aria-label="Time favorito">★</span>`;
+    }
+
     function cprEnsureMatchCenterFavoriteStyles() {
       if (document.getElementById("cprMatchCenterFavoriteStyles")) return;
 
@@ -1263,8 +1269,8 @@
     async function loadMarketEnginesInBackground(date, stamp) {
       try {
         const payload = await getJson(
-          `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=33`,
-          12000
+          `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=52`,
+          25000
         );
 
         // Se o usuário já trocou de data, ignora resposta antiga.
@@ -1278,8 +1284,8 @@
         const bttsGames = extract(payload?.btts);
         const handicapGames = extract(payload?.handicap);
 
-        // Escanteios agora é manual. A lista-base sempre fica disponível;
-        // se o servidor devolver dados extras, preservamos esses dados.
+        // V52 — IA de escanteios restaurada. O servidor escolhe automaticamente
+        // a melhor linha; as linhas manuais continuam disponíveis como alternativa.
         if (cornerGames.length) {
           const engineCorners = buildMarket(cornerGames, "corners");
           if (state.officialCornerBest) {
@@ -2043,9 +2049,9 @@
               <small>⚽ Liga principal</small>
               <div class="cpBttsTeams">
                 <span class="cpBttsBadge">${homeInitial}</span>
-                <b>${escapeHtml(game.home)}</b>
+                <b>${escapeHtml(game.home)}${cprMarketFavoriteStar(game.home)}</b>
                 <i>×</i>
-                <b>${escapeHtml(game.away)}</b>
+                <b>${escapeHtml(game.away)}${cprMarketFavoriteStar(game.away)}</b>
                 <span class="cpBttsBadge away">${awayInitial}</span>
               </div>
             </div>
@@ -2718,7 +2724,7 @@
               </div>
               <div class="cpHandicapTeams">
                 <span>${escapeHtml((game.home || "C").slice(0,2).toUpperCase())}</span>
-                <section><b>${escapeHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}</b></section>
+                <section><b>${escapeHtml(game.home)}${cprMarketFavoriteStar(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}${cprMarketFavoriteStar(game.away)}</b></section>
                 <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
               </div>
             </div>
@@ -4073,7 +4079,7 @@
               </div>
               <div class="cpAnalysisTeams">
                 <span>${escapeHtml((game.home || "C").slice(0,2).toUpperCase())}</span>
-                <section><b>${escapeHtml(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}</b></section>
+                <section><b>${escapeHtml(game.home)}${cprMarketFavoriteStar(game.home)}</b><i>×</i><b>${escapeHtml(game.away)}${cprMarketFavoriteStar(game.away)}</b></section>
                 <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
               </div>
             </div>
@@ -4144,7 +4150,7 @@
         <section class="cpAnalysisIntro">
           <div class="cpAnalysisIntroIcon">${icon}</div>
           <p>${marketType === "corners"
-            ? "Escolha manualmente a linha de escanteios que deseja analisar."
+            ? `Use <b>IA</b> para o app selecionar automaticamente a melhor linha de escanteios, ou escolha uma linha manualmente.`
             : `Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente a melhor leitura pré-jogo de ${marketName.toLowerCase()}.`
           }</p>
         </section>

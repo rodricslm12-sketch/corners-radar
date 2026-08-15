@@ -18640,3 +18640,21 @@ button.railFullBtn {
     opacity:.88!important;
   }
 }
+
+/* =========================================================
+   V52 — FAVORITOS VISÍVEIS NOS MERCADOS
+   ========================================================= */
+@media (max-width:980px){
+  .cpMarketFavoriteStar{
+    display:inline-block!important;
+    margin-left:5px!important;
+    color:#7dff22!important;
+    font-size:.82em!important;
+    line-height:1!important;
+    vertical-align:1px!important;
+    text-shadow:0 0 9px rgba(125,255,34,.35)!important;
+  }
+  .cpAnalysisTeams b, .cpBttsTeams b, .cpHandicapTeams b{
+    min-width:0!important;
+  }
+}
