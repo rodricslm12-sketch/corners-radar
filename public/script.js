@@ -1,5 +1,5 @@
 /* =========================================================
-   CORNER PRO MOBILE CONTROLLER V54 — MARKET SYNC FIX
+   CORNER PRO MOBILE CONTROLLER V55 — INSTANT BTTS/HANDICAP
    Home mobile, carrossel automático, mercados e Match Center.
    ========================================================= */
    (() => {
@@ -1333,8 +1333,8 @@
       // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
       // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
       getJson(
-        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=53`,
-        35000
+        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=55`,
+        15000
       )
         .then(payload => applyEnginePayload(payload, "fast"))
         .catch(error => {

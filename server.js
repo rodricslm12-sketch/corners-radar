@@ -8896,116 +8896,214 @@ async function buildMobileFastList(date) {
 
 
 // =========================================================
-// V53 — MOTORES RÁPIDOS PARA AMBAS MARCAM + HANDICAP
-// Não depende do funil completo de todas as ligas/standings.
-// Usa os eventos rápidos do dia + forma recente + odds reais quando disponíveis.
+// V55 — PRIMEIRA DECISÃO RÁPIDA PARA AMBAS MARCAM + HANDICAP
+// Objetivo: funcionar como o motor rápido de cantos.
+// 1ª etapa: eventos do dia + projeções locais + odds com timeout curto.
+// 2ª etapa: /market_engines completo refina forma, tabela, H2H e confiança.
 // =========================================================
-const FAST_MARKET_ENGINE_MAX_GAMES = Number(process.env.FAST_MARKET_ENGINE_MAX_GAMES || 14);
-const FAST_MARKET_ENGINE_CONCURRENCY = Math.max(3, Number(process.env.FAST_MARKET_ENGINE_CONCURRENCY || 6));
+const FAST_MARKET_ENGINE_MAX_GAMES = Number(process.env.FAST_MARKET_ENGINE_MAX_GAMES || 10);
+const FAST_MARKET_ENGINE_CONCURRENCY = Math.max(
+  4,
+  Number(process.env.FAST_MARKET_ENGINE_CONCURRENCY || 8)
+);
+const FAST_MARKET_ODDS_TIMEOUT_MS = Math.max(
+  900,
+  Number(process.env.FAST_MARKET_ODDS_TIMEOUT_MS || 2200)
+);
+
+function fastHandicapFallback(game, oddsInfo) {
+  // Primeiro tenta a própria lógica oficial com odds.
+  if (oddsInfo) {
+    const fromOdds = handicapDecision({
+      game,
+      oddsInfo,
+      h2hBlock: null,
+      posHome: game.pos_home,
+      posAway: game.pos_away
+    });
+
+    if (fromOdds && !fromOdds.updating) {
+      return {
+        ...fromOdds,
+        calculation_source:
+          fromOdds.calculation_source || "fast_odds",
+        fast_initial: true
+      };
+    }
+  }
+
+  // Sem odds em tempo hábil: usa somente um sinal estrutural forte.
+  // Não inventa favorito em confrontos sem diferença reconhecível.
+  const homeBig = isBigTeam(game.casa);
+  const awayBig = isBigTeam(game.fora);
+
+  if (homeBig !== awayBig) {
+    const side = homeBig ? "HOME" : "AWAY";
+    const teamName = side === "HOME" ? game.casa : game.fora;
+
+    return {
+      skip: false,
+      market: "HANDICAP ASIÁTICO",
+      line: "+0.25",
+      side,
+      side_key: side === "HOME" ? "home" : "away",
+      team: teamName,
+      confidence: 63,
+      score: 8.5,
+      reason:
+        `${side === "HOME" ? "Casa" : "Fora"} +0.25: ` +
+        "leitura inicial conservadora; a análise completa atualizará forma, tabela e odds.",
+      data_quality: 2,
+      calculation_source: "fast_structural",
+      fast_initial: true,
+      factors: {
+        odds: false,
+        table: false,
+        home_form: false,
+        away_form: false
+      }
+    };
+  }
+
+  return {
+    skip: true,
+    updating: false,
+    market: "HANDICAP ASIÁTICO",
+    line: "SEM APOSTA",
+    side: null,
+    side_key: null,
+    team: null,
+    confidence: 0,
+    score: 0,
+    reason:
+      "Sem vantagem inicial clara. A análise completa continua em segundo plano.",
+    data_quality: 1,
+    calculation_source: "fast_no_edge",
+    fast_initial: true,
+    factors: {
+      odds: false,
+      table: false,
+      home_form: false,
+      away_form: false
+    }
+  };
+}
 
 async function buildFastBttsHandicapEngines({ date }) {
-  const cacheKey = `fast-btts-handicap:${date}`;
+  const cacheKey = `fast-btts-handicap-v55:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
-  const baseGames = (await buildMobileFastList(date)).slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
+  const baseGames = (await buildMobileFastList(date))
+    .slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
 
   const analyzed = await mapLimit(
     baseGames,
     FAST_MARKET_ENGINE_CONCURRENCY,
     async game => {
-      const [oddsResult, homeResult, awayResult] = await Promise.allSettled([
-        game.match_id ? getOdds1x2(game.match_id) : Promise.resolve(null),
-        engineRecentEventsByTeam(game.home_team_id, date, 8),
-        engineRecentEventsByTeam(game.away_team_id, date, 8)
-      ]);
+      // Odds ajudam o Handicap, mas não podem segurar o card.
+      let oddsInfo = null;
+      if (game.match_id) {
+        try {
+          oddsInfo = await withTimeout(
+            getOdds1x2(game.match_id),
+            FAST_MARKET_ODDS_TIMEOUT_MS,
+            `odds rápidas ${game.match_id}`
+          );
+        } catch {
+          oddsInfo = null;
+        }
+      }
 
-      const oddsInfo = oddsResult.status === "fulfilled" ? oddsResult.value : null;
-      const homeMatches = homeResult.status === "fulfilled" && Array.isArray(homeResult.value)
-        ? homeResult.value
-        : [];
-      const awayMatches = awayResult.status === "fulfilled" && Array.isArray(awayResult.value)
-        ? awayResult.value
-        : [];
-
-      const [homeProfile, awayProfile] = await Promise.all([
-        engineRecentProfile(game.casa, homeMatches, MULTI_MARKET_ENGINE.RECENT_N),
-        engineRecentProfile(game.fora, awayMatches, MULTI_MARKET_ENGINE.RECENT_N)
-      ]);
-
+      // BTTS nasce imediatamente de uma projeção de gols local.
+      // Se as odds chegaram, elas entram na projeção; caso contrário,
+      // o fallback usa os sinais já existentes no evento/score.
       const goals_ai = goalsEngineDecision({
         game,
-        home: homeProfile,
-        away: awayProfile,
+        home: null,
+        away: null,
         oddsInfo
       });
 
       const btts_ai = bttsEngineDecision({
         game,
-        home: homeProfile,
-        away: awayProfile,
+        home: null,
+        away: null,
         oddsInfo,
         goalsDecision: goals_ai
       });
 
-      const handicapHistoryBlock = {
-        firstTeam_lastResults: homeMatches,
-        secondTeam_lastResults: awayMatches
-      };
-
-      const handicap_ai = handicapDecision({
+      const handicap_ai = fastHandicapFallback(
         game,
-        oddsInfo,
-        h2hBlock: handicapHistoryBlock,
-        posHome: game.pos_home,
-        posAway: game.pos_away
-      });
+        oddsInfo
+      );
 
       return {
         ...game,
-        btts_ai,
-        handicap_ai,
-        engine_profiles: {
-          home: homeProfile,
-          away: awayProfile
+        goals_ai,
+        btts_ai: {
+          ...btts_ai,
+          fast_initial: true
         },
-        fast_market_engine: true
+        handicap_ai,
+        fast_market_engine: true,
+        fast_market_engine_version: "v55-instant-first"
       };
     }
   );
 
-  const rankByDecision = (items, field) => items.slice().sort((a, b) => {
-    const da = a?.[field] || {};
-    const db = b?.[field] || {};
-    if (Boolean(da.skip) !== Boolean(db.skip)) return da.skip ? 1 : -1;
-    return Number(db.score || 0) - Number(da.score || 0);
-  });
+  const rankByDecision = (items, field) =>
+    items.slice().sort((a, b) => {
+      const da = a?.[field] || {};
+      const db = b?.[field] || {};
+
+      if (Boolean(da.updating) !== Boolean(db.updating)) {
+        return da.updating ? 1 : -1;
+      }
+
+      if (Boolean(da.skip) !== Boolean(db.skip)) {
+        return da.skip ? 1 : -1;
+      }
+
+      return Number(db.score || 0) - Number(da.score || 0);
+    });
 
   const payload = {
     ok: true,
     fast: true,
+    instant_first: true,
+    version: "v55",
     date,
     btts: rankByDecision(analyzed, "btts_ai"),
     handicap: rankByDecision(analyzed, "handicap_ai")
   };
 
-  cacheSet(cacheKey, payload, 5 * 60 * 1000);
+  cacheSet(cacheKey, payload, 2 * 60 * 1000);
   return payload;
 }
 
 app.get("/market_engines_fast", async (req, res) => {
   const date = req.query.date || toISODate();
-  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
+  res.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
 
   try {
     const payload = await withTimeout(
       buildFastBttsHandicapEngines({ date }),
-      30000,
-      "motores rápidos BTTS/Handicap"
+      12000,
+      "motores instantâneos BTTS/Handicap"
     );
+
     return res.json(payload);
   } catch (err) {
-    console.warn("[market_engines_fast]", err?.message || err);
+    console.warn(
+      "[market_engines_fast v55]",
+      err?.message || err
+    );
+
     return res.status(500).json({
       error: "Erro ao calcular motores rápidos",
       details: String(err?.message || err)
