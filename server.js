@@ -590,6 +590,71 @@ const LEAGUE_META = {
   683: { name: "Conference League", baseCorners: 10.1, importance: 88 },
 };
 
+/* =========================================================
+   TOP 1 DE CANTOS — FUNIL PREMIUM / CONSERVADOR
+   - O card principal só usa ligas fortes.
+   - Over 8.5 nunca é Top 1.
+   - Jogos de volta UEFA são excluídos do Top 1.
+   - Favoritos do usuário recebem prioridade APENAS se passarem
+     por todos os filtros de qualidade; nunca furam uma trava.
+   ========================================================= */
+const TOP1_CORNER_PREMIUM_LEAGUES = new Set([
+  152, // Premier League
+  302, // La Liga
+  175, // Bundesliga
+  207, // Serie A
+  168, // Ligue 1
+  244, // Eredivisie
+  266, // Primeira Liga
+  99,  // Brasileirão Série A
+  18,  // Libertadores
+  3,   // Champions League
+  4    // Europa League
+]);
+
+const TOP1_CORNER_BLOCK_SECOND_LEG_UEFA = new Set([3, 4, 683]);
+const TOP1_CORNER_MIN_DATA_QUALITY = Number(
+  process.env.TOP1_CORNER_MIN_DATA_QUALITY || 4
+);
+const TOP1_CORNER_MIN_SAMPLE_GAMES = Number(
+  process.env.TOP1_CORNER_MIN_SAMPLE_GAMES || 4
+);
+const TOP1_CORNER_FAVORITE_BONUS = Number(
+  process.env.TOP1_CORNER_FAVORITE_BONUS || 12
+);
+
+function top1NormalizeTeam(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function top1FavoriteSet(value) {
+  let source = value;
+  if (typeof source === 'string') {
+    try { source = JSON.parse(source); }
+    catch { source = source.split(','); }
+  }
+
+  return new Set(
+    (Array.isArray(source) ? source : [])
+      .map(top1NormalizeTeam)
+      .filter(Boolean)
+      .slice(0, 40)
+  );
+}
+
+function top1GameHasFavorite(game, favoriteTeams) {
+  if (!(favoriteTeams instanceof Set) || !favoriteTeams.size) return false;
+  const home = top1NormalizeTeam(game?.casa ?? game?.home ?? game?.home_name);
+  const away = top1NormalizeTeam(game?.fora ?? game?.away ?? game?.away_name);
+  return favoriteTeams.has(home) || favoriteTeams.has(away);
+}
+
+
 // 🔥 CONVERSÃO AUTOMÁTICA (isso é o segredo)
 const LEAGUES = LEAGUES_IDS.map(id => {
   const meta = LEAGUE_META[id] || {
@@ -8549,12 +8614,14 @@ app.get("/corner_pregame_locks", (req, res) => {
 app.get("/official_corner_pick", async (req, res) => {
   const date = req.query.date || toISODate();
   const fresh = String(req.query.fresh || "") === "1";
+  const favoriteTeams = top1FavoriteSet(req.query.favorites || "[]");
 
   try {
     const out = await buildQuentesList({ date, fresh });
     const official = resolveOfficialCornerPick({
       date,
-      games: rankGamesByCornerStrength(out)
+      games: rankGamesByCornerStrength(out),
+      favoriteTeams
     });
 
     return res.json({
@@ -9489,14 +9556,91 @@ function officialCornerIsFuture(game, date) {
   return kickoff >= officialCornerCurrentMinutesManaus() - 2;
 }
 
+
+function officialCornerContext(game) {
+  const raw = game?.event_raw || game?.raw || {};
+  return {
+    ...raw,
+    match_round: game?.round_raw ?? raw?.match_round ?? raw?.round,
+    round: game?.round_raw ?? raw?.round ?? raw?.match_round,
+    league_round: raw?.league_round,
+    stage: game?.stage_raw ?? raw?.stage ?? raw?.match_stage,
+    match_stage: game?.stage_raw ?? raw?.match_stage ?? raw?.stage,
+    event_round: raw?.event_round,
+    match_name: raw?.match_name,
+    match_type: game?.type_raw ?? raw?.match_type
+  };
+}
+
+function officialCornerPremiumLeague(game) {
+  const leagueId = Number(
+    game?.league_id ??
+    game?.event_raw?.league_id ??
+    game?.event_raw?.match_league_id ??
+    0
+  );
+
+  if (!TOP1_CORNER_PREMIUM_LEAGUES.has(leagueId)) return false;
+
+  // Conference League fica fora do Top 1 premium. O mercado continua no app.
+  if (leagueId === 683) return false;
+
+  return true;
+}
+
+function officialCornerBlockedReturnLeg(game) {
+  const leagueId = Number(
+    game?.league_id ??
+    game?.event_raw?.league_id ??
+    game?.event_raw?.match_league_id ??
+    0
+  );
+
+  if (!TOP1_CORNER_BLOCK_SECOND_LEG_UEFA.has(leagueId)) return false;
+
+  const context = officialCornerContext(game);
+  if (looksLikeGroupStage(context)) return false;
+
+  // Trava dura: detectou jogo de volta UEFA, não concorre ao Top 1.
+  return looksLikeSecondLeg(context);
+}
+
+function officialCornerFavoriteBonus(game, favoriteTeams) {
+  if (!top1GameHasFavorite(game, favoriteTeams)) return 0;
+  return TOP1_CORNER_FAVORITE_BONUS;
+}
+
+function officialCornerRank(games, favoriteTeams = new Set()) {
+  return rankGamesByCornerStrength(games || [])
+    .map(game => ({
+      ...game,
+      top1_favorite: top1GameHasFavorite(game, favoriteTeams),
+      top1_score: Number(
+        (
+          Number(game?.corner_elite_score ?? -999) +
+          officialCornerFavoriteBonus(game, favoriteTeams)
+        ).toFixed(2)
+      )
+    }))
+    .sort((a, b) => {
+      const scoreDiff = Number(b?.top1_score ?? -999) - Number(a?.top1_score ?? -999);
+      if (scoreDiff !== 0) return scoreDiff;
+      return Number(b?.corner_elite_score ?? -999) - Number(a?.corner_elite_score ?? -999);
+    });
+}
+
 function officialCornerIsStrong(game, date) {
   if (!game || !officialCornerIsFuture(game, date)) return false;
+  if (!officialCornerPremiumLeague(game)) return false;
+  if (officialCornerBlockedReturnLeg(game)) return false;
 
   const decision = game?.corners_ai || {};
-  if (decision.skip) return false;
+  if (decision.skip || decision.updating) return false;
 
-  const line = String(decision.line || "").toUpperCase();
-  if (!line.startsWith("OVER")) return false;
+  const line = String(decision.line || '').toUpperCase().trim();
+
+  // Top 1 não trabalha com 8.5. A menor linha aceita é Over 9.5.
+  if (!['OVER 9.5', 'OVER 10.5', 'OVER 11.5'].includes(line)) return false;
 
   const confidence = Number(
     decision.confidence ??
@@ -9529,24 +9673,40 @@ function officialCornerIsStrong(game, date) {
     0
   );
 
-  const strongBase =
-    confidence >= OFFICIAL_CORNER_MIN_CONFIDENCE &&
-    projection >= OFFICIAL_CORNER_MIN_PROJECTION &&
-    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE;
+  const source = String(
+    decision?.calculation_source ??
+    decision?.extra?.calculation_source ??
+    ''
+  );
 
-  const exceptionalOver85 =
-    line === "OVER 8.5" &&
-    confidence >= 73 &&
-    projection >= 9.45 &&
-    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE + 8;
+  const flags = Array.isArray(game?.flags) ? game.flags : [];
+  const weakSource = source === 'fallback' || source === 'mobile_fast' || flags.includes('mobile_fast_initial');
+  if (weakSource) return false;
 
   const dataApproved =
-    dataQuality >= 2 ||
-    sampleGames >= 3 ||
-    decision?.calculation_source === "recent_form" ||
-    decision?.extra?.calculation_source === "recent_form";
+    dataQuality >= TOP1_CORNER_MIN_DATA_QUALITY ||
+    sampleGames >= TOP1_CORNER_MIN_SAMPLE_GAMES ||
+    (source === 'recent_form' && sampleGames >= 3);
 
-  return (strongBase || exceptionalOver85) && dataApproved;
+  if (!dataApproved) return false;
+
+  // A linha sobe junto com a exigência. Não basta projetar 9.7 e vender 10.5/11.5.
+  const lineProjectionFloor =
+    line === 'OVER 11.5' ? 12.35 :
+    line === 'OVER 10.5' ? 11.35 :
+    10.25;
+
+  const lineConfidenceFloor =
+    line === 'OVER 11.5' ? 74 :
+    line === 'OVER 10.5' ? 71 :
+    Math.max(68, OFFICIAL_CORNER_MIN_CONFIDENCE);
+
+  const strongBase =
+    confidence >= lineConfidenceFloor &&
+    projection >= Math.max(OFFICIAL_CORNER_MIN_PROJECTION, lineProjectionFloor) &&
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE;
+
+  return strongBase;
 }
 
 function officialCornerSnapshot(game) {
@@ -9582,39 +9742,77 @@ function officialCornerFindCurrent(games, current) {
   ) || null;
 }
 
-function resolveOfficialCornerPick({ date, games }) {
+function resolveOfficialCornerPick({ date, games, favoriteTeams = new Set() }) {
   const store = loadOfficialCornerPickStore();
+  const favoriteSignature = [...favoriteTeams].sort().join('|');
   const day =
     store.dates[date] ||
     {
       current: null,
       history: [],
-      updated_at: null
+      updated_at: null,
+      favorite_signature: ''
     };
 
-  let currentGame = officialCornerFindCurrent(
-    games,
-    day.current
-  );
+  let currentGame = officialCornerFindCurrent(games, day.current);
 
-  // A seleção oficial permanece travada antes e durante o jogo.
+  // Depois de uma atualização de regras, uma fotografia antiga que hoje seria
+  // reprovada (8.5, liga fraca, volta UEFA etc.) é descartada antes do kickoff.
+  if (
+    day.current &&
+    currentGame &&
+    !officialCornerIsFinished(currentGame) &&
+    !officialCornerIsLive(currentGame) &&
+    !officialCornerIsStrong(currentGame, date)
+  ) {
+    day.history = Array.isArray(day.history) ? day.history : [];
+    day.history.push({
+      ...day.current,
+      invalidated_at: new Date().toISOString(),
+      invalidated_reason: 'top1_premium_filter'
+    });
+    day.current = null;
+    currentGame = null;
+  }
+
+  // Se os favoritos mudaram antes do jogo começar, a IA pode repensar o Top 1.
+  // Isso NÃO acontece com partida ao vivo: ao vivo a indicação permanece travada.
+  if (
+    day.current &&
+    currentGame &&
+    !officialCornerIsLive(currentGame) &&
+    !officialCornerIsFinished(currentGame) &&
+    String(day.favorite_signature || '') !== favoriteSignature
+  ) {
+    day.current = null;
+    currentGame = null;
+  }
+
+  // A seleção oficial permanece travada durante o jogo.
   if (day.current && currentGame && !officialCornerIsFinished(currentGame)) {
     return {
       game: currentGame,
       locked: true,
       selected_at: day.current.selected_at,
-      no_more_opportunities: false
+      no_more_opportunities: false,
+      favorite_considered: Boolean(day.current.top1_favorite)
     };
   }
 
-  // Se a API temporariamente não devolver a partida, preserva a fotografia.
-  if (day.current && !currentGame) {
+  // Se a API temporariamente não devolver a partida, preserva a fotografia
+  // enquanto os favoritos do usuário não mudaram.
+  if (
+    day.current &&
+    !currentGame &&
+    String(day.favorite_signature || '') === favoriteSignature
+  ) {
     return {
       game: day.current,
       locked: true,
       snapshot_only: true,
       selected_at: day.current.selected_at,
-      no_more_opportunities: false
+      no_more_opportunities: false,
+      favorite_considered: Boolean(day.current.top1_favorite)
     };
   }
 
@@ -9630,13 +9828,12 @@ function resolveOfficialCornerPick({ date, games }) {
     day.current = null;
   }
 
-  const ranked = rankGamesByCornerStrength(games || []);
-  const next = ranked.find(
-    game => officialCornerIsStrong(game, date)
-  );
+  const ranked = officialCornerRank(games || [], favoriteTeams);
+  const next = ranked.find(game => officialCornerIsStrong(game, date));
 
   if (!next) {
     day.current = null;
+    day.favorite_signature = favoriteSignature;
     day.updated_at = new Date().toISOString();
     store.dates[date] = day;
     saveOfficialCornerPickStore();
@@ -9645,11 +9842,19 @@ function resolveOfficialCornerPick({ date, games }) {
       game: null,
       locked: false,
       no_more_opportunities: true,
-      message: "A IA não encontrou mais jogos de escanteios com qualidade suficiente para hoje."
+      favorite_considered: favoriteTeams.size > 0,
+      message: 'A IA não encontrou um Top 1 de cantos suficientemente forte. Nenhuma entrada é melhor do que forçar um jogo fraco.'
     };
   }
 
-  day.current = officialCornerSnapshot(next);
+  day.current = {
+    ...officialCornerSnapshot(next),
+    top1_favorite: Boolean(next.top1_favorite),
+    top1_score: Number(next.top1_score ?? next.corner_elite_score ?? 0),
+    favorite_signature: favoriteSignature,
+    started_or_locked: false
+  };
+  day.favorite_signature = favoriteSignature;
   day.updated_at = new Date().toISOString();
   store.dates[date] = day;
   saveOfficialCornerPickStore();
@@ -9658,7 +9863,11 @@ function resolveOfficialCornerPick({ date, games }) {
     game: next,
     locked: true,
     selected_at: day.current.selected_at,
-    no_more_opportunities: false
+    no_more_opportunities: false,
+    favorite_considered: Boolean(next.top1_favorite),
+    top1_reason: next.top1_favorite
+      ? 'Favorito analisado e aprovado pelos mesmos filtros premium.'
+      : 'Melhor combinação de linha, projeção, confiança e qualidade de dados entre os jogos premium.'
   };
 }
 
@@ -9667,6 +9876,7 @@ function resolveOfficialCornerPick({ date, games }) {
 app.get("/ia_card", async (req, res) => {
   const date = req.query.date || toISODate();
   const fresh = String(req.query.fresh || "") === "1";
+  const favoriteTeams = top1FavoriteSet(req.query.favorites || "[]");
 
   try{
     const out = await buildQuentesList({ date, fresh });
@@ -9675,7 +9885,8 @@ app.get("/ia_card", async (req, res) => {
     const rankedUniverse = rankGamesByCornerStrength(out);
     const official = resolveOfficialCornerPick({
       date,
-      games: rankedUniverse
+      games: rankedUniverse,
+      favoriteTeams
     });
 
     if (!official.game) {

@@ -18,7 +18,7 @@
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
     const mobileMedia = window.matchMedia("(max-width: 980px)");
   
-    const MARKET_ORDER = ["corners", "goals", "cards"];
+    const MARKET_ORDER = ["corners"];
     const AUTO_SLIDE_MS = 9000;
   
     const MARKET = {
@@ -83,14 +83,18 @@
       pregame: [],
       combined: [],
       props: [],
-      activeMarket: "goals",
+      activeMarket: "corners",
       selected: null,
       autoTimer: null,
       matchPollTimer: null,
       touchStartX: 0,
       touchStartY: 0,
       loading: false,
-      engineDate: ""
+      engineDate: "",
+      officialCornerLoading: false,
+      officialCornerNoOpportunity: false,
+      officialCornerReason: "",
+      officialCornerBest: null
     };
   
     function clean(value, fallback = "") {
@@ -415,24 +419,13 @@
           const raw = game.raw || game;
           const normalized = normalize(raw, state.activeMarket, index);
 
-          // Escanteios é manual: não precisa esperar corners_ai.
+          // Top 1 de cantos não fabrica linha ou confiança enquanto a IA pesada
+          // ainda não aprovou uma oportunidade real.
           if (state.activeMarket === "corners") {
-            normalized.line = MARKET.corners.lines[0];
-            normalized.confidence = Math.max(
-              60,
-              Math.min(
-                82,
-                Math.round(
-                  numberFrom(
-                    raw?.over95_prob_adj,
-                    raw?.over95_prob,
-                    raw?.ai_score,
-                    game.confidence,
-                    64
-                  ) || 64
-                )
-              )
-            );
+            normalized.line = normalized.line === "DADOS EM ATUALIZAÇÃO"
+              ? "DADOS EM ATUALIZAÇÃO"
+              : normalized.line;
+            normalized.confidence = Number(normalized.confidence || 0);
           }
 
           return normalized;
@@ -957,9 +950,9 @@
       cprText("#cprTitle", `🔥 MELHOR APOSTA • ${meta.label}`);
       const heroLine =
         state.activeMarket === "corners"
-          ? (game.line && !game.line.includes("ATUALIZAÇÃO")
+          ? (game.line && !game.line.includes("ATUALIZAÇÃO") && game.line !== "SEM APOSTA"
               ? game.line
-              : MARKET.corners.lines[0])
+              : "ANALISANDO TOP 1")
           : (game.line === "DADOS EM ATUALIZAÇÃO" || game.line === "SEM APOSTA"
               ? "ANALISANDO"
               : (game.line || "ANALISANDO"));
@@ -992,10 +985,10 @@
           Math.round(
             Number(
               game.confidence ||
+              game?.raw?.corners_ai?.confidence ||
               game?.raw?.over95_prob_adj ||
               game?.raw?.over95_prob ||
-              game?.raw?.ai_score ||
-              64
+              0
             )
           )
         )
@@ -1012,7 +1005,7 @@
       cprText("#cprProjection", cprMetric(projection, 2));
       cprText("#cprCornersAvg", cprMetric(cornerAvg, 1));
       cprText("#cprGoalsAvg", cprMetric(goalsAvg, 1));
-      cprText("#cprConfidence", `${confidence}%`);
+      cprText("#cprConfidence", confidence > 0 ? `${confidence}%` : "—");
 
       const trend =
         confidence >= 72 ? "ALTA" :
@@ -1070,6 +1063,11 @@
     }
 
     function renderActive({ animate = false, direction = 1 } = {}) {
+      if (state.activeMarket === "corners" && state.officialCornerNoOpportunity) {
+        cprShowNoOfficialCornerOpportunity(state.officialCornerReason);
+        return;
+      }
+
       const list = activeList();
       const meta = MARKET[state.activeMarket] || MARKET.corners;
       setLoading(false);
@@ -1200,7 +1198,15 @@
         // Escanteios agora é manual. A lista-base sempre fica disponível;
         // se o servidor devolver dados extras, preservamos esses dados.
         if (cornerGames.length) {
-          state.corners = buildMarket(cornerGames, "corners");
+          const engineCorners = buildMarket(cornerGames, "corners");
+          if (state.officialCornerBest) {
+            state.corners = [
+              state.officialCornerBest,
+              ...engineCorners.filter(item => String(item.id) !== String(state.officialCornerBest.id))
+            ];
+          } else {
+            state.corners = engineCorners;
+          }
         }
 
         if (goalGames.length) state.goals = buildMarket(goalGames, "goals");
@@ -1237,12 +1243,12 @@
               ...item,
               raw: item.raw || item,
               time: item.time || gameTime(item.raw || item),
-              line: item.line || "ANALISANDO",
-              confidence: Number(item.confidence || 0) || 64
+              line: item.line || "ANALISANDO TOP 1",
+              confidence: Number(item.confidence || 0) || 0
             };
           }
 
-          return normalize(item, "goals", index);
+          return normalize(item, "corners", index);
         })
         .filter(item =>
           item &&
@@ -1261,24 +1267,11 @@
         best.line === "DADOS EM ATUALIZAÇÃO" ||
         best.line === "SEM APOSTA"
       ) {
-        best.line = "ANALISANDO";
+        best.line = "ANALISANDO TOP 1";
       }
 
       if (!Number(best.confidence)) {
-        best.confidence = Math.max(
-          60,
-          Math.min(
-            82,
-            Math.round(
-              numberFrom(
-                best?.raw?.over95_prob_adj,
-                best?.raw?.over95_prob,
-                best?.raw?.ai_score,
-                64
-              ) || 64
-            )
-          )
-        );
+        best.confidence = 0;
       }
 
       cprSyncHero(best, baseList);
@@ -1376,6 +1369,93 @@
       });
     }
 
+
+    function cprFavoritesForTop1Query() {
+      try {
+        return encodeURIComponent(JSON.stringify(cprReadFavorites().slice(0, 40)));
+      } catch {
+        return encodeURIComponent('[]');
+      }
+    }
+
+    function cprShowNoOfficialCornerOpportunity(message = '') {
+      state.officialCornerNoOpportunity = true;
+      state.officialCornerLoading = false;
+      state.officialCornerReason = String(message || '');
+      state.officialCornerBest = null;
+      state.activeMarket = 'corners';
+
+      cprText('#cprTitle', '🔥 MELHOR APOSTA • CANTOS');
+      cprText('#cprMarket', 'SEM ENTRADA');
+      cprText('#cprTime', '--:--');
+      cprText('#cprHomeName', 'Nenhuma oportunidade');
+      cprText('#cprAwayName', 'aprovada');
+      cprText('#cprProjectionLabel', 'PROJEÇÃO DE CANTOS');
+      cprText('#cprProjection', '—');
+      cprText('#cprCornersAvg', '—');
+      cprText('#cprGoalsAvg', '—');
+      cprText('#cprConfidence', '—');
+      cprText('#cprTrend', '↗ AGUARDAR');
+      cprText('#cprConfidenceLabel', 'AGUARDAR');
+
+      const open = $('#cpHomeBestOpen');
+      if (open) open.disabled = true;
+    }
+
+    async function loadOfficialCornerTop1(date, stamp, { fresh = false } = {}) {
+      if (!date) return;
+      state.officialCornerLoading = true;
+      state.officialCornerNoOpportunity = false;
+
+      try {
+        const favorites = cprFavoritesForTop1Query();
+        const payload = await getJson(
+          `/official_corner_pick?date=${encodeURIComponent(date)}&fresh=${fresh ? '1' : '0'}&favorites=${favorites}&_mobile=${stamp}`,
+          22000
+        );
+
+        if (state.date !== date) return;
+
+        const rawGame = payload?.game;
+        if (!rawGame) {
+          cprShowNoOfficialCornerOpportunity(
+            payload?.message || 'Nenhum Top 1 de cantos passou pelos filtros premium.'
+          );
+          return;
+        }
+
+        const best = normalize(rawGame, 'corners', 0);
+        const line = String(best.line || '').toUpperCase();
+
+        // Segurança do front: mesmo que algum cache antigo devolva 8.5, não publica.
+        if (line === 'OVER 8.5' || !['OVER 9.5','OVER 10.5','OVER 11.5'].includes(line)) {
+          cprShowNoOfficialCornerOpportunity('A linha retornada não passou pelo filtro do Top 1.');
+          return;
+        }
+
+        state.officialCornerLoading = false;
+        state.officialCornerNoOpportunity = false;
+        state.officialCornerReason = String(payload?.top1_reason || '');
+        state.officialCornerBest = best;
+        state.activeMarket = 'corners';
+
+        const current = Array.isArray(state.corners) ? state.corners : [];
+        state.corners = [
+          best,
+          ...current.filter(item => String(item.id) !== String(best.id))
+        ];
+
+        window.__cpMobileDirectGames = state.corners;
+        renderActive({ animate: true, direction: -1 });
+      } catch (error) {
+        if (state.date !== date) return;
+        state.officialCornerLoading = false;
+        cprShowNoOfficialCornerOpportunity(
+          'A IA não confirmou uma oportunidade premium agora. Tente novamente em instantes.'
+        );
+      }
+    }
+
     async function loadSecondaryDataInBackground(date, stamp) {
       // Mercado completo pode ser pesado. Nunca bloqueia a Home.
       Promise.allSettled([
@@ -1402,7 +1482,8 @@
             // Atualiza também a Home isolada diretamente.
             cprRenderBaseGamesImmediately(marketGames);
 
-            window.__cpMobileDirectGames = activeList();
+            window.__cpMobileDirectGames = state.corners;
+            state.activeMarket = "corners";
             renderActive({ animate: false });
           }
         }
@@ -1416,6 +1497,9 @@
 
       const stamp = Date.now();
       const date = state.date;
+      state.officialCornerBest = null;
+      state.officialCornerNoOpportunity = false;
+      state.officialCornerReason = "";
 
       try {
         // V36 — /quentes e /mercados correm em paralelo.
@@ -1434,24 +1518,9 @@
         state.combined = buildMarket(raw, "combined");
         state.props = buildMarket(raw, "props");
 
-        state.corners = buildMarket(raw, "corners").map((game, index) => {
-          const source = raw[index] || game.raw || game;
-          const p = numberFrom(
-            source?.over95_prob_adj,
-            source?.over95_prob,
-            source?.ai_score,
-            64
-          );
-
-          return {
-            ...game,
-            line: MARKET.corners.lines[0],
-            confidence: Math.max(
-              60,
-              Math.min(82, Math.round(Number.isFinite(p) ? p : 64))
-            )
-          };
-        });
+        // Não usa mais Over 8.5 / 64% como preenchimento temporário.
+        // O card principal só vira recomendação depois que /official_corner_pick aprovar.
+        state.corners = buildMarket(raw, "corners");
 
         // Mantém todos os mercados navegáveis enquanto a IA específica chega.
         state.goals = buildMarket(raw, "goals");
@@ -1470,9 +1539,13 @@
 
         setLoading(false);
 
-        // Depois sincroniza a lógica antiga/mercado ativo.
+        // O card principal fica fixo em CANTOS. A lista rápida só preenche a tela;
+        // a recomendação real vem da rota oficial e pode decidir por SEM ENTRADA.
+        state.activeMarket = "corners";
         renderActive({ animate: false });
-        restartAutoSlide();
+        stopAutoSlide();
+
+        loadOfficialCornerTop1(date, stamp).catch(() => {});
 
         // Dados pesados continuam em background.
         loadSecondaryDataInBackground(date, stamp);
@@ -4902,7 +4975,13 @@
         const dot = event.target.closest("[data-cp-home-dot]");
         if (dot) {
           event.preventDefault();
-          chooseMarket(dot.dataset.cpHomeDot);
+          const targetMarket = dot.dataset.cpHomeDot;
+          if (targetMarket && targetMarket !== "corners") {
+            openMarkets(targetMarket);
+          } else {
+            state.activeMarket = "corners";
+            renderActive({ animate: false });
+          }
           return;
         }
   
@@ -4936,6 +5015,7 @@
               : `Favoritar ${teamName}`;
           });
 
+          loadOfficialCornerTop1(state.date, Date.now(), { fresh: true }).catch(() => {});
           return;
         }
 
@@ -4958,6 +5038,7 @@
             ? `Remover ${teamName} dos favoritos`
             : `Favoritar ${teamName}`;
 
+          loadOfficialCornerTop1(state.date, Date.now(), { fresh: true }).catch(() => {});
           return;
         }
 
