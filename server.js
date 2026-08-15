@@ -8932,7 +8932,57 @@ function fastHandicapFallback(game, oddsInfo) {
     }
   }
 
-  // Sem odds em tempo hábil: usa somente um sinal estrutural forte.
+  // V56 — sem odds, usa a classificação já presente no evento.
+  // Isso evita "AGUARDANDO DADOS" em jogos onde o próprio feed já
+  // informa uma diferença clara entre as equipes.
+  const fastHomePos = Number(game?.pos_home);
+  const fastAwayPos = Number(game?.pos_away);
+
+  if (Number.isFinite(fastHomePos) && Number.isFinite(fastAwayPos)) {
+    const gap = Math.abs(fastHomePos - fastAwayPos);
+
+    if (gap >= 4) {
+      const side = fastHomePos < fastAwayPos ? "HOME" : "AWAY";
+      const teamName = side === "HOME" ? game.casa : game.fora;
+
+      let line = "+0.25";
+      let confidence = 63;
+
+      if (gap >= 12) {
+        line = "-0.5";
+        confidence = 70;
+      } else if (gap >= 8) {
+        line = "-0.25";
+        confidence = 67;
+      }
+
+      return {
+        skip: false,
+        updating: false,
+        market: "HANDICAP ASIÁTICO",
+        line,
+        side,
+        side_key: side === "HOME" ? "home" : "away",
+        team: teamName,
+        confidence,
+        score: gap * 2,
+        reason:
+          `${teamName} ${line}: leitura inicial pela diferença de classificação; ` +
+          "o motor completo refinará a decisão em segundo plano.",
+        data_quality: 2,
+        calculation_source: "fast_table",
+        fast_initial: true,
+        factors: {
+          odds: false,
+          table: true,
+          home_form: false,
+          away_form: false
+        }
+      };
+    }
+  }
+
+  // Sem odds/tabela suficiente: usa somente um sinal estrutural forte.
   // Não inventa favorito em confrontos sem diferença reconhecível.
   const homeBig = isBigTeam(game.casa);
   const awayBig = isBigTeam(game.fora);
@@ -9001,19 +9051,11 @@ async function buildFastBttsHandicapEngines({ date }) {
     baseGames,
     FAST_MARKET_ENGINE_CONCURRENCY,
     async game => {
-      // Odds ajudam o Handicap, mas não podem segurar o card.
-      let oddsInfo = null;
-      if (game.match_id) {
-        try {
-          oddsInfo = await withTimeout(
-            getOdds1x2(game.match_id),
-            FAST_MARKET_ODDS_TIMEOUT_MS,
-            `odds rápidas ${game.match_id}`
-          );
-        } catch {
-          oddsInfo = null;
-        }
-      }
+      // V56 — PRIMEIRA RESPOSTA REALMENTE INSTANTÂNEA.
+      // A rota fast NÃO espera odds externas. BTTS e Handicap publicam
+      // uma primeira decisão usando os dados já presentes no evento.
+      // O /market_engines completo refina depois com odds/forma/H2H.
+      const oddsInfo = null;
 
       // BTTS nasce imediatamente de uma projeção de gols local.
       // Se as odds chegaram, elas entram na projeção; caso contrário,
@@ -9093,7 +9135,7 @@ app.get("/market_engines_fast", async (req, res) => {
   try {
     const payload = await withTimeout(
       buildFastBttsHandicapEngines({ date }),
-      12000,
+      7000,
       "motores instantâneos BTTS/Handicap"
     );
 

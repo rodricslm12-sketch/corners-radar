@@ -1292,8 +1292,56 @@
 
         if (goalGames.length) state.goals = buildMarket(goalGames, "goals");
         if (cardGames.length) state.cards = buildMarket(cardGames, "cards");
-        if (bttsGames.length) state.btts = buildMarket(bttsGames, "btts");
-        if (handicapGames.length) state.handicap = buildMarket(handicapGames, "handicap");
+
+        // V56 — BTTS/HANDICAP: uma resposta "full" ainda atualizando
+        // nunca pode apagar a decisão instantânea já entregue pela rota fast.
+        const mergeResolvedMarket = (currentList, incomingRaw, type) => {
+          const incoming = buildMarket(incomingRaw, type);
+          if (!Array.isArray(currentList) || !currentList.length) return incoming;
+
+          const currentById = new Map(
+            currentList.map(item => [String(item.id), item])
+          );
+
+          return incoming.map(item => {
+            const previous = currentById.get(String(item.id));
+            if (!previous) return item;
+
+            const field = ENGINE_DECISION_FIELD[type];
+            const prevDecision = previous?.raw?.[field];
+            const nextDecision = item?.raw?.[field];
+
+            const prevResolved = Boolean(
+              prevDecision &&
+              typeof prevDecision === "object" &&
+              !prevDecision.updating &&
+              clean(prevDecision.line, "") &&
+              clean(prevDecision.line, "") !== "DADOS EM ATUALIZAÇÃO" &&
+              clean(prevDecision.line, "") !== "ANALISANDO PARTIDA"
+            );
+
+            const nextPending = Boolean(
+              !nextDecision ||
+              nextDecision.updating ||
+              clean(nextDecision?.line, "") === "DADOS EM ATUALIZAÇÃO" ||
+              clean(nextDecision?.line, "") === "ANALISANDO PARTIDA"
+            );
+
+            return prevResolved && nextPending ? previous : item;
+          });
+        };
+
+        if (bttsGames.length) {
+          state.btts = source === "full"
+            ? mergeResolvedMarket(state.btts, bttsGames, "btts")
+            : buildMarket(bttsGames, "btts");
+        }
+
+        if (handicapGames.length) {
+          state.handicap = source === "full"
+            ? mergeResolvedMarket(state.handicap, handicapGames, "handicap")
+            : buildMarket(handicapGames, "handicap");
+        }
 
         window.__cpMobileDirectGames = activeList();
         renderActive({ animate: false });
