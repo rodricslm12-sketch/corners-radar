@@ -1375,7 +1375,7 @@
       // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
       // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
       getJson(
-        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
+        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=59`,
         22000
       )
         .then(payload => applyEnginePayload(payload, "fast"))
@@ -2476,6 +2476,7 @@
                 : "SEM APOSTA",
             confidence: Number(serverDecision.confidence || 0),
             score: Number(serverDecision.score || 0),
+            market_odd: Number(serverDecision.market_odd || 0) || null,
             teamName: clean(
               serverDecision.team,
               side === "home" ? game.home : game.away
@@ -2705,6 +2706,55 @@
       return (1.53 + Math.max(0, 82 - confidence) / 100).toFixed(2);
     }
   
+
+    function handicapIsPregame(game) {
+      const raw = game?.raw || {};
+      const status = clean(
+        raw.match_status ??
+        raw.status ??
+        raw.event_status ??
+        game?.status,
+        ""
+      ).toLowerCase();
+
+      if (/finished|full.?time|\bft\b|encerr|finaliz|ended|after/.test(status)) {
+        return false;
+      }
+
+      if (/^\d{1,3}(\+?\d*)?$/.test(status)) return false;
+      if (/live|ao vivo|half|interval|1st|2nd/.test(status)) return false;
+
+      const matchDate = clean(
+        raw.match_date ??
+        raw.event_date ??
+        game?.date,
+        ""
+      ).slice(0, 10);
+
+      const matchTime = clean(
+        raw.hora_manaus ??
+        raw.hora ??
+        raw.match_time ??
+        raw.time ??
+        game?.time,
+        ""
+      );
+
+      const hhmm = matchTime.match(/(\d{1,2}):(\d{2})/);
+
+      if (matchDate && hhmm) {
+        const kickoff = new Date(
+          `${matchDate}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00-04:00`
+        );
+
+        if (!Number.isNaN(kickoff.getTime())) {
+          return kickoff.getTime() > Date.now() - 5 * 60 * 1000;
+        }
+      }
+
+      return true;
+    }
+
     function renderHandicapMarket(layer, selectedLine = "IA") {
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
@@ -2719,10 +2769,7 @@
           ? state.handicap
           : (Array.isArray(state.pregame) ? state.pregame : []);
 
-      const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
-      const sourceGames = upcomingHandicapGames.length
-        ? upcomingHandicapGames
-        : originalSourceGames;
+      const sourceGames = originalSourceGames.filter(handicapIsPregame);
 
       const realAvailableLines = [...new Set(
         sourceGames.flatMap(game => {
@@ -2779,6 +2826,11 @@
           : safeRequestedLine === "IA"
             ? recommendation.confidence
             : Math.max(57, Math.min(88, recommendation.confidence - 2));
+
+        const realMarketOdd = Number(
+          game?.raw?.handicap_ai?.market_odd ??
+          recommendation?.market_odd
+        );
   
         const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
         const rule = recommendation.skip
@@ -2848,7 +2900,7 @@
   
             <div class="cpHandicapOdd">
               <small>${recommendation.skip ? "Decisão" : "Odd estimada"}</small>
-              <b>${recommendation.skip ? "—" : handicapOdd(confidence)}</b>
+              <b>${recommendation.skip ? "—" : Number.isFinite(realMarketOdd) ? realMarketOdd.toFixed(2) : handicapOdd(confidence)}</b>
             </div>
   
             <div class="cpHandicapGauge ${recommendation.skip ? "is-disabled" : ""}" style="--handicap:${confidence}">
@@ -4394,7 +4446,7 @@
 
       try {
         const payload = await getJson(
-          `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
+          `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=59`,
           18000
         );
 

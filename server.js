@@ -1935,50 +1935,72 @@ async function getOdds1x2(matchId) {
   const data = await apiGetAny({ action: "get_odds", match_id: matchId });
   if (!Array.isArray(data) || !data.length) return null;
 
-  // V57 — não joga fora os outros mercados.
-  // A API devolve 1X2 + BTS + O/U + Asian Handicap na mesma linha.
-  // Antes o código preservava apenas odd_1/odd_x/odd_2, então BTTS e
-  // Handicap nunca conseguiam "enxergar" os mercados reais disponíveis.
-  const o = data
-    .slice()
-    .sort((a, b) => {
-      const score = row => {
-        if (!row || typeof row !== "object") return 0;
-        let s = 0;
-        if (row.odd_1) s += 1;
-        if (row.odd_x) s += 1;
-        if (row.odd_2) s += 1;
-        if (row.bts_yes) s += 3;
-        if (row.bts_no) s += 3;
-        for (const key of Object.keys(row)) {
-          if (/^ah[+-]?\d+(?:\.\d+)?_[12]$/i.test(key)) s += 1;
-        }
-        return s;
-      };
-      return score(b) - score(a);
-    })[0] || {};
+  const validOdd = value => {
+    const n = Number(String(value ?? "").replace(",", "."));
+    return Number.isFinite(n) && n > 1 ? n : null;
+  };
 
-  const odd1 = Number(String(o.odd_1 || "").replace(",", "."));
-  const odd2 = Number(String(o.odd_2 || "").replace(",", "."));
-  const oddX = Number(String(o.odd_x || "").replace(",", "."));
+  // V59 — junta os mercados válidos de todos os bookmakers.
+  // Não escolhe mais uma única linha que pode ter AH vazio.
+  const merged = {
+    match_id: matchId,
+    odd_bookmakers: [],
+    odd1: null,
+    oddX: null,
+    odd2: null,
+    bts_yes: null,
+    bts_no: null
+  };
 
-  const fav =
+  for (const row of data) {
+    if (!row || typeof row !== "object") continue;
+
+    if (row.odd_bookmakers && !merged.odd_bookmakers.includes(row.odd_bookmakers)) {
+      merged.odd_bookmakers.push(row.odd_bookmakers);
+    }
+
+    const o1 = validOdd(row.odd_1);
+    const ox = validOdd(row.odd_x);
+    const o2 = validOdd(row.odd_2);
+
+    if (merged.odd1 === null && o1 !== null) merged.odd1 = o1;
+    if (merged.oddX === null && ox !== null) merged.oddX = ox;
+    if (merged.odd2 === null && o2 !== null) merged.odd2 = o2;
+
+    const btsYes = validOdd(row.bts_yes);
+    const btsNo = validOdd(row.bts_no);
+    if (merged.bts_yes === null && btsYes !== null) merged.bts_yes = btsYes;
+    if (merged.bts_no === null && btsNo !== null) merged.bts_no = btsNo;
+
+    for (const [key, value] of Object.entries(row)) {
+      if (!/^ah[+-]?\d+(?:\.\d+)?_[12]$/i.test(key)) continue;
+      const odd = validOdd(value);
+      if (odd === null) continue;
+
+      // Guarda a primeira cotação válida daquela linha.
+      // O objetivo aqui é reconhecer a existência REAL do mercado.
+      if (validOdd(merged[key]) === null) {
+        merged[key] = odd;
+      }
+    }
+  }
+
+  const odd1 = merged.odd1;
+  const odd2 = merged.odd2;
+
+  merged.fav =
     Number.isFinite(odd1) && Number.isFinite(odd2)
-      ? ((odd1 <= odd2)
-          ? { side: "HOME", odd: odd1 }
-          : { side: "AWAY", odd: odd2 })
+      ? (
+          odd1 <= odd2
+            ? { side: "HOME", odd: odd1 }
+            : { side: "AWAY", odd: odd2 }
+        )
       : null;
 
-  return {
-    ...o,
-    fav,
-    odd1: Number.isFinite(odd1) ? odd1 : null,
-    oddX: Number.isFinite(oddX) ? oddX : null,
-    odd2: Number.isFinite(odd2) ? odd2 : null,
-    bookmaker: o.odd_bookmakers || null
-  };
-}
+  merged.bookmaker = merged.odd_bookmakers.join(", ") || null;
 
+  return merged;
+}
 function asianHandicapMarketsFromOdds(oddsInfo) {
   if (!oddsInfo || typeof oddsInfo !== "object") return [];
 
@@ -2022,41 +2044,118 @@ function formatAsianLine(value) {
 }
 
 function applyAvailableAsianHandicap(decision, oddsInfo, game) {
-  if (!decision || decision.skip) return decision;
-
   const markets = asianHandicapMarketsFromOdds(oddsInfo);
   if (!markets.length) return decision;
 
-  const side = String(decision.side_key || decision.side || "").toLowerCase();
-  const isAway = side === "away" || side === "fora";
-  const target = Number(String(decision.line || "").replace("+", ""));
+  const favSide = String(
+    decision?.side_key ??
+    decision?.side ??
+    oddsInfo?.fav?.side ??
+    ""
+  ).toLowerCase();
+
+  const isAway =
+    favSide === "away" ||
+    favSide === "fora";
+
+  const side = isAway ? "away" : "home";
+  const teamName = side === "away" ? game.fora : game.casa;
+
+  const requested = Number(
+    String(decision?.line ?? "")
+      .replace("+", "")
+  );
+
   const candidates = markets
     .map(item => ({
       line: isAway ? item.away_line : item.home_line,
       odd: isAway ? item.away_odd : item.home_odd,
       raw: item
     }))
-    .filter(item => Number.isFinite(item.line) && Number.isFinite(item.odd));
+    .filter(item =>
+      Number.isFinite(item.line) &&
+      Number.isFinite(item.odd) &&
+      item.odd > 1
+    );
 
   if (!candidates.length) return decision;
 
+  // Se o motor já sugeriu uma linha, procura a real mais próxima.
+  // Se ele disse SEM APOSTA, escolhe a linha AH real mais equilibrada,
+  // dando preferência às linhas menos agressivas e odds utilizáveis.
   candidates.sort((a, b) => {
-    const da = Number.isFinite(target) ? Math.abs(a.line - target) : 999;
-    const db = Number.isFinite(target) ? Math.abs(b.line - target) : 999;
-    if (da !== db) return da - db;
-    return Math.abs(a.odd - 1.90) - Math.abs(b.odd - 1.90);
+    if (Number.isFinite(requested)) {
+      const da = Math.abs(a.line - requested);
+      const db = Math.abs(b.line - requested);
+      if (da !== db) return da - db;
+    }
+
+    const score = item => {
+      const priceDistance = Math.abs(item.odd - 1.90);
+      const lineRisk = Math.abs(item.line) * 0.16;
+
+      // Para o favorito, evita partir diretamente para linhas muito agressivas.
+      const favoriteAggression =
+        item.line < -1.0
+          ? Math.abs(item.line + 1.0) * 0.55
+          : 0;
+
+      return priceDistance + lineRisk + favoriteAggression;
+    };
+
+    return score(a) - score(b);
   });
 
   const chosen = candidates[0];
+
+  const homeOdd = Number(oddsInfo?.odd1);
+  const awayOdd = Number(oddsInfo?.odd2);
+  let favoriteEdge = 0;
+
+  if (Number.isFinite(homeOdd) && Number.isFinite(awayOdd)) {
+    const homeImp = 1 / Math.max(homeOdd, 1.01);
+    const awayImp = 1 / Math.max(awayOdd, 1.01);
+    favoriteEdge = Math.abs(homeImp - awayImp) * 100;
+  }
+
+  const baseConfidence =
+    Number.isFinite(Number(decision?.confidence)) && Number(decision.confidence) > 0
+      ? Number(decision.confidence)
+      : 62;
+
+  const confidence = Math.max(
+    61,
+    Math.min(
+      78,
+      Math.round(baseConfidence + Math.min(8, favoriteEdge * 0.22))
+    )
+  );
+
   return {
-    ...decision,
+    ...(decision || {}),
+    skip: false,
+    updating: false,
+    market: "HANDICAP ASIÁTICO",
     line: formatAsianLine(chosen.line),
-    market_odd: chosen.odd,
+    side,
+    side_key: side,
+    team: teamName,
+    teamName,
+    confidence,
+    score: Math.max(
+      Number(decision?.score || 0),
+      Number((confidence + favoriteEdge).toFixed(2))
+    ),
+    market_odd: Number(chosen.odd.toFixed(2)),
     available_market: true,
     available_lines: candidates.map(item => formatAsianLine(item.line)),
+    calculation_source:
+      decision?.skip || !decision
+        ? "real_asian_handicap_market"
+        : (decision?.calculation_source || "real_asian_handicap_market"),
     reason:
-      `${decision.reason || "Leitura do motor."} ` +
-      `Linha confirmada nas odds reais: ${formatAsianLine(chosen.line)} @ ${chosen.odd.toFixed(2)}.`
+      `${teamName} ${formatAsianLine(chosen.line)} @ ${chosen.odd.toFixed(2)}: ` +
+      "linha confirmada entre os mercados reais de Handicap Asiático disponíveis."
   };
 }
 
@@ -9059,7 +9158,7 @@ async function buildMobileFastList(date) {
 // 1ª etapa: eventos do dia + projeções locais + odds com timeout curto.
 // 2ª etapa: /market_engines completo refina forma, tabela, H2H e confiança.
 // =========================================================
-const FAST_MARKET_ENGINE_MAX_GAMES = Number(process.env.FAST_MARKET_ENGINE_MAX_GAMES || 10);
+const FAST_MARKET_ENGINE_MAX_GAMES = Number(process.env.FAST_MARKET_ENGINE_MAX_GAMES || 20);
 const FAST_MARKET_ENGINE_CONCURRENCY = Math.max(
   4,
   Number(process.env.FAST_MARKET_ENGINE_CONCURRENCY || 8)
@@ -9147,28 +9246,102 @@ function fastHandicapFallback(game, oddsInfo) {
   };
 }
 
+
+async function buildFastMarketGamesList(date) {
+  const events = await withTimeout(
+    apiGetAny({
+      action: "get_events",
+      from: date,
+      to: date,
+      timezone: API_TIMEZONE
+    }),
+    MOBILE_FAST_TIMEOUT_MS,
+    "consulta rápida de mercados"
+  );
+
+  const seen = new Set();
+  const out = [];
+
+  for (const e of Array.isArray(events) ? events : []) {
+    const game = mobileFastGameFromEvent(e);
+    if (!game) continue;
+
+    const key = String(
+      game.match_id ||
+      `${game.league_id}|${game.casa}|${game.fora}|${game.hora}`
+    );
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(game);
+  }
+
+  return out.sort((a, b) =>
+    String(a.hora || "").localeCompare(String(b.hora || ""))
+  );
+}
+
+function fastMarketIsPregame(game, date) {
+  const status = String(
+    game?.match_status ??
+    game?.status ??
+    game?.event_raw?.match_status ??
+    ""
+  ).trim().toLowerCase();
+
+  if (/finished|full.?time|\bft\b|encerr|finaliz|ended|after/.test(status)) {
+    return false;
+  }
+
+  // Status numérico normalmente indica partida já em andamento.
+  if (/^\d{1,3}(\+?\d*)?$/.test(status)) {
+    return false;
+  }
+
+  if (/live|ao vivo|half|interval|1st|2nd/.test(status)) {
+    return false;
+  }
+
+  const matchDate = String(
+    game?.match_date ??
+    game?.event_raw?.match_date ??
+    date ??
+    ""
+  ).slice(0, 10);
+
+  const matchTime = String(
+    game?.hora ??
+    game?.match_time ??
+    game?.event_raw?.match_time ??
+    ""
+  );
+
+  const hhmm = matchTime.match(/(\d{1,2}):(\d{2})/);
+
+  if (matchDate && hhmm) {
+    const kickoff = new Date(
+      `${matchDate}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00-04:00`
+    );
+
+    if (!Number.isNaN(kickoff.getTime())) {
+      // tolerância curta para atraso de atualização do feed
+      return kickoff.getTime() > Date.now() - 5 * 60 * 1000;
+    }
+  }
+
+  return true;
+}
+
 async function buildFastBttsHandicapEngines({ date }) {
-  const cacheKey = `fast-btts-handicap-v58:${date}`;
+  const cacheKey = `fast-btts-handicap-v59:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
-  const fastPool = await buildMobileFastList(date);
-
-  const isFinishedMarketGame = game => {
-    const status = String(
-      game?.match_status ??
-      game?.status ??
-      game?.event_raw?.match_status ??
-      ""
-    ).toLowerCase();
-
-    return /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
-  };
-
-  // V57 — mercados pré-jogo não devem abrir mostrando primeiro partidas encerradas.
-  const upcoming = fastPool.filter(game => !isFinishedMarketGame(game));
-  const baseGames = (upcoming.length ? upcoming : fastPool)
-    .slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
+  // V59 — Handicap não pode herdar o ranking/filtro de ESCANTEIOS.
+  // Usa os eventos reais do dia, por horário, e mantém somente pré-jogo.
+  const fastPool = await buildFastMarketGamesList(date);
+  const upcoming = fastPool.filter(game => fastMarketIsPregame(game, date));
+  const baseGames = upcoming.slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
 
   const analyzed = await mapLimit(
     baseGames,
@@ -9238,7 +9411,7 @@ async function buildFastBttsHandicapEngines({ date }) {
         handicap_available_lines: handicapAvailableLines,
         asian_handicap_markets: handicapMarkets,
         fast_market_engine: true,
-        fast_market_engine_version: "v58-real-markets-retry"
+        fast_market_engine_version: "v59-handicap-real-ah"
       };
     }
   );
@@ -9263,7 +9436,7 @@ async function buildFastBttsHandicapEngines({ date }) {
     ok: true,
     fast: true,
     instant_first: true,
-    version: "v58",
+    version: "v59",
     date,
     btts: rankByDecision(analyzed, "btts_ai"),
     handicap: rankByDecision(analyzed, "handicap_ai")
@@ -9291,7 +9464,7 @@ app.get("/market_engines_fast", async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.warn(
-      "[market_engines_fast v58]",
+      "[market_engines_fast v59]",
       err?.message || err
     );
 
