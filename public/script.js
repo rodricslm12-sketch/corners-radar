@@ -4451,23 +4451,23 @@
     }
 
 
-    let handicapOnlyV60RequestId = 0;
+    let handicapOnlyV61RequestId = 0;
 
-    async function refreshHandicapOnlyV60() {
+    async function refreshHandicapOnlyV61() {
       const layer = $("#cpMobileMarketsLayer");
       if (!layer) return;
 
       const date = state.date || todayManaus();
-      const requestId = ++handicapOnlyV60RequestId;
+      const requestId = ++handicapOnlyV61RequestId;
 
       try {
         const payload = await getJson(
-          `/handicap_engine_v60?date=${encodeURIComponent(date)}&_=${Date.now()}`,
+          `/handicap_engine_v61?date=${encodeURIComponent(date)}&_=${Date.now()}`,
           24000
         );
 
         if (
-          requestId !== handicapOnlyV60RequestId ||
+          requestId !== handicapOnlyV61RequestId ||
           state.activeMarket !== "handicap" ||
           state.date !== date
         ) {
@@ -4487,16 +4487,22 @@
           return;
         }
 
+        // V61 — nunca apaga os cards do Handicap apenas porque a API
+        // não publicou linha AH direta naquele instante.
+        // O servidor agora devolve fallback conservador por 1X2 quando possível.
         const body = $(".cpMobileMarketsBody", layer);
-        if (body) {
+        if (
+          body &&
+          (!Array.isArray(state.handicap) || !state.handicap.length)
+        ) {
           body.innerHTML = `
             <section class="cpHandicapNotice" style="margin:18px 0">
               <b>HANDICAP ASIÁTICO:</b>
-              nenhum jogo pré-jogo com linha real disponível foi encontrado agora.
+              não há partidas pré-jogo com dados mínimos disponíveis neste momento.
             </section>`;
         }
       } catch (error) {
-        console.warn("[Corner Pro Handicap V60]", error?.message || error);
+        console.warn("[Corner Pro Handicap V61]", error?.message || error);
       }
     }
 
@@ -4531,7 +4537,7 @@
           refreshInstantMarket("btts", true).catch(() => {});
         } else if (marketType === "handicap") {
           renderHandicapMarket(layer, "IA");
-          refreshHandicapOnlyV60().catch(() => {});
+          refreshHandicapOnlyV61().catch(() => {});
         } else if (["goals", "corners", "cards"].includes(marketType)) {
           renderDetailedMarket(
             layer,

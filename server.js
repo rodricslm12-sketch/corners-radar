@@ -9445,9 +9445,9 @@ function handicapOnlyV60OneXTwo(rows) {
 
 function handicapOnlyV60Decision(game, rows) {
   const markets = handicapOnlyV60Markets(rows);
-  if (!markets.length) return null;
-
   const oneXTwo = handicapOnlyV60OneXTwo(rows);
+
+  // Sem 1X2 não existe base mínima nem para o fallback conservador.
   if (!oneXTwo) return null;
 
   const homeRaw = 1 / Math.max(1.01, oneXTwo.home);
@@ -9462,79 +9462,117 @@ function handicapOnlyV60Decision(game, rows) {
 
   const side = homeProb >= awayProb ? "home" : "away";
   const favProb = side === "home" ? homeProb : awayProb;
+  const dogProb = side === "home" ? awayProb : homeProb;
+  const probabilityGap = Math.abs(favProb - dogProb);
 
   let targetLine = "+0.25";
-  if (favProb >= 0.68) targetLine = "-1.0";
-  else if (favProb >= 0.61) targetLine = "-0.5";
-  else if (favProb >= 0.55) targetLine = "-0.25";
+
+  // Linha conservadora. Só agride quando o favoritismo 1X2 é realmente claro.
+  if (favProb >= 0.67 && probabilityGap >= 0.25) {
+    targetLine = "-1.0";
+  } else if (favProb >= 0.61 && probabilityGap >= 0.18) {
+    targetLine = "-0.5";
+  } else if (favProb >= 0.55 && probabilityGap >= 0.11) {
+    targetLine = "-0.25";
+  } else if (favProb >= 0.50) {
+    targetLine = "+0.25";
+  }
 
   const target = Number(targetLine.replace("+", ""));
-
-  const candidates = markets
-    .map(item => ({
-      line: side === "home" ? item.home_line : item.away_line,
-      odd: side === "home" ? item.home_odd : item.away_odd
-    }))
-    .filter(item =>
-      Number.isFinite(item.line) &&
-      Number.isFinite(item.odd) &&
-      item.odd > 1.35 &&
-      item.odd < 3.20 &&
-      Math.abs(item.line) <= 2
-    );
-
-  if (!candidates.length) return null;
-
-  candidates.sort((a, b) => {
-    const targetA = Math.abs(a.line - target);
-    const targetB = Math.abs(b.line - target);
-    if (targetA !== targetB) return targetA - targetB;
-
-    const priceA = Math.abs(a.odd - 1.90);
-    const priceB = Math.abs(b.odd - 1.90);
-    if (priceA !== priceB) return priceA - priceB;
-
-    return Math.abs(a.line) - Math.abs(b.line);
-  });
-
-  const chosen = candidates[0];
   const teamName = side === "home" ? game.casa : game.fora;
 
-  const confidence = Math.max(
-    62,
+  // 1ª prioridade: usar uma linha AH REAL se a API forneceu.
+  if (markets.length) {
+    const candidates = markets
+      .map(item => ({
+        line: side === "home" ? item.home_line : item.away_line,
+        odd: side === "home" ? item.home_odd : item.away_odd
+      }))
+      .filter(item =>
+        Number.isFinite(item.line) &&
+        Number.isFinite(item.odd) &&
+        item.odd > 1.30 &&
+        item.odd < 3.50 &&
+        Math.abs(item.line) <= 2
+      );
+
+    if (candidates.length) {
+      candidates.sort((a, b) => {
+        const targetA = Math.abs(a.line - target);
+        const targetB = Math.abs(b.line - target);
+        if (targetA !== targetB) return targetA - targetB;
+
+        const priceA = Math.abs(a.odd - 1.90);
+        const priceB = Math.abs(b.odd - 1.90);
+        return priceA - priceB;
+      });
+
+      const chosen = candidates[0];
+      const confidence = Math.max(
+        62,
+        Math.min(
+          82,
+          Math.round(61 + Math.max(0, favProb - 0.50) * 90)
+        )
+      );
+
+      const lineText = formatAsianLine(chosen.line);
+
+      return {
+        skip: false,
+        updating: false,
+        market: "HANDICAP ASIÁTICO",
+        line: lineText,
+        side,
+        side_key: side,
+        team: teamName,
+        confidence,
+        score: Number((confidence + probabilityGap * 100).toFixed(2)),
+        market_odd: Number(chosen.odd.toFixed(2)),
+        available_market: true,
+        available_lines: [...new Set(
+          candidates.map(item => formatAsianLine(item.line)).filter(Boolean)
+        )],
+        calculation_source: "handicap_v61_real_ah",
+        reason:
+          `${teamName} ${lineText} @ ${chosen.odd.toFixed(2)}: ` +
+          "linha confirmada no Handicap Asiático real disponível."
+      };
+    }
+  }
+
+  // 2ª prioridade: se a API não publicou AH para este jogo,
+  // NÃO some com o card. Usa o favoritismo 1X2 para uma linha conservadora.
+  const fallbackConfidence = Math.max(
+    60,
     Math.min(
-      80,
-      Math.round(60 + Math.max(0, favProb - 0.50) * 85)
+      74,
+      Math.round(59 + Math.max(0, favProb - 0.50) * 72)
     )
   );
-
-  const lineText = formatAsianLine(chosen.line);
-  const availableLines = [...new Set(
-    candidates.map(item => formatAsianLine(item.line)).filter(Boolean)
-  )];
 
   return {
     skip: false,
     updating: false,
     market: "HANDICAP ASIÁTICO",
-    line: lineText,
+    line: targetLine,
     side,
     side_key: side,
     team: teamName,
-    confidence,
-    score: Number((confidence + Math.abs(homeProb - awayProb) * 100).toFixed(2)),
-    market_odd: Number(chosen.odd.toFixed(2)),
-    available_market: true,
-    available_lines: availableLines,
-    calculation_source: "handicap_only_v60_real_ah",
+    confidence: fallbackConfidence,
+    score: Number((fallbackConfidence + probabilityGap * 100).toFixed(2)),
+    market_odd: null,
+    available_market: false,
+    available_lines: [],
+    calculation_source: "handicap_v61_1x2_fallback",
     reason:
-      `${teamName} ${lineText} @ ${chosen.odd.toFixed(2)}: ` +
-      "linha encontrada diretamente no Handicap Asiático real disponível para a partida."
+      `${teamName} ${targetLine}: leitura conservadora calculada pelo favoritismo 1X2 ` +
+      "porque a API não retornou uma cotação AH direta para esta partida."
   };
 }
 
 async function buildHandicapOnlyV60({ date }) {
-  const cacheKey = `handicap-only-v60:${date}`;
+  const cacheKey = `handicap-only-v61:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -9629,7 +9667,7 @@ async function buildHandicapOnlyV60({ date }) {
 
   const payload = {
     ok: true,
-    version: "v60-handicap-only",
+    version: "v61-handicap-only",
     date,
     handicap: result
   };
@@ -9638,7 +9676,7 @@ async function buildHandicapOnlyV60({ date }) {
   return payload;
 }
 
-app.get("/handicap_engine_v60", async (req, res) => {
+app.get("/handicap_engine_v61", async (req, res) => {
   const date = req.query.date || toISODate();
 
   res.set(
@@ -9650,12 +9688,12 @@ app.get("/handicap_engine_v60", async (req, res) => {
     const payload = await withTimeout(
       buildHandicapOnlyV60({ date }),
       22000,
-      "motor exclusivo de Handicap Asiático"
+      "motor exclusivo de Handicap Asiático V61"
     );
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[handicap_engine_v60]", err?.message || err);
+    console.warn("[handicap_engine_v61]", err?.message || err);
 
     return res.status(500).json({
       ok: false,
