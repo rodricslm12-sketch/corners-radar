@@ -1,419 +1,2308 @@
-import {
-  firebaseAuth,
-  entrarComGoogle,
-  sairDaConta,
-  observarAutenticacao,
-  fetchAutenticado
-} from "./firebase-client.js";
-
-const state = {
-  user: null,
-  users: [],
-  timerStats: null,
-  timerOnline: null,
-  timerActivity: null
-};
-
-const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-
-function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
 }
 
-async function readJsonSafe(response) {
-  try { return await response.json(); }
-  catch { return {}; }
+:root{
+  --bg:#020617;
+  --panel:#08111f;
+  --panel2:#0b1627;
+  --line:rgba(148,163,184,.14);
+  --muted:#93a4be;
+  --text:#f8fafc;
+  --green:#00f58d;
+  --green2:#16db7d;
+  --blue:#38bdf8;
+  --purple:#7c5cff;
+  --orange:#f6a800;
+  --red:#ef4444;
 }
 
-async function adminFetch(url, options = {}) {
-  const response = await fetchAutenticado(url, { cache: "no-store", ...options });
-  const data = await readJsonSafe(response);
-  if (!response.ok) {
-    throw new Error(data?.error || data?.message || "Falha na operação administrativa.");
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  min-height:100vh;
+  overflow-x:hidden;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(0,245,141,.12), transparent 25%),
+    radial-gradient(circle at 75% -8%, rgba(56,189,248,.08), transparent 26%),
+    radial-gradient(circle at 110% 42%, rgba(124,92,255,.08), transparent 28%),
+    linear-gradient(180deg,#020617 0%,#020817 52%,#01030a 100%);
+  color:var(--text);
+  font-family:Inter,Arial,sans-serif;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,.65), transparent 72%);
+  z-index:-1;
+}
+
+.adminLayout{
+  display:flex;
+  min-height:100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+  width:260px;
+  min-height:100vh;
+  padding:28px 24px;
+  position:sticky;
+  top:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  background:
+    radial-gradient(circle at 45% 0%, rgba(0,245,141,.15), transparent 34%),
+    linear-gradient(180deg,rgba(3,25,30,.96),rgba(2,6,23,.98));
+  border-right:1px solid var(--line);
+  box-shadow:24px 0 60px rgba(0,0,0,.25);
+}
+
+.logoArea{
+  position:relative;
+  margin-bottom:42px;
+}
+
+.logoGlow{
+  position:absolute;
+  width:150px;
+  height:150px;
+  background:var(--green);
+  filter:blur(110px);
+  opacity:.17;
+  top:-60px;
+  left:-40px;
+}
+
+.logoArea h1{
+  position:relative;
+  font-size:29px;
+  font-weight:900;
+  letter-spacing:-.06em;
+}
+
+.logoArea h1 b{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 18px var(--green);
+  transform:translateY(-14px);
+}
+
+.logoArea span{
+  display:block;
+  margin-top:6px;
+  color:#7f90ab;
+  font-size:11px;
+  letter-spacing:.22em;
+}
+
+.sidebarMenu{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.menuItem{
+  position:relative;
+  height:46px;
+  border:0;
+  border-radius:14px;
+  background:transparent;
+  color:#cbd5e1;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 13px;
+  font-size:14px;
+  cursor:pointer;
+  transition:.22s ease;
+  text-align:left;
+}
+
+.menuItem span{
+  width:20px;
+  text-align:center;
+  opacity:.95;
+}
+
+.menuItem em{
+  margin-left:auto;
+  font-style:normal;
+  font-weight:900;
+}
+
+.menuItem small{
+  margin-left:auto;
+  background:var(--green2);
+  color:#042012;
+  min-width:28px;
+  height:20px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+}
+
+.menuItem:hover{
+  background:rgba(15,23,42,.75);
+  transform:translateX(3px);
+}
+
+.menuItem.active{
+  background:linear-gradient(135deg,#00f58d,#10b981);
+  color:#03130b;
+  font-weight:900;
+  box-shadow:0 14px 34px rgba(0,245,141,.25);
+}
+
+.sidebarBottom{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding-top:24px;
+  border-top:1px solid var(--line);
+}
+
+.adminProfile{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  background:linear-gradient(135deg,#e2e8f0,#94a3b8);
+  color:#06101c;
+}
+
+.adminProfile strong{
+  display:block;
+  font-size:13px;
+}
+
+.adminProfile span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.themeToggle,
+.logoutBtn{
+  border:0;
+  background:transparent;
+  color:#cbd5e1;
+  text-align:left;
+  font-size:13px;
+  padding:8px 2px;
+  cursor:pointer;
+}
+
+.themeToggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.themeToggle i{
+  width:34px;
+  height:18px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  position:relative;
+}
+
+.themeToggle i::after{
+  content:"";
+  position:absolute;
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:#cbd5e1;
+  right:3px;
+  top:2px;
+}
+
+.logoutBtn{
+  color:#ff7b7b;
+}
+
+/* MAIN */
+
+.mainContent{
+  flex:1;
+  padding:28px 32px 34px;
+  min-width:0;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:24px;
+  margin-bottom:24px;
+}
+
+.titleBlock h2{
+  font-size:33px;
+  line-height:1;
+  font-weight:950;
+  letter-spacing:-.06em;
+}
+
+.titleBlock p{
+  margin-top:10px;
+  color:#91a4c4;
+  font-size:14px;
+}
+
+.topTools{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.topStatus{
+  height:38px;
+  padding:0 16px;
+  border-radius:999px;
+  background:rgba(0,245,141,.10);
+  border:1px solid rgba(0,245,141,.23);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#65ffb2;
+  font-size:12px;
+  font-weight:900;
+  box-shadow:0 0 28px rgba(0,245,141,.12);
+}
+
+.liveDot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 16px var(--green);
+}
+
+.searchBox{
+  width:230px;
+  height:44px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 14px;
+  border-radius:13px;
+  background:rgba(15,23,42,.72);
+  border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.searchBox input{
+  flex:1;
+  width:100%;
+  background:transparent;
+  border:0;
+  outline:0;
+  color:white;
+  font-size:13px;
+}
+
+.searchBox span{
+  color:#cbd5e1;
+  font-size:22px;
+}
+
+.iconBtn{
+  position:relative;
+  width:44px;
+  height:44px;
+  border-radius:13px;
+  border:1px solid var(--line);
+  background:rgba(15,23,42,.76);
+  color:white;
+  cursor:pointer;
+}
+
+.iconBtn b{
+  position:absolute;
+  top:-7px;
+  right:-6px;
+  width:19px;
+  height:19px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:var(--green);
+  color:#062414;
+  font-size:10px;
+}
+
+.adminClock{
+  color:#dce8ff;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.02em;
+  padding:12px 0;
+}
+
+/* STATS */
+
+.statsGrid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:16px;
+}
+
+.statCard{
+  min-height:134px;
+  position:relative;
+  overflow:hidden;
+  padding:20px;
+  border-radius:18px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.04),transparent),
+    rgba(8,17,31,.88);
+  border:1px solid var(--line);
+  box-shadow:
+    0 18px 48px rgba(0,0,0,.26),
+    inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+.statCard::after{
+  content:"";
+  position:absolute;
+  inset:auto 14px 12px 14px;
+  height:38px;
+  background:linear-gradient(90deg,transparent,rgba(0,245,141,.24),transparent);
+  filter:blur(18px);
+  opacity:.55;
+}
+
+.statIcon{
+  position:absolute;
+  top:20px;
+  left:20px;
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(0,245,141,.12);
+  border:1px solid rgba(0,245,141,.20);
+  box-shadow:0 0 32px rgba(0,245,141,.14);
+}
+
+.statCard span,
+.statCard strong,
+.statCard small{
+  position:relative;
+  z-index:2;
+  margin-left:70px;
+}
+
+.statCard span{
+  display:block;
+  color:#c8d5eb;
+  font-size:12px;
+  margin-top:6px;
+}
+
+.statCard strong{
+  display:block;
+  margin-top:10px;
+  font-size:27px;
+  line-height:1;
+  letter-spacing:-.04em;
+}
+
+.statCard small{
+  display:block;
+  margin-top:13px;
+  color:#b8c7df;
+  font-size:11px;
+}
+
+.statCard small b{
+  color:var(--green);
+}
+
+.green .statIcon{background:rgba(0,245,141,.13)}
+.purple .statIcon{background:rgba(124,92,255,.14);border-color:rgba(124,92,255,.25)}
+.orange .statIcon{background:rgba(246,168,0,.14);border-color:rgba(246,168,0,.25)}
+.blue .statIcon{background:rgba(56,189,248,.13);border-color:rgba(56,189,248,.25)}
+.money .statIcon{background:rgba(0,245,141,.13)}
+
+.miniChart{
+  position:absolute;
+  left:18px;
+  right:18px;
+  bottom:14px;
+  height:30px;
+  opacity:.8;
+  clip-path:polygon(0 80%,8% 65%,15% 70%,23% 58%,32% 64%,42% 49%,51% 56%,62% 38%,72% 42%,83% 25%,92% 32%,100% 14%,100% 100%,0 100%);
+  background:linear-gradient(180deg,rgba(0,245,141,.55),rgba(0,245,141,.02));
+  border-bottom:2px solid rgba(0,245,141,.8);
+}
+
+.miniChart.mid{
+  background:linear-gradient(180deg,rgba(124,92,255,.55),rgba(124,92,255,.02));
+  border-bottom-color:rgba(124,92,255,.85);
+}
+
+.miniChart.warn{
+  background:linear-gradient(180deg,rgba(246,168,0,.55),rgba(246,168,0,.02));
+  border-bottom-color:rgba(246,168,0,.9);
+}
+
+.statusLine{
+  position:absolute;
+  left:22px;
+  right:22px;
+  bottom:18px;
+  height:4px;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--green),var(--green2));
+  box-shadow:0 0 16px rgba(0,245,141,.4);
+}
+
+/* DASHBOARD GRID */
+
+.dashboardGrid{
+  display:grid;
+  grid-template-columns:1.18fr .95fr 1.35fr;
+  gap:16px;
+  align-items:stretch;
+}
+
+.panelCard{
+  min-width:0;
+  position:relative;
+  overflow:hidden;
+  padding:18px;
+  border-radius:18px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.035),transparent),
+    rgba(8,17,31,.82);
+  border:1px solid var(--line);
+  box-shadow:
+    0 20px 52px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+.panelCard::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(circle at 15% 0%,rgba(0,245,141,.05),transparent 35%);
+}
+
+.panelHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:14px;
+}
+
+.cardTitle{
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:-.025em;
+}
+
+.panelHeader p{
+  margin-top:5px;
+  color:#8fa2bf;
+  font-size:12px;
+}
+
+.ghostBtn{
+  border:0;
+  background:rgba(15,23,42,.72);
+  border-radius:11px;
+  color:#cbd5e1;
+  padding:8px 12px;
+  font-size:11px;
+  cursor:pointer;
+}
+
+/* MAP */
+
+.mapPanel{
+  grid-column:span 1;
+  min-height:360px;
+}
+
+.tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.tabs button{
+  border:0;
+  border-radius:999px;
+  background:rgba(15,23,42,.8);
+  color:#cbd5e1;
+  padding:8px 18px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.tabs .active{
+  background:linear-gradient(135deg,#00f58d,#10b981);
+  color:#062414;
+}
+
+.mapBox{
+  position:relative;
+  height:210px;
+  margin-top:12px;
+  overflow:hidden;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(0,245,141,.08),transparent 40%),
+    rgba(2,6,23,.35);
+}
+
+.worldShape{
+  position:absolute;
+  inset:18px;
+  opacity:.75;
+  background:
+    radial-gradient(ellipse at 18% 34%,#18304a 0 12%,transparent 13%),
+    radial-gradient(ellipse at 31% 43%,#18304a 0 14%,transparent 15%),
+    radial-gradient(ellipse at 49% 36%,#18304a 0 13%,transparent 14%),
+    radial-gradient(ellipse at 61% 42%,#18304a 0 18%,transparent 19%),
+    radial-gradient(ellipse at 76% 62%,#18304a 0 10%,transparent 11%);
+  filter:blur(.2px);
+}
+
+.mapBox span{
+  position:absolute;
+  left:var(--x);
+  top:var(--y);
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 12px var(--green),0 0 28px rgba(0,245,141,.6);
+  animation:pulseOnline 1.8s infinite ease-in-out;
+}
+
+.mapStats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  margin-top:12px;
+}
+
+.mapStats div{
+  padding:11px 8px;
+  border-radius:12px;
+  background:rgba(15,23,42,.72);
+  border:1px solid var(--line);
+  text-align:center;
+}
+
+.mapStats strong{
+  color:var(--green);
+  display:block;
+  font-size:16px;
+}
+
+.mapStats span{
+  color:#9fb0ca;
+  font-size:10px;
+}
+
+/* ONLINE USERS keeps backend list */
+
+.onlineUsersList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:12px;
+}
+
+.onlineUser{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(15,23,42,.72);
+  border:1px solid var(--line);
+}
+
+.onlineUserLeft{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.onlinePulse{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 14px var(--green);
+  animation:pulseOnline 1.4s infinite;
+}
+
+@keyframes pulseOnline{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.35);opacity:.62}
+}
+
+.onlineUser strong{
+  font-size:14px;
+}
+
+.onlineUser small{
+  color:#77efbd;
+  font-size:12px;
+  font-weight:800;
+}
+
+/* ACTIVITY */
+
+.activityPanel{
+  min-height:360px;
+}
+
+.activityList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.activityList div{
+  position:relative;
+  min-height:48px;
+  display:grid;
+  grid-template-columns:38px 1fr auto;
+  align-items:center;
+  gap:10px;
+  border-bottom:1px solid rgba(148,163,184,.10);
+  padding-bottom:10px;
+}
+
+.activityList i{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(0,245,141,.14);
+  font-style:normal;
+}
+
+.activityList strong{
+  font-size:13px;
+}
+
+.activityList span{
+  color:#a8bad4;
+  font-size:11px;
+}
+
+.activityList small{
+  grid-column:2;
+  margin-top:-12px;
+  color:#8ea1bd;
+  font-size:11px;
+}
+
+/* RESOURCES */
+
+.resourcesPanel{
+  min-height:360px;
+}
+
+.rings{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+  margin-top:14px;
+}
+
+.ring{
+  aspect-ratio:1/1;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:
+    radial-gradient(circle at center,#08111f 0 58%,transparent 59%),
+    conic-gradient(var(--green) 0 34%,rgba(51,65,85,.7) 34% 100%);
+}
+
+.r2{background:radial-gradient(circle at center,#08111f 0 58%,transparent 59%),conic-gradient(var(--blue) 0 68%,rgba(51,65,85,.7) 68% 100%)}
+.r3{background:radial-gradient(circle at center,#08111f 0 58%,transparent 59%),conic-gradient(var(--green) 0 45%,rgba(51,65,85,.7) 45% 100%)}
+.r4{background:radial-gradient(circle at center,#08111f 0 58%,transparent 59%),conic-gradient(var(--green) 0 33%,rgba(51,65,85,.7) 33% 100%)}
+
+.ring strong{
+  font-size:20px;
+}
+
+.ring span{
+  color:#a9bbd3;
+  font-size:10px;
+}
+
+.resourceChart{
+  position:relative;
+  height:150px;
+  margin-top:24px;
+}
+
+.gridLines{
+  position:absolute;
+  inset:0;
+  background-image:linear-gradient(rgba(148,163,184,.13) 1px, transparent 1px);
+  background-size:100% 25%;
+}
+
+.resourceChart svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+
+.resourceChart polyline{
+  fill:none;
+  stroke-width:2.5;
+  stroke-linecap:round;
+}
+
+.resourceChart polyline:nth-child(1){stroke:#6d7cff}
+.resourceChart polyline:nth-child(2){stroke:#2dd4bf}
+.resourceChart polyline:nth-child(3){stroke:#f6a800}
+
+/* GAMES */
+
+.liveGamesPanel{
+  min-height:250px;
+}
+
+.liveGamesList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:12px;
+}
+
+.liveGameRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  border-radius:15px;
+  background:rgba(15,23,42,.72);
+  border:1px solid var(--line);
+  transition:.22s ease;
+}
+
+.liveGameRow:hover{
+  transform:translateY(-2px);
+  border-color:rgba(0,245,141,.28);
+}
+
+.liveGameInfo{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.liveGameInfo strong{
+  font-size:14px;
+}
+
+.liveGameInfo small{
+  color:#9fb1cc;
+  font-size:11px;
+}
+
+.liveGameRight{
+  text-align:right;
+}
+
+.liveGameBadges{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.liveProb{
+  background:rgba(0,245,141,.11);
+  color:var(--green);
+  padding:4px 9px;
+  border-radius:999px;
+  border:1px solid rgba(0,245,141,.25);
+  font-size:11px;
+  font-weight:900;
+}
+
+.liveCorners{
+  color:var(--green);
+  font-size:22px;
+  font-weight:950;
+  letter-spacing:-.04em;
+}
+
+.liveGameRight small{
+  color:#8fffd0;
+  font-size:10px;
+}
+
+.liveGameEmpty{
+  color:#9fb1cc;
+  padding:10px 0;
+}
+
+/* RANKING */
+
+.rankingList{
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+}
+
+.rankingList div{
+  display:grid;
+  grid-template-columns:28px 1fr 100px 54px;
+  align-items:center;
+  gap:11px;
+}
+
+.rankingList b{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  border-radius:8px;
+  background:rgba(15,23,42,.92);
+  color:#f6a800;
+}
+
+.rankingList span{
+  font-weight:800;
+  font-size:13px;
+}
+
+.rankingList small{
+  display:block;
+  color:#8fa2bf;
+  font-size:10px;
+  margin-top:3px;
+}
+
+.rankingList i{
+  height:4px;
+  background:rgba(51,65,85,.85);
+  border-radius:999px;
+  position:relative;
+  overflow:hidden;
+}
+
+.rankingList i::after{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:var(--w);
+  background:var(--green);
+}
+
+.rankingList strong{
+  color:var(--green);
+  font-size:13px;
+  text-align:right;
+}
+
+/* CHART PANELS */
+
+.bigMoney{
+  display:block;
+  font-size:25px;
+  letter-spacing:-.04em;
+  margin-top:4px;
+}
+
+.gain{
+  display:block;
+  color:var(--green);
+  font-size:12px;
+  font-weight:900;
+  margin-top:4px;
+}
+
+.barChart{
+  height:134px;
+  margin-top:18px;
+  display:flex;
+  align-items:end;
+  gap:17px;
+  padding:0 10px;
+  border-bottom:1px solid rgba(148,163,184,.18);
+}
+
+.barChart span{
+  flex:1;
+  height:var(--h);
+  border-radius:5px 5px 0 0;
+  background:linear-gradient(180deg,rgba(148,163,184,.55),rgba(30,41,59,.45));
+}
+
+.barChart .active{
+  background:linear-gradient(180deg,var(--green),rgba(0,245,141,.35));
+  box-shadow:0 0 24px rgba(0,245,141,.25);
+}
+
+.donutWrap{
+  display:flex;
+  align-items:center;
+  gap:22px;
+  margin-top:20px;
+}
+
+.donut{
+  width:140px;
+  height:140px;
+  border-radius:50%;
+  background:conic-gradient(var(--green) 0 45%,#6366f1 45% 76%,#f6a800 76% 92%,#60a5fa 92% 100%);
+  position:relative;
+  flex-shrink:0;
+}
+
+.donut::after{
+  content:"";
+  position:absolute;
+  inset:34px;
+  border-radius:50%;
+  background:#08111f;
+}
+
+.donutLegend{
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+  flex:1;
+}
+
+.donutLegend span{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  color:#dbeafe;
+  font-size:12px;
+}
+
+.donutLegend b{
+  width:9px;
+  height:9px;
+  border-radius:3px;
+  background:var(--green);
+  margin-right:8px;
+  display:inline-block;
+}
+
+.donutLegend span:nth-child(2) b{background:#6366f1}
+.donutLegend span:nth-child(3) b{background:#f6a800}
+.donutLegend span:nth-child(4) b{background:#60a5fa}
+
+.donutLegend em{
+  color:#9fb0ca;
+  font-style:normal;
+  margin-left:auto;
+}
+
+.areaChart{
+  height:125px;
+  margin-top:18px;
+  background:
+    linear-gradient(180deg,rgba(0,245,141,.28),rgba(0,245,141,.01)),
+    linear-gradient(135deg,transparent 0 8%,rgba(0,245,141,.85) 8% 10%,transparent 10% 18%,rgba(0,245,141,.85) 18% 20%,transparent 20% 31%,rgba(0,245,141,.85) 31% 33%,transparent 33% 44%,rgba(0,245,141,.85) 44% 46%,transparent 46% 60%,rgba(0,245,141,.85) 60% 62%,transparent 62% 74%,rgba(0,245,141,.85) 74% 76%,transparent 76%);
+  clip-path:polygon(0 80%,10% 60%,20% 45%,30% 50%,40% 34%,50% 44%,60% 25%,70% 38%,80% 14%,90% 22%,100% 12%,100% 100%,0 100%);
+  border-bottom:2px solid rgba(0,245,141,.7);
+}
+
+/* TABLE */
+
+.ordersPanel{
+  grid-column:span 2;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+}
+
+th,td{
+  text-align:left;
+  padding:11px 8px;
+  border-bottom:1px solid rgba(148,163,184,.10);
+  color:#cbd5e1;
+  font-size:12px;
+}
+
+th{
+  color:#8fa2bf;
+  font-weight:800;
+}
+
+.ok,.warn{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 9px;
+  font-weight:900;
+  font-size:10px;
+}
+
+.ok{
+  color:#7dffbd;
+  background:rgba(0,245,141,.14);
+  border:1px solid rgba(0,245,141,.24);
+}
+
+.warn{
+  color:#ffd98b;
+  background:rgba(246,168,0,.14);
+  border:1px solid rgba(246,168,0,.24);
+}
+
+/* ALERTS / SYSTEM / ACTIONS */
+
+.alertList{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.alertList div{
+  display:grid;
+  grid-template-columns:34px 1fr auto;
+  align-items:center;
+  gap:10px;
+}
+
+.alertList i{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-style:normal;
+}
+
+.alertList span{
+  font-size:12px;
+  font-weight:800;
+}
+
+.alertList small{
+  display:block;
+  margin-top:3px;
+  color:#8fa2bf;
+  font-size:10px;
+}
+
+.alertList b{
+  color:#8fa2bf;
+  font-size:11px;
+}
+
+.dangerA i{background:rgba(239,68,68,.18);color:#ff7777}
+.warningA i{background:rgba(246,168,0,.18);color:#ffd36b}
+.infoA i{background:rgba(56,189,248,.18);color:#7dd3fc}
+.successA i{background:rgba(0,245,141,.18);color:#7dffbd}
+
+.serverStatus{
+  display:flex;
+  flex-direction:column;
+  gap:17px;
+  margin-top:10px;
+}
+
+.serverItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:#f8fafc;
+  font-size:14px;
+}
+
+.serverOk{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 16px var(--green),0 0 36px rgba(0,245,141,.45);
+}
+
+.quickActions{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:12px;
+}
+
+.actionBtn{
+  height:44px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(30,41,59,.95),rgba(15,23,42,.95));
+  color:white;
+  font-weight:900;
+  font-size:12px;
+  cursor:pointer;
+  transition:.2s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.actionBtn:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.1);
+}
+
+.actionBtn.clicked{
+  transform:scale(.98);
+}
+
+.actionBtn.danger{
+  background:linear-gradient(180deg,rgba(127,29,29,.9),rgba(69,10,10,.95));
+  color:#ffaaa7;
+  border-color:rgba(239,68,68,.22);
+}
+
+/* RESPONSIVE */
+
+@media(max-width:1500px){
+  .statsGrid{
+    grid-template-columns:repeat(3,1fr);
   }
-  return data;
-}
 
-function showUsersMessage(text = "", type = "info") {
-  const el = $("#adminUsersMessage");
-  if (!el) return;
-  el.hidden = !text;
-  el.textContent = text;
-  el.dataset.type = type;
-}
+  .dashboardGrid{
+    grid-template-columns:1fr 1fr;
+  }
 
-function formatDate(value) {
-  if (!value) return "Nunca";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(date);
-}
-
-function formatTimeAgo(value) {
-  if (!value) return "agora";
-  const ms = Date.now() - new Date(value).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "agora";
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return "agora";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} min atrás`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h} h atrás`;
-  return formatDate(value);
-}
-
-function providerLabel(value = "") {
-  const p = String(value).toLowerCase();
-  if (p.includes("google")) return "Google";
-  if (p.includes("password")) return "E-mail/senha";
-  return "Firebase";
-}
-
-function updateAdminProfile(user) {
-  const name = user?.displayName || user?.email || "Admin";
-  const avatar = $(".adminProfile .avatar");
-  const strong = $(".adminProfile strong");
-  if (strong) strong.textContent = name;
-  if (avatar) avatar.textContent = name.trim().charAt(0).toUpperCase() || "A";
-}
-
-function installClock() {
-  const topbar = $(".topbar");
-  if (!topbar || $(".adminClock")) return;
-  const timeEl = document.createElement("div");
-  timeEl.className = "adminClock";
-  topbar.appendChild(timeEl);
-  const update = () => {
-    timeEl.textContent = new Date().toLocaleTimeString("pt-BR", {
-      hour: "2-digit", minute: "2-digit", second: "2-digit"
-    });
-  };
-  update();
-  setInterval(update, 1000);
-}
-
-function switchView(view) {
-  const usersView = $("#adminUsersView");
-  const dashboardStats = $(".statsGrid");
-  const dashboardGrid = $(".realAdminGrid");
-  const isUsers = view === "users";
-
-  if (usersView) usersView.hidden = !isUsers;
-  if (dashboardStats) dashboardStats.hidden = isUsers;
-  if (dashboardGrid) dashboardGrid.hidden = isUsers;
-
-  $$("[data-admin-view]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.adminView === view);
-  });
-
-  const title = $(".titleBlock h2");
-  const subtitle = $(".titleBlock p");
-  if (title) title.textContent = isUsers ? "Usuários" : "Painel Administrativo";
-  if (subtitle) subtitle.textContent = isUsers
-    ? "Contas reais cadastradas no Corner Pro"
-    : "Usuários e atividade real do Corner Pro";
-
-  if (isUsers) loadUsers();
-}
-
-function installNavigation() {
-  $$("[data-admin-view]").forEach(btn => {
-    btn.addEventListener("click", () => switchView(btn.dataset.adminView));
-  });
-  $("#openUsersManager")?.addEventListener("click", () => switchView("users"));
-}
-
-async function loadAdminStats() {
-  try {
-    const data = await adminFetch("/admin/stats");
-    if ($("#dashTotalUsers")) $("#dashTotalUsers").textContent = data.totalUsers ?? 0;
-    if ($("#dashOnlineUsers")) $("#dashOnlineUsers").textContent = data.onlineUsers ?? 0;
-    if ($("#dashNewToday")) $("#dashNewToday").textContent = data.newToday ?? 0;
-    if ($("#dashActiveToday")) $("#dashActiveToday").textContent = data.activeToday ?? 0;
-    if ($("#dashPremiumUsers")) $("#dashPremiumUsers").textContent = data.premiumUsers ?? 0;
-  } catch (error) {
-    console.error("Erro admin stats:", error);
+  .resourcesPanel,
+  .ordersPanel{
+    grid-column:span 2;
   }
 }
 
-async function loadOnlineUsers() {
-  const list = $("#onlineUsersList");
-  if (!list) return;
+@media(max-width:1100px){
+  .sidebar{
+    width:220px;
+    padding:22px 16px;
+  }
 
-  try {
-    const data = await adminFetch("/admin/online-users");
-    const users = Array.isArray(data?.users) ? data.users : [];
+  .statsGrid{
+    grid-template-columns:repeat(2,1fr);
+  }
 
-    if (!users.length) {
-      list.innerHTML = '<div class="simpleEmpty">Nenhum usuário online agora.</div>';
-      return;
-    }
+  .dashboardGrid{
+    grid-template-columns:1fr;
+  }
 
-    list.innerHTML = users.map(user => `
-      <div class="onlineUser realOnlineUser">
-        <div class="onlineUserLeft">
-          ${user.foto
-            ? `<img class="realUserAvatar" src="${escapeHtml(user.foto)}" alt="">`
-            : `<span class="realUserAvatar fallback">${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
-          <div>
-            <strong><i class="onlinePulse"></i>${escapeHtml(user.nome || "Usuário")}</strong>
-            <p>${escapeHtml(user.email || "—")}</p>
-          </div>
-        </div>
-        <div class="realUserMeta">
-          <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
-          <small>${escapeHtml(formatTimeAgo(user.lastSeen))}</small>
-        </div>
-      </div>
-    `).join("");
-  } catch (error) {
-    console.error("Erro online users:", error);
-    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar a presença.</div>';
+  .resourcesPanel,
+  .ordersPanel{
+    grid-column:span 1;
+  }
+
+  .topbar{
+    flex-direction:column;
+  }
+
+  .topTools{
+    justify-content:flex-start;
   }
 }
 
-async function loadRecentActivity() {
-  const list = $("#realActivityList");
-  if (!list) return;
+@media(max-width:760px){
+  .adminLayout{
+    display:block;
+  }
 
-  try {
-    const data = await adminFetch("/admin/recent-activity");
-    const events = Array.isArray(data?.events) ? data.events : [];
+  .sidebar{
+    position:relative;
+    width:100%;
+    min-height:auto;
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
 
-    if (!events.length) {
-      list.innerHTML = '<div class="simpleEmpty">Nenhuma atividade registrada ainda.</div>';
-      return;
-    }
+  .sidebarBottom{
+    display:none;
+  }
 
-    list.innerHTML = events.slice(0, 8).map(event => {
-      const signup = event.type === "signup";
-      return `
-        <div class="realActivityRow">
-          <i>${signup ? "✨" : "↪"}</i>
-          <div>
-            <strong>${signup ? "Novo cadastro" : "Login realizado"}</strong>
-            <small>${escapeHtml(event.nome || event.email || "Usuário")} • ${escapeHtml(providerLabel(event.provider))}</small>
-          </div>
-          <time>${escapeHtml(formatTimeAgo(event.at))}</time>
-        </div>
-      `;
-    }).join("");
-  } catch (error) {
-    console.error("Erro activity:", error);
-    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar as atividades.</div>';
+  .sidebarMenu{
+    flex-direction:row;
+    overflow:auto;
+    padding-bottom:4px;
+  }
+
+  .menuItem{
+    flex:0 0 auto;
+  }
+
+  .mainContent{
+    padding:18px;
+  }
+
+  .titleBlock h2{
+    font-size:26px;
+  }
+
+  .searchBox{
+    width:100%;
+  }
+
+  .topTools{
+    width:100%;
+  }
+
+  .statsGrid{
+    grid-template-columns:1fr;
+  }
+
+  .rings,
+  .mapStats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .rankingList div{
+    grid-template-columns:28px 1fr 58px;
+  }
+
+  .rankingList i{
+    display:none;
+  }
+
+  .donutWrap{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  table{
+    display:block;
+    overflow-x:auto;
+    white-space:nowrap;
   }
 }
 
-function renderRecentUsers(users) {
-  const list = $("#recentUsersList");
-  if (!list) return;
 
-  const sorted = [...users]
-    .sort((a, b) => new Date(b.criadoEm || b.ultimoLogin || 0) - new Date(a.criadoEm || a.ultimoLogin || 0))
-    .slice(0, 6);
+/* =========================================================
+   AJUSTE FINAL — ADMIN COMPACTO PREMIUM
+   Corrige excesso de altura, largura e encaixe dos cards
+========================================================= */
 
-  if (!sorted.length) {
-    list.innerHTML = '<div class="simpleEmpty">Nenhum usuário cadastrado.</div>';
-    return;
+html,
+body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden !important;
+}
+
+.adminLayout{
+  width:100%;
+  max-width:100vw;
+  overflow-x:hidden;
+}
+
+.sidebar{
+  width:240px;
+  padding:24px 18px;
+  flex:0 0 240px;
+}
+
+.mainContent{
+  flex:1;
+  min-width:0;
+  width:calc(100vw - 240px);
+  padding:20px 24px 28px;
+  overflow-x:hidden;
+}
+
+.topbar{
+  margin-bottom:18px;
+  gap:16px;
+}
+
+.titleBlock h2{
+  font-size:29px;
+}
+
+.titleBlock p{
+  margin-top:8px;
+  font-size:13px;
+}
+
+.topTools{
+  gap:10px;
+}
+
+.searchBox{
+  width:220px;
+  height:40px;
+}
+
+.iconBtn{
+  width:40px;
+  height:40px;
+}
+
+.topStatus{
+  height:36px;
+  padding:0 14px;
+}
+
+.adminClock{
+  padding:10px 0;
+  font-size:12px;
+}
+
+.statsGrid{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.statCard{
+  min-height:108px !important;
+  padding:15px !important;
+  border-radius:16px;
+}
+
+.statIcon{
+  width:40px;
+  height:40px;
+  top:15px;
+  left:15px;
+}
+
+.statCard span,
+.statCard strong,
+.statCard small{
+  margin-left:56px;
+}
+
+.statCard span{
+  font-size:11px;
+  margin-top:4px;
+}
+
+.statCard strong{
+  font-size:25px;
+  margin-top:8px;
+}
+
+.statCard small{
+  font-size:10px;
+  margin-top:9px;
+}
+
+.miniChart{
+  left:15px;
+  right:15px;
+  bottom:10px;
+  height:24px;
+}
+
+.statusLine{
+  left:18px;
+  right:18px;
+  bottom:15px;
+}
+
+.dashboardGrid{
+  display:grid;
+  grid-template-columns:1.05fr .85fr 1.2fr;
+  gap:14px;
+  align-items:start;
+}
+
+.panelCard{
+  padding:16px !important;
+  border-radius:16px;
+  min-height:auto !important;
+  height:auto !important;
+}
+
+.panelHeader{
+  margin-bottom:12px;
+}
+
+.cardTitle{
+  font-size:15px;
+}
+
+.panelHeader p{
+  font-size:11px;
+}
+
+.mapPanel,
+.activityPanel,
+.resourcesPanel{
+  min-height:300px !important;
+}
+
+.mapBox{
+  height:150px !important;
+  min-height:150px !important;
+  margin-top:10px;
+}
+
+.mapStats{
+  gap:5px;
+  margin-top:10px;
+}
+
+.mapStats div{
+  padding:8px 6px;
+}
+
+.mapStats strong{
+  font-size:14px;
+}
+
+.mapStats span{
+  font-size:9px;
+}
+
+.onlineUsersList{
+  gap:8px;
+  margin-top:10px;
+}
+
+.onlineUser{
+  padding:10px 12px;
+  border-radius:12px;
+}
+
+.onlineUser strong{
+  font-size:13px;
+}
+
+.onlineUser small{
+  font-size:11px;
+}
+
+.activityList{
+  gap:8px;
+}
+
+.activityList div{
+  min-height:42px;
+  grid-template-columns:34px 1fr auto;
+  gap:8px;
+  padding-bottom:8px;
+}
+
+.activityList i{
+  width:28px;
+  height:28px;
+}
+
+.activityList strong{
+  font-size:12px;
+}
+
+.activityList span,
+.activityList small{
+  font-size:10px;
+}
+
+.rings{
+  gap:10px;
+  margin-top:12px;
+}
+
+.ring{
+  max-width:112px;
+  margin:auto;
+}
+
+.ring strong{
+  font-size:17px;
+}
+
+.ring span{
+  font-size:9px;
+}
+
+.resourceChart{
+  height:120px !important;
+  margin-top:18px;
+}
+
+.liveGamesPanel{
+  min-height:auto !important;
+}
+
+.liveGamesList{
+  gap:8px;
+  margin-top:10px;
+}
+
+.liveGameRow{
+  padding:11px 13px !important;
+  border-radius:13px;
+}
+
+.liveGameInfo strong{
+  font-size:13px;
+}
+
+.liveGameInfo small{
+  font-size:10px;
+}
+
+.liveCorners{
+  font-size:18px !important;
+}
+
+.rankingList{
+  gap:10px;
+}
+
+.rankingList div{
+  grid-template-columns:24px 1fr 84px 48px;
+  gap:9px;
+}
+
+.rankingList b{
+  width:24px;
+  height:24px;
+}
+
+.rankingList span,
+.rankingList strong{
+  font-size:12px;
+}
+
+.rankingList small{
+  font-size:9px;
+}
+
+.barChart{
+  height:110px;
+  margin-top:14px;
+  gap:12px;
+}
+
+.areaChart{
+  height:105px;
+  margin-top:14px;
+}
+
+.donutWrap{
+  gap:18px;
+  margin-top:14px;
+}
+
+.donut{
+  width:118px;
+  height:118px;
+}
+
+.donut::after{
+  inset:30px;
+}
+
+.donutLegend{
+  gap:11px;
+}
+
+.donutLegend span{
+  font-size:11px;
+}
+
+.ordersPanel{
+  grid-column:span 2;
+}
+
+table{
+  margin-top:8px;
+}
+
+th,
+td{
+  padding:9px 7px;
+  font-size:11px;
+}
+
+.alertList{
+  gap:10px;
+}
+
+.alertList div{
+  grid-template-columns:30px 1fr auto;
+  gap:8px;
+}
+
+.alertList i{
+  width:27px;
+  height:27px;
+}
+
+.alertList span{
+  font-size:11px;
+}
+
+.alertList small,
+.alertList b{
+  font-size:10px;
+}
+
+.serverStatus{
+  gap:14px;
+  margin-top:8px;
+}
+
+.serverItem{
+  font-size:13px;
+}
+
+.quickActions{
+  gap:10px;
+  margin-top:10px;
+}
+
+.actionBtn{
+  height:40px;
+  font-size:11px;
+}
+
+/* Telas grandes: mantém tudo bonito sem estourar */
+@media(min-width:1600px){
+  .mainContent{
+    padding:20px 24px 28px;
   }
 
-  list.innerHTML = sorted.map(user => `
-    <div class="recentUserRow">
-      <div class="adminUserIdentity">
-        ${user.foto
-          ? `<img src="${escapeHtml(user.foto)}" alt="">`
-          : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
-        <div>
-          <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-          <small>${escapeHtml(user.email || "—")}</small>
-        </div>
-      </div>
-      <div class="recentUserInfo">
-        <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
-        <small>Último acesso: ${escapeHtml(formatDate(user.ultimoLogin))}</small>
-      </div>
-    </div>
-  `).join("");
-}
-
-function renderUsers(users) {
-  const tbody = $("#adminUsersTableBody");
-  if (!tbody) return;
-
-  if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum usuário encontrado.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = users.map(user => `
-    <tr data-user-uid="${escapeHtml(user.uid)}">
-      <td>
-        <div class="adminUserIdentity">
-          ${user.foto
-            ? `<img src="${escapeHtml(user.foto)}" alt="">`
-            : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
-          <div>
-            <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-            <small>${escapeHtml(providerLabel(user.provedor))}</small>
-          </div>
-        </div>
-      </td>
-      <td>${escapeHtml(user.email || "—")}</td>
-      <td><span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span></td>
-      <td>${escapeHtml(formatDate(user.ultimoLogin))}</td>
-      <td>
-        <button class="planActionBtn ${user.premium ? "remove" : "activate"}" type="button"
-          data-user-plan="${user.premium ? "false" : "true"}"
-          data-user-uid="${escapeHtml(user.uid)}">
-          ${user.premium ? "REMOVER PRO" : "ATIVAR PRO"}
-        </button>
-      </td>
-    </tr>
-  `).join("");
-}
-
-function updateUsersSummary(users) {
-  const pro = users.filter(user => user.premium).length;
-  const free = users.length - pro;
-  if ($("#adminTotalUsers")) $("#adminTotalUsers").textContent = users.length;
-  if ($("#adminProUsers")) $("#adminProUsers").textContent = pro;
-  if ($("#adminFreeUsers")) $("#adminFreeUsers").textContent = free;
-}
-
-async function loadUsers() {
-  try {
-    showUsersMessage("Carregando usuários...", "info");
-    const data = await adminFetch("/admin/users?limit=500");
-    state.users = Array.isArray(data.users) ? data.users : [];
-    renderUsers(state.users);
-    renderRecentUsers(state.users);
-    updateUsersSummary(state.users);
-    showUsersMessage("");
-  } catch (error) {
-    console.error("Erro ao carregar usuários:", error);
-    showUsersMessage(error.message, "error");
+  .dashboardGrid{
+    grid-template-columns:1.05fr .85fr 1.2fr;
   }
 }
 
-async function updateUserPlan(uid, premium, button) {
-  const original = button.textContent;
-  button.disabled = true;
-  button.textContent = "SALVANDO...";
+/* Notebook: evita que o grid fique apertado */
+@media(max-width:1500px){
+  .statsGrid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
 
-  try {
-    const data = await adminFetch(`/admin/users/${encodeURIComponent(uid)}/plan`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ premium })
-    });
+  .dashboardGrid{
+    grid-template-columns:1fr 1fr;
+  }
 
-    const index = state.users.findIndex(user => user.uid === uid);
-    if (index >= 0) state.users[index] = data.user;
-    renderUsers(state.users);
-    renderRecentUsers(state.users);
-    updateUsersSummary(state.users);
-    loadAdminStats();
-    showUsersMessage(premium ? "Plano PRO ativado." : "Plano alterado para FREE.", "success");
-  } catch (error) {
-    showUsersMessage(error.message, "error");
-    button.disabled = false;
-    button.textContent = original;
+  .resourcesPanel,
+  .ordersPanel{
+    grid-column:span 2;
   }
 }
 
-function installUsersEvents() {
-  $("#adminUsersRefresh")?.addEventListener("click", loadUsers);
-  $("#refreshOnlineUsers")?.addEventListener("click", () => {
-    loadOnlineUsers();
-    loadAdminStats();
-  });
+@media(max-width:1200px){
+  .sidebar{
+    width:220px;
+    flex-basis:220px;
+  }
 
-  let searchTimer;
-  $("#adminUserSearch")?.addEventListener("input", event => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      const query = event.target.value.trim().toLowerCase();
-      const filtered = !query ? state.users : state.users.filter(user =>
-        String(user.nome || "").toLowerCase().includes(query) ||
-        String(user.email || "").toLowerCase().includes(query) ||
-        String(user.uid || "").toLowerCase().includes(query)
-      );
-      renderUsers(filtered);
-    }, 180);
-  });
+  .mainContent{
+    width:calc(100vw - 220px);
+    padding:18px;
+  }
 
-  $("#adminUsersTableBody")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-user-plan]");
-    if (!button) return;
-    updateUserPlan(button.dataset.userUid, button.dataset.userPlan === "true", button);
-  });
+  .dashboardGrid{
+    grid-template-columns:1fr;
+  }
+
+  .resourcesPanel,
+  .ordersPanel{
+    grid-column:span 1;
+  }
 }
 
-function installLogout() {
-  $(".logoutBtn")?.addEventListener("click", async () => {
-    await sairDaConta();
-    location.href = "/";
-  });
+@media(max-width:760px){
+  .adminLayout{
+    display:block;
+  }
+
+  .sidebar{
+    width:100%;
+    flex-basis:auto;
+    padding:18px;
+  }
+
+  .mainContent{
+    width:100%;
+    padding:16px;
+  }
+
+  .topbar{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .topTools,
+  .searchBox{
+    width:100%;
+  }
+
+  .statsGrid{
+    grid-template-columns:1fr;
+  }
+
+  .statCard{
+    min-height:100px !important;
+  }
+
+  .rings,
+  .mapStats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  table{
+    display:block;
+    overflow-x:auto;
+    white-space:nowrap;
+  }
+}
+/* =========================================================
+   ETAPA 2 — GERENCIAMENTO DE USUÁRIOS FREE / PRO
+   ========================================================= */
+.adminUsersView[hidden]{display:none!important;}
+.adminUsersView{margin-top:4px;}
+.usersManagerPanel{min-height:560px;}
+.usersManagerHeader{align-items:center;}
+.usersManagerTools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.usersManagerTools input{
+  width:320px;
+  height:40px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:rgba(15,23,42,.78);
+  color:#fff;
+  padding:0 13px;
+  outline:none;
+}
+.usersManagerTools input:focus{border-color:rgba(0,245,141,.48);box-shadow:0 0 0 3px rgba(0,245,141,.08);}
+.usersSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0;}
+.usersSummary div{padding:15px;border:1px solid var(--line);border-radius:14px;background:rgba(15,23,42,.72);}
+.usersSummary span{display:block;color:#8fa2bf;font-size:11px;text-transform:uppercase;letter-spacing:.08em;}
+.usersSummary strong{display:block;margin-top:7px;font-size:25px;color:var(--green);}
+.usersTableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px;}
+.usersTable{margin:0;min-width:900px;}
+.usersTable th{background:rgba(15,23,42,.94);position:sticky;top:0;z-index:1;}
+.usersTable td{vertical-align:middle;}
+.adminUserIdentity{display:flex;align-items:center;gap:11px;min-width:250px;}
+.adminUserIdentity img,.adminUserIdentity>span{width:38px;height:38px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:linear-gradient(135deg,#00f58d,#10b981);color:#032116;font-weight:950;flex:0 0 38px;}
+.adminUserIdentity strong{display:block;font-size:13px;color:#f8fafc;}
+.adminUserIdentity small{display:block;color:#71829d;font-size:9px;max-width:220px;overflow:hidden;text-overflow:ellipsis;margin-top:3px;}
+.planBadge{display:inline-flex;align-items:center;justify-content:center;min-width:58px;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:950;letter-spacing:.06em;}
+.planBadge.is-pro{color:#042414;background:linear-gradient(135deg,#00f58d,#10b981);box-shadow:0 0 18px rgba(0,245,141,.16);}
+.planBadge.is-free{color:#cbd5e1;background:rgba(100,116,139,.16);border:1px solid rgba(148,163,184,.22);}
+.planActionBtn{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);font-size:10px;font-weight:950;cursor:pointer;transition:.18s ease;}
+.planActionBtn.activate{background:rgba(0,245,141,.12);color:#77ffbd;border-color:rgba(0,245,141,.28);}
+.planActionBtn.remove{background:rgba(239,68,68,.11);color:#ff9a9a;border-color:rgba(239,68,68,.24);}
+.planActionBtn:hover{transform:translateY(-1px);filter:brightness(1.12);}
+.planActionBtn:disabled{opacity:.55;cursor:wait;transform:none;}
+.adminUsersMessage{margin-top:12px;padding:11px 13px;border-radius:11px;font-size:12px;border:1px solid var(--line);background:rgba(15,23,42,.72);}
+.adminUsersMessage[data-type="success"]{color:#7dffbd;border-color:rgba(0,245,141,.25);background:rgba(0,245,141,.08);}
+.adminUsersMessage[data-type="error"]{color:#ff9a9a;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.08);}
+.onlineUserLeft p{margin-top:3px;color:#71829d;font-size:9px;}
+@media(max-width:760px){
+  .usersManagerHeader{align-items:stretch;flex-direction:column;}
+  .usersManagerTools,.usersManagerTools input{width:100%;}
+  .usersSummary{grid-template-columns:1fr;}
 }
 
-async function validateAdmin(user) {
-  const data = await adminFetch("/admin/me");
-  updateAdminProfile(user);
-  return data;
+/* =========================================================
+   ADMIN REAL DATA V1 — usuários e presença real
+   ========================================================= */
+.statsGridReal .statCard{
+  min-height:116px;
+}
+.statsGridReal .statCard::after,
+.statsGridReal .miniChart,
+.statsGridReal .statusLine{
+  display:none!important;
+}
+.statsGridReal .statCard small{
+  color:#8192ab;
+  line-height:1.35;
+}
+.realAdminGrid{
+  display:grid;
+  grid-template-columns:1.05fr 1fr;
+  gap:16px;
+  align-items:start;
+}
+.realUsersPanel{
+  grid-column:1/-1;
+}
+.realOnlinePanel,
+.realActivityPanel,
+.realUsersPanel{
+  min-height:260px;
+}
+.simpleEmpty{
+  padding:24px 8px;
+  color:#8192ab;
+  text-align:center;
+  font-size:13px;
+}
+.realOnlineUser{
+  padding:13px 0!important;
+  border-bottom:1px solid var(--line);
+}
+.realOnlineUser:last-child{
+  border-bottom:0;
+}
+.realUserAvatar{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  object-fit:cover;
+  flex:0 0 38px;
+}
+.realUserAvatar.fallback{
+  display:grid;
+  place-items:center;
+  background:#142133;
+  color:#fff;
+  font-weight:900;
+}
+.realOnlineUser .onlineUserLeft{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.realOnlineUser .onlineUserLeft strong{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.realOnlineUser .onlineUserLeft p{
+  margin-top:3px;
+  color:#7f90a8;
+  font-size:11px;
+}
+.realUserMeta{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.realUserMeta small{
+  color:#8192ab;
+  font-size:10px;
+}
+.realActivityList{
+  display:flex;
+  flex-direction:column;
+}
+.realActivityRow{
+  display:grid!important;
+  grid-template-columns:38px 1fr auto!important;
+  gap:11px!important;
+  align-items:center!important;
+  padding:12px 0!important;
+  border-bottom:1px solid var(--line)!important;
+}
+.realActivityRow:last-child{
+  border-bottom:0!important;
+}
+.realActivityRow i{
+  width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:10px!important;
+  background:rgba(0,245,141,.08)!important;
+  font-style:normal!important;
+}
+.realActivityRow div strong{
+  display:block!important;
+  font-size:12px!important;
+}
+.realActivityRow div small{
+  display:block!important;
+  margin-top:4px!important;
+  color:#8192ab!important;
+  font-size:10px!important;
+}
+.realActivityRow time{
+  color:#94a3b8;
+  font-size:10px;
+}
+.recentUsersList{
+  display:flex;
+  flex-direction:column;
+}
+.recentUserRow{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+.recentUserRow:last-child{
+  border-bottom:0;
+}
+.recentUserInfo{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.recentUserInfo small{
+  color:#8192ab;
+  font-size:10px;
+}
+@media(max-width:1100px){
+  .realAdminGrid{
+    grid-template-columns:1fr;
+  }
+  .realUsersPanel{
+    grid-column:auto;
+  }
 }
 
-function startDashboard() {
-  installClock();
-  installNavigation();
-  installUsersEvents();
-  installLogout();
 
-  loadAdminStats();
-  loadOnlineUsers();
-  loadRecentActivity();
-  loadUsers();
+/* =========================================================
+   ADMIN USERS V2 — tela simples e fácil de entender
+   ========================================================= */
 
-  state.timerStats = setInterval(loadAdminStats, 15000);
-  state.timerOnline = setInterval(loadOnlineUsers, 15000);
-  state.timerActivity = setInterval(loadRecentActivity, 30000);
+.usersPageHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  margin-bottom:14px;
+}
+.usersPageHead h3{
+  margin:0;
+  color:#f7fbff;
+  font-size:22px;
+  font-weight:950;
+  letter-spacing:-.5px;
+}
+.usersPageHead p{
+  margin:5px 0 0;
+  color:#7f90a8;
+  font-size:12px;
+}
+.usersRefreshBtn{
+  height:38px;
+  padding:0 16px;
+  border:1px solid rgba(0,245,141,.3);
+  border-radius:10px;
+  background:rgba(0,245,141,.08);
+  color:#00f58d;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.05em;
 }
 
-function startAuth() {
-  observarAutenticacao(async authState => {
-    const user = authState?.usuario || firebaseAuth.currentUser;
+.usersSummaryReal{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+.userSummaryCard{
+  min-height:84px;
+  padding:15px 16px;
+  display:flex;
+  align-items:center;
+  gap:13px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:linear-gradient(180deg,#101b2a,#0b1523);
+}
+.userSummaryCard > span{
+  width:39px;
+  height:39px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#132337;
+  font-size:16px;
+  flex:0 0 39px;
+}
+.userSummaryCard small{
+  display:block;
+  color:#7f90a8;
+  font-size:10px;
+  margin-bottom:4px;
+}
+.userSummaryCard strong{
+  color:#fff;
+  font-size:23px;
+  line-height:1;
+}
+.userSummaryCard.online > span{color:#00f58d;background:rgba(0,245,141,.1)}
+.userSummaryCard.pro > span{color:#ffd54a;background:rgba(255,213,74,.1)}
+.userSummaryCard.free > span{color:#94a3b8;background:rgba(148,163,184,.1)}
 
-    if (!user) {
-      try {
-        await entrarComGoogle();
-      } catch (error) {
-        alert(error?.message || "Faça login para abrir o painel.");
-        location.href = "/";
-      }
-      return;
-    }
+.usersManagerPanel{
+  min-height:0!important;
+  padding:16px!important;
+}
+.usersToolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:14px;
+}
+.usersSearchBox{
+  width:min(390px,100%);
+  height:42px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:0 13px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#08121f;
+}
+.usersSearchBox span{
+  color:#6f8199;
+  font-size:18px;
+}
+.usersSearchBox input{
+  width:100%;
+  height:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#fff;
+  font:inherit;
+  font-size:11px;
+}
+.usersSearchBox input::placeholder{color:#607187}
 
-    state.user = user;
-    try {
-      await validateAdmin(user);
-      if (!document.body.dataset.adminReady) {
-        document.body.dataset.adminReady = "1";
-        startDashboard();
-      }
-    } catch (error) {
-      console.error("Acesso admin negado:", error);
-      alert(error?.message || "Você não possui acesso administrativo.");
-      location.href = "/";
-    }
-  });
+.usersFilters{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.usersFilters button{
+  height:34px;
+  padding:0 13px;
+  border:1px solid #1a2a3f;
+  border-radius:9px;
+  background:#0a1422;
+  color:#8292a8;
+  font-size:9px;
+  font-weight:900;
+}
+.usersFilters button.active{
+  border-color:rgba(0,245,141,.36);
+  background:rgba(0,245,141,.1);
+  color:#00f58d;
 }
 
-startAuth();
+.usersListHeader{
+  display:grid;
+  grid-template-columns:2.1fr 1fr 1fr .7fr .6fr .85fr;
+  gap:12px;
+  padding:0 14px 8px;
+  color:#5f718a;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.usersCardsList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.userManageCard{
+  display:grid;
+  grid-template-columns:2.1fr 1fr 1fr .7fr .6fr .85fr;
+  gap:12px;
+  align-items:center;
+  min-height:76px;
+  padding:12px 14px;
+  border:1px solid #17273b;
+  border-radius:12px;
+  background:#09131f;
+  transition:.15s ease;
+}
+.userManageCard:hover{
+  border-color:#263a55;
+  background:#0b1725;
+}
+.userManageCard.is-online{
+  box-shadow:inset 3px 0 0 rgba(0,245,141,.65);
+}
+
+.userManageIdentity{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+.userManageIdentity img,
+.userManageAvatarFallback{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  flex:0 0 42px;
+}
+.userManageIdentity img{object-fit:cover}
+.userManageAvatarFallback{
+  display:grid;
+  place-items:center;
+  background:#17283b;
+  color:#fff;
+  font-weight:950;
+}
+.userManageIdentity > div{
+  min-width:0;
+}
+.userManageIdentity strong{
+  display:block;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#f5f8fc;
+  font-size:12px;
+}
+.userManageIdentity small{
+  display:block;
+  margin-top:3px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#8495ab;
+  font-size:9px;
+}
+.userManageIdentity em{
+  display:inline-block;
+  margin-top:5px;
+  color:#64758b;
+  font-size:8px;
+  font-style:normal;
+}
+
+.userManageField small{
+  display:none;
+}
+.userManageField > strong{
+  color:#b9c6d7;
+  font-size:10px;
+  font-weight:750;
+}
+.userManageField .planBadge{
+  min-width:54px;
+}
+
+.userStatusBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:9px;
+  font-weight:900;
+}
+.userStatusBadge i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+}
+.userStatusBadge.online{color:#00f58d}
+.userStatusBadge.online i{
+  background:#00f58d;
+  box-shadow:0 0 10px rgba(0,245,141,.65);
+}
+.userStatusBadge.offline{color:#718198}
+.userStatusBadge.offline i{background:#56677d}
+
+.userManageAction{
+  display:flex;
+  justify-content:flex-end;
+}
+.userManageAction .planActionBtn{
+  min-width:94px;
+  height:32px;
+  padding:0 10px;
+  border-radius:8px;
+  font-size:8px;
+}
+
+.usersEmpty{
+  min-height:120px;
+  display:grid;
+  place-items:center;
+}
+
+@media(max-width:1180px){
+  .usersSummaryReal{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .usersListHeader{display:none}
+  .userManageCard{
+    grid-template-columns:1.7fr 1fr 1fr;
+  }
+  .userManageField small{
+    display:block;
+    margin-bottom:4px;
+    color:#607187;
+    font-size:8px;
+  }
+  .userManageAction{
+    justify-content:flex-start;
+  }
+}
+
+@media(max-width:760px){
+  .usersPageHead,
+  .usersToolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .usersSummaryReal{grid-template-columns:1fr 1fr}
+  .usersSearchBox{width:100%}
+  .userManageCard{
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .userManageIdentity{
+    grid-column:1/-1;
+  }
+}

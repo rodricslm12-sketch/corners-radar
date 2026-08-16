@@ -2002,3 +2002,307 @@ td{
     grid-column:auto;
   }
 }
+
+
+/* =========================================================
+   ADMIN USERS V2 — tela simples e fácil de entender
+   ========================================================= */
+
+.usersPageHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  margin-bottom:14px;
+}
+.usersPageHead h3{
+  margin:0;
+  color:#f7fbff;
+  font-size:22px;
+  font-weight:950;
+  letter-spacing:-.5px;
+}
+.usersPageHead p{
+  margin:5px 0 0;
+  color:#7f90a8;
+  font-size:12px;
+}
+.usersRefreshBtn{
+  height:38px;
+  padding:0 16px;
+  border:1px solid rgba(0,245,141,.3);
+  border-radius:10px;
+  background:rgba(0,245,141,.08);
+  color:#00f58d;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.05em;
+}
+
+.usersSummaryReal{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+.userSummaryCard{
+  min-height:84px;
+  padding:15px 16px;
+  display:flex;
+  align-items:center;
+  gap:13px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:linear-gradient(180deg,#101b2a,#0b1523);
+}
+.userSummaryCard > span{
+  width:39px;
+  height:39px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#132337;
+  font-size:16px;
+  flex:0 0 39px;
+}
+.userSummaryCard small{
+  display:block;
+  color:#7f90a8;
+  font-size:10px;
+  margin-bottom:4px;
+}
+.userSummaryCard strong{
+  color:#fff;
+  font-size:23px;
+  line-height:1;
+}
+.userSummaryCard.online > span{color:#00f58d;background:rgba(0,245,141,.1)}
+.userSummaryCard.pro > span{color:#ffd54a;background:rgba(255,213,74,.1)}
+.userSummaryCard.free > span{color:#94a3b8;background:rgba(148,163,184,.1)}
+
+.usersManagerPanel{
+  min-height:0!important;
+  padding:16px!important;
+}
+.usersToolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:14px;
+}
+.usersSearchBox{
+  width:min(390px,100%);
+  height:42px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:0 13px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#08121f;
+}
+.usersSearchBox span{
+  color:#6f8199;
+  font-size:18px;
+}
+.usersSearchBox input{
+  width:100%;
+  height:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#fff;
+  font:inherit;
+  font-size:11px;
+}
+.usersSearchBox input::placeholder{color:#607187}
+
+.usersFilters{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.usersFilters button{
+  height:34px;
+  padding:0 13px;
+  border:1px solid #1a2a3f;
+  border-radius:9px;
+  background:#0a1422;
+  color:#8292a8;
+  font-size:9px;
+  font-weight:900;
+}
+.usersFilters button.active{
+  border-color:rgba(0,245,141,.36);
+  background:rgba(0,245,141,.1);
+  color:#00f58d;
+}
+
+.usersListHeader{
+  display:grid;
+  grid-template-columns:2.1fr 1fr 1fr .7fr .6fr .85fr;
+  gap:12px;
+  padding:0 14px 8px;
+  color:#5f718a;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.usersCardsList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.userManageCard{
+  display:grid;
+  grid-template-columns:2.1fr 1fr 1fr .7fr .6fr .85fr;
+  gap:12px;
+  align-items:center;
+  min-height:76px;
+  padding:12px 14px;
+  border:1px solid #17273b;
+  border-radius:12px;
+  background:#09131f;
+  transition:.15s ease;
+}
+.userManageCard:hover{
+  border-color:#263a55;
+  background:#0b1725;
+}
+.userManageCard.is-online{
+  box-shadow:inset 3px 0 0 rgba(0,245,141,.65);
+}
+
+.userManageIdentity{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+.userManageIdentity img,
+.userManageAvatarFallback{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  flex:0 0 42px;
+}
+.userManageIdentity img{object-fit:cover}
+.userManageAvatarFallback{
+  display:grid;
+  place-items:center;
+  background:#17283b;
+  color:#fff;
+  font-weight:950;
+}
+.userManageIdentity > div{
+  min-width:0;
+}
+.userManageIdentity strong{
+  display:block;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#f5f8fc;
+  font-size:12px;
+}
+.userManageIdentity small{
+  display:block;
+  margin-top:3px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#8495ab;
+  font-size:9px;
+}
+.userManageIdentity em{
+  display:inline-block;
+  margin-top:5px;
+  color:#64758b;
+  font-size:8px;
+  font-style:normal;
+}
+
+.userManageField small{
+  display:none;
+}
+.userManageField > strong{
+  color:#b9c6d7;
+  font-size:10px;
+  font-weight:750;
+}
+.userManageField .planBadge{
+  min-width:54px;
+}
+
+.userStatusBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:9px;
+  font-weight:900;
+}
+.userStatusBadge i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+}
+.userStatusBadge.online{color:#00f58d}
+.userStatusBadge.online i{
+  background:#00f58d;
+  box-shadow:0 0 10px rgba(0,245,141,.65);
+}
+.userStatusBadge.offline{color:#718198}
+.userStatusBadge.offline i{background:#56677d}
+
+.userManageAction{
+  display:flex;
+  justify-content:flex-end;
+}
+.userManageAction .planActionBtn{
+  min-width:94px;
+  height:32px;
+  padding:0 10px;
+  border-radius:8px;
+  font-size:8px;
+}
+
+.usersEmpty{
+  min-height:120px;
+  display:grid;
+  place-items:center;
+}
+
+@media(max-width:1180px){
+  .usersSummaryReal{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .usersListHeader{display:none}
+  .userManageCard{
+    grid-template-columns:1.7fr 1fr 1fr;
+  }
+  .userManageField small{
+    display:block;
+    margin-bottom:4px;
+    color:#607187;
+    font-size:8px;
+  }
+  .userManageAction{
+    justify-content:flex-start;
+  }
+}
+
+@media(max-width:760px){
+  .usersPageHead,
+  .usersToolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .usersSummaryReal{grid-template-columns:1fr 1fr}
+  .usersSearchBox{width:100%}
+  .userManageCard{
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .userManageIdentity{
+    grid-column:1/-1;
+  }
+}
