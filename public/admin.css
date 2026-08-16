@@ -2002,3 +2002,428 @@ td{
     grid-column:auto;
   }
 }
+
+/* =========================================================
+   ADMIN PREMIUM LAYOUT V5
+   Melhoria visual geral + Atividade recente redesenhada
+   ========================================================= */
+
+.mainContent{
+  max-width:1680px;
+  margin:0 auto;
+  padding:22px 28px 34px;
+}
+
+.topbar{
+  align-items:center;
+  padding:2px 2px 0;
+  margin-bottom:18px;
+}
+
+.titleBlock h2{
+  font-size:30px;
+  letter-spacing:-.045em;
+}
+
+.titleBlock p{
+  margin-top:7px;
+  color:#71849e;
+  font-size:12px;
+}
+
+.statsGridReal{
+  gap:13px;
+  margin-bottom:14px;
+}
+
+.statsGridReal .statCard{
+  min-height:112px!important;
+  padding:16px 16px 15px!important;
+  border-radius:17px;
+  border-color:rgba(148,163,184,.12);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)),
+    linear-gradient(135deg,rgba(12,24,40,.97),rgba(5,14,26,.97));
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.statsGridReal .statCard:hover{
+  border-color:rgba(0,245,141,.18);
+  transform:translateY(-1px);
+  transition:.18s ease;
+}
+
+.statsGridReal .statIcon{
+  width:42px;
+  height:42px;
+  top:16px;
+  left:16px;
+  border-radius:13px;
+}
+
+.statsGridReal .statCard span,
+.statsGridReal .statCard strong,
+.statsGridReal .statCard small{
+  margin-left:58px;
+}
+
+.statsGridReal .statCard span{
+  color:#b8c5d6;
+  font-size:10px;
+  font-weight:750;
+}
+
+.statsGridReal .statCard strong{
+  margin-top:7px;
+  font-size:27px;
+}
+
+.statsGridReal .statCard small{
+  margin-top:8px;
+  color:#677a94;
+  font-size:9px;
+}
+
+.realAdminGrid{
+  grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);
+  gap:14px;
+}
+
+.realOnlinePanel,
+.realActivityPanel,
+.realUsersPanel{
+  border-radius:17px;
+  border-color:rgba(148,163,184,.12);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.025),transparent 28%),
+    rgba(7,17,31,.90);
+  box-shadow:
+    0 18px 45px rgba(0,0,0,.20),
+    inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.realOnlinePanel,
+.realActivityPanel{
+  min-height:310px!important;
+}
+
+.realUsersPanel{
+  min-height:190px!important;
+}
+
+.panelHeader{
+  padding-bottom:11px;
+  border-bottom:1px solid rgba(148,163,184,.08);
+  margin-bottom:10px;
+}
+
+.cardTitle{
+  color:#f7fbff;
+  font-size:14px;
+  letter-spacing:-.015em;
+}
+
+.panelHeader p{
+  margin-top:4px;
+  color:#6e819b;
+  font-size:10px;
+}
+
+.ghostBtn{
+  height:30px;
+  padding:0 11px;
+  border:1px solid rgba(148,163,184,.10);
+  background:#0a1524;
+  color:#8798ad;
+  font-size:9px;
+}
+
+.ghostBtn:hover{
+  color:#7dffbd;
+  border-color:rgba(0,245,141,.22);
+  background:rgba(0,245,141,.06);
+}
+
+/* Online agora */
+.onlineUsersList{
+  margin-top:4px;
+  gap:8px;
+}
+
+.realOnlineUser{
+  min-height:62px;
+  padding:10px 11px!important;
+  border:1px solid rgba(148,163,184,.08)!important;
+  border-radius:12px;
+  background:linear-gradient(90deg,rgba(0,245,141,.035),rgba(15,23,42,.38));
+}
+
+.realOnlineUser:hover{
+  border-color:rgba(0,245,141,.18)!important;
+}
+
+.realUserAvatar{
+  width:36px;
+  height:36px;
+  flex-basis:36px;
+}
+
+.realOnlineUser .onlineUserLeft strong{
+  font-size:11px;
+}
+
+.realOnlineUser .onlineUserLeft p{
+  margin-top:2px;
+  font-size:9px;
+  color:#697d97;
+}
+
+.realUserMeta small{
+  color:#6e819b;
+  font-size:8px;
+}
+
+/* Atividade recente - TIMELINE */
+.realActivityPanel{
+  position:relative;
+}
+
+.realActivityList{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  padding:2px 0 0;
+}
+
+.activityTimelineItem{
+  position:relative;
+  display:grid;
+  grid-template-columns:40px 1fr;
+  gap:11px;
+  min-height:66px;
+  padding:10px 4px 10px 0;
+}
+
+.activityTimelineItem:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  left:19px;
+  top:48px;
+  bottom:-8px;
+  width:1px;
+  background:linear-gradient(180deg,rgba(70,105,126,.42),rgba(70,105,126,.08));
+}
+
+.activityTimelineIcon{
+  position:relative;
+  z-index:2;
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:900;
+  border:1px solid rgba(0,245,141,.16);
+  background:
+    radial-gradient(circle at 30% 25%,rgba(0,245,141,.18),transparent 55%),
+    #0a1a1d;
+  color:#7dffbd;
+  box-shadow:0 0 18px rgba(0,245,141,.06);
+}
+
+.activityTimelineItem.is-signup .activityTimelineIcon{
+  color:#ffd45a;
+  border-color:rgba(246,168,0,.18);
+  background:
+    radial-gradient(circle at 30% 25%,rgba(246,168,0,.18),transparent 55%),
+    #191508;
+  box-shadow:0 0 18px rgba(246,168,0,.05);
+}
+
+.activityTimelineMain{
+  min-width:0;
+  padding:1px 0 10px;
+  border-bottom:1px solid rgba(148,163,184,.07);
+}
+
+.activityTimelineItem:last-child .activityTimelineMain{
+  border-bottom:0;
+}
+
+.activityTimelineTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.activityTimelineTop strong{
+  color:#edf4fb;
+  font-size:11px;
+  font-weight:900;
+}
+
+.activityTimelineTop time{
+  color:#61728a;
+  font-size:8px;
+  white-space:nowrap;
+}
+
+.activityTimelineUser{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:7px;
+}
+
+.activityMiniAvatar{
+  width:23px;
+  height:23px;
+  display:grid;
+  place-items:center;
+  flex:0 0 23px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#1a2a3d,#0c1725);
+  border:1px solid rgba(148,163,184,.10);
+  color:#aebcd0;
+  font-size:8px;
+  font-weight:950;
+}
+
+.activityTimelineUser b{
+  display:block;
+  max-width:230px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#aebbd0;
+  font-size:9px;
+  font-weight:800;
+}
+
+.activityTimelineUser small{
+  display:block;
+  margin-top:2px;
+  color:#566981;
+  font-size:8px;
+}
+
+.activityEmptyState{
+  min-height:210px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#657991;
+}
+
+.activityEmptyIcon{
+  width:44px;
+  height:44px;
+  margin-bottom:10px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  border:1px solid rgba(148,163,184,.10);
+  background:#0a1523;
+  color:#7dffbd;
+  font-size:20px;
+}
+
+.activityEmptyState strong{
+  color:#b7c4d4;
+  font-size:11px;
+}
+
+.activityEmptyState span{
+  margin-top:5px;
+  font-size:9px;
+}
+
+.activityEmptyState.error .activityEmptyIcon{
+  color:#ff8f8f;
+}
+
+/* Últimos usuários */
+.recentUsersList{
+  gap:0;
+}
+
+.recentUserRow{
+  min-height:57px;
+  padding:9px 0;
+}
+
+.recentUserRow .adminUserIdentity img,
+.recentUserRow .adminUserIdentity>span{
+  width:34px;
+  height:34px;
+  flex-basis:34px;
+}
+
+.recentUserRow .adminUserIdentity strong{
+  font-size:10px;
+}
+
+.recentUserRow .adminUserIdentity small{
+  font-size:8px;
+}
+
+.recentUserInfo{
+  gap:4px;
+}
+
+.recentUserInfo small{
+  font-size:8px;
+  color:#61738b;
+}
+
+/* Sidebar mais elegante */
+.sidebar{
+  background:
+    radial-gradient(circle at 30% 0%,rgba(0,245,141,.12),transparent 32%),
+    linear-gradient(180deg,#03151b 0%,#02101a 38%,#020817 100%);
+}
+
+.menuItem{
+  height:42px;
+  border-radius:11px;
+  font-size:12px;
+}
+
+.menuItem.active{
+  box-shadow:0 10px 26px rgba(0,245,141,.18);
+}
+
+.logoArea{
+  margin-bottom:30px;
+}
+
+.logoArea h1{
+  font-size:27px;
+}
+
+/* Responsivo */
+@media(max-width:1280px){
+  .realAdminGrid{
+    grid-template-columns:1fr;
+  }
+
+  .realUsersPanel{
+    grid-column:auto;
+  }
+}
+
+@media(max-width:900px){
+  .mainContent{
+    padding:18px;
+  }
+
+  .activityTimelineUser b{
+    max-width:180px;
+  }
+}

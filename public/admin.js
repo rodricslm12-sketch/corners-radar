@@ -192,26 +192,54 @@ async function loadRecentActivity() {
     const events = Array.isArray(data?.events) ? data.events : [];
 
     if (!events.length) {
-      list.innerHTML = '<div class="simpleEmpty">Nenhuma atividade registrada ainda.</div>';
+      list.innerHTML = `
+        <div class="activityEmptyState">
+          <div class="activityEmptyIcon">⌁</div>
+          <strong>Nenhuma atividade recente</strong>
+          <span>Novos logins e cadastros aparecerão aqui.</span>
+        </div>
+      `;
       return;
     }
 
     list.innerHTML = events.slice(0, 8).map(event => {
       const signup = event.type === "signup";
+      const icon = signup ? "✦" : "↪";
+      const title = signup ? "Novo cadastro" : "Login realizado";
+      const provider = providerLabel(event.provider);
+      const who = event.nome || event.email || "Usuário";
+      const initial = String(who).trim().charAt(0).toUpperCase() || "U";
+
       return `
-        <div class="realActivityRow">
-          <i>${signup ? "✨" : "↪"}</i>
-          <div>
-            <strong>${signup ? "Novo cadastro" : "Login realizado"}</strong>
-            <small>${escapeHtml(event.nome || event.email || "Usuário")} • ${escapeHtml(providerLabel(event.provider))}</small>
+        <article class="activityTimelineItem ${signup ? "is-signup" : "is-login"}">
+          <div class="activityTimelineIcon">${icon}</div>
+
+          <div class="activityTimelineMain">
+            <div class="activityTimelineTop">
+              <strong>${title}</strong>
+              <time>${escapeHtml(formatTimeAgo(event.at))}</time>
+            </div>
+
+            <div class="activityTimelineUser">
+              <span class="activityMiniAvatar">${escapeHtml(initial)}</span>
+              <div>
+                <b>${escapeHtml(who)}</b>
+                <small>${escapeHtml(provider)}</small>
+              </div>
+            </div>
           </div>
-          <time>${escapeHtml(formatTimeAgo(event.at))}</time>
-        </div>
+        </article>
       `;
     }).join("");
   } catch (error) {
     console.error("Erro activity:", error);
-    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar as atividades.</div>';
+    list.innerHTML = `
+      <div class="activityEmptyState error">
+        <div class="activityEmptyIcon">!</div>
+        <strong>Não foi possível carregar</strong>
+        <span>Tente atualizar o painel em alguns segundos.</span>
+      </div>
+    `;
   }
 }
 
