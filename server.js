@@ -1939,7 +1939,25 @@ async function getOdds1x2(matchId) {
   // A API devolve 1X2 + BTS + O/U + Asian Handicap na mesma linha.
   // Antes o código preservava apenas odd_1/odd_x/odd_2, então BTTS e
   // Handicap nunca conseguiam "enxergar" os mercados reais disponíveis.
-  const o = data[0] || {};
+  const o = data
+    .slice()
+    .sort((a, b) => {
+      const score = row => {
+        if (!row || typeof row !== "object") return 0;
+        let s = 0;
+        if (row.odd_1) s += 1;
+        if (row.odd_x) s += 1;
+        if (row.odd_2) s += 1;
+        if (row.bts_yes) s += 3;
+        if (row.bts_no) s += 3;
+        for (const key of Object.keys(row)) {
+          if (/^ah[+-]?\d+(?:\.\d+)?_[12]$/i.test(key)) s += 1;
+        }
+        return s;
+      };
+      return score(b) - score(a);
+    })[0] || {};
+
   const odd1 = Number(String(o.odd_1 || "").replace(",", "."));
   const odd2 = Number(String(o.odd_2 || "").replace(",", "."));
   const oddX = Number(String(o.odd_x || "").replace(",", "."));
@@ -9130,7 +9148,7 @@ function fastHandicapFallback(game, oddsInfo) {
 }
 
 async function buildFastBttsHandicapEngines({ date }) {
-  const cacheKey = `fast-btts-handicap-v57:${date}`;
+  const cacheKey = `fast-btts-handicap-v58:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -9220,7 +9238,7 @@ async function buildFastBttsHandicapEngines({ date }) {
         handicap_available_lines: handicapAvailableLines,
         asian_handicap_markets: handicapMarkets,
         fast_market_engine: true,
-        fast_market_engine_version: "v57-real-markets"
+        fast_market_engine_version: "v58-real-markets-retry"
       };
     }
   );
@@ -9245,7 +9263,7 @@ async function buildFastBttsHandicapEngines({ date }) {
     ok: true,
     fast: true,
     instant_first: true,
-    version: "v57",
+    version: "v58",
     date,
     btts: rankByDecision(analyzed, "btts_ai"),
     handicap: rankByDecision(analyzed, "handicap_ai")
@@ -9266,14 +9284,14 @@ app.get("/market_engines_fast", async (req, res) => {
   try {
     const payload = await withTimeout(
       buildFastBttsHandicapEngines({ date }),
-      12000,
+      20000,
       "motores instantâneos BTTS/Handicap"
     );
 
     return res.json(payload);
   } catch (err) {
     console.warn(
-      "[market_engines_fast v57]",
+      "[market_engines_fast v58]",
       err?.message || err
     );
 

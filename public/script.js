@@ -1375,8 +1375,8 @@
       // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
       // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
       getJson(
-        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=57`,
-        15000
+        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
+        22000
       )
         .then(payload => applyEnginePayload(payload, "fast"))
         .catch(error => {
@@ -2738,7 +2738,7 @@
           )]
         : MARKET.handicap.lines;
 
-      const safeRequestedLine = handicapUiLines.includes(safeRequestedLine)
+      const safeRequestedLine = handicapUiLines.includes(requestedLine)
         ? requestedLine
         : "IA";
 
@@ -4347,6 +4347,91 @@
       marketStartLiveRefresh(body, liveEntries);
     }
   
+
+    let instantMarketRetryTimer = null;
+    let instantMarketRetryCount = 0;
+
+    function marketStillWaiting(type) {
+      const list = Array.isArray(state[type]) ? state[type] : [];
+      if (!list.length) return true;
+
+      const field = ENGINE_DECISION_FIELD[type];
+      return list.some(item => {
+        const raw = item?.raw || item || {};
+        const decision = raw?.[field];
+        if (!decision || typeof decision !== "object") return true;
+
+        const line = clean(decision.line, "").toUpperCase();
+        return Boolean(decision.updating) ||
+          !line ||
+          line === "DADOS EM ATUALIZAÇÃO" ||
+          line === "ANALISANDO PARTIDA";
+      });
+    }
+
+    function stopInstantMarketRetry() {
+      if (instantMarketRetryTimer) {
+        clearTimeout(instantMarketRetryTimer);
+        instantMarketRetryTimer = null;
+      }
+      instantMarketRetryCount = 0;
+    }
+
+    async function refreshInstantMarket(type, immediate = false) {
+      if (!["btts", "handicap"].includes(type)) return;
+
+      const date = state.date || todayManaus();
+      const layer = $("#cpMobileMarketsLayer");
+      const isOpen = Boolean(
+        layer &&
+        (layer.classList.contains("is-open") ||
+         layer.getAttribute("aria-hidden") === "false")
+      );
+
+      if (!isOpen && !immediate) return;
+
+      const stamp = Date.now();
+
+      try {
+        const payload = await getJson(
+          `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
+          18000
+        );
+
+        if (state.date !== date || !payload || typeof payload !== "object") return;
+
+        const rawGames = extract(payload?.[type]);
+        if (rawGames.length) {
+          state[type] = buildMarket(rawGames, type);
+
+          if (type === "btts") {
+            renderBttsMarket(layer);
+          } else {
+            const activeLine =
+              $(".cpHandicapLines button.active", layer)?.dataset?.handicapLine ||
+              "IA";
+            renderHandicapMarket(layer, activeLine);
+          }
+        }
+      } catch (error) {
+        console.warn(`[Corner Pro ${type} instant retry]`, error?.message || error);
+      }
+
+      if (
+        state.activeMarket === type &&
+        marketStillWaiting(type) &&
+        instantMarketRetryCount < 5
+      ) {
+        instantMarketRetryCount += 1;
+        instantMarketRetryTimer = setTimeout(
+          () => refreshInstantMarket(type),
+          3500
+        );
+      } else {
+        stopInstantMarketRetry();
+      }
+    }
+
     function openMarkets(type = state.activeMarket) {
       if (marketLiveTimer) {
         clearInterval(marketLiveTimer);
@@ -4374,8 +4459,12 @@
       try {
         if (marketType === "btts") {
           renderBttsMarket(layer);
+          stopInstantMarketRetry();
+          refreshInstantMarket("btts", true).catch(() => {});
         } else if (marketType === "handicap") {
           renderHandicapMarket(layer, "IA");
+          stopInstantMarketRetry();
+          refreshInstantMarket("handicap", true).catch(() => {});
         } else if (["goals", "corners", "cards"].includes(marketType)) {
           renderDetailedMarket(
             layer,
