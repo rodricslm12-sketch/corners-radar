@@ -194,41 +194,34 @@ async function loadRecentActivity() {
     if (!events.length) {
       list.innerHTML = `
         <div class="activityEmptyState">
-          <div class="activityEmptyIcon">⌁</div>
+          <div class="activityEmptyIcon">◌</div>
           <strong>Nenhuma atividade recente</strong>
-          <span>Novos logins e cadastros aparecerão aqui.</span>
+          <span>Logins e cadastros aparecerão aqui.</span>
         </div>
       `;
       return;
     }
 
-    list.innerHTML = events.slice(0, 8).map(event => {
+    list.innerHTML = events.slice(0, 6).map(event => {
       const signup = event.type === "signup";
-      const icon = signup ? "✦" : "↪";
       const title = signup ? "Novo cadastro" : "Login realizado";
-      const provider = providerLabel(event.provider);
+      const icon = signup ? "✦" : "↪";
       const who = event.nome || event.email || "Usuário";
-      const initial = String(who).trim().charAt(0).toUpperCase() || "U";
+      const provider = providerLabel(event.provider);
 
       return `
-        <article class="activityTimelineItem ${signup ? "is-signup" : "is-login"}">
-          <div class="activityTimelineIcon">${icon}</div>
+        <div class="activityCleanRow ${signup ? "signup" : "login"}">
+          <div class="activityCleanIcon">${icon}</div>
 
-          <div class="activityTimelineMain">
-            <div class="activityTimelineTop">
-              <strong>${title}</strong>
-              <time>${escapeHtml(formatTimeAgo(event.at))}</time>
-            </div>
-
-            <div class="activityTimelineUser">
-              <span class="activityMiniAvatar">${escapeHtml(initial)}</span>
-              <div>
-                <b>${escapeHtml(who)}</b>
-                <small>${escapeHtml(provider)}</small>
-              </div>
-            </div>
+          <div class="activityCleanText">
+            <strong>${escapeHtml(title)}</strong>
+            <span>${escapeHtml(who)}</span>
           </div>
-        </article>
+
+          <div class="activityProvider">${escapeHtml(provider)}</div>
+
+          <time>${escapeHtml(formatTimeAgo(event.at))}</time>
+        </div>
       `;
     }).join("");
   } catch (error) {
@@ -237,7 +230,7 @@ async function loadRecentActivity() {
       <div class="activityEmptyState error">
         <div class="activityEmptyIcon">!</div>
         <strong>Não foi possível carregar</strong>
-        <span>Tente atualizar o painel em alguns segundos.</span>
+        <span>Tente atualizar em alguns segundos.</span>
       </div>
     `;
   }
