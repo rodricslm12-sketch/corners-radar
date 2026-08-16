@@ -1334,7 +1334,13 @@
           state.btts = keepResolvedFastDecision(state.btts, bttsGames, "btts");
         }
         if (handicapGames.length) {
-          state.handicap = keepResolvedFastDecision(state.handicap, handicapGames, "handicap");
+          const hasHandicapV60 = Array.isArray(state.handicap) && state.handicap.some(
+            item => Boolean(item?.raw?.handicap_only_v60)
+          );
+
+          if (!hasHandicapV60) {
+            state.handicap = keepResolvedFastDecision(state.handicap, handicapGames, "handicap");
+          }
         }
 
         window.__cpMobileDirectGames = activeList();
@@ -2476,6 +2482,7 @@
                 : "SEM APOSTA",
             confidence: Number(serverDecision.confidence || 0),
             score: Number(serverDecision.score || 0),
+            market_odd: Number(serverDecision.market_odd || 0) || null,
             teamName: clean(
               serverDecision.team,
               side === "home" ? game.home : game.away
@@ -2779,6 +2786,11 @@
           : safeRequestedLine === "IA"
             ? recommendation.confidence
             : Math.max(57, Math.min(88, recommendation.confidence - 2));
+
+        const handicapRealOdd = Number(
+          recommendation.market_odd ??
+          game?.raw?.handicap_ai?.market_odd
+        );
   
         const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
         const rule = recommendation.skip
@@ -2848,7 +2860,13 @@
   
             <div class="cpHandicapOdd">
               <small>${recommendation.skip ? "Decisão" : "Odd estimada"}</small>
-              <b>${recommendation.skip ? "—" : handicapOdd(confidence)}</b>
+              <b>${
+                recommendation.skip
+                  ? "—"
+                  : Number.isFinite(handicapRealOdd) && handicapRealOdd > 1
+                    ? handicapRealOdd.toFixed(2)
+                    : handicapOdd(confidence)
+              }</b>
             </div>
   
             <div class="cpHandicapGauge ${recommendation.skip ? "is-disabled" : ""}" style="--handicap:${confidence}">
@@ -4432,6 +4450,56 @@
       }
     }
 
+
+    let handicapOnlyV60RequestId = 0;
+
+    async function refreshHandicapOnlyV60() {
+      const layer = $("#cpMobileMarketsLayer");
+      if (!layer) return;
+
+      const date = state.date || todayManaus();
+      const requestId = ++handicapOnlyV60RequestId;
+
+      try {
+        const payload = await getJson(
+          `/handicap_engine_v60?date=${encodeURIComponent(date)}&_=${Date.now()}`,
+          24000
+        );
+
+        if (
+          requestId !== handicapOnlyV60RequestId ||
+          state.activeMarket !== "handicap" ||
+          state.date !== date
+        ) {
+          return;
+        }
+
+        const rawGames = extract(payload?.handicap);
+
+        if (rawGames.length) {
+          state.handicap = buildMarket(rawGames, "handicap");
+
+          const activeLine =
+            $(".cpHandicapLines button.active", layer)?.dataset?.handicapLine ||
+            "IA";
+
+          renderHandicapMarket(layer, activeLine);
+          return;
+        }
+
+        const body = $(".cpMobileMarketsBody", layer);
+        if (body) {
+          body.innerHTML = `
+            <section class="cpHandicapNotice" style="margin:18px 0">
+              <b>HANDICAP ASIÁTICO:</b>
+              nenhum jogo pré-jogo com linha real disponível foi encontrado agora.
+            </section>`;
+        }
+      } catch (error) {
+        console.warn("[Corner Pro Handicap V60]", error?.message || error);
+      }
+    }
+
     function openMarkets(type = state.activeMarket) {
       if (marketLiveTimer) {
         clearInterval(marketLiveTimer);
@@ -4463,8 +4531,7 @@
           refreshInstantMarket("btts", true).catch(() => {});
         } else if (marketType === "handicap") {
           renderHandicapMarket(layer, "IA");
-          stopInstantMarketRetry();
-          refreshInstantMarket("handicap", true).catch(() => {});
+          refreshHandicapOnlyV60().catch(() => {});
         } else if (["goals", "corners", "cards"].includes(marketType)) {
           renderDetailedMarket(
             layer,

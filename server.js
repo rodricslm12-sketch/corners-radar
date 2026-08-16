@@ -9302,6 +9302,370 @@ app.get("/market_engines_fast", async (req, res) => {
   }
 });
 
+
+// =========================================================
+// V60 — HANDICAP ASIÁTICO ISOLADO
+// Este bloco é exclusivo do Handicap. Não participa do BTTS.
+// =========================================================
+const HANDICAP_ONLY_V60_MAX_GAMES = 24;
+const HANDICAP_ONLY_V60_CONCURRENCY = 5;
+
+function handicapOnlyV60Num(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace("%", "").replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function handicapOnlyV60IsPregame(event, date) {
+  const status = String(
+    event?.match_status ??
+    event?.status ??
+    ""
+  ).trim().toLowerCase();
+
+  if (/finished|full.?time|\bft\b|encerr|finaliz|ended|after|cancel|postpon/.test(status)) {
+    return false;
+  }
+
+  if (/^\d{1,3}(\+?\d*)?$/.test(status)) return false;
+  if (/live|ao vivo|half|interval|1st|2nd/.test(status)) return false;
+
+  const matchDate = String(
+    event?.match_date ??
+    event?.event_date ??
+    date ??
+    ""
+  ).slice(0, 10);
+
+  const matchTime = String(
+    event?.match_time ??
+    event?.time ??
+    ""
+  );
+
+  const hhmm = matchTime.match(/(\d{1,2}):(\d{2})/);
+
+  if (matchDate && hhmm) {
+    const kickoff = new Date(
+      `${matchDate}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00-04:00`
+    );
+
+    if (!Number.isNaN(kickoff.getTime())) {
+      return kickoff.getTime() > Date.now() - 5 * 60 * 1000;
+    }
+  }
+
+  return true;
+}
+
+async function handicapOnlyV60OddsRows(matchId) {
+  if (!matchId) return [];
+  const data = await apiGetAny({
+    action: "get_odds",
+    match_id: matchId
+  });
+  return Array.isArray(data) ? data : [];
+}
+
+function handicapOnlyV60Markets(rows) {
+  const byLine = new Map();
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row || typeof row !== "object") continue;
+
+    for (const [key, rawValue] of Object.entries(row)) {
+      const match = String(key).match(/^ah([+-]?\d+(?:\.\d+)?)_([12])$/i);
+      if (!match) continue;
+
+      const baseLine = handicapOnlyV60Num(match[1]);
+      const odd = handicapOnlyV60Num(rawValue);
+      const sideIndex = match[2];
+
+      if (!Number.isFinite(baseLine) || !Number.isFinite(odd) || odd <= 1) continue;
+      if (Math.abs(baseLine) > 2.0) continue;
+
+      const id = String(baseLine);
+      const current = byLine.get(id) || {
+        base_line: baseLine,
+        home_line: baseLine,
+        away_line: -baseLine,
+        home_odd: null,
+        away_odd: null
+      };
+
+      // Mantém uma cotação real utilizável. Em caso de múltiplos bookmakers,
+      // prefere a odd mais próxima de 1.90.
+      if (sideIndex === "1") {
+        if (
+          !Number.isFinite(current.home_odd) ||
+          Math.abs(odd - 1.90) < Math.abs(current.home_odd - 1.90)
+        ) {
+          current.home_odd = odd;
+        }
+      } else {
+        if (
+          !Number.isFinite(current.away_odd) ||
+          Math.abs(odd - 1.90) < Math.abs(current.away_odd - 1.90)
+        ) {
+          current.away_odd = odd;
+        }
+      }
+
+      byLine.set(id, current);
+    }
+  }
+
+  return [...byLine.values()];
+}
+
+function handicapOnlyV60OneXTwo(rows) {
+  let best = null;
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const home = handicapOnlyV60Num(row?.odd_1);
+    const draw = handicapOnlyV60Num(row?.odd_x);
+    const away = handicapOnlyV60Num(row?.odd_2);
+
+    if (!Number.isFinite(home) || !Number.isFinite(away) || home <= 1 || away <= 1) {
+      continue;
+    }
+
+    const score =
+      Math.abs(home - 2.20) +
+      Math.abs(away - 2.20) +
+      (Number.isFinite(draw) ? 0 : 0.3);
+
+    if (!best || score < best.score) {
+      best = { home, draw, away, score };
+    }
+  }
+
+  return best;
+}
+
+function handicapOnlyV60Decision(game, rows) {
+  const markets = handicapOnlyV60Markets(rows);
+  if (!markets.length) return null;
+
+  const oneXTwo = handicapOnlyV60OneXTwo(rows);
+  if (!oneXTwo) return null;
+
+  const homeRaw = 1 / Math.max(1.01, oneXTwo.home);
+  const drawRaw = Number.isFinite(oneXTwo.draw)
+    ? 1 / Math.max(1.01, oneXTwo.draw)
+    : 0;
+  const awayRaw = 1 / Math.max(1.01, oneXTwo.away);
+  const totalRaw = homeRaw + drawRaw + awayRaw;
+
+  const homeProb = totalRaw > 0 ? homeRaw / totalRaw : 0.5;
+  const awayProb = totalRaw > 0 ? awayRaw / totalRaw : 0.5;
+
+  const side = homeProb >= awayProb ? "home" : "away";
+  const favProb = side === "home" ? homeProb : awayProb;
+
+  let targetLine = "+0.25";
+  if (favProb >= 0.68) targetLine = "-1.0";
+  else if (favProb >= 0.61) targetLine = "-0.5";
+  else if (favProb >= 0.55) targetLine = "-0.25";
+
+  const target = Number(targetLine.replace("+", ""));
+
+  const candidates = markets
+    .map(item => ({
+      line: side === "home" ? item.home_line : item.away_line,
+      odd: side === "home" ? item.home_odd : item.away_odd
+    }))
+    .filter(item =>
+      Number.isFinite(item.line) &&
+      Number.isFinite(item.odd) &&
+      item.odd > 1.35 &&
+      item.odd < 3.20 &&
+      Math.abs(item.line) <= 2
+    );
+
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => {
+    const targetA = Math.abs(a.line - target);
+    const targetB = Math.abs(b.line - target);
+    if (targetA !== targetB) return targetA - targetB;
+
+    const priceA = Math.abs(a.odd - 1.90);
+    const priceB = Math.abs(b.odd - 1.90);
+    if (priceA !== priceB) return priceA - priceB;
+
+    return Math.abs(a.line) - Math.abs(b.line);
+  });
+
+  const chosen = candidates[0];
+  const teamName = side === "home" ? game.casa : game.fora;
+
+  const confidence = Math.max(
+    62,
+    Math.min(
+      80,
+      Math.round(60 + Math.max(0, favProb - 0.50) * 85)
+    )
+  );
+
+  const lineText = formatAsianLine(chosen.line);
+  const availableLines = [...new Set(
+    candidates.map(item => formatAsianLine(item.line)).filter(Boolean)
+  )];
+
+  return {
+    skip: false,
+    updating: false,
+    market: "HANDICAP ASIÁTICO",
+    line: lineText,
+    side,
+    side_key: side,
+    team: teamName,
+    confidence,
+    score: Number((confidence + Math.abs(homeProb - awayProb) * 100).toFixed(2)),
+    market_odd: Number(chosen.odd.toFixed(2)),
+    available_market: true,
+    available_lines: availableLines,
+    calculation_source: "handicap_only_v60_real_ah",
+    reason:
+      `${teamName} ${lineText} @ ${chosen.odd.toFixed(2)}: ` +
+      "linha encontrada diretamente no Handicap Asiático real disponível para a partida."
+  };
+}
+
+async function buildHandicapOnlyV60({ date }) {
+  const cacheKey = `handicap-only-v60:${date}`;
+  const cached = cacheGet(cacheKey);
+  if (cached && typeof cached === "object") return cached;
+
+  const events = await withTimeout(
+    apiGetAny({
+      action: "get_events",
+      from: date,
+      to: date,
+      timezone: API_TIMEZONE
+    }),
+    12000,
+    "eventos do Handicap Asiático"
+  );
+
+  const seen = new Set();
+  const games = [];
+
+  for (const event of Array.isArray(events) ? events : []) {
+    if (!handicapOnlyV60IsPregame(event, date)) continue;
+
+    const casa = teamFromEvent(event, "home");
+    const fora = teamFromEvent(event, "away");
+    if (!casa || !fora) continue;
+
+    const match_id =
+      event?.match_id ??
+      event?.event_key ??
+      null;
+
+    const key = String(match_id || `${casa}|${fora}|${event?.match_time || ""}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    games.push({
+      mode: "handicap_only_v60",
+      match_id,
+      casa,
+      fora,
+      liga: cleanText(event?.league_name) || "Liga principal",
+      league_id: Number(event?.league_id || 0) || null,
+      hora: cleanText(event?.match_time ?? event?.time ?? "—") || "—",
+      match_date: cleanText(event?.match_date ?? date),
+      match_status: cleanText(event?.match_status ?? event?.status ?? ""),
+      event_raw: event
+    });
+  }
+
+  games.sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
+
+  const candidates = games.slice(0, HANDICAP_ONLY_V60_MAX_GAMES);
+
+  const analyzed = await mapLimit(
+    candidates,
+    HANDICAP_ONLY_V60_CONCURRENCY,
+    async game => {
+      let rows = [];
+      try {
+        rows = await withTimeout(
+          handicapOnlyV60OddsRows(game.match_id),
+          5500,
+          `handicap odds ${game.match_id}`
+        );
+      } catch {
+        rows = [];
+      }
+
+      const handicap_ai = handicapOnlyV60Decision(game, rows);
+      if (!handicap_ai) return null;
+
+      return {
+        ...game,
+        handicap_ai,
+        handicap_line: handicap_ai.line,
+        handicap_side: handicap_ai.side_key,
+        handicap_confidence: handicap_ai.confidence,
+        handicap_skip: false,
+        handicap_available_lines: handicap_ai.available_lines,
+        handicap_only_v60: true
+      };
+    }
+  );
+
+  const result = analyzed
+    .filter(Boolean)
+    .sort((a, b) => {
+      const conf =
+        Number(b?.handicap_ai?.confidence || 0) -
+        Number(a?.handicap_ai?.confidence || 0);
+      if (conf !== 0) return conf;
+      return String(a.hora).localeCompare(String(b.hora));
+    });
+
+  const payload = {
+    ok: true,
+    version: "v60-handicap-only",
+    date,
+    handicap: result
+  };
+
+  cacheSet(cacheKey, payload, 60 * 1000);
+  return payload;
+}
+
+app.get("/handicap_engine_v60", async (req, res) => {
+  const date = req.query.date || toISODate();
+
+  res.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+
+  try {
+    const payload = await withTimeout(
+      buildHandicapOnlyV60({ date }),
+      22000,
+      "motor exclusivo de Handicap Asiático"
+    );
+
+    return res.json(payload);
+  } catch (err) {
+    console.warn("[handicap_engine_v60]", err?.message || err);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Erro no motor exclusivo de Handicap Asiático",
+      details: String(err?.message || err)
+    });
+  }
+});
+
+
 // =========================================================
 // DIAGNÓSTICO DE CARREGAMENTO — MOBILE V7
 // Acesse /health e /debug-quentes?date=AAAA-MM-DD para testar o servidor.
