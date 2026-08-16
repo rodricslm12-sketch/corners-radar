@@ -9,6 +9,8 @@ import {
 const state = {
   user: null,
   users: [],
+  userFilter: "all",
+  userSearch: "",
   timerStats: null,
   timerOnline: null,
   timerActivity: null
@@ -245,46 +247,107 @@ function renderRecentUsers(users) {
   `).join("");
 }
 
+function isUserOnline(user) {
+  if (!user?.lastSeen) return false;
+  const ms = new Date(user.lastSeen).getTime();
+  return Number.isFinite(ms) && (Date.now() - ms <= 2 * 60 * 1000);
+}
+
+function userStatusLabel(user) {
+  return isUserOnline(user) ? "Online" : "Offline";
+}
+
+function applyUsersFilter() {
+  const query = String(state.userSearch || "").trim().toLowerCase();
+  const filter = state.userFilter || "all";
+
+  const filtered = state.users.filter(user => {
+    const matchesSearch =
+      !query ||
+      String(user.nome || "").toLowerCase().includes(query) ||
+      String(user.email || "").toLowerCase().includes(query);
+
+    if (!matchesSearch) return false;
+
+    if (filter === "online") return isUserOnline(user);
+    if (filter === "offline") return !isUserOnline(user);
+    if (filter === "pro") return user.premium === true;
+    if (filter === "free") return user.premium !== true;
+    return true;
+  });
+
+  renderUsers(filtered);
+}
+
 function renderUsers(users) {
-  const tbody = $("#adminUsersTableBody");
-  if (!tbody) return;
+  const list = $("#adminUsersTableBody");
+  if (!list) return;
 
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum usuário encontrado.</td></tr>';
+    list.innerHTML = '<div class="simpleEmpty usersEmpty">Nenhum usuário encontrado.</div>';
     return;
   }
 
-  tbody.innerHTML = users.map(user => `
-    <tr data-user-uid="${escapeHtml(user.uid)}">
-      <td>
-        <div class="adminUserIdentity">
+  list.innerHTML = users.map(user => {
+    const online = isUserOnline(user);
+    const provider = providerLabel(user.provedor);
+    const created = user.criadoEm ? formatDate(user.criadoEm) : "—";
+    const lastAccess = user.ultimoLogin ? formatDate(user.ultimoLogin) : "Nunca";
+
+    return `
+      <article class="userManageCard ${online ? "is-online" : "is-offline"}" data-user-uid="${escapeHtml(user.uid)}">
+        <div class="userManageIdentity">
           ${user.foto
             ? `<img src="${escapeHtml(user.foto)}" alt="">`
-            : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
+            : `<span class="userManageAvatarFallback">${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
           <div>
             <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-            <small>${escapeHtml(providerLabel(user.provedor))}</small>
+            <small>${escapeHtml(user.email || "—")}</small>
+            <em>${escapeHtml(provider)}</em>
           </div>
         </div>
-      </td>
-      <td>${escapeHtml(user.email || "—")}</td>
-      <td><span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span></td>
-      <td>${escapeHtml(formatDate(user.ultimoLogin))}</td>
-      <td>
-        <button class="planActionBtn ${user.premium ? "remove" : "activate"}" type="button"
-          data-user-plan="${user.premium ? "false" : "true"}"
-          data-user-uid="${escapeHtml(user.uid)}">
-          ${user.premium ? "REMOVER PRO" : "ATIVAR PRO"}
-        </button>
-      </td>
-    </tr>
-  `).join("");
+
+        <div class="userManageField">
+          <small>Cadastro</small>
+          <strong>${escapeHtml(created)}</strong>
+        </div>
+
+        <div class="userManageField">
+          <small>Último acesso</small>
+          <strong>${escapeHtml(lastAccess)}</strong>
+        </div>
+
+        <div class="userManageField">
+          <small>Status</small>
+          <span class="userStatusBadge ${online ? "online" : "offline"}">
+            <i></i>${online ? "ONLINE" : "OFFLINE"}
+          </span>
+        </div>
+
+        <div class="userManageField">
+          <small>Plano</small>
+          <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
+        </div>
+
+        <div class="userManageAction">
+          <button class="planActionBtn ${user.premium ? "remove" : "activate"}" type="button"
+            data-user-plan="${user.premium ? "false" : "true"}"
+            data-user-uid="${escapeHtml(user.uid)}">
+            ${user.premium ? "TORNAR FREE" : "ATIVAR PRO"}
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
-function updateUsersSummary(users) {
+function updateUsersSummaryfunction updateUsersSummary(users) {
   const pro = users.filter(user => user.premium).length;
   const free = users.length - pro;
+  const online = users.filter(isUserOnline).length;
+
   if ($("#adminTotalUsers")) $("#adminTotalUsers").textContent = users.length;
+  if ($("#adminOnlineUsers")) $("#adminOnlineUsers").textContent = online;
   if ($("#adminProUsers")) $("#adminProUsers").textContent = pro;
   if ($("#adminFreeUsers")) $("#adminFreeUsers").textContent = free;
 }
@@ -294,7 +357,7 @@ async function loadUsers() {
     showUsersMessage("Carregando usuários...", "info");
     const data = await adminFetch("/admin/users?limit=500");
     state.users = Array.isArray(data.users) ? data.users : [];
-    renderUsers(state.users);
+    applyUsersFilter();
     renderRecentUsers(state.users);
     updateUsersSummary(state.users);
     showUsersMessage("");
@@ -318,7 +381,7 @@ async function updateUserPlan(uid, premium, button) {
 
     const index = state.users.findIndex(user => user.uid === uid);
     if (index >= 0) state.users[index] = data.user;
-    renderUsers(state.users);
+    applyUsersFilter();
     renderRecentUsers(state.users);
     updateUsersSummary(state.users);
     loadAdminStats();
@@ -331,7 +394,11 @@ async function updateUserPlan(uid, premium, button) {
 }
 
 function installUsersEvents() {
-  $("#adminUsersRefresh")?.addEventListener("click", loadUsers);
+  $("#adminUsersRefresh")?.addEventListener("click", async () => {
+    await loadUsers();
+    await loadAdminStats();
+  });
+
   $("#refreshOnlineUsers")?.addEventListener("click", () => {
     loadOnlineUsers();
     loadAdminStats();
@@ -341,14 +408,22 @@ function installUsersEvents() {
   $("#adminUserSearch")?.addEventListener("input", event => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-      const query = event.target.value.trim().toLowerCase();
-      const filtered = !query ? state.users : state.users.filter(user =>
-        String(user.nome || "").toLowerCase().includes(query) ||
-        String(user.email || "").toLowerCase().includes(query) ||
-        String(user.uid || "").toLowerCase().includes(query)
-      );
-      renderUsers(filtered);
-    }, 180);
+      state.userSearch = event.target.value || "";
+      applyUsersFilter();
+    }, 140);
+  });
+
+  $("#adminUsersFilters")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-user-filter]");
+    if (!button) return;
+
+    state.userFilter = button.dataset.userFilter || "all";
+
+    $$("#adminUsersFilters [data-user-filter]").forEach(btn => {
+      btn.classList.toggle("active", btn === button);
+    });
+
+    applyUsersFilter();
   });
 
   $("#adminUsersTableBody")?.addEventListener("click", event => {
@@ -358,11 +433,146 @@ function installUsersEvents() {
   });
 }
 
-function installLogout() {
+function installLogoutfunction installLogout() {
   $(".logoutBtn")?.addEventListener("click", async () => {
     await sairDaConta();
     location.href = "/";
   });
+}
+
+
+function showAdminLoginGate(message = "") {
+  let gate = document.getElementById("adminLoginGate");
+
+  if (!gate) {
+    gate = document.createElement("div");
+    gate.id = "adminLoginGate";
+    gate.style.cssText = `
+      position:fixed;
+      inset:0;
+      z-index:999999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background:rgba(2,7,15,.92);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+    `;
+
+    gate.innerHTML = `
+      <div style="
+        width:min(420px,100%);
+        border:1px solid rgba(0,245,141,.28);
+        border-radius:18px;
+        background:#0b1523;
+        padding:28px;
+        box-shadow:0 28px 80px rgba(0,0,0,.55);
+        color:#fff;
+        text-align:center;
+      ">
+        <div style="
+          width:54px;
+          height:54px;
+          margin:0 auto 14px;
+          display:grid;
+          place-items:center;
+          border-radius:15px;
+          background:rgba(0,245,141,.1);
+          color:#00f58d;
+          font-size:24px;
+        ">🔐</div>
+
+        <h2 style="margin:0 0 8px;font-size:22px;">Acesso administrativo</h2>
+        <p style="margin:0 0 18px;color:#8fa1b8;font-size:12px;line-height:1.5;">
+          Entre com a conta Google autorizada para abrir o painel.
+        </p>
+
+        <div id="adminLoginGateMessage" style="
+          display:${message ? "block" : "none"};
+          margin:0 0 14px;
+          padding:10px 12px;
+          border-radius:10px;
+          background:rgba(255,80,80,.08);
+          border:1px solid rgba(255,80,80,.2);
+          color:#ff9f9f;
+          font-size:11px;
+        ">${escapeHtml(message)}</div>
+
+        <button id="adminLoginGateButton" type="button" style="
+          width:100%;
+          height:46px;
+          border:0;
+          border-radius:11px;
+          background:#00f58d;
+          color:#06110b;
+          font-weight:950;
+          cursor:pointer;
+        ">ENTRAR COM GOOGLE</button>
+
+        <button id="adminLoginGateBack" type="button" style="
+          margin-top:10px;
+          width:100%;
+          height:40px;
+          border:1px solid #203047;
+          border-radius:10px;
+          background:#0a1320;
+          color:#8fa1b8;
+          font-weight:800;
+          cursor:pointer;
+        ">VOLTAR AO SITE</button>
+      </div>
+    `;
+
+    document.body.appendChild(gate);
+
+    gate.querySelector("#adminLoginGateButton")?.addEventListener("click", async () => {
+      const btn = gate.querySelector("#adminLoginGateButton");
+      const msg = gate.querySelector("#adminLoginGateMessage");
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "ABRINDO GOOGLE...";
+      }
+
+      if (msg) {
+        msg.style.display = "none";
+        msg.textContent = "";
+      }
+
+      try {
+        await entrarComGoogle();
+        // onAuthStateChanged continuará o fluxo automaticamente.
+      } catch (error) {
+        if (msg) {
+          msg.textContent = error?.message || "Não foi possível abrir o login.";
+          msg.style.display = "block";
+        }
+
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "ENTRAR COM GOOGLE";
+        }
+      }
+    });
+
+    gate.querySelector("#adminLoginGateBack")?.addEventListener("click", () => {
+      location.href = "/";
+    });
+  } else {
+    const msg = gate.querySelector("#adminLoginGateMessage");
+    if (msg && message) {
+      msg.textContent = message;
+      msg.style.display = "block";
+    }
+  }
+
+  gate.style.display = "flex";
+}
+
+function hideAdminLoginGate() {
+  const gate = document.getElementById("adminLoginGate");
+  if (gate) gate.style.display = "none";
 }
 
 async function validateAdmin(user) {
@@ -392,26 +602,36 @@ function startAuth() {
     const user = authState?.usuario || firebaseAuth.currentUser;
 
     if (!user) {
-      try {
-        await entrarComGoogle();
-      } catch (error) {
-        alert(error?.message || "Faça login para abrir o painel.");
-        location.href = "/";
-      }
+      // IMPORTANTE:
+      // não abre popup automaticamente, porque navegadores bloqueiam popups
+      // que não foram iniciados por um clique do usuário.
+      showAdminLoginGate();
       return;
     }
 
+    hideAdminLoginGate();
     state.user = user;
+
     try {
       await validateAdmin(user);
+
       if (!document.body.dataset.adminReady) {
         document.body.dataset.adminReady = "1";
         startDashboard();
       }
     } catch (error) {
       console.error("Acesso admin negado:", error);
-      alert(error?.message || "Você não possui acesso administrativo.");
-      location.href = "/";
+
+      // Se existe login, mas não é uma conta administrativa,
+      // mostra o motivo no próprio painel em vez de redirecionar após um alert.
+      try {
+        await sairDaConta();
+      } catch (_) {}
+
+      document.body.dataset.adminReady = "";
+      showAdminLoginGate(
+        error?.message || "Esta conta não possui acesso administrativo."
+      );
     }
   });
 }
