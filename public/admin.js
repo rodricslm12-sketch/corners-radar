@@ -341,7 +341,7 @@ function renderUsers(users) {
   }).join("");
 }
 
-function updateUsersSummaryfunction updateUsersSummary(users) {
+function updateUsersSummary(users) {
   const pro = users.filter(user => user.premium).length;
   const free = users.length - pro;
   const online = users.filter(isUserOnline).length;
@@ -433,7 +433,7 @@ function installUsersEvents() {
   });
 }
 
-function installLogoutfunction installLogout() {
+function installLogout() {
   $(".logoutBtn")?.addEventListener("click", async () => {
     await sairDaConta();
     location.href = "/";
