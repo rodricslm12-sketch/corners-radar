@@ -3743,8 +3743,12 @@ function publicUserProfile(doc) {
     premium: data.premium === true,
     admin: data.admin === true,
     bloqueado: data.bloqueado === true,
+    provedor: data.provedor || "firebase",
     criadoEm: timestampToISO(data.criadoEm),
     ultimoLogin: timestampToISO(data.ultimoLogin),
+    lastSeen: timestampToISO(data.lastSeen),
+    paginaAtual: data.paginaAtual || "",
+    dispositivo: data.dispositivo || "",
     atualizadoEm: timestampToISO(data.atualizadoEm)
   };
 }
@@ -3848,6 +3852,26 @@ app.get(
 
 
 
+
+// Presença real do usuário no app.
+// O navegador envia um heartbeat periódico enquanto a sessão está ativa.
+app.post("/auth/presence", verifyFirebaseToken, async (req, res) => {
+  try {
+    const ref = db.collection("users").doc(req.user.uid);
+    await ref.set({
+      lastSeen: FieldValue.serverTimestamp(),
+      paginaAtual: String(req.body?.path || "").slice(0, 180),
+      dispositivo: String(req.body?.device || req.headers["user-agent"] || "").slice(0, 300),
+      atualizadoEm: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.warn("Falha ao registrar presença:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Não foi possível registrar presença." });
+  }
+});
+
 // =========================================================
 // ADMIN — usuários e planos controlados pelo Firestore
 // Configure no Render: ADMIN_EMAILS=seuemail@gmail.com
@@ -3928,21 +3952,47 @@ app.get("/admin/stats", verifyFirebaseToken, requireAdmin, async (req, res) => {
   try {
     const snap = await db.collection("users").get();
     const users = snap.docs.map(publicUserProfile);
+
+    const now = Date.now();
+    const onlineWindowMs = 2 * 60 * 1000;
+    const startToday = new Date();
+    startToday.setHours(0, 0, 0, 0);
+    const startTodayMs = startToday.getTime();
+
+    const validTime = value => {
+      if (!value) return null;
+      const ms = new Date(value).getTime();
+      return Number.isFinite(ms) ? ms : null;
+    };
+
+    const onlineUsers = users.filter(user => {
+      const seen = validTime(user.lastSeen);
+      return seen !== null && now - seen <= onlineWindowMs;
+    });
+
+    const newToday = users.filter(user => {
+      const created = validTime(user.criadoEm);
+      return created !== null && created >= startTodayMs;
+    });
+
+    const activeToday = users.filter(user => {
+      const lastLogin = validTime(user.ultimoLogin);
+      const seen = validTime(user.lastSeen);
+      return (lastLogin !== null && lastLogin >= startTodayMs) ||
+             (seen !== null && seen >= startTodayMs);
+    });
+
     const premiumUsers = users.filter(user => user.premium).length;
-    const freeUsers = users.length - premiumUsers;
 
     return res.json({
       ok: true,
+      generatedAt: new Date().toISOString(),
       totalUsers: users.length,
+      onlineUsers: onlineUsers.length,
+      newToday: newToday.length,
+      activeToday: activeToday.length,
       premiumUsers,
-      freeUsers,
-      onlineUsers: users.filter(user => {
-        if (!user.ultimoLogin) return false;
-        return Date.now() - new Date(user.ultimoLogin).getTime() <= 15 * 60 * 1000;
-      }).length,
-      matchesToday: 0,
-      aiAccuracy: 74,
-      apiStatus: "ATIVA"
+      freeUsers: users.length - premiumUsers
     });
   } catch (err) {
     console.error("Erro em /admin/stats:", err?.message || err);
@@ -3952,21 +4002,69 @@ app.get("/admin/stats", verifyFirebaseToken, requireAdmin, async (req, res) => {
 
 app.get("/admin/online-users", verifyFirebaseToken, requireAdmin, async (req, res) => {
   try {
-    const since = Date.now() - 15 * 60 * 1000;
+    const since = Date.now() - 2 * 60 * 1000;
     const snap = await db.collection("users").get();
+
     const users = snap.docs
       .map(publicUserProfile)
-      .filter(user => user.ultimoLogin && new Date(user.ultimoLogin).getTime() >= since)
+      .filter(user => {
+        if (!user.lastSeen) return false;
+        const ms = new Date(user.lastSeen).getTime();
+        return Number.isFinite(ms) && ms >= since;
+      })
+      .sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime())
       .map(user => ({
         uid: user.uid,
-        name: user.nome,
-        device: user.nome,
-        browser: user.premium ? "PRO" : "FREE",
-        location: user.email
+        nome: user.nome,
+        email: user.email,
+        foto: user.foto,
+        premium: user.premium,
+        provedor: user.provedor,
+        lastSeen: user.lastSeen,
+        paginaAtual: user.paginaAtual,
+        dispositivo: user.dispositivo
       }));
-    return res.json(users);
+
+    return res.json({ ok: true, users });
   } catch (err) {
+    console.error("Erro em /admin/online-users:", err?.message || err);
     return res.status(500).json({ ok: false, error: "Não foi possível carregar usuários online." });
+  }
+});
+
+app.get("/admin/recent-activity", verifyFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const snap = await db.collection("users").get();
+    const users = snap.docs.map(publicUserProfile);
+    const events = [];
+
+    for (const user of users) {
+      if (user.criadoEm) {
+        events.push({
+          type: "signup",
+          at: user.criadoEm,
+          nome: user.nome,
+          email: user.email,
+          provider: user.provedor
+        });
+      }
+      if (user.ultimoLogin) {
+        events.push({
+          type: "login",
+          at: user.ultimoLogin,
+          nome: user.nome,
+          email: user.email,
+          provider: user.provedor
+        });
+      }
+    }
+
+    events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+    return res.json({ ok: true, events: events.slice(0, 20) });
+  } catch (err) {
+    console.error("Erro em /admin/recent-activity:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Não foi possível carregar atividades." });
   }
 });
 

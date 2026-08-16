@@ -1848,3 +1848,157 @@ td{
   .usersManagerTools,.usersManagerTools input{width:100%;}
   .usersSummary{grid-template-columns:1fr;}
 }
+
+/* =========================================================
+   ADMIN REAL DATA V1 — usuários e presença real
+   ========================================================= */
+.statsGridReal .statCard{
+  min-height:116px;
+}
+.statsGridReal .statCard::after,
+.statsGridReal .miniChart,
+.statsGridReal .statusLine{
+  display:none!important;
+}
+.statsGridReal .statCard small{
+  color:#8192ab;
+  line-height:1.35;
+}
+.realAdminGrid{
+  display:grid;
+  grid-template-columns:1.05fr 1fr;
+  gap:16px;
+  align-items:start;
+}
+.realUsersPanel{
+  grid-column:1/-1;
+}
+.realOnlinePanel,
+.realActivityPanel,
+.realUsersPanel{
+  min-height:260px;
+}
+.simpleEmpty{
+  padding:24px 8px;
+  color:#8192ab;
+  text-align:center;
+  font-size:13px;
+}
+.realOnlineUser{
+  padding:13px 0!important;
+  border-bottom:1px solid var(--line);
+}
+.realOnlineUser:last-child{
+  border-bottom:0;
+}
+.realUserAvatar{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  object-fit:cover;
+  flex:0 0 38px;
+}
+.realUserAvatar.fallback{
+  display:grid;
+  place-items:center;
+  background:#142133;
+  color:#fff;
+  font-weight:900;
+}
+.realOnlineUser .onlineUserLeft{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.realOnlineUser .onlineUserLeft strong{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.realOnlineUser .onlineUserLeft p{
+  margin-top:3px;
+  color:#7f90a8;
+  font-size:11px;
+}
+.realUserMeta{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.realUserMeta small{
+  color:#8192ab;
+  font-size:10px;
+}
+.realActivityList{
+  display:flex;
+  flex-direction:column;
+}
+.realActivityRow{
+  display:grid!important;
+  grid-template-columns:38px 1fr auto!important;
+  gap:11px!important;
+  align-items:center!important;
+  padding:12px 0!important;
+  border-bottom:1px solid var(--line)!important;
+}
+.realActivityRow:last-child{
+  border-bottom:0!important;
+}
+.realActivityRow i{
+  width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:10px!important;
+  background:rgba(0,245,141,.08)!important;
+  font-style:normal!important;
+}
+.realActivityRow div strong{
+  display:block!important;
+  font-size:12px!important;
+}
+.realActivityRow div small{
+  display:block!important;
+  margin-top:4px!important;
+  color:#8192ab!important;
+  font-size:10px!important;
+}
+.realActivityRow time{
+  color:#94a3b8;
+  font-size:10px;
+}
+.recentUsersList{
+  display:flex;
+  flex-direction:column;
+}
+.recentUserRow{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+.recentUserRow:last-child{
+  border-bottom:0;
+}
+.recentUserInfo{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.recentUserInfo small{
+  color:#8192ab;
+  font-size:10px;
+}
+@media(max-width:1100px){
+  .realAdminGrid{
+    grid-template-columns:1fr;
+  }
+  .realUsersPanel{
+    grid-column:auto;
+  }
+}

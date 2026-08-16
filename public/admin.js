@@ -11,7 +11,7 @@ const state = {
   users: [],
   timerStats: null,
   timerOnline: null,
-  timerGames: null
+  timerActivity: null
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -27,19 +27,12 @@ function escapeHtml(value = "") {
 }
 
 async function readJsonSafe(response) {
-  try {
-    return await response.json();
-  } catch {
-    return {};
-  }
+  try { return await response.json(); }
+  catch { return {}; }
 }
 
 async function adminFetch(url, options = {}) {
-  const response = await fetchAutenticado(url, {
-    cache: "no-store",
-    ...options
-  });
-
+  const response = await fetchAutenticado(url, { cache: "no-store", ...options });
   const data = await readJsonSafe(response);
   if (!response.ok) {
     throw new Error(data?.error || data?.message || "Falha na operação administrativa.");
@@ -65,6 +58,26 @@ function formatDate(value) {
   }).format(date);
 }
 
+function formatTimeAgo(value) {
+  if (!value) return "agora";
+  const ms = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "agora";
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return "agora";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min atrás`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h atrás`;
+  return formatDate(value);
+}
+
+function providerLabel(value = "") {
+  const p = String(value).toLowerCase();
+  if (p.includes("google")) return "Google";
+  if (p.includes("password")) return "E-mail/senha";
+  return "Firebase";
+}
+
 function updateAdminProfile(user) {
   const name = user?.displayName || user?.email || "Admin";
   const avatar = $(".adminProfile .avatar");
@@ -75,35 +88,23 @@ function updateAdminProfile(user) {
 
 function installClock() {
   const topbar = $(".topbar");
-  if (!topbar) return;
+  if (!topbar || $(".adminClock")) return;
   const timeEl = document.createElement("div");
   timeEl.className = "adminClock";
   topbar.appendChild(timeEl);
-
   const update = () => {
     timeEl.textContent = new Date().toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
     });
   };
   update();
   setInterval(update, 1000);
 }
 
-function installButtonEffects() {
-  $$(".actionBtn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      btn.classList.add("clicked");
-      setTimeout(() => btn.classList.remove("clicked"), 300);
-    });
-  });
-}
-
 function switchView(view) {
   const usersView = $("#adminUsersView");
   const dashboardStats = $(".statsGrid");
-  const dashboardGrid = $(".dashboardGrid");
+  const dashboardGrid = $(".realAdminGrid");
   const isUsers = view === "users";
 
   if (usersView) usersView.hidden = !isUsers;
@@ -116,10 +117,10 @@ function switchView(view) {
 
   const title = $(".titleBlock h2");
   const subtitle = $(".titleBlock p");
-  if (title) title.textContent = isUsers ? "Gerenciamento de Usuários" : "Painel Administrativo";
+  if (title) title.textContent = isUsers ? "Usuários" : "Painel Administrativo";
   if (subtitle) subtitle.textContent = isUsers
-    ? "Controle de contas FREE e PRO pelo Firestore"
-    : "Monitoramento em tempo real do Corners Radar";
+    ? "Contas reais cadastradas no Corner Pro"
+    : "Usuários e atividade real do Corner Pro";
 
   if (isUsers) loadUsers();
 }
@@ -128,84 +129,120 @@ function installNavigation() {
   $$("[data-admin-view]").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.dataset.adminView));
   });
+  $("#openUsersManager")?.addEventListener("click", () => switchView("users"));
 }
 
 async function loadAdminStats() {
   try {
     const data = await adminFetch("/admin/stats");
-    const usersCard = $(".green strong");
-    const gamesCard = $(".purple strong");
-    const iaCard = $(".orange strong");
-    const apiCard = $(".blue strong");
-
-    if (usersCard) usersCard.textContent = data.onlineUsers ?? data.totalUsers ?? 0;
-    if (gamesCard) gamesCard.textContent = data.matchesToday ?? 0;
-    if (iaCard) iaCard.textContent = `${data.aiAccuracy ?? 0}%`;
-    if (apiCard) apiCard.textContent = data.apiStatus || "ATIVA";
+    if ($("#dashTotalUsers")) $("#dashTotalUsers").textContent = data.totalUsers ?? 0;
+    if ($("#dashOnlineUsers")) $("#dashOnlineUsers").textContent = data.onlineUsers ?? 0;
+    if ($("#dashNewToday")) $("#dashNewToday").textContent = data.newToday ?? 0;
+    if ($("#dashActiveToday")) $("#dashActiveToday").textContent = data.activeToday ?? 0;
+    if ($("#dashPremiumUsers")) $("#dashPremiumUsers").textContent = data.premiumUsers ?? 0;
   } catch (error) {
     console.error("Erro admin stats:", error);
   }
 }
 
 async function loadOnlineUsers() {
-  try {
-    const users = await adminFetch("/admin/online-users");
-    const list = $("#onlineUsersList");
-    if (!list) return;
+  const list = $("#onlineUsersList");
+  if (!list) return;
 
-    if (!Array.isArray(users) || !users.length) {
-      list.innerHTML = '<div class="onlineUser">Nenhum usuário online agora</div>';
+  try {
+    const data = await adminFetch("/admin/online-users");
+    const users = Array.isArray(data?.users) ? data.users : [];
+
+    if (!users.length) {
+      list.innerHTML = '<div class="simpleEmpty">Nenhum usuário online agora.</div>';
       return;
     }
 
     list.innerHTML = users.map(user => `
-      <div class="onlineUser">
+      <div class="onlineUser realOnlineUser">
         <div class="onlineUserLeft">
-          <span class="onlinePulse"></span>
+          ${user.foto
+            ? `<img class="realUserAvatar" src="${escapeHtml(user.foto)}" alt="">`
+            : `<span class="realUserAvatar fallback">${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
           <div>
-            <strong>${escapeHtml(user.device || user.name || "Usuário")}</strong>
-            <p>${escapeHtml(user.location || "")}</p>
+            <strong><i class="onlinePulse"></i>${escapeHtml(user.nome || "Usuário")}</strong>
+            <p>${escapeHtml(user.email || "—")}</p>
           </div>
         </div>
-        <small>${escapeHtml(user.browser || "Online")}</small>
+        <div class="realUserMeta">
+          <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
+          <small>${escapeHtml(formatTimeAgo(user.lastSeen))}</small>
+        </div>
       </div>
     `).join("");
   } catch (error) {
     console.error("Erro online users:", error);
+    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar a presença.</div>';
   }
 }
 
-async function loadLiveGames() {
-  try {
-    const response = await fetch("/admin/live-games", { cache: "no-store" });
-    const data = await readJsonSafe(response);
-    const list = $("#liveGamesList");
-    if (!list) return;
+async function loadRecentActivity() {
+  const list = $("#realActivityList");
+  if (!list) return;
 
-    const games = Array.isArray(data?.games) ? data.games : [];
-    if (!games.length) {
-      list.innerHTML = '<div class="liveGameEmpty">Nenhum jogo encontrado hoje</div>';
+  try {
+    const data = await adminFetch("/admin/recent-activity");
+    const events = Array.isArray(data?.events) ? data.events : [];
+
+    if (!events.length) {
+      list.innerHTML = '<div class="simpleEmpty">Nenhuma atividade registrada ainda.</div>';
       return;
     }
 
-    list.innerHTML = games.map(game => `
-      <div class="liveGameRow">
-        <div class="liveGameInfo">
-          <strong>${escapeHtml(game.home)} x ${escapeHtml(game.away)}</strong>
-          <small>${escapeHtml(game.league)} • ${escapeHtml(game.time)}</small>
-        </div>
-        <div class="liveGameRight">
-          <div class="liveGameBadges">
-            <span class="liveProb">${escapeHtml(game.probability ?? "-")}%</span>
-            <span class="liveCorners">${escapeHtml(game.projectedCorners ?? "-")}</span>
+    list.innerHTML = events.slice(0, 8).map(event => {
+      const signup = event.type === "signup";
+      return `
+        <div class="realActivityRow">
+          <i>${signup ? "✨" : "↪"}</i>
+          <div>
+            <strong>${signup ? "Novo cadastro" : "Login realizado"}</strong>
+            <small>${escapeHtml(event.nome || event.email || "Usuário")} • ${escapeHtml(providerLabel(event.provider))}</small>
           </div>
-          <small>IA • cantos</small>
+          <time>${escapeHtml(formatTimeAgo(event.at))}</time>
+        </div>
+      `;
+    }).join("");
+  } catch (error) {
+    console.error("Erro activity:", error);
+    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar as atividades.</div>';
+  }
+}
+
+function renderRecentUsers(users) {
+  const list = $("#recentUsersList");
+  if (!list) return;
+
+  const sorted = [...users]
+    .sort((a, b) => new Date(b.criadoEm || b.ultimoLogin || 0) - new Date(a.criadoEm || a.ultimoLogin || 0))
+    .slice(0, 6);
+
+  if (!sorted.length) {
+    list.innerHTML = '<div class="simpleEmpty">Nenhum usuário cadastrado.</div>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(user => `
+    <div class="recentUserRow">
+      <div class="adminUserIdentity">
+        ${user.foto
+          ? `<img src="${escapeHtml(user.foto)}" alt="">`
+          : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
+        <div>
+          <strong>${escapeHtml(user.nome || "Usuário")}</strong>
+          <small>${escapeHtml(user.email || "—")}</small>
         </div>
       </div>
-    `).join("");
-  } catch (error) {
-    console.error("Erro live games:", error);
-  }
+      <div class="recentUserInfo">
+        <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
+        <small>Último acesso: ${escapeHtml(formatDate(user.ultimoLogin))}</small>
+      </div>
+    </div>
+  `).join("");
 }
 
 function renderUsers(users) {
@@ -226,7 +263,7 @@ function renderUsers(users) {
             : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
           <div>
             <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-            <small>${escapeHtml(user.uid)}</small>
+            <small>${escapeHtml(providerLabel(user.provedor))}</small>
           </div>
         </div>
       </td>
@@ -258,6 +295,7 @@ async function loadUsers() {
     const data = await adminFetch("/admin/users?limit=500");
     state.users = Array.isArray(data.users) ? data.users : [];
     renderUsers(state.users);
+    renderRecentUsers(state.users);
     updateUsersSummary(state.users);
     showUsersMessage("");
   } catch (error) {
@@ -281,7 +319,9 @@ async function updateUserPlan(uid, premium, button) {
     const index = state.users.findIndex(user => user.uid === uid);
     if (index >= 0) state.users[index] = data.user;
     renderUsers(state.users);
+    renderRecentUsers(state.users);
     updateUsersSummary(state.users);
+    loadAdminStats();
     showUsersMessage(premium ? "Plano PRO ativado." : "Plano alterado para FREE.", "success");
   } catch (error) {
     showUsersMessage(error.message, "error");
@@ -292,6 +332,10 @@ async function updateUserPlan(uid, premium, button) {
 
 function installUsersEvents() {
   $("#adminUsersRefresh")?.addEventListener("click", loadUsers);
+  $("#refreshOnlineUsers")?.addEventListener("click", () => {
+    loadOnlineUsers();
+    loadAdminStats();
+  });
 
   let searchTimer;
   $("#adminUserSearch")?.addEventListener("input", event => {
@@ -329,18 +373,18 @@ async function validateAdmin(user) {
 
 function startDashboard() {
   installClock();
-  installButtonEffects();
   installNavigation();
   installUsersEvents();
   installLogout();
 
   loadAdminStats();
   loadOnlineUsers();
-  loadLiveGames();
+  loadRecentActivity();
+  loadUsers();
 
   state.timerStats = setInterval(loadAdminStats, 15000);
-  state.timerOnline = setInterval(loadOnlineUsers, 10000);
-  state.timerGames = setInterval(loadLiveGames, 20000);
+  state.timerOnline = setInterval(loadOnlineUsers, 15000);
+  state.timerActivity = setInterval(loadRecentActivity, 30000);
 }
 
 function startAuth() {

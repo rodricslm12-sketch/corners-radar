@@ -25,13 +25,13 @@ const firebaseApp = initializeApp(firebaseConfig);
 const firebaseAuth = getAuth(firebaseApp);
 
 const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
+googleProvider.setCustomParameters({ prompt: "select_account" });
+
+let presenceTimer = null;
+let presenceUserUid = null;
 
 function traduzirErroFirebase(erro) {
   const code = String(erro?.code || "");
-
   const mensagens = {
     "auth/email-already-in-use": "Este e-mail já possui uma conta.",
     "auth/invalid-email": "Digite um e-mail válido.",
@@ -43,9 +43,9 @@ function traduzirErroFirebase(erro) {
     "auth/popup-closed-by-user": "A janela de login foi fechada.",
     "auth/popup-blocked": "O navegador bloqueou a janela de login.",
     "auth/unauthorized-domain": "Este domínio ainda não está autorizado no Firebase.",
-    "auth/missing-password": "Digite sua senha."
+    "auth/missing-password": "Digite sua senha.",
+    "auth/operation-not-allowed": "O login por e-mail e senha ainda não está ativado no Firebase."
   };
-
   return new Error(mensagens[code] || erro?.message || "Não foi possível concluir a autenticação.");
 }
 
@@ -53,9 +53,7 @@ async function entrarComGoogle() {
   try {
     const resultado = await signInWithPopup(firebaseAuth, googleProvider);
     const usuario = resultado.user;
-    const token = await usuario.getIdToken(true);
-
-    return { usuario, token };
+    return { usuario, token: await usuario.getIdToken(true) };
   } catch (erro) {
     console.error("Erro ao entrar com Google:", erro);
     throw traduzirErroFirebase(erro);
@@ -69,16 +67,10 @@ async function criarContaComEmail({ nome, email, senha }) {
       String(email || "").trim(),
       String(senha || "")
     );
-
     const usuario = credencial.user;
     const nomeLimpo = String(nome || "").trim();
-
-    if (nomeLimpo) {
-      await updateProfile(usuario, { displayName: nomeLimpo });
-    }
-
+    if (nomeLimpo) await updateProfile(usuario, { displayName: nomeLimpo });
     await usuario.reload();
-
     return {
       usuario: firebaseAuth.currentUser || usuario,
       token: await usuario.getIdToken(true)
@@ -96,7 +88,6 @@ async function entrarComEmail({ email, senha }) {
       String(email || "").trim(),
       String(senha || "")
     );
-
     return {
       usuario: credencial.user,
       token: await credencial.user.getIdToken(true)
@@ -111,17 +102,16 @@ async function redefinirSenha(email) {
   try {
     const endereco = String(email || "").trim();
     if (!endereco) throw new Error("Digite seu e-mail primeiro.");
-
     await sendPasswordResetEmail(firebaseAuth, endereco);
     return true;
   } catch (erro) {
-    console.error("Erro ao redefinir senha:", erro);
     if (String(erro?.message || "") === "Digite seu e-mail primeiro.") throw erro;
     throw traduzirErroFirebase(erro);
   }
 }
 
 async function sairDaConta() {
+  pararPresenca();
   await signOut(firebaseAuth);
 }
 
@@ -133,34 +123,71 @@ async function obterTokenFirebase(force = false) {
 
 async function fetchAutenticado(url, options = {}) {
   const token = await obterTokenFirebase();
-
-  if (!token) {
-    throw new Error("Usuário não autenticado.");
-  }
+  if (!token) throw new Error("Usuário não autenticado.");
 
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", `Bearer ${token}`);
 
-  if (
-    options.body &&
-    typeof options.body === "string" &&
-    !headers.has("Content-Type")
-  ) {
+  if (options.body && typeof options.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  return fetch(url, {
-    ...options,
-    headers
-  });
+  return fetch(url, { ...options, headers });
 }
+
+async function enviarPresenca(usuario) {
+  if (!usuario || document.visibilityState === "hidden") return;
+  try {
+    const token = await usuario.getIdToken();
+    await fetch("/auth/presence", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        path: location.pathname,
+        device: navigator.userAgent
+      }),
+      cache: "no-store",
+      keepalive: true
+    });
+  } catch (erro) {
+    console.debug("Presença indisponível:", erro?.message || erro);
+  }
+}
+
+function pararPresenca() {
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = null;
+  presenceUserUid = null;
+}
+
+function iniciarPresenca(usuario) {
+  if (!usuario) return pararPresenca();
+  if (presenceUserUid === usuario.uid && presenceTimer) return;
+
+  pararPresenca();
+  presenceUserUid = usuario.uid;
+  enviarPresenca(usuario);
+  presenceTimer = setInterval(() => enviarPresenca(usuario), 60000);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && firebaseAuth.currentUser) {
+    enviarPresenca(firebaseAuth.currentUser);
+  }
+});
 
 function observarAutenticacao(callback) {
   return onAuthStateChanged(firebaseAuth, async (usuario) => {
     if (!usuario) {
+      pararPresenca();
       callback(null);
       return;
     }
+
+    iniciarPresenca(usuario);
 
     callback({
       usuario,
