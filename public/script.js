@@ -1652,11 +1652,23 @@
       state.officialCornerBest = null;
       state.activeMarket = 'corners';
 
+      // V63 — se o Top 1 oficial não aprovou entrada, ainda mostramos
+      // o melhor confronto real disponível do dia. A diferença é que
+      // o card fica claramente marcado como SEM ENTRADA.
+      const fallbackList = cprExistingGamesFromApp();
+      const fallbackGame = fallbackList[0] || null;
+
+      if (fallbackGame) {
+        const normalizedFallback =
+          fallbackGame?.home && fallbackGame?.away
+            ? fallbackGame
+            : normalize(fallbackGame?.raw || fallbackGame, 'corners', 0);
+
+        cprSyncHero(normalizedFallback, fallbackList);
+      }
+
       cprText('#cprTitle', '🔥 MELHOR APOSTA • CANTOS');
       cprText('#cprMarket', 'SEM ENTRADA');
-      cprText('#cprTime', '--:--');
-      cprText('#cprHomeName', 'Nenhuma oportunidade');
-      cprText('#cprAwayName', 'aprovada');
       cprText('#cprProjectionLabel', 'PROJEÇÃO DE CANTOS');
       cprText('#cprProjection', '—');
       cprText('#cprCornersAvg', '—');
@@ -1665,8 +1677,24 @@
       cprText('#cprTrend', '↗ AGUARDAR');
       cprText('#cprConfidenceLabel', 'AGUARDAR');
 
+      // Se não existir absolutamente nenhum jogo-base, mantém o estado vazio.
+      if (!fallbackGame) {
+        cprText('#cprTime', '--:--');
+        cprText('#cprHomeName', 'Nenhum jogo');
+        cprText('#cprAwayName', 'disponível');
+      }
+
+      const heroCard = $('#cpHomeBest');
+      if (heroCard) {
+        heroCard.classList.remove('is-loading-initial');
+        heroCard.setAttribute('aria-busy', 'false');
+      }
+
+      const initialLoader = $('#cpHomeInitialLoading');
+      if (initialLoader) initialLoader.hidden = true;
+
       const open = $('#cpHomeBestOpen');
-      if (open) open.disabled = true;
+      if (open) open.disabled = !fallbackGame;
     }
 
     async function loadOfficialCornerTop1(date, stamp, { fresh = false } = {}) {
