@@ -1151,6 +1151,65 @@
       if (games) games.innerHTML = '<div class="cprEmpty">Nenhuma partida encontrada para esta data.</div>';
     }
 
+
+    function cprHoldMainCornerCardUntilOfficial() {
+      // V62 — evita o "pisca": jogo provisório -> jogo oficial.
+      // Enquanto o Top 1 oficial não chegou, o hero NÃO recebe
+      // nomes/escudos de nenhuma lista-base.
+      cprText("#cprTitle", "🔥 MELHOR APOSTA • ESCANTEIOS");
+      cprText("#cprMarket", "ANALISANDO TOP 1");
+      cprText("#cprTime", "--:--");
+      cprText("#cprHomeName", "ANALISANDO");
+      cprText("#cprAwayName", "TOP 1");
+      cprText("#cprProjectionLabel", "PROJEÇÃO DE CANTOS");
+      cprText("#cprProjection", "—");
+      cprText("#cprCornersAvg", "—");
+      cprText("#cprGoalsAvg", "—");
+      cprText("#cprConfidence", "—");
+      cprText("#cprTrend", "💭 ANALISANDO");
+      cprText("#cprConfidenceLabel", "ANALISANDO");
+
+      const gauge = $("#cprGauge");
+      if (gauge) gauge.style.setProperty("--p", 0);
+
+      // Limpa escudos e também as iniciais provisórias.
+      [
+        ["#cpHomeBestHomeBadge", "#cpHomeBestHomeFallback"],
+        ["#cpHomeBestAwayBadge", "#cpHomeBestAwayFallback"],
+        ["#cprHomeBadge", "#cprHomeBadgeFallback"],
+        ["#cprAwayBadge", "#cprAwayBadgeFallback"]
+      ].forEach(([imgSelector, fallbackSelector]) => {
+        const img = $(imgSelector);
+        const fallback = $(fallbackSelector);
+
+        if (img) {
+          img.onload = null;
+          img.onerror = null;
+          img.removeAttribute("src");
+          img.hidden = true;
+        }
+
+        if (fallback) {
+          fallback.hidden = true;
+          fallback.textContent = "";
+        }
+      });
+
+      const card = $("#cpHomeBest");
+      if (card) {
+        card.classList.add("is-loading-initial");
+        card.setAttribute("aria-busy", "true");
+        card.__cpCurrentRaw = null;
+        card.__cpCurrentNormalized = null;
+      }
+
+      const open = $("#cpHomeBestOpen");
+      if (open) open.disabled = true;
+
+      const initialLoader = $("#cpHomeInitialLoading");
+      if (initialLoader) initialLoader.hidden = false;
+    }
+
     function renderActive({ animate = false, direction = 1 } = {}) {
       if (state.activeMarket === "corners" && state.officialCornerNoOpportunity) {
         cprShowNoOfficialCornerOpportunity(state.officialCornerReason);
@@ -1172,6 +1231,18 @@
 
       // Compatibilidade com consumidores antigos: sempre a lista ativa.
       window.__cpMobileDirectGames = list;
+
+      // V62 — CANTOS: não renderiza o primeiro jogo da lista rápida no hero.
+      // Espera o Top 1 oficial para evitar mostrar um time sem escudo e
+      // logo depois trocar para outro confronto.
+      if (
+        state.activeMarket === "corners" &&
+        !state.officialCornerBest &&
+        !state.officialCornerNoOpportunity
+      ) {
+        cprHoldMainCornerCardUntilOfficial();
+        return;
+      }
 
       const setText = (selector, value) => {
         const element = $(selector);
@@ -1466,9 +1537,10 @@
         ];
         cprSyncHero(official, heroList);
       } else {
-        // Enquanto a rota oficial ainda pensa, podemos mostrar os nomes do
-        // primeiro jogo, mas métricas permanecem em "— / ANALISANDO".
-        cprSyncHero(best, baseList);
+        // V62 — enquanto a rota oficial ainda pensa, NÃO mostra confronto
+        // provisório no card principal. Isso elimina a troca visual
+        // "jogo sem escudo -> Top 1 oficial com escudo".
+        cprHoldMainCornerCardUntilOfficial();
       }
 
       // Espelha também no estado da Home para favoritos/cliques.
@@ -1603,7 +1675,8 @@
       state.officialCornerNoOpportunity = false;
 
       // Estado visual correto durante o processamento:
-      // nenhum "0", nenhum "CAUTELA" e nenhuma confiança inventada.
+      // nenhum jogo-base provisório, nenhum "0", nenhum "CAUTELA".
+      cprHoldMainCornerCardUntilOfficial();
       cprText("#cprMarket", "ANALISANDO TOP 1");
       cprText("#cprProjection", "—");
       cprText("#cprCornersAvg", "—");
@@ -1645,6 +1718,15 @@
         state.officialCornerReason = String(payload?.top1_reason || '');
         state.officialCornerBest = best;
         state.activeMarket = 'corners';
+
+        const heroCard = $("#cpHomeBest");
+        if (heroCard) {
+          heroCard.classList.remove("is-loading-initial");
+          heroCard.setAttribute("aria-busy", "false");
+        }
+
+        const initialLoader = $("#cpHomeInitialLoading");
+        if (initialLoader) initialLoader.hidden = true;
 
         const current = Array.isArray(state.corners) ? state.corners : [];
         state.corners = [
