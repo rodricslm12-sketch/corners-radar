@@ -1293,38 +1293,37 @@
         if (goalGames.length) state.goals = buildMarket(goalGames, "goals");
         if (cardGames.length) state.cards = buildMarket(cardGames, "cards");
 
-        // V56 — BTTS/HANDICAP: uma resposta "full" ainda atualizando
-        // nunca pode apagar a decisão instantânea já entregue pela rota fast.
-        const mergeResolvedMarket = (currentList, incomingRaw, type) => {
+        const keepResolvedFastDecision = (currentList, incomingRaw, type) => {
           const incoming = buildMarket(incomingRaw, type);
-          if (!Array.isArray(currentList) || !currentList.length) return incoming;
+          if (source !== "full" || !Array.isArray(currentList) || !currentList.length) {
+            return incoming;
+          }
 
-          const currentById = new Map(
-            currentList.map(item => [String(item.id), item])
-          );
+          const currentById = new Map(currentList.map(item => [String(item.id), item]));
+          const field = ENGINE_DECISION_FIELD[type];
 
           return incoming.map(item => {
             const previous = currentById.get(String(item.id));
             if (!previous) return item;
 
-            const field = ENGINE_DECISION_FIELD[type];
             const prevDecision = previous?.raw?.[field];
             const nextDecision = item?.raw?.[field];
 
             const prevResolved = Boolean(
               prevDecision &&
-              typeof prevDecision === "object" &&
               !prevDecision.updating &&
               clean(prevDecision.line, "") &&
-              clean(prevDecision.line, "") !== "DADOS EM ATUALIZAÇÃO" &&
-              clean(prevDecision.line, "") !== "ANALISANDO PARTIDA"
+              !["DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(
+                clean(prevDecision.line, "").toUpperCase()
+              )
             );
 
             const nextPending = Boolean(
               !nextDecision ||
               nextDecision.updating ||
-              clean(nextDecision?.line, "") === "DADOS EM ATUALIZAÇÃO" ||
-              clean(nextDecision?.line, "") === "ANALISANDO PARTIDA"
+              ["DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(
+                clean(nextDecision?.line, "").toUpperCase()
+              )
             );
 
             return prevResolved && nextPending ? previous : item;
@@ -1332,15 +1331,10 @@
         };
 
         if (bttsGames.length) {
-          state.btts = source === "full"
-            ? mergeResolvedMarket(state.btts, bttsGames, "btts")
-            : buildMarket(bttsGames, "btts");
+          state.btts = keepResolvedFastDecision(state.btts, bttsGames, "btts");
         }
-
         if (handicapGames.length) {
-          state.handicap = source === "full"
-            ? mergeResolvedMarket(state.handicap, handicapGames, "handicap")
-            : buildMarket(handicapGames, "handicap");
+          state.handicap = keepResolvedFastDecision(state.handicap, handicapGames, "handicap");
         }
 
         window.__cpMobileDirectGames = activeList();
@@ -1381,7 +1375,7 @@
       // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
       // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
       getJson(
-        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=55`,
+        `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=57`,
         15000
       )
         .then(payload => applyEnginePayload(payload, "fast"))
@@ -2047,7 +2041,9 @@
       const body = $(".cpMobileMarketsBody", layer);
       if (!body) return;
 
-      const games = Array.isArray(state.btts) ? state.btts.slice(0, 12) : [];
+      const allBttsGames = Array.isArray(state.btts) ? state.btts : [];
+      const upcomingBttsGames = allBttsGames.filter(game => !handicapFinished(game));
+      const games = (upcomingBttsGames.length ? upcomingBttsGames : allBttsGames).slice(0, 12);
       const settlementEntries = [];
       const liveEntries = [];
 
@@ -2454,8 +2450,9 @@
           clean(serverDecision.line, "SEM APOSTA");
 
         const validServerLines = new Set([
-          "-1.0", "-0.75", "-0.5", "-0.25",
-          "+0.25", "+0.5", "+0.75", "+1.0",
+          "-2.0", "-1.5", "-1.0", "-0.75", "-0.5", "-0.25",
+          "0.0",
+          "+0.25", "+0.5", "+0.75", "+1.0", "+1.5", "+2.0",
           "SEM APOSTA"
         ]);
 
@@ -2717,10 +2714,33 @@
         ? selectedLine
         : "IA";
 
-      const sourceGames =
+      const originalSourceGames =
         (Array.isArray(state.handicap) && state.handicap.length)
           ? state.handicap
           : (Array.isArray(state.pregame) ? state.pregame : []);
+
+      const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
+      const sourceGames = upcomingHandicapGames.length
+        ? upcomingHandicapGames
+        : originalSourceGames;
+
+      const realAvailableLines = [...new Set(
+        sourceGames.flatMap(game => {
+          const raw = game?.raw || {};
+          const lines = raw?.handicap_available_lines;
+          return Array.isArray(lines) ? lines : [];
+        })
+      )];
+
+      const handicapUiLines = realAvailableLines.length
+        ? ["IA", ...MARKET.handicap.lines.filter(line =>
+            line !== "IA" && realAvailableLines.includes(line)
+          )]
+        : MARKET.handicap.lines;
+
+      const safeRequestedLine = handicapUiLines.includes(safeRequestedLine)
+        ? requestedLine
+        : "IA";
 
       let preparedGames = sourceGames
         .map((game, originalIndex) => ({
@@ -2746,7 +2766,7 @@
       const liveEntries = [];
   
       const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
-        const line = requestedLine === "IA" ? recommendation.line : requestedLine;
+        const line = safeRequestedLine === "IA" ? recommendation.line : safeRequestedLine;
         const side = recommendation.side;
         const sideLabel = recommendation.skip
           ? "IA"
@@ -2756,7 +2776,7 @@
         const teamName = side === "home" ? game.home : game.away;
         const confidence = recommendation.skip
           ? 0
-          : requestedLine === "IA"
+          : safeRequestedLine === "IA"
             ? recommendation.confidence
             : Math.max(57, Math.min(88, recommendation.confidence - 2));
   
@@ -2791,7 +2811,7 @@
           side
         });
   
-        const recommendationBadge = requestedLine === "IA"
+        const recommendationBadge = safeRequestedLine === "IA"
           ? `<span class="cpHandicapAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>`
           : "";
   
@@ -2841,31 +2861,31 @@
       }).join("");
   
       const explanationLine =
-        requestedLine === "IA"
+        safeRequestedLine === "IA"
           ? (
               preparedGames.find(item => !item.recommendation?.skip)
                 ?.recommendation?.line || "-0.5"
             )
-          : requestedLine;
+          : safeRequestedLine;
       const explainRule = handicapLineRule(explanationLine, "TIME");
   
       body.innerHTML = `
         <section class="cpHandicapIntro">
           <div class="cpHandicapIntroIcon">⚖</div>
-          <p>${requestedLine === "IA" ? "A IA seleciona automaticamente o lado e a linha com melhor sustentação nos dados reais." : "Escolha a linha de handicap asiático que deseja analisar."}</p>
+          <p>${safeRequestedLine === "IA" ? "A IA seleciona automaticamente o lado e a linha com melhor sustentação nos dados reais." : "Escolha a linha de handicap asiático que deseja analisar."}</p>
         </section>
   
         <div class="cpHandicapLines">
-          ${MARKET.handicap.lines.map(item => `
-            <button type="button" class="${item === requestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
+          ${handicapUiLines.map(item => `
+            <button type="button" class="${item === safeRequestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
           `).join("")}
         </div>
   
         <section class="cpHandicapExplain">
-          <h3>${`COMO FUNCIONA ${escapeHtml(requestedLine)}?`}</h3>
+          <h3>${`COMO FUNCIONA ${escapeHtml(safeRequestedLine)}?`}</h3>
           <div class="cpHandicapExplainGrid">
             <p>${
-              requestedLine === "IA"
+              safeRequestedLine === "IA"
                 ? "O app compara favoritismo, posição na tabela, média de gols e força relativa. Depois sugere o lado e a linha com melhor equilíbrio entre risco e proteção."
                 : escapeHtml(explainRule.headline)
             }</p>
@@ -2911,7 +2931,7 @@
         <div class="cpHandicapList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
   
         <button type="button" class="cpHandicapAllGames">
-          <span>☷</span><b>${`VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(requestedLine)})`}</b><i>›</i>
+          <span>☷</span><b>${`VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(safeRequestedLine)})`}</b><i>›</i>
         </button>
   
         <section class="cpHandicapBottomExplain">

@@ -1935,14 +1935,111 @@ async function getOdds1x2(matchId) {
   const data = await apiGetAny({ action: "get_odds", match_id: matchId });
   if (!Array.isArray(data) || !data.length) return null;
 
-  const o = data[0];
+  // V57 — não joga fora os outros mercados.
+  // A API devolve 1X2 + BTS + O/U + Asian Handicap na mesma linha.
+  // Antes o código preservava apenas odd_1/odd_x/odd_2, então BTTS e
+  // Handicap nunca conseguiam "enxergar" os mercados reais disponíveis.
+  const o = data[0] || {};
   const odd1 = Number(String(o.odd_1 || "").replace(",", "."));
   const odd2 = Number(String(o.odd_2 || "").replace(",", "."));
   const oddX = Number(String(o.odd_x || "").replace(",", "."));
-  if (!Number.isFinite(odd1) || !Number.isFinite(odd2)) return null;
 
-  const fav = (odd1 <= odd2) ? { side: "HOME", odd: odd1 } : { side: "AWAY", odd: odd2 };
-  return { fav, odd1, oddX, odd2, bookmaker: o.odd_bookmakers || null };
+  const fav =
+    Number.isFinite(odd1) && Number.isFinite(odd2)
+      ? ((odd1 <= odd2)
+          ? { side: "HOME", odd: odd1 }
+          : { side: "AWAY", odd: odd2 })
+      : null;
+
+  return {
+    ...o,
+    fav,
+    odd1: Number.isFinite(odd1) ? odd1 : null,
+    oddX: Number.isFinite(oddX) ? oddX : null,
+    odd2: Number.isFinite(odd2) ? odd2 : null,
+    bookmaker: o.odd_bookmakers || null
+  };
+}
+
+function asianHandicapMarketsFromOdds(oddsInfo) {
+  if (!oddsInfo || typeof oddsInfo !== "object") return [];
+
+  const grouped = new Map();
+
+  for (const [key, rawValue] of Object.entries(oddsInfo)) {
+    const match = String(key).match(/^ah([+-]?\d+(?:\.\d+)?)_([12])$/i);
+    if (!match) continue;
+
+    const baseLine = Number(match[1]);
+    const sideIndex = match[2];
+    const odd = Number(String(rawValue ?? "").replace(",", "."));
+
+    if (!Number.isFinite(baseLine) || !Number.isFinite(odd) || odd <= 1) continue;
+
+    const groupKey = String(baseLine);
+    const current = grouped.get(groupKey) || {
+      base_line: baseLine,
+      home_line: baseLine,
+      away_line: -baseLine,
+      home_odd: null,
+      away_odd: null
+    };
+
+    if (sideIndex === "1") current.home_odd = odd;
+    if (sideIndex === "2") current.away_odd = odd;
+    grouped.set(groupKey, current);
+  }
+
+  return [...grouped.values()]
+    .filter(item => Number.isFinite(item.home_odd) || Number.isFinite(item.away_odd))
+    .sort((a, b) => a.base_line - b.base_line);
+}
+
+function formatAsianLine(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  if (Math.abs(n) < 0.0001) return "0.0";
+  const text = Number.isInteger(n) ? n.toFixed(1) : String(n);
+  return n > 0 ? `+${text}` : text;
+}
+
+function applyAvailableAsianHandicap(decision, oddsInfo, game) {
+  if (!decision || decision.skip) return decision;
+
+  const markets = asianHandicapMarketsFromOdds(oddsInfo);
+  if (!markets.length) return decision;
+
+  const side = String(decision.side_key || decision.side || "").toLowerCase();
+  const isAway = side === "away" || side === "fora";
+  const target = Number(String(decision.line || "").replace("+", ""));
+  const candidates = markets
+    .map(item => ({
+      line: isAway ? item.away_line : item.home_line,
+      odd: isAway ? item.away_odd : item.home_odd,
+      raw: item
+    }))
+    .filter(item => Number.isFinite(item.line) && Number.isFinite(item.odd));
+
+  if (!candidates.length) return decision;
+
+  candidates.sort((a, b) => {
+    const da = Number.isFinite(target) ? Math.abs(a.line - target) : 999;
+    const db = Number.isFinite(target) ? Math.abs(b.line - target) : 999;
+    if (da !== db) return da - db;
+    return Math.abs(a.odd - 1.90) - Math.abs(b.odd - 1.90);
+  });
+
+  const chosen = candidates[0];
+  return {
+    ...decision,
+    line: formatAsianLine(chosen.line),
+    market_odd: chosen.odd,
+    available_market: true,
+    available_lines: candidates.map(item => formatAsianLine(item.line)),
+    reason:
+      `${decision.reason || "Leitura do motor."} ` +
+      `Linha confirmada nas odds reais: ${formatAsianLine(chosen.line)} @ ${chosen.odd.toFixed(2)}.`
+  };
 }
 
 // ✅ H2H: tenta v3 e cai pro v2
@@ -5981,7 +6078,7 @@ async function buildHandicapGamesList({ date }) {
       h2hBlock = await getH2H(game.casa, game.fora);
     } catch {}
 
-    const handicap_ai = handicapDecision({
+    const handicapBase = handicapDecision({
       game,
       oddsInfo,
       h2hBlock,
@@ -5989,9 +6086,25 @@ async function buildHandicapGamesList({ date }) {
       posAway: game.pos_away
     });
 
+    const handicap_ai = applyAvailableAsianHandicap(
+      handicapBase,
+      oddsInfo,
+      game
+    );
+
+    const handicapMarkets = asianHandicapMarketsFromOdds(oddsInfo);
+    const handicapAvailableLines = [...new Set(
+      handicapMarkets.flatMap(item => [
+        formatAsianLine(item.home_line),
+        formatAsianLine(item.away_line)
+      ]).filter(Boolean)
+    )];
+
     return {
       ...game,
       handicap_ai,
+      handicap_available_lines: handicapAvailableLines,
+      asian_handicap_markets: handicapMarkets,
       handicap_line: handicap_ai.line,
       handicap_side: handicap_ai.side_key || null,
       handicap_confidence: handicap_ai.confidence,
@@ -6725,7 +6838,21 @@ function bttsEngineDecision({ game, home, away, oddsInfo, goalsDecision }) {
   let noIndex = null;
   let source = "fallback";
 
-  if (hasBtts) {
+  // V57 — prioridade ao próprio mercado BTS disponível na API.
+  // Isso resolve o "SIM/NÃO" usando o mercado real, em vez de tentar
+  // deduzir BTTS apenas a partir de 1X2/projeção de gols.
+  const btsYesOdd = handicapSafeNumber(oddsInfo?.bts_yes);
+  const btsNoOdd = handicapSafeNumber(oddsInfo?.bts_no);
+
+  if (Number.isFinite(btsYesOdd) && Number.isFinite(btsNoOdd)) {
+    const yesRaw = 1 / Math.max(1.01, btsYesOdd);
+    const noRaw = 1 / Math.max(1.01, btsNoOdd);
+    const totalRaw = yesRaw + noRaw;
+
+    yesIndex = (yesRaw / totalRaw) * 100;
+    noIndex = (noRaw / totalRaw) * 100;
+    source = "bookmaker_bts";
+  } else if (hasBtts) {
     const homeAttack = home?.goalsForAvg ?? 1;
     const awayAttack = away?.goalsForAvg ?? 1;
     const homeConcedes = home?.goalsAgainstAvg ?? 1;
@@ -6828,7 +6955,11 @@ function bttsEngineDecision({ game, home, away, oddsInfo, goalsDecision }) {
   confidence = engineClamp(
     confidence + Math.max(0, quality - 2) * 0.7,
     62,
-    (source === "fallback" || source === "fallback_conservative") ? 72 : MULTI_MARKET_ENGINE.MAX_CONFIDENCE
+    (source === "fallback" || source === "fallback_conservative")
+      ? 72
+      : source === "bookmaker_bts"
+        ? 82
+        : MULTI_MARKET_ENGINE.MAX_CONFIDENCE
   );
 
   return engineDecision({
@@ -8824,6 +8955,15 @@ function mobileFastGameFromEvent(e) {
     liga: league?.name || cleanText(e?.league_name) || "Liga",
     league_id: Number(league?.id ?? e?.league_id ?? 0) || null,
     hora,
+    match_date: cleanText(e?.match_date ?? e?.event_date ?? ""),
+    match_status: cleanText(e?.match_status ?? e?.status ?? ""),
+    score_home: Number.isFinite(Number(e?.match_hometeam_score ?? e?.home_score))
+      ? Number(e?.match_hometeam_score ?? e?.home_score)
+      : null,
+    score_away: Number.isFinite(Number(e?.match_awayteam_score ?? e?.away_score))
+      ? Number(e?.match_awayteam_score ?? e?.away_score)
+      : null,
+    event_raw: e,
     pos_home: null,
     pos_away: null,
     proj_cantos,
@@ -8932,57 +9072,7 @@ function fastHandicapFallback(game, oddsInfo) {
     }
   }
 
-  // V56 — sem odds, usa a classificação já presente no evento.
-  // Isso evita "AGUARDANDO DADOS" em jogos onde o próprio feed já
-  // informa uma diferença clara entre as equipes.
-  const fastHomePos = Number(game?.pos_home);
-  const fastAwayPos = Number(game?.pos_away);
-
-  if (Number.isFinite(fastHomePos) && Number.isFinite(fastAwayPos)) {
-    const gap = Math.abs(fastHomePos - fastAwayPos);
-
-    if (gap >= 4) {
-      const side = fastHomePos < fastAwayPos ? "HOME" : "AWAY";
-      const teamName = side === "HOME" ? game.casa : game.fora;
-
-      let line = "+0.25";
-      let confidence = 63;
-
-      if (gap >= 12) {
-        line = "-0.5";
-        confidence = 70;
-      } else if (gap >= 8) {
-        line = "-0.25";
-        confidence = 67;
-      }
-
-      return {
-        skip: false,
-        updating: false,
-        market: "HANDICAP ASIÁTICO",
-        line,
-        side,
-        side_key: side === "HOME" ? "home" : "away",
-        team: teamName,
-        confidence,
-        score: gap * 2,
-        reason:
-          `${teamName} ${line}: leitura inicial pela diferença de classificação; ` +
-          "o motor completo refinará a decisão em segundo plano.",
-        data_quality: 2,
-        calculation_source: "fast_table",
-        fast_initial: true,
-        factors: {
-          odds: false,
-          table: true,
-          home_form: false,
-          away_form: false
-        }
-      };
-    }
-  }
-
-  // Sem odds/tabela suficiente: usa somente um sinal estrutural forte.
+  // Sem odds em tempo hábil: usa somente um sinal estrutural forte.
   // Não inventa favorito em confrontos sem diferença reconhecível.
   const homeBig = isBigTeam(game.casa);
   const awayBig = isBigTeam(game.fora);
@@ -9040,22 +9130,45 @@ function fastHandicapFallback(game, oddsInfo) {
 }
 
 async function buildFastBttsHandicapEngines({ date }) {
-  const cacheKey = `fast-btts-handicap-v55:${date}`;
+  const cacheKey = `fast-btts-handicap-v57:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
-  const baseGames = (await buildMobileFastList(date))
+  const fastPool = await buildMobileFastList(date);
+
+  const isFinishedMarketGame = game => {
+    const status = String(
+      game?.match_status ??
+      game?.status ??
+      game?.event_raw?.match_status ??
+      ""
+    ).toLowerCase();
+
+    return /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
+  };
+
+  // V57 — mercados pré-jogo não devem abrir mostrando primeiro partidas encerradas.
+  const upcoming = fastPool.filter(game => !isFinishedMarketGame(game));
+  const baseGames = (upcoming.length ? upcoming : fastPool)
     .slice(0, FAST_MARKET_ENGINE_MAX_GAMES);
 
   const analyzed = await mapLimit(
     baseGames,
     FAST_MARKET_ENGINE_CONCURRENCY,
     async game => {
-      // V56 — PRIMEIRA RESPOSTA REALMENTE INSTANTÂNEA.
-      // A rota fast NÃO espera odds externas. BTTS e Handicap publicam
-      // uma primeira decisão usando os dados já presentes no evento.
-      // O /market_engines completo refina depois com odds/forma/H2H.
-      const oddsInfo = null;
+      // Odds ajudam o Handicap, mas não podem segurar o card.
+      let oddsInfo = null;
+      if (game.match_id) {
+        try {
+          oddsInfo = await withTimeout(
+            getOdds1x2(game.match_id),
+            FAST_MARKET_ODDS_TIMEOUT_MS,
+            `odds rápidas ${game.match_id}`
+          );
+        } catch {
+          oddsInfo = null;
+        }
+      }
 
       // BTTS nasce imediatamente de uma projeção de gols local.
       // Se as odds chegaram, elas entram na projeção; caso contrário,
@@ -9075,21 +9188,39 @@ async function buildFastBttsHandicapEngines({ date }) {
         goalsDecision: goals_ai
       });
 
-      const handicap_ai = fastHandicapFallback(
+      const handicapBase = fastHandicapFallback(
         game,
         oddsInfo
       );
+
+      const handicap_ai = applyAvailableAsianHandicap(
+        handicapBase,
+        oddsInfo,
+        game
+      );
+
+      const handicapMarkets = asianHandicapMarketsFromOdds(oddsInfo);
+      const handicapAvailableLines = [...new Set(
+        handicapMarkets.flatMap(item => [
+          formatAsianLine(item.home_line),
+          formatAsianLine(item.away_line)
+        ]).filter(Boolean)
+      )];
 
       return {
         ...game,
         goals_ai,
         btts_ai: {
           ...btts_ai,
+          bts_yes_odd: handicapSafeNumber(oddsInfo?.bts_yes),
+          bts_no_odd: handicapSafeNumber(oddsInfo?.bts_no),
           fast_initial: true
         },
         handicap_ai,
+        handicap_available_lines: handicapAvailableLines,
+        asian_handicap_markets: handicapMarkets,
         fast_market_engine: true,
-        fast_market_engine_version: "v55-instant-first"
+        fast_market_engine_version: "v57-real-markets"
       };
     }
   );
@@ -9114,7 +9245,7 @@ async function buildFastBttsHandicapEngines({ date }) {
     ok: true,
     fast: true,
     instant_first: true,
-    version: "v55",
+    version: "v57",
     date,
     btts: rankByDecision(analyzed, "btts_ai"),
     handicap: rankByDecision(analyzed, "handicap_ai")
@@ -9135,14 +9266,14 @@ app.get("/market_engines_fast", async (req, res) => {
   try {
     const payload = await withTimeout(
       buildFastBttsHandicapEngines({ date }),
-      7000,
+      12000,
       "motores instantâneos BTTS/Handicap"
     );
 
     return res.json(payload);
   } catch (err) {
     console.warn(
-      "[market_engines_fast v55]",
+      "[market_engines_fast v57]",
       err?.message || err
     );
 
