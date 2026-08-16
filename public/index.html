@@ -105,7 +105,7 @@
 
         <button type="button" id="btnGoogleLogin" class="authLoginButton">
           <span aria-hidden="true">G</span>
-          <b>ENTRAR COM GOOGLE</b>
+          <b>ENTRAR / CRIAR CONTA</b>
         </button>
 
         <div class="authUserProfile" id="authUserProfile" hidden>
@@ -594,8 +594,83 @@
     </div>
   </section>
 
+
+  <!-- CORNER PRO — AUTENTICAÇÃO / CADASTRO -->
+  <section class="cpAuthModal" id="cpAuthModal" hidden aria-hidden="true" aria-labelledby="cpAuthModalTitle">
+    <button class="cpAuthModalBackdrop" id="cpAuthModalBackdrop" type="button" aria-label="Fechar autenticação"></button>
+
+    <div class="cpAuthCard" role="dialog" aria-modal="true">
+      <button class="cpAuthClose" id="cpAuthModalClose" type="button" aria-label="Fechar">×</button>
+
+      <div class="cpAuthBrand">
+        <span class="cpAuthBrandMark">⚑</span>
+        <div>
+          <strong>CORNER<span>PRO</span></strong>
+          <small>SUA CONTA</small>
+        </div>
+      </div>
+
+      <div class="cpAuthHeading">
+        <h2 id="cpAuthModalTitle">Bem-vindo de volta</h2>
+        <p id="cpAuthModalSubtitle">Entre para acessar sua conta e manter suas preferências.</p>
+      </div>
+
+      <div class="cpAuthTabs" role="tablist" aria-label="Entrar ou criar conta">
+        <button type="button" id="cpAuthTabLogin" class="active">ENTRAR</button>
+        <button type="button" id="cpAuthTabRegister">CRIAR CONTA</button>
+      </div>
+
+      <button type="button" class="cpAuthGoogle" id="cpAuthGoogle">
+        <span>G</span>
+        <b>CONTINUAR COM GOOGLE</b>
+      </button>
+
+      <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
+
+      <form class="cpAuthForm" novalidate>
+        <label id="cpAuthNameWrap" hidden>
+          <span>Nome</span>
+          <input id="cpAuthName" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
+        </label>
+
+        <label>
+          <span>E-mail</span>
+          <input id="cpAuthEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+        </label>
+
+        <label>
+          <span>Senha</span>
+          <input id="cpAuthPassword" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
+        </label>
+
+        <label id="cpAuthConfirmWrap" hidden>
+          <span>Confirmar senha</span>
+          <input id="cpAuthPasswordConfirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
+        </label>
+
+        <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
+
+        <div class="cpAuthFormMessage" id="cpAuthFormMessage" hidden role="status" aria-live="polite"></div>
+
+        <button type="submit" class="cpAuthSubmit" id="cpAuthSubmit">
+          <span>ENTRAR</span>
+          <i>›</i>
+        </button>
+      </form>
+
+      <div class="cpAuthSwitch">
+        <span id="cpAuthSwitchText">Ainda não possui conta?</span>
+        <button type="button" id="cpAuthSwitchButton">Criar conta</button>
+      </div>
+
+      <small class="cpAuthPrivacy">
+        Ao continuar, você concorda com o uso da conta para autenticação e preferências do Corner Pro.
+      </small>
+    </div>
+  </section>
+
   <!-- Login Firebase no navegador. O auth.js importa o firebase-client.js. -->
-  <script type="module" src="auth.js?v=20260802-google-profile-v2"></script>
+  <script type="module" src="auth.js?v=20260816-auth-cadastro-v1"></script>
 
   <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
 

@@ -1,6 +1,9 @@
 import {
   firebaseAuth,
   entrarComGoogle,
+  criarContaComEmail,
+  entrarComEmail,
+  redefinirSenha,
   sairDaConta,
   observarAutenticacao,
   fetchAutenticado
@@ -9,7 +12,8 @@ import {
 const estadoAuth = {
   ocupado: false,
   usuario: null,
-  perfil: null
+  perfil: null,
+  modo: "login"
 };
 
 const elementos = {
@@ -23,20 +27,34 @@ const elementos = {
   nomeMobile: document.getElementById("mobileAuthName"),
   botaoMobile: document.getElementById("mobileAuthButton"),
 
+  areaHomeMobile: document.getElementById("cpHomeAuthArea"),
   nomeHomeMobile: document.getElementById("cpHomeAuthName"),
+  planoHomeMobile: document.getElementById("cpHomeAuthPlan"),
   botaoHomeMobile: document.getElementById("cpHomeAuthButton"),
+  fotoHomeMobile: document.getElementById("cpHomeAuthPhoto"),
+
+  modal: document.getElementById("cpAuthModal"),
+  modalBackdrop: document.getElementById("cpAuthModalBackdrop"),
+  modalClose: document.getElementById("cpAuthModalClose"),
+  modalTitle: document.getElementById("cpAuthModalTitle"),
+  modalSubtitle: document.getElementById("cpAuthModalSubtitle"),
+  tabLogin: document.getElementById("cpAuthTabLogin"),
+  tabRegister: document.getElementById("cpAuthTabRegister"),
+  nameWrap: document.getElementById("cpAuthNameWrap"),
+  nameInput: document.getElementById("cpAuthName"),
+  emailInput: document.getElementById("cpAuthEmail"),
+  passwordInput: document.getElementById("cpAuthPassword"),
+  confirmWrap: document.getElementById("cpAuthConfirmWrap"),
+  confirmInput: document.getElementById("cpAuthPasswordConfirm"),
+  submit: document.getElementById("cpAuthSubmit"),
+  google: document.getElementById("cpAuthGoogle"),
+  forgot: document.getElementById("cpAuthForgot"),
+  switchText: document.getElementById("cpAuthSwitchText"),
+  switchButton: document.getElementById("cpAuthSwitchButton"),
+  formMessage: document.getElementById("cpAuthFormMessage"),
 
   mensagem: document.getElementById("authMessage")
 };
-
-function escaparTexto(valor = "") {
-  return String(valor)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
 
 function mostrarMensagem(texto = "", tipo = "info") {
   const caixa = elementos.mensagem;
@@ -59,6 +77,15 @@ function mostrarMensagem(texto = "", tipo = "info") {
   }, 5000);
 }
 
+function mostrarMensagemFormulario(texto = "", tipo = "info") {
+  const caixa = elementos.formMessage;
+  if (!caixa) return;
+
+  caixa.textContent = texto;
+  caixa.dataset.type = tipo;
+  caixa.hidden = !texto;
+}
+
 function definirOcupado(ocupado) {
   estadoAuth.ocupado = ocupado;
 
@@ -66,13 +93,16 @@ function definirOcupado(ocupado) {
     elementos.loginDesktop,
     elementos.logoutDesktop,
     elementos.botaoMobile,
-    elementos.botaoHomeMobile
+    elementos.botaoHomeMobile,
+    elementos.submit,
+    elementos.google,
+    elementos.forgot
   ].forEach(botao => {
     if (botao) botao.disabled = ocupado;
   });
 
-  if (ocupado && elementos.loginDesktop) {
-    elementos.loginDesktop.querySelector("b")?.replaceChildren("ENTRANDO...");
+  if (elementos.submit) {
+    elementos.submit.classList.toggle("is-loading", ocupado);
   }
 }
 
@@ -120,8 +150,9 @@ function sincronizarEstadoGlobal(usuario, perfil) {
   window.firebaseCurrentProfile = perfil || null;
   window.firebaseIsPremium = premium;
   window.firebaseAuthenticatedFetch = fetchAutenticado;
-  window.firebaseLoginWithGoogle = realizarLogin;
+  window.firebaseLoginWithGoogle = realizarLoginGoogle;
   window.firebaseLogout = realizarLogout;
+  window.firebaseOpenAuth = abrirModal;
 
   try {
     if (premium) {
@@ -155,28 +186,33 @@ function renderizarDeslogado() {
     elementos.loginDesktop.hidden = false;
     elementos.loginDesktop.disabled = false;
     const texto = elementos.loginDesktop.querySelector("b");
-    if (texto) texto.textContent = "ENTRAR COM GOOGLE";
+    if (texto) texto.textContent = "ENTRAR / CRIAR CONTA";
   }
 
   if (elementos.perfilDesktop) elementos.perfilDesktop.hidden = true;
 
-  if (elementos.nomeMobile) elementos.nomeMobile.textContent = "Entrar com Google";
+  if (elementos.nomeMobile) elementos.nomeMobile.textContent = "Entrar / Criar conta";
   if (elementos.botaoMobile) {
     elementos.botaoMobile.textContent = "⌄";
-    elementos.botaoMobile.setAttribute("aria-label", "Entrar com Google");
+    elementos.botaoMobile.setAttribute("aria-label", "Entrar ou criar conta");
     elementos.botaoMobile.disabled = false;
   }
 
-  if (elementos.areaHomeMobile) elementos.areaHomeMobile.classList.remove("is-authenticated", "is-premium");
+  if (elementos.areaHomeMobile) {
+    elementos.areaHomeMobile.classList.remove("is-authenticated", "is-premium", "has-photo-error");
+  }
+
   if (elementos.fotoHomeMobile) {
     elementos.fotoHomeMobile.removeAttribute("src");
     elementos.fotoHomeMobile.hidden = true;
   }
+
   if (elementos.nomeHomeMobile) elementos.nomeHomeMobile.textContent = "Entrar";
-  if (elementos.planoHomeMobile) elementos.planoHomeMobile.textContent = "COM GOOGLE";
+  if (elementos.planoHomeMobile) elementos.planoHomeMobile.textContent = "CRIAR CONTA";
+
   if (elementos.botaoHomeMobile) {
     elementos.botaoHomeMobile.innerHTML = '<span class="cpHomeAuthFallback" aria-hidden="true">●</span><i></i>';
-    elementos.botaoHomeMobile.setAttribute("aria-label", "Entrar com Google");
+    elementos.botaoHomeMobile.setAttribute("aria-label", "Entrar ou criar conta");
     elementos.botaoHomeMobile.disabled = false;
   }
 }
@@ -281,9 +317,7 @@ async function sincronizarComServidor(usuario, forcarToken = false) {
   try {
     const respostaLogin = await fetch("/auth/firebase", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
       cache: "no-store"
     });
@@ -292,7 +326,7 @@ async function sincronizarComServidor(usuario, forcarToken = false) {
 
     if (!respostaLogin.ok) {
       console.warn(
-        "Servidor não sincronizou o login; usando os dados do Google:",
+        "Servidor não sincronizou o login; usando os dados do Firebase:",
         dadosLogin?.error || dadosLogin?.message || respostaLogin.status
       );
     }
@@ -303,9 +337,7 @@ async function sincronizarComServidor(usuario, forcarToken = false) {
   try {
     const respostaPerfil = await fetch("/auth/me", {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store"
     });
 
@@ -313,7 +345,7 @@ async function sincronizarComServidor(usuario, forcarToken = false) {
 
     if (!respostaPerfil.ok) {
       console.warn(
-        "Perfil do servidor indisponível; usando os dados do Google:",
+        "Perfil do servidor indisponível; usando os dados do Firebase:",
         dadosPerfil?.error || dadosPerfil?.message || respostaPerfil.status
       );
     }
@@ -338,11 +370,97 @@ async function sincronizarComServidor(usuario, forcarToken = false) {
   });
 }
 
-async function realizarLogin() {
+function configurarModo(modo = "login") {
+  estadoAuth.modo = modo === "register" ? "register" : "login";
+  const cadastro = estadoAuth.modo === "register";
+
+  elementos.tabLogin?.classList.toggle("active", !cadastro);
+  elementos.tabRegister?.classList.toggle("active", cadastro);
+
+  if (elementos.nameWrap) elementos.nameWrap.hidden = !cadastro;
+  if (elementos.confirmWrap) elementos.confirmWrap.hidden = !cadastro;
+  if (elementos.forgot) elementos.forgot.hidden = cadastro;
+
+  if (elementos.modalTitle) {
+    elementos.modalTitle.textContent = cadastro ? "Crie sua conta" : "Bem-vindo de volta";
+  }
+
+  if (elementos.modalSubtitle) {
+    elementos.modalSubtitle.textContent = cadastro
+      ? "Cadastre-se para salvar favoritos e personalizar sua experiência."
+      : "Entre para acessar sua conta e manter suas preferências.";
+  }
+
+  if (elementos.submit) {
+    elementos.submit.querySelector("span").textContent = cadastro ? "CRIAR CONTA" : "ENTRAR";
+  }
+
+  if (elementos.switchText) {
+    elementos.switchText.textContent = cadastro ? "Já possui uma conta?" : "Ainda não possui conta?";
+  }
+
+  if (elementos.switchButton) {
+    elementos.switchButton.textContent = cadastro ? "Entrar" : "Criar conta";
+  }
+
+  mostrarMensagemFormulario("");
+}
+
+function abrirModal(modo = "login") {
+  if (!elementos.modal) {
+    realizarLoginGoogle();
+    return;
+  }
+
+  configurarModo(modo);
+  elementos.modal.hidden = false;
+  elementos.modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("cpAuthModalOpen");
+
+  window.setTimeout(() => {
+    const alvo = estadoAuth.modo === "register"
+      ? elementos.nameInput
+      : elementos.emailInput;
+    alvo?.focus();
+  }, 80);
+}
+
+function fecharModal() {
+  if (!elementos.modal) return;
+  elementos.modal.hidden = true;
+  elementos.modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("cpAuthModalOpen");
+  mostrarMensagemFormulario("");
+}
+
+function validarFormulario() {
+  const email = String(elementos.emailInput?.value || "").trim();
+  const senha = String(elementos.passwordInput?.value || "");
+
+  if (!email) throw new Error("Digite seu e-mail.");
+  if (!email.includes("@")) throw new Error("Digite um e-mail válido.");
+  if (!senha) throw new Error("Digite sua senha.");
+
+  if (estadoAuth.modo === "register") {
+    const nome = String(elementos.nameInput?.value || "").trim();
+    const confirmar = String(elementos.confirmInput?.value || "");
+
+    if (nome.length < 2) throw new Error("Digite seu nome.");
+    if (senha.length < 6) throw new Error("A senha precisa ter pelo menos 6 caracteres.");
+    if (senha !== confirmar) throw new Error("As senhas não conferem.");
+
+    return { nome, email, senha };
+  }
+
+  return { email, senha };
+}
+
+async function realizarLoginGoogle() {
   if (estadoAuth.ocupado) return;
 
   definirOcupado(true);
   mostrarMensagem("");
+  mostrarMensagemFormulario("");
 
   try {
     const resultado = await entrarComGoogle();
@@ -354,11 +472,70 @@ async function realizarLogin() {
 
     const perfil = await sincronizarComServidor(usuario, true);
     renderizarLogado(usuario, perfil);
+    fecharModal();
     mostrarMensagem("Login realizado com sucesso.", "success");
   } catch (erro) {
     console.error("Falha no login Firebase:", erro);
-    renderizarDeslogado();
-    mostrarMensagem(erro?.message || "Não foi possível entrar com o Google.", "error");
+    mostrarMensagemFormulario(erro?.message || "Não foi possível entrar com o Google.", "error");
+  } finally {
+    definirOcupado(false);
+  }
+}
+
+async function enviarFormulario(evento) {
+  evento?.preventDefault?.();
+  if (estadoAuth.ocupado) return;
+
+  definirOcupado(true);
+  mostrarMensagemFormulario("");
+
+  try {
+    const dados = validarFormulario();
+
+    const resultado = estadoAuth.modo === "register"
+      ? await criarContaComEmail(dados)
+      : await entrarComEmail(dados);
+
+    const usuario = resultado?.usuario || firebaseAuth.currentUser;
+    if (!usuario) throw new Error("Não foi possível carregar a conta.");
+
+    const perfil = await sincronizarComServidor(usuario, true);
+    renderizarLogado(usuario, perfil);
+    fecharModal();
+
+    mostrarMensagem(
+      estadoAuth.modo === "register"
+        ? "Conta criada com sucesso."
+        : "Login realizado com sucesso.",
+      "success"
+    );
+  } catch (erro) {
+    console.error("Falha no formulário de autenticação:", erro);
+    mostrarMensagemFormulario(
+      erro?.message || "Não foi possível concluir a autenticação.",
+      "error"
+    );
+  } finally {
+    definirOcupado(false);
+  }
+}
+
+async function recuperarSenha() {
+  if (estadoAuth.ocupado) return;
+
+  const email = String(elementos.emailInput?.value || "").trim();
+
+  definirOcupado(true);
+  mostrarMensagemFormulario("");
+
+  try {
+    await redefinirSenha(email);
+    mostrarMensagemFormulario(
+      "Enviamos um link de recuperação para o seu e-mail.",
+      "success"
+    );
+  } catch (erro) {
+    mostrarMensagemFormulario(erro?.message || "Não foi possível enviar o link.", "error");
   } finally {
     definirOcupado(false);
   }
@@ -386,15 +563,32 @@ function acaoMobile() {
   if (estadoAuth.usuario) {
     realizarLogout();
   } else {
-    realizarLogin();
+    abrirModal("login");
   }
 }
 
 function instalarEventos() {
-  elementos.loginDesktop?.addEventListener("click", realizarLogin);
+  elementos.loginDesktop?.addEventListener("click", () => abrirModal("login"));
   elementos.logoutDesktop?.addEventListener("click", realizarLogout);
   elementos.botaoMobile?.addEventListener("click", acaoMobile);
   elementos.botaoHomeMobile?.addEventListener("click", acaoMobile);
+
+  elementos.modalClose?.addEventListener("click", fecharModal);
+  elementos.modalBackdrop?.addEventListener("click", fecharModal);
+  elementos.tabLogin?.addEventListener("click", () => configurarModo("login"));
+  elementos.tabRegister?.addEventListener("click", () => configurarModo("register"));
+  elementos.switchButton?.addEventListener("click", () =>
+    configurarModo(estadoAuth.modo === "register" ? "login" : "register")
+  );
+  elementos.submit?.closest("form")?.addEventListener("submit", enviarFormulario);
+  elementos.google?.addEventListener("click", realizarLoginGoogle);
+  elementos.forgot?.addEventListener("click", recuperarSenha);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && elementos.modal && !elementos.modal.hidden) {
+      fecharModal();
+    }
+  });
 
   elementos.fotoDesktop?.addEventListener("error", () => {
     elementos.fotoDesktop.hidden = true;
@@ -436,10 +630,10 @@ function iniciarAutenticacao() {
       renderizarLogado(usuario, perfil);
     } catch (erro) {
       console.error("Falha ao restaurar perfil no servidor:", erro);
-      const perfilGoogle = perfilNormalizado(usuario, {});
-      renderizarLogado(usuario, perfilGoogle);
+      const perfilFirebase = perfilNormalizado(usuario, {});
+      renderizarLogado(usuario, perfilFirebase);
       mostrarMensagem(
-        "Conta Google restaurada. O plano será sincronizado quando o servidor responder.",
+        "Conta restaurada. O plano será sincronizado quando o servidor responder.",
         "info"
       );
     } finally {

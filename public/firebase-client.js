@@ -5,7 +5,11 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -21,42 +25,99 @@ const firebaseApp = initializeApp(firebaseConfig);
 const firebaseAuth = getAuth(firebaseApp);
 
 const googleProvider = new GoogleAuthProvider();
-
 googleProvider.setCustomParameters({
   prompt: "select_account"
 });
 
+function traduzirErroFirebase(erro) {
+  const code = String(erro?.code || "");
+
+  const mensagens = {
+    "auth/email-already-in-use": "Este e-mail já possui uma conta.",
+    "auth/invalid-email": "Digite um e-mail válido.",
+    "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
+    "auth/invalid-credential": "E-mail ou senha incorretos.",
+    "auth/user-disabled": "Esta conta foi desativada.",
+    "auth/too-many-requests": "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    "auth/network-request-failed": "Falha de conexão com o Firebase.",
+    "auth/popup-closed-by-user": "A janela de login foi fechada.",
+    "auth/popup-blocked": "O navegador bloqueou a janela de login.",
+    "auth/unauthorized-domain": "Este domínio ainda não está autorizado no Firebase.",
+    "auth/missing-password": "Digite sua senha."
+  };
+
+  return new Error(mensagens[code] || erro?.message || "Não foi possível concluir a autenticação.");
+}
+
 async function entrarComGoogle() {
   try {
     const resultado = await signInWithPopup(firebaseAuth, googleProvider);
-
     const usuario = resultado.user;
     const token = await usuario.getIdToken(true);
 
-    return {
-      usuario,
-      token
-    };
+    return { usuario, token };
   } catch (erro) {
     console.error("Erro ao entrar com Google:", erro);
+    throw traduzirErroFirebase(erro);
+  }
+}
 
-    if (erro?.code === "auth/popup-closed-by-user") {
-      throw new Error("A janela de login foi fechada.");
+async function criarContaComEmail({ nome, email, senha }) {
+  try {
+    const credencial = await createUserWithEmailAndPassword(
+      firebaseAuth,
+      String(email || "").trim(),
+      String(senha || "")
+    );
+
+    const usuario = credencial.user;
+    const nomeLimpo = String(nome || "").trim();
+
+    if (nomeLimpo) {
+      await updateProfile(usuario, { displayName: nomeLimpo });
     }
 
-    if (erro?.code === "auth/popup-blocked") {
-      throw new Error("O navegador bloqueou a janela de login.");
-    }
+    await usuario.reload();
 
-    if (erro?.code === "auth/unauthorized-domain") {
-      throw new Error("Domínio não autorizado no Firebase.");
-    }
+    return {
+      usuario: firebaseAuth.currentUser || usuario,
+      token: await usuario.getIdToken(true)
+    };
+  } catch (erro) {
+    console.error("Erro ao criar conta:", erro);
+    throw traduzirErroFirebase(erro);
+  }
+}
 
-    if (erro?.code === "auth/network-request-failed") {
-      throw new Error("Falha de conexão com o Firebase.");
-    }
+async function entrarComEmail({ email, senha }) {
+  try {
+    const credencial = await signInWithEmailAndPassword(
+      firebaseAuth,
+      String(email || "").trim(),
+      String(senha || "")
+    );
 
-    throw erro;
+    return {
+      usuario: credencial.user,
+      token: await credencial.user.getIdToken(true)
+    };
+  } catch (erro) {
+    console.error("Erro ao entrar com e-mail:", erro);
+    throw traduzirErroFirebase(erro);
+  }
+}
+
+async function redefinirSenha(email) {
+  try {
+    const endereco = String(email || "").trim();
+    if (!endereco) throw new Error("Digite seu e-mail primeiro.");
+
+    await sendPasswordResetEmail(firebaseAuth, endereco);
+    return true;
+  } catch (erro) {
+    console.error("Erro ao redefinir senha:", erro);
+    if (String(erro?.message || "") === "Digite seu e-mail primeiro.") throw erro;
+    throw traduzirErroFirebase(erro);
   }
 }
 
@@ -112,6 +173,9 @@ export {
   firebaseApp,
   firebaseAuth,
   entrarComGoogle,
+  criarContaComEmail,
+  entrarComEmail,
+  redefinirSenha,
   sairDaConta,
   obterTokenFirebase,
   fetchAutenticado,
