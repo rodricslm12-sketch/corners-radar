@@ -38,6 +38,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "public")));
 
+// Google Search Console / SEO
+// Entrega o sitemap.xml explicitamente para evitar que outra rota/fallback intercepte.
+app.get("/sitemap.xml", (req, res) => {
+  const sitemapPath = path.join(__dirname, "public", "sitemap.xml");
+
+  if (!fs.existsSync(sitemapPath)) {
+    return res.status(404).type("text/plain").send("sitemap.xml não encontrado em public/");
+  }
+
+  res.type("application/xml");
+  res.sendFile(sitemapPath);
+});
+
+
 // --------- Config ----------
 const APIKEY = process.env.APIFOOTBALL_KEY;
 
