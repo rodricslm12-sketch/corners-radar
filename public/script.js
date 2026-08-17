@@ -23137,7 +23137,7 @@
 
 
 /* =========================================================
-   CORNER PRO WEB V7 — DESKTOP REAL (>=981px)
+   CORNER PRO WEB V8 — DESKTOP REAL (>=981px)
    - Não altera mobile/app
    - Não recria Match Center
    - Usa o mesmo fast-path do mobile para carregar jogos
@@ -23145,8 +23145,8 @@
 (() => {
   "use strict";
 
-  if (window.__cpWebV7Installed) return;
-  window.__cpWebV7Installed = true;
+  if (window.__cpWebV8Installed) return;
+  window.__cpWebV8Installed = true;
 
   const mq = window.matchMedia("(min-width:981px)");
   if (!mq.matches) return;
@@ -23317,8 +23317,22 @@
   }
 
   function source(){
-    const e=state.engines[state.market];
-    return e?.length ? e : state.raw;
+    const e = Array.isArray(state.engines[state.market])
+      ? state.engines[state.market]
+      : [];
+
+    // WEB V8 — o motor específico ENRIQUECE a lista base; ele não pode
+    // substituir todos os jogos do dia. Antes, quando /market_engines
+    // terminava, a lista ampla de /quentes + /mercados era descartada.
+    // Se o motor devolvesse só 1 jogo (ex.: Casa Pia x Benfica), o filtro
+    // OVER 10.5 podia ficar vazio e os mercados "sumiam".
+    //
+    // Colocamos os jogos do motor primeiro para que seus dados de IA tenham
+    // prioridade no dedupe, e completamos com todos os jogos reais da base.
+    return unique([
+      ...e,
+      ...(Array.isArray(state.raw) ? state.raw : [])
+    ]);
   }
 
   function matchesLine(g){
@@ -23467,7 +23481,7 @@
     try{
       if(typeof window.updateDesktopMatchRail==="function") await window.updateDesktopMatchRail(g,state.raw);
       else if(typeof window.openMatchCenter==="function") await window.openMatchCenter(g);
-    }catch(err){ console.error("[CP WEB V7] Match Center",err); }
+    }catch(err){ console.error("[CP WEB V8] Match Center",err); }
   }
 
   async function getJson(url,ms=15000){
@@ -23491,10 +23505,24 @@
   function mergeEngines(payload){
     if(!payload || typeof payload!=="object") return false;
     let ok=false;
+
     for(const market of ["corners","goals","cards","handicap","btts"]){
-      const arr=Array.isArray(payload[market])?payload[market]:extract(payload[market]);
-      if(arr.length){ state.engines[market]=unique(arr); ok=true; }
+      const arr = Array.isArray(payload[market])
+        ? payload[market]
+        : extract(payload[market]);
+
+      if(arr.length){
+        // WEB V8 — FAST e FULL agora se complementam.
+        // O retorno tardio do motor completo não apaga jogos que já tinham
+        // chegado pelo fast-path.
+        state.engines[market] = unique([
+          ...arr,
+          ...(Array.isArray(state.engines[market]) ? state.engines[market] : [])
+        ]);
+        ok=true;
+      }
     }
+
     return ok;
   }
 
@@ -23521,7 +23549,7 @@
         .then(payload=>{
           if(mergeRaw(payload)){ loaded=true; render(); }
         })
-        .catch(err=>console.warn("[CP WEB V7]",url,err))
+        .catch(err=>console.warn("[CP WEB V8]",url,err))
         .finally(()=>{
           pending--;
           if(!loaded && pending===0 && rows){
