@@ -19094,3 +19094,348 @@ body.cpAuthModalOpen{
 @media (max-width:980px){
   #cpDesktopExperienceV3{display:none!important}
 }
+
+
+/* =========================================================
+   CORNER PRO WEB V8 — DESKTOP COMPACTO / REFERÊNCIA PRO
+   Somente site >= 981px. Mobile e Match Center preservados.
+   ========================================================= */
+@media (min-width:981px){
+  :root{
+    --right:320px;
+  }
+
+  .content{
+    padding:10px 14px 0 !important;
+  }
+
+  .dashboardGrid{
+    gap:10px !important;
+    grid-template-columns:minmax(0,1fr) minmax(285px,var(--right)) !important;
+  }
+
+  .dashboardMainColumn{
+    gap:0 !important;
+    min-height:0 !important;
+  }
+
+  #cpDesktopExperienceV3{
+    width:100%;
+    max-width:none;
+    min-height:0;
+  }
+
+  .cpd3Topline{
+    height:34px !important;
+    padding:0 8px !important;
+  }
+
+  .cpd3TopTitle strong{
+    font-size:10px !important;
+    letter-spacing:.05px !important;
+  }
+
+  .cpd3TopTitle>span{
+    font-size:15px !important;
+  }
+
+  .cpd3TopActions button{
+    height:24px !important;
+    padding:0 10px !important;
+    border-radius:6px !important;
+    font-size:7px !important;
+  }
+
+  .cpd3Hero{
+    height:158px !important;
+    grid-template-columns:minmax(0,1fr) 128px minmax(0,1fr) !important;
+    border-radius:8px 8px 0 0 !important;
+    background-position:center 58% !important;
+  }
+
+  .cpd3HeroShade{
+    background:
+      linear-gradient(90deg,rgba(1,7,9,.78),rgba(2,8,10,.22) 50%,rgba(1,7,9,.78)),
+      linear-gradient(180deg,rgba(0,0,0,.06),rgba(0,0,0,.34)) !important;
+  }
+
+  .cpd3HeroBadge{
+    width:70px !important;
+    height:70px !important;
+  }
+
+  .cpd3HeroBadge img{
+    width:68px !important;
+    height:68px !important;
+  }
+
+  .cpd3HeroBadge i{
+    width:58px !important;
+    height:58px !important;
+    font-size:14px !important;
+  }
+
+  .cpd3HeroTeam strong{
+    margin-top:3px !important;
+    font-size:15px !important;
+    line-height:1 !important;
+  }
+
+  .cpd3HeroFav{
+    top:12px !important;
+    width:22px !important;
+    height:22px !important;
+    font-size:21px !important;
+  }
+
+  .cpd3HeroHome .cpd3HeroFav{right:24% !important}
+  .cpd3HeroAway .cpd3HeroFav{left:24% !important}
+
+  .cpd3Form{
+    margin-top:6px !important;
+    gap:4px !important;
+  }
+
+  .cpd3Form span{
+    width:16px !important;
+    height:16px !important;
+    font-size:6.5px !important;
+  }
+
+  .cpd3HeroCenter small{
+    padding:3px 8px !important;
+    font-size:6.5px !important;
+  }
+
+  .cpd3HeroCenter b{
+    width:auto !important;
+    min-width:86px !important;
+    margin:5px auto 7px !important;
+    padding:4px 9px !important;
+    border-radius:7px !important;
+    font-size:9px !important;
+  }
+
+  .cpd3HeroCenter em{
+    font-size:28px !important;
+    line-height:1 !important;
+  }
+
+  .cpd3MarketNav{
+    height:36px !important;
+  }
+
+  .cpd3MarketNav button{
+    font-size:7.5px !important;
+    letter-spacing:.1px !important;
+  }
+
+  .cpd3MarketNav button.active:after{
+    left:24% !important;
+    right:24% !important;
+  }
+
+  .cpd3SubNav,
+  .cpd3LineNav{
+    min-height:34px !important;
+    height:34px !important;
+    padding:4px 8px !important;
+    gap:6px !important;
+  }
+
+  .cpd3SubNav button,
+  .cpd3LineNav button{
+    height:24px !important;
+    padding:0 9px !important;
+    font-size:7px !important;
+    border-radius:5px !important;
+  }
+
+  .cpd3ResultsPanel{
+    border-radius:0 0 8px 8px !important;
+  }
+
+  .cpd3ResultsHead{
+    height:34px !important;
+    padding:0 9px !important;
+  }
+
+  .cpd3ResultsHead strong{
+    font-size:8px !important;
+  }
+
+  .cpd3ResultsHead button{
+    height:23px !important;
+    font-size:6.5px !important;
+  }
+
+  .cpd3TableHead{
+    height:25px !important;
+    padding:0 8px !important;
+    grid-template-columns:minmax(180px,1.55fr) minmax(80px,.7fr) 55px 64px 65px 65px 62px 72px !important;
+    gap:6px !important;
+    font-size:6px !important;
+  }
+
+  .cpd3Rows{
+    min-height:248px !important;
+    max-height:calc(100vh - 390px) !important;
+    padding:3px 6px 5px !important;
+  }
+
+  .cpd3Row{
+    min-height:43px !important;
+    padding:3px 3px !important;
+    grid-template-columns:minmax(180px,1.55fr) minmax(80px,.7fr) 55px 64px 65px 65px 62px 72px !important;
+    gap:6px !important;
+  }
+
+  .cpd3Row:first-child{
+    border-radius:5px !important;
+  }
+
+  .cpd3MatchCell{
+    grid-template-columns:27px minmax(0,1fr) 27px !important;
+    gap:5px !important;
+  }
+
+  .cpd3MiniBadge{
+    width:27px !important;
+    height:27px !important;
+  }
+
+  .cpd3MiniBadge img{
+    width:25px !important;
+    height:25px !important;
+  }
+
+  .cpd3MiniBadge i{
+    width:25px !important;
+    height:25px !important;
+    font-size:6px !important;
+  }
+
+  .cpd3Names{
+    position:relative;
+    padding-right:2px;
+  }
+
+  .cpd3Names div{
+    line-height:1.05 !important;
+  }
+
+  .cpd3Names b{
+    font-size:7.5px !important;
+  }
+
+  .cpd3Fav{
+    font-size:12px !important;
+  }
+
+  .cpd3ChosenLine{
+    display:block;
+    margin-top:2px;
+    color:#6fe82f;
+    font-size:5.5px;
+    font-weight:900;
+    letter-spacing:.2px;
+  }
+
+  .cpd3League b{
+    font-size:7px !important;
+  }
+
+  .cpd3League small,
+  .cpd3Start{
+    font-size:6px !important;
+  }
+
+  .cpd3Num{
+    font-size:9px !important;
+  }
+
+  .cpd3Confidence{
+    width:29px !important;
+    height:29px !important;
+    border-width:2px !important;
+    font-size:7px !important;
+  }
+
+  .cpd3Trend i{
+    font-size:12px !important;
+    line-height:1 !important;
+  }
+
+  .cpd3Trend b{
+    margin-top:2px;
+    font-size:5.5px !important;
+  }
+
+  .cpd3Analyze{
+    height:23px !important;
+    border-radius:5px !important;
+    font-size:6px !important;
+  }
+
+  .cpd3More{
+    width:150px !important;
+    height:25px !important;
+    margin:3px auto 6px !important;
+    font-size:6.5px !important;
+  }
+
+  .cpd3Loading,
+  .cpd3Empty{
+    min-height:220px !important;
+    font-size:8px !important;
+  }
+
+  /* Mantém o Match Center, mas com largura e densidade compatíveis com o novo painel. */
+  #desktopMatchRail.dashboardRightRail{
+    gap:7px !important;
+  }
+
+  #desktopMatchRail .railCard{
+    padding:9px !important;
+    border-radius:7px !important;
+  }
+
+  #desktopMatchRail .railTitle{
+    font-size:9px !important;
+  }
+
+  #desktopMatchRail .mcRailEmptyBox{
+    min-height:174px !important;
+  }
+
+  #desktopMatchRail .mcRailEmptyRadar{
+    width:88px !important;
+    height:88px !important;
+    margin:6px auto !important;
+  }
+
+  #desktopMatchRail .railEmptyStatsGrid{
+    gap:5px !important;
+  }
+
+  #desktopMatchRail .railEmptyStatBox{
+    padding:6px !important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons{
+    gap:4px !important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons span{
+    padding:5px 2px !important;
+  }
+}
+
+@media (min-width:981px) and (max-width:1360px){
+  :root{--right:285px}
+  .cpd3Hero{height:148px !important}
+  .cpd3TableHead,
+  .cpd3Row{
+    grid-template-columns:minmax(155px,1.45fr) 72px 48px 56px 56px 55px 55px 62px !important;
+  }
+}
