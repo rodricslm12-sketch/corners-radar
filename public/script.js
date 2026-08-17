@@ -23317,67 +23317,62 @@
   }
 
   function source(){
-    const baseList = Array.isArray(state.raw) ? state.raw : [];
     const engineList = Array.isArray(state.engines[state.market]) ? state.engines[state.market] : [];
+    const baseList = Array.isArray(state.raw) ? state.raw : [];
 
-    // V9 — TODOS os mercados partem de TODOS os jogos reais do dia.
-    // O engine só ENRIQUECE os mesmos jogos com IA/projeção/confiança;
-    // nunca pode reduzir a lista visível.
-    const engineById = new Map(engineList.map(game => [String(id(game)), game]));
+    // O motor específico enriquece os jogos, mas NÃO reduz a lista do mercado.
+    // Primeiro entram os jogos do motor (com projeção/confiança próprias),
+    // depois completamos com todos os jogos reais do dia que ainda não apareceram.
+    const out = [];
+    const seen = new Set();
 
-    return unique(baseList.map(baseGame => {
-      const enriched = engineById.get(String(id(baseGame)));
-      if (!enriched) return baseGame;
+    for (const game of [...engineList, ...baseList]) {
+      const key = id(game);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(game);
+    }
 
-      const baseRaw = raw(baseGame);
-      const enrichedRaw = raw(enriched);
-
-      return {
-        ...baseGame,
-        ...enriched,
-        raw: {
-          ...baseRaw,
-          ...enrichedRaw
-        }
-      };
-    }).concat(
-      engineList.filter(game => !baseList.some(base => String(id(base)) === String(id(game))))
-    ));
+    return out;
   }
 
   function matchesLine(g){
-    // V9 — clicar em uma linha NUNCA deixa a tela vazia.
-    // A linha escolhida define o contexto/mercado exibido para TODOS os jogos do dia.
-    // A IA do mercado correspondente preenche projeção/confiança quando estiver pronta.
+    if(state.line==="TODOS") return true;
+
+    if(state.market==="btts"){
+      const t=lineText(g,"btts");
+      // Quando o motor ainda não publicou BTTS, mantém o jogo visível para
+      // que o usuário possa navegar pelo mercado sem tela vazia.
+      if(!t) return true;
+      return state.line==="SIM"
+        ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
+        : /(NAO|NÃO|NO)/.test(t);
+    }
+
+    if(state.market==="handicap"){
+      const t=lineText(g,"handicap").replace(",",".");
+      if(!t) return true;
+      const target=Number(state.line.replace("+",""));
+      const m=t.match(/[+-]?\d+(?:\.\d+)?/);
+      return m ? Math.abs(Number(m[0])-target)<0.011 : true;
+    }
+
+    // Escanteios, gols e cartões:
+    // a linha selecionada é o MERCADO que o usuário quer analisar.
+    // Não usamos a projeção como corte. Ex.: um jogo com projeção 10.2
+    // também deve aparecer quando o usuário abre Over 10.5, exatamente
+    // como no layout de referência.
     return true;
   }
 
   function matchesSub(g){
-    // V9 — Casa/Fora, SIM/NÃO e submercados funcionam como seleção visual.
-    // Se o motor ainda não publicou a decisão específica, o jogo permanece visível.
-    if(state.market==="handicap" && ["home","away"].includes(state.sub)){
-      const side = sideOfHandicap(g);
-      return side === "all" || side === state.sub;
-    }
-
+    if(state.market==="handicap" && ["home","away"].includes(state.sub)) return sideOfHandicap(g)===state.sub;
     if(state.market==="cards" && ["home","away"].includes(state.sub)){
       const t=norm(lineText(g,"cards"));
-      if(!t) return true;
-      return state.sub==="home"
-        ? (t.includes("casa")||t.includes("home"))
-        : (t.includes("fora")||t.includes("away")||t.includes("visit"));
+      return state.sub==="home" ? (t.includes("casa")||t.includes("home")) : (t.includes("fora")||t.includes("away")||t.includes("visit"));
     }
-
-    if(state.market==="btts" && state.sub==="yes"){
-      const t=lineText(g,"btts");
-      return !t || /(SIM|YES)/.test(t);
-    }
-
-    if(state.market==="btts" && state.sub==="no"){
-      const t=lineText(g,"btts");
-      return !t || /(NAO|NÃO|NO)/.test(t);
-    }
-
+    if(state.market==="btts" && state.sub==="yes") return /(SIM|YES)/.test(lineText(g,"btts"));
+    if(state.market==="btts" && state.sub==="no") return /(NAO|NÃO|NO)/.test(lineText(g,"btts"));
     return true;
   }
 
@@ -23455,15 +23450,7 @@
         <div class="cpd3Names">
           <div><b>${esc(home)}</b><button class="cpd3Fav ${state.favorites.has(norm(home))?"active":""}" data-cpd3-fav="home" data-id="${esc(gid)}">${state.favorites.has(norm(home))?"★":"☆"}</button></div>
           <div><b>${esc(away)}</b><button class="cpd3Fav ${state.favorites.has(norm(away))?"active":""}" data-cpd3-fav="away" data-id="${esc(gid)}">${state.favorites.has(norm(away))?"★":"☆"}</button></div>
-          <small class="cpd3ChosenLine">${esc(
-            state.market==="btts"
-              ? (state.line==="TODOS" ? "AMBAS MARCAM" : `AMBAS ${state.line}`)
-              : state.market==="handicap"
-                ? `AH ${state.line}`
-                : state.line==="TODOS"
-                  ? MARKET[state.market].label
-                  : `OVER ${state.line}`
-          )}</small>
+          <small class="cpd3ChosenLine">${esc(state.market==="btts" ? state.line : state.market==="handicap" ? state.line : (state.line==="TODOS" ? "TODOS" : `OVER ${state.line}`))}</small>
         </div>
         ${badgeHtml(g,"away",true)}
       </div>
@@ -23481,7 +23468,7 @@
     if(!$("#cpDesktopExperienceV3")) return;
     renderControls();
     const games=list();
-    $("#cpd3ResultsTitle").textContent=`${title()}  •  ${games.length} JOGOS`;
+    $("#cpd3ResultsTitle").textContent=title();
 
     if(games.length){
       $("#cpd3Rows").innerHTML=games.slice(0,state.limit).map(row).join("");

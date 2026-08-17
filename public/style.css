@@ -19439,29 +19439,3 @@ body.cpAuthModalOpen{
     grid-template-columns:minmax(155px,1.45fr) 72px 48px 56px 56px 55px 55px 62px !important;
   }
 }
-
-/* =========================================================
-   CORNER PRO WEB V9 — TODOS OS MERCADOS ATIVOS
-   ========================================================= */
-@media (min-width:981px){
-  .cpd3MarketNav button{
-    transition:.16s ease !important;
-  }
-  .cpd3MarketNav button:hover{
-    color:#dfffd4 !important;
-    background:rgba(99,241,39,.035) !important;
-  }
-  .cpd3MarketNav button.active{
-    color:#85ff3b !important;
-    background:linear-gradient(180deg,rgba(99,241,39,.07),rgba(99,241,39,.018)) !important;
-  }
-  .cpd3LineNav button.active,
-  .cpd3SubNav button.active{
-    color:#9cff5d !important;
-    background:linear-gradient(180deg,rgba(99,241,39,.18),rgba(99,241,39,.075)) !important;
-    border:1px solid rgba(99,241,39,.28) !important;
-  }
-  .cpd3ResultsTitleCount{
-    color:#6fe82f;
-  }
-}
