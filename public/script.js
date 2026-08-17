@@ -23137,16 +23137,19 @@
 
 
 /* =========================================================
-   CORNER PRO WEB V8 — DESKTOP REAL (>=981px)
-   - Não altera mobile/app
-   - Não recria Match Center
-   - Usa o mesmo fast-path do mobile para carregar jogos
+   CORNER PRO WEB V9 — DESKTOP ESTÁVEL (>=981px)
+   FIX PRINCIPAL:
+   - /market_engines NUNCA substitui a lista-base do dia.
+   - IA é mesclada no MESMO jogo, preservando liga, escudos e dados-base.
+   - Todos os mercados permanecem ativos ao trocar o Top 1.
+   - Se a IA ainda não respondeu, o jogo continua visível em TODOS.
+   - Loader não fica infinito se uma rota pesada atrasar.
    ========================================================= */
 (() => {
   "use strict";
 
-  if (window.__cpWebV8Installed) return;
-  window.__cpWebV8Installed = true;
+  if (window.__cpWebV9Installed) return;
+  window.__cpWebV9Installed = true;
 
   const mq = window.matchMedia("(min-width:981px)");
   if (!mq.matches) return;
@@ -23184,10 +23187,25 @@
     btts:{label:"AMBAS MARCAM", lines:["TODOS","SIM","NÃO"], subs:[["TODOS","all"],["SIM","yes"],["NÃO","no"]]}
   };
 
+  const DECISION = {
+    corners:"corners_ai",
+    goals:"goals_ai",
+    cards:"cards_ai",
+    handicap:"handicap_ai",
+    btts:"btts_ai"
+  };
+
   const state = {
-    market:"corners", line:"10.5", sub:"all",
-    raw:[], engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},
-    limit:8, hero:null, favorites:new Set()
+    market:"corners",
+    line:"10.5",
+    sub:"all",
+    raw:[],
+    engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},
+    limit:8,
+    hero:null,
+    favorites:new Set(),
+    baseFinished:false,
+    engineFinished:false
   };
 
   try {
@@ -23222,6 +23240,7 @@
         if (nested.length) return nested;
       }
     }
+
     for (const value of Object.values(payload)){
       if (!value || typeof value!=="object") continue;
       const nested = extract(value, seen);
@@ -23239,17 +23258,20 @@
       : clean(g?.away ?? g?.fora ?? r?.match_awayteam_name ?? r?.event_away_team ?? r?.away_name ?? r?.fora, "Fora");
   }
 
-  function id(g){
-    const r = raw(g);
-    return clean(g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.id ?? r?.match_id ?? r?.event_key,
-      `${team(g,"home")}|${team(g,"away")}|${kick(g)}`);
-  }
-
   function kick(g){
     const r = raw(g);
     const value = clean(g?.time ?? g?.hora_manaus ?? g?.hora ?? r?.match_time ?? r?.event_time, "--:--");
     const m = value.match(/(\d{1,2}):(\d{2})/);
     return m ? `${m[1].padStart(2,"0")}:${m[2]}` : "--:--";
+  }
+
+  function id(g){
+    const r = raw(g);
+    return clean(
+      g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? g?.id ??
+      r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id,
+      `${norm(team(g,"home"))}|${norm(team(g,"away"))}|${kick(g)}`
+    );
   }
 
   function league(g){
@@ -23270,20 +23292,21 @@
     return clean(arr.find(v=>/^https?:\/\//i.test(String(v||""))), "");
   }
 
-  function d(g, market=state.market){
+  function decision(g, market=state.market){
+    const field = DECISION[market];
+    if (!field) return {};
     const r = raw(g);
-    const field = market==="btts" ? "btts_ai" : `${market}_ai`;
     return r?.[field] || g?.[field] || {};
   }
 
   function conf(g, market=state.market){
-    let x = n(d(g,market)?.confidence, g?.confidence, raw(g)?.ai_score);
+    let x = n(decision(g,market)?.confidence, g?.confidence, raw(g)?.ai_score);
     if (x !== null && x > 0 && x <= 1) x *= 100;
     return x===null ? 0 : Math.max(0,Math.min(95,Math.round(x)));
   }
 
   function proj(g, market=state.market){
-    const r=raw(g), dec=d(g,market);
+    const r=raw(g), dec=decision(g,market);
     if (market==="corners") return n(dec?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
     if (market==="goals") return n(dec?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
     if (market==="cards") return n(dec?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
@@ -23299,11 +23322,11 @@
   }
 
   function lineText(g, market=state.market){
-    return clean(d(g,market)?.line,"").toUpperCase();
+    return clean(decision(g,market)?.line,"").toUpperCase();
   }
 
   function sideOfHandicap(g){
-    const s=norm(d(g,"handicap")?.side_key ?? d(g,"handicap")?.side ?? "");
+    const s=norm(decision(g,"handicap")?.side_key ?? decision(g,"handicap")?.side ?? "");
     if (s.includes("away") || s.includes("fora")) return "away";
     if (s.includes("home") || s.includes("casa")) return "home";
     return "all";
@@ -23312,27 +23335,62 @@
   function unique(list){
     const seen=new Set();
     return (Array.isArray(list)?list:[]).filter(g=>{
-      const k=id(g); if(seen.has(k)) return false; seen.add(k); return true;
+      const k=String(id(g));
+      if(seen.has(k)) return false;
+      seen.add(k);
+      return true;
     });
   }
 
-  function source(){
-    const e = Array.isArray(state.engines[state.market])
-      ? state.engines[state.market]
-      : [];
+  function mergeGame(base, extra){
+    if(!base) return extra;
+    if(!extra) return base;
 
-    // WEB V8 — o motor específico ENRIQUECE a lista base; ele não pode
-    // substituir todos os jogos do dia. Antes, quando /market_engines
-    // terminava, a lista ampla de /quentes + /mercados era descartada.
-    // Se o motor devolvesse só 1 jogo (ex.: Casa Pia x Benfica), o filtro
-    // OVER 10.5 podia ficar vazio e os mercados "sumiam".
-    //
-    // Colocamos os jogos do motor primeiro para que seus dados de IA tenham
-    // prioridade no dedupe, e completamos com todos os jogos reais da base.
-    return unique([
-      ...e,
-      ...(Array.isArray(state.raw) ? state.raw : [])
-    ]);
+    const baseRaw = raw(base);
+    const extraRaw = raw(extra);
+
+    return {
+      ...base,
+      ...extra,
+      raw: {
+        ...baseRaw,
+        ...extraRaw,
+        markets: {
+          ...(baseRaw?.markets || {}),
+          ...(extraRaw?.markets || {})
+        },
+        corners_ai: extraRaw?.corners_ai ?? baseRaw?.corners_ai,
+        goals_ai: extraRaw?.goals_ai ?? baseRaw?.goals_ai,
+        cards_ai: extraRaw?.cards_ai ?? baseRaw?.cards_ai,
+        handicap_ai: extraRaw?.handicap_ai ?? baseRaw?.handicap_ai,
+        btts_ai: extraRaw?.btts_ai ?? baseRaw?.btts_ai
+      }
+    };
+  }
+
+  function mergeListByGame(baseList, incomingList){
+    const map = new Map();
+
+    for(const g of (Array.isArray(baseList)?baseList:[])){
+      map.set(String(id(g)), g);
+    }
+
+    for(const g of (Array.isArray(incomingList)?incomingList:[])){
+      const key=String(id(g));
+      map.set(key, mergeGame(map.get(key), g));
+    }
+
+    return [...map.values()];
+  }
+
+  function source(){
+    const base = Array.isArray(state.raw) ? state.raw : [];
+    const engine = Array.isArray(state.engines[state.market]) ? state.engines[state.market] : [];
+
+    // A lista-base é soberana. O motor apenas acrescenta a decisão do mercado
+    // ao jogo correspondente. Assim, trocar Top 1 ou receber uma IA tardia
+    // nunca apaga os demais jogos/mercados.
+    return mergeListByGame(base, engine);
   }
 
   function matchesLine(g){
@@ -23340,36 +23398,49 @@
 
     if(state.market==="btts"){
       const t=lineText(g,"btts");
-      return state.line==="SIM" ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t) : /(NAO|NÃO|NO)/.test(t);
+      if(!t) return false;
+      return state.line==="SIM"
+        ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
+        : /(NAO|NÃO|NO)/.test(t);
     }
 
     if(state.market==="handicap"){
+      const t=lineText(g,"handicap");
+      if(!t) return false;
       const target=Number(state.line.replace("+",""));
-      const m=lineText(g,"handicap").replace(",",".").match(/[+-]?\d+(?:\.\d+)?/);
+      const m=t.replace(",",".").match(/[+-]?\d+(?:\.\d+)?/);
       return m ? Math.abs(Number(m[0])-target)<0.011 : false;
     }
 
     const target=Number(state.line);
     const p=proj(g,state.market);
     if(p!==null) return p>=target;
-    return lineText(g,state.market).includes(state.line);
+
+    const t=lineText(g,state.market);
+    return t ? t.includes(state.line) : false;
   }
 
   function matchesSub(g){
     if(state.market==="handicap" && ["home","away"].includes(state.sub)) return sideOfHandicap(g)===state.sub;
+
     if(state.market==="cards" && ["home","away"].includes(state.sub)){
       const t=norm(lineText(g,"cards"));
-      return state.sub==="home" ? (t.includes("casa")||t.includes("home")) : (t.includes("fora")||t.includes("away")||t.includes("visit"));
+      return state.sub==="home"
+        ? (t.includes("casa")||t.includes("home"))
+        : (t.includes("fora")||t.includes("away")||t.includes("visit"));
     }
+
     if(state.market==="btts" && state.sub==="yes") return /(SIM|YES)/.test(lineText(g,"btts"));
     if(state.market==="btts" && state.sub==="no") return /(NAO|NÃO|NO)/.test(lineText(g,"btts"));
+
     return true;
   }
 
   function list(){
-    return unique(source()).filter(matchesLine).filter(matchesSub).sort((a,b)=>
-      conf(b)-conf(a) || (proj(b)||0)-(proj(a)||0) || kick(a).localeCompare(kick(b))
-    );
+    return unique(source())
+      .filter(matchesLine)
+      .filter(matchesSub)
+      .sort((a,b)=>conf(b)-conf(a) || (proj(b)||0)-(proj(a)||0) || kick(a).localeCompare(kick(b)));
   }
 
   function initials(name){
@@ -23396,11 +23467,18 @@
   function setHero(g){
     g=g || list()[0] || source()[0] || state.raw[0];
     if(!g) return;
+
     state.hero=g;
-    $("#cpd3HomeName").textContent=team(g,"home");
-    $("#cpd3AwayName").textContent=team(g,"away");
-    $("#cpd3KickLabel").textContent=`HOJE • ${kick(g)}`;
-    $("#cpd3Clock").textContent="PRÉ-JOGO";
+
+    const homeName=$("#cpd3HomeName");
+    const awayName=$("#cpd3AwayName");
+    const kickLabel=$("#cpd3KickLabel");
+    const clock=$("#cpd3Clock");
+
+    if(homeName) homeName.textContent=team(g,"home");
+    if(awayName) awayName.textContent=team(g,"away");
+    if(kickLabel) kickLabel.textContent=`HOJE • ${kick(g)}`;
+    if(clock) clock.textContent="PRÉ-JOGO";
 
     const hb=$("#cpd3HomeBadge"), ab=$("#cpd3AwayBadge");
     if(hb) hb.outerHTML=badgeHtml(g,"home").replace('class="cpd3HeroBadge"','class="cpd3HeroBadge" id="cpd3HomeBadge"');
@@ -23416,24 +23494,39 @@
 
   function renderControls(){
     const c=MARKET[state.market];
-    $("#cpd3TopTitle").textContent=`MELHOR APOSTA • ${c.label}`;
-    $("#cpd3SubNav").innerHTML=c.subs.map(([label,value])=>`<button type="button" data-cpd3-sub="${value}" class="${state.sub===value?"active":""}">${label}</button>`).join("");
-    $("#cpd3LineNav").innerHTML=c.lines.map(line=>`<button type="button" data-cpd3-line="${esc(line)}" class="${state.line===line?"active":""}">${esc(line)}</button>`).join("");
-    $$("[data-cpd3-market]").forEach(btn=>btn.classList.toggle("active",btn.dataset.cpd3Market===state.market));
+    if(!c) return;
+
+    const top=$("#cpd3TopTitle");
+    const sub=$("#cpd3SubNav");
+    const lines=$("#cpd3LineNav");
+
+    if(top) top.textContent=`MELHOR APOSTA • ${c.label}`;
+    if(sub) sub.innerHTML=c.subs.map(([label,value])=>`<button type="button" data-cpd3-sub="${value}" class="${state.sub===value?"active":""}">${label}</button>`).join("");
+    if(lines) lines.innerHTML=c.lines.map(line=>`<button type="button" data-cpd3-line="${esc(line)}" class="${state.line===line?"active":""}">${esc(line)}</button>`).join("");
+
+    $$("[data-cpd3-market]").forEach(btn=>{
+      btn.classList.toggle("active",btn.dataset.cpd3Market===state.market);
+      btn.hidden=false;
+      btn.removeAttribute("disabled");
+    });
   }
 
   function title(){
     const c=MARKET[state.market];
+
     if(state.market==="btts") return `${state.line==="TODOS"?"AMBAS MARCAM":state.line} • TODOS OS JOGOS`;
+
     if(state.market==="handicap"){
       const side=state.sub==="home"?" • CASA":state.sub==="away"?" • FORA":"";
       return `${c.label}${state.line==="TODOS"?"":` ${state.line}`}${side} • TODOS OS JOGOS`;
     }
+
     return `${state.line==="TODOS"?c.label:`OVER ${state.line} ${c.label}`} • TODOS OS JOGOS`;
   }
 
   function row(g){
     const p=proj(g), a=avg(g), c=conf(g), gid=id(g), home=team(g,"home"), away=team(g,"away");
+
     return `<div class="cpd3Row" data-cpd3-game="${esc(gid)}">
       <div class="cpd3MatchCell">
         ${badgeHtml(g,"home",true)}
@@ -23455,18 +23548,34 @@
 
   function render(){
     if(!$("#cpDesktopExperienceV3")) return;
+
     renderControls();
+
     const games=list();
-    $("#cpd3ResultsTitle").textContent=title();
+    const rows=$("#cpd3Rows");
+    const resultTitle=$("#cpd3ResultsTitle");
+    const more=$("#cpd3More");
+
+    if(resultTitle) resultTitle.textContent=title();
+    if(!rows) return;
 
     if(games.length){
-      $("#cpd3Rows").innerHTML=games.slice(0,state.limit).map(row).join("");
-      $("#cpd3More").hidden=games.length<=state.limit;
+      rows.innerHTML=games.slice(0,state.limit).map(row).join("");
+      if(more) more.hidden=games.length<=state.limit;
       setHero(games[0]);
-    }else if(state.raw.length || source().length){
-      $("#cpd3Rows").innerHTML=`<div class="cpd3Empty">Nenhum jogo encontrado nesta linha.<br>Escolha outra linha ou <b>TODOS</b>.</div>`;
-      $("#cpd3More").hidden=true;
+      return;
+    }
+
+    if(state.raw.length || source().length){
+      rows.innerHTML=`<div class="cpd3Empty">Nenhum jogo encontrado nesta linha.<br>Escolha outra linha ou <b>TODOS</b>.</div>`;
+      if(more) more.hidden=true;
       setHero(source()[0] || state.raw[0]);
+      return;
+    }
+
+    if(state.baseFinished && state.engineFinished){
+      rows.innerHTML='<div class="cpd3Empty">Nenhum jogo disponível para hoje.</div>';
+      if(more) more.hidden=true;
     }
   }
 
@@ -23478,49 +23587,70 @@
     if(!g) return;
     window.__selectedMatchCenterGame=g;
     window.__selectedMatchCenterKey=String(id(g));
+
     try{
       if(typeof window.updateDesktopMatchRail==="function") await window.updateDesktopMatchRail(g,state.raw);
       else if(typeof window.openMatchCenter==="function") await window.openMatchCenter(g);
-    }catch(err){ console.error("[CP WEB V8] Match Center",err); }
+    }catch(err){
+      console.error("[CP WEB V9] Match Center",err);
+    }
   }
 
   async function getJson(url,ms=15000){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),ms);
+
     try{
-      const r=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
+      const r=await fetch(url,{
+        cache:"no-store",
+        signal:controller.signal,
+        headers:{Accept:"application/json"}
+      });
+
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      return await r.json();
-    }finally{ clearTimeout(timer); }
+
+      const text=await r.text();
+      try{
+        return JSON.parse(text);
+      }catch{
+        throw new Error("Resposta não é JSON válido");
+      }
+    }finally{
+      clearTimeout(timer);
+    }
   }
 
   function mergeRaw(payload){
     const arr=extract(payload);
     if(!arr.length) return false;
-    state.raw=unique([...state.raw,...arr]);
+
+    state.raw=mergeListByGame(state.raw,arr);
     window.__cornerProAllGames=state.raw.slice();
     return true;
   }
 
   function mergeEngines(payload){
     if(!payload || typeof payload!=="object") return false;
+
     let ok=false;
 
     for(const market of ["corners","goals","cards","handicap","btts"]){
-      const arr = Array.isArray(payload[market])
+      const arr=Array.isArray(payload[market])
         ? payload[market]
         : extract(payload[market]);
 
-      if(arr.length){
-        // WEB V8 — FAST e FULL agora se complementam.
-        // O retorno tardio do motor completo não apaga jogos que já tinham
-        // chegado pelo fast-path.
-        state.engines[market] = unique([
-          ...arr,
-          ...(Array.isArray(state.engines[market]) ? state.engines[market] : [])
-        ]);
-        ok=true;
+      if(!arr.length) continue;
+
+      state.engines[market]=mergeListByGame(state.engines[market],arr);
+
+      // Também enriquece a lista-base SEM reduzir a quantidade de jogos.
+      // Se o jogo já existe em state.raw, recebe apenas os novos dados da IA.
+      if(state.raw.length){
+        state.raw=mergeListByGame(state.raw,arr);
+        window.__cornerProAllGames=state.raw.slice();
       }
+
+      ok=true;
     }
 
     return ok;
@@ -23530,55 +23660,77 @@
     const rows=$("#cpd3Rows");
     if(rows) rows.innerHTML='<div class="cpd3Loading">BUSCANDO JOGOS DO DIA...</div>';
 
+    renderControls();
+
     if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
-      state.raw=unique(window.__cornerProAllGames);
+      state.raw=mergeListByGame(state.raw,window.__cornerProAllGames);
       render();
     }
 
-    const date=todayManaus(), stamp=Date.now();
+    const date=todayManaus();
+    const stamp=Date.now();
 
     const baseUrls=[
-      `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=36`,
-      `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=36`
+      `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=39`,
+      `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=39`
     ];
 
-    let loaded=false, pending=baseUrls.length;
+    let basePending=baseUrls.length;
 
     baseUrls.forEach((url,i)=>{
-      getJson(url,i===0?10000:14000)
+      getJson(url,i===0?12000:22000)
         .then(payload=>{
-          if(mergeRaw(payload)){ loaded=true; render(); }
+          if(mergeRaw(payload)) render();
         })
-        .catch(err=>console.warn("[CP WEB V8]",url,err))
+        .catch(err=>console.warn("[CP WEB V9 base]",url,err?.message||err))
         .finally(()=>{
-          pending--;
-          if(!loaded && pending===0 && rows){
-            rows.innerHTML='<div class="cpd3Empty">Nenhum jogo retornou das rotas rápidas do servidor.</div>';
+          basePending--;
+          if(basePending<=0){
+            state.baseFinished=true;
+            render();
           }
         });
     });
 
-    setTimeout(()=>{
-      getJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_webv7=${stamp}`,18000)
+    const enginePromises=[
+      getJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_webv9=${stamp}`,22000)
         .then(payload=>{ if(mergeEngines(payload)) render(); })
-        .catch(()=>{});
-    },300);
+        .catch(err=>console.warn("[CP WEB V9 fast]",err?.message||err)),
 
-    setTimeout(()=>{
-      getJson(`/market_engines?date=${encodeURIComponent(date)}&_webv7=${stamp}`,30000)
-        .then(payload=>{ if(mergeEngines(payload)) render(); })
-        .catch(()=>{});
-    },1800);
+      new Promise(resolve=>setTimeout(resolve,1200)).then(()=>
+        getJson(`/market_engines?date=${encodeURIComponent(date)}&_webv9=${stamp}`,42000)
+          .then(payload=>{ if(mergeEngines(payload)) render(); })
+          .catch(err=>console.warn("[CP WEB V9 full]",err?.message||err))
+      )
+    ];
 
+    Promise.allSettled(enginePromises).then(()=>{
+      state.engineFinished=true;
+      render();
+    });
+
+    // Ponte com o restante do app. Só acrescenta; nunca substitui.
     let tries=0;
     const bridge=setInterval(()=>{
       tries++;
+
       if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
-        state.raw=unique([...state.raw,...window.__cornerProAllGames]);
-        render();
+        const before=state.raw.length;
+        state.raw=mergeListByGame(state.raw,window.__cornerProAllGames);
+        if(state.raw.length!==before || state.raw.length) render();
       }
-      if(tries>=40) clearInterval(bridge);
+
+      if(tries>=60) clearInterval(bridge);
     },500);
+
+    // Segurança visual: nunca deixa "carregando" eternamente.
+    setTimeout(()=>{
+      if(!state.raw.length && !source().length){
+        state.baseFinished=true;
+        if(rows) rows.innerHTML='<div class="cpd3Empty">O servidor ainda não devolveu jogos. Tente atualizar em alguns segundos.</div>';
+      }
+      renderControls();
+    },25000);
   }
 
   document.addEventListener("click",event=>{
@@ -23587,40 +23739,71 @@
     const market=event.target.closest?.("[data-cpd3-market]");
     if(market){
       event.preventDefault();
+
       state.market=market.dataset.cpd3Market;
       state.sub="all";
-      state.line=state.market==="corners"?"10.5":state.market==="btts"?"SIM":"TODOS";
+
+      // TODOS é proposital ao trocar de mercado:
+      // primeiro mostramos todos os jogos; depois o usuário escolhe a linha.
+      // Isso impede a impressão de que o mercado "sumiu" porque a IA ainda
+      // não terminou uma linha específica.
+      state.line="TODOS";
       state.limit=8;
+
       render();
       return;
     }
 
     const sub=event.target.closest?.("[data-cpd3-sub]");
-    if(sub){ event.preventDefault(); state.sub=sub.dataset.cpd3Sub; state.limit=8; render(); return; }
+    if(sub){
+      event.preventDefault();
+      state.sub=sub.dataset.cpd3Sub;
+      state.limit=8;
+      render();
+      return;
+    }
 
     const line=event.target.closest?.("[data-cpd3-line]");
-    if(line){ event.preventDefault(); state.line=line.dataset.cpd3Line; state.limit=8; render(); return; }
+    if(line){
+      event.preventDefault();
+      state.line=line.dataset.cpd3Line;
+      state.limit=8;
+      render();
+      return;
+    }
 
     const fav=event.target.closest?.("[data-cpd3-fav]");
     if(fav){
       event.preventDefault();
       const g=findGame(fav.dataset.id);
-      if(g){ toggleFav(team(g,fav.dataset.cpd3Fav)); render(); }
+      if(g){
+        toggleFav(team(g,fav.dataset.cpd3Fav));
+        render();
+      }
       return;
     }
 
     const heroFav=event.target.closest?.("[data-cpd3-hero-fav]");
     if(heroFav){
       event.preventDefault();
-      if(state.hero){ toggleFav(team(state.hero,heroFav.dataset.cpd3HeroFav)); render(); }
+      if(state.hero){
+        toggleFav(team(state.hero,heroFav.dataset.cpd3HeroFav));
+        render();
+      }
       return;
     }
 
     const open=event.target.closest?.("[data-cpd3-open]");
-    if(open){ event.preventDefault(); openMatch(findGame(open.dataset.cpd3Open)); return; }
+    if(open){
+      event.preventDefault();
+      openMatch(findGame(open.dataset.cpd3Open));
+      return;
+    }
 
     if(event.target.closest?.("#cpd3More")){
-      event.preventDefault(); state.limit+=8; render();
+      event.preventDefault();
+      state.limit+=8;
+      render();
     }
   },true);
 
@@ -23630,6 +23813,9 @@
     load();
   };
 
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
-  else boot();
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",boot,{once:true});
+  }else{
+    boot();
+  }
 })();
