@@ -23317,23 +23317,8 @@
   }
 
   function source(){
-    const engineList = Array.isArray(state.engines[state.market]) ? state.engines[state.market] : [];
-    const baseList = Array.isArray(state.raw) ? state.raw : [];
-
-    // O motor específico enriquece os jogos, mas NÃO reduz a lista do mercado.
-    // Primeiro entram os jogos do motor (com projeção/confiança próprias),
-    // depois completamos com todos os jogos reais do dia que ainda não apareceram.
-    const out = [];
-    const seen = new Set();
-
-    for (const game of [...engineList, ...baseList]) {
-      const key = id(game);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(game);
-    }
-
-    return out;
+    const e=state.engines[state.market];
+    return e?.length ? e : state.raw;
   }
 
   function matchesLine(g){
@@ -23341,28 +23326,19 @@
 
     if(state.market==="btts"){
       const t=lineText(g,"btts");
-      // Quando o motor ainda não publicou BTTS, mantém o jogo visível para
-      // que o usuário possa navegar pelo mercado sem tela vazia.
-      if(!t) return true;
-      return state.line==="SIM"
-        ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
-        : /(NAO|NÃO|NO)/.test(t);
+      return state.line==="SIM" ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t) : /(NAO|NÃO|NO)/.test(t);
     }
 
     if(state.market==="handicap"){
-      const t=lineText(g,"handicap").replace(",",".");
-      if(!t) return true;
       const target=Number(state.line.replace("+",""));
-      const m=t.match(/[+-]?\d+(?:\.\d+)?/);
-      return m ? Math.abs(Number(m[0])-target)<0.011 : true;
+      const m=lineText(g,"handicap").replace(",",".").match(/[+-]?\d+(?:\.\d+)?/);
+      return m ? Math.abs(Number(m[0])-target)<0.011 : false;
     }
 
-    // Escanteios, gols e cartões:
-    // a linha selecionada é o MERCADO que o usuário quer analisar.
-    // Não usamos a projeção como corte. Ex.: um jogo com projeção 10.2
-    // também deve aparecer quando o usuário abre Over 10.5, exatamente
-    // como no layout de referência.
-    return true;
+    const target=Number(state.line);
+    const p=proj(g,state.market);
+    if(p!==null) return p>=target;
+    return lineText(g,state.market).includes(state.line);
   }
 
   function matchesSub(g){
@@ -23450,7 +23426,6 @@
         <div class="cpd3Names">
           <div><b>${esc(home)}</b><button class="cpd3Fav ${state.favorites.has(norm(home))?"active":""}" data-cpd3-fav="home" data-id="${esc(gid)}">${state.favorites.has(norm(home))?"★":"☆"}</button></div>
           <div><b>${esc(away)}</b><button class="cpd3Fav ${state.favorites.has(norm(away))?"active":""}" data-cpd3-fav="away" data-id="${esc(gid)}">${state.favorites.has(norm(away))?"★":"☆"}</button></div>
-          <small class="cpd3ChosenLine">${esc(state.market==="btts" ? state.line : state.market==="handicap" ? state.line : (state.line==="TODOS" ? "TODOS" : `OVER ${state.line}`))}</small>
         </div>
         ${badgeHtml(g,"away",true)}
       </div>
@@ -23459,7 +23434,7 @@
       <div class="cpd3Num">${p===null?"—":p.toFixed(1)}</div>
       <div class="cpd3Num">${a===null?"—":a.toFixed(1)}</div>
       <div class="cpd3Confidence">${c?`${c}%`:"—"}</div>
-      <div class="cpd3Trend"><i>${c>=68?"☁":"◌"}</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
+      <div class="cpd3Trend"><i>☁</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
       <button type="button" class="cpd3Analyze" data-cpd3-open="${esc(gid)}">Ver análise</button>
     </div>`;
   }
