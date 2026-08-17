@@ -19031,3 +19031,53 @@ body.cpAuthModalOpen{
     height:48px;
   }
 }
+/* =========================================================
+   CORNER PRO WEB MARKETS V1 — SOMENTE DESKTOP
+   Não altera app/mobile e não altera #desktopMatchRail.
+   ========================================================= */
+@media (min-width:981px){
+  .cpDeskMarketsV1{display:block;min-width:0}
+  .marketTabs.cpDeskTabsV1{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important}
+  .marketTabs.cpDeskTabsV1 .marketTab{position:relative;overflow:hidden;height:58px!important;padding:0 12px!important;border-radius:12px!important}
+  .marketTabs.cpDeskTabsV1 .marketTab::after{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;border-radius:99px;background:transparent;box-shadow:none}
+  .marketTabs.cpDeskTabsV1 .marketTab.active{border-color:rgba(154,255,0,.46)!important;background:linear-gradient(180deg,rgba(20,34,25,.96),rgba(8,17,13,.98))!important;box-shadow:inset 0 1px 0 rgba(154,255,0,.16),0 8px 24px rgba(0,0,0,.2)!important}
+  .marketTabs.cpDeskTabsV1 .marketTab.active::after{background:#9aff00;box-shadow:0 0 14px rgba(154,255,0,.65)}
+  .marketTabs.cpDeskTabsV1 .marketTab span{font-size:21px!important;min-width:25px;text-align:center}
+  .marketTabs.cpDeskTabsV1 .marketTab b{font-size:9px!important;white-space:nowrap}
+  .marketTabs.cpDeskTabsV1 .marketTab small{font-size:6.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .gamesPanel.cpDeskMarketPanelV1{padding:0!important;overflow:hidden!important;background:linear-gradient(180deg,#0c1418,#070c10)!important;border-color:#1a2a31!important}
+  .cpDeskMarketHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:16px 18px 12px;border-bottom:1px solid #1c2a30;background:linear-gradient(180deg,rgba(15,24,28,.98),rgba(8,14,17,.98))}
+  .cpDeskMarketTitle{min-width:0}.cpDeskMarketTitle small{display:block;color:#9aa7aa;font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}.cpDeskMarketTitle h2{margin:0;color:#fff;font-size:18px;line-height:1.05;font-weight:950}.cpDeskMarketTitle h2 span{color:#9aff00}.cpDeskMarketTitle p{margin:6px 0 0;color:#819093;font-size:9px;font-weight:700}
+  .cpDeskMarketCounter{flex:0 0 auto;display:flex;align-items:center;gap:8px;height:31px;padding:0 11px;border:1px solid rgba(154,255,0,.26);border-radius:9px;background:rgba(154,255,0,.055);color:#9aff00;font-size:9px;font-weight:950;white-space:nowrap}
+
+  .cpDeskMarketControls{padding:12px 18px 13px;background:#091014;border-bottom:1px solid #18262c}
+  .cpDeskMarketControlRow{display:flex;align-items:center;gap:9px;min-width:0}.cpDeskMarketControlRow+.cpDeskMarketControlRow{margin-top:9px}
+  .cpDeskMarketLabel{flex:0 0 76px;color:#7f8d91;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.06em}
+  .cpDeskMarketPills{display:flex;align-items:center;gap:7px;min-width:0;overflow-x:auto;scrollbar-width:none}.cpDeskMarketPills::-webkit-scrollbar{display:none}
+  .cpDeskPill{height:28px;min-width:47px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #28373e;border-radius:8px;background:linear-gradient(180deg,#111a1f,#0a1115);color:#aab4b6;font-size:9px;font-weight:900;white-space:nowrap;transition:.16s ease}
+  .cpDeskPill:hover{border-color:#415158;color:#fff}.cpDeskPill.active{border-color:#9aff00;background:linear-gradient(180deg,rgba(90,150,22,.26),rgba(20,47,10,.30));color:#b7ff76;box-shadow:0 0 0 1px rgba(154,255,0,.08),0 0 16px rgba(154,255,0,.09)}
+  .cpDeskPill.cpHome.active{color:#b7ff76}.cpDeskPill.cpAway.active{color:#d9f8ff;border-color:#79c8ef;background:rgba(50,135,180,.12);box-shadow:0 0 14px rgba(73,174,227,.08)}
+
+  .cpDeskGameList{display:grid;gap:9px;padding:12px 14px 14px;max-height:calc(100vh - 380px);min-height:205px;overflow:auto;scrollbar-width:thin;scrollbar-color:#2e423e transparent}
+  .cpDeskGameCard{position:relative;min-height:104px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(220px,.9fr);gap:16px;align-items:center;padding:12px 14px;border:1px solid #203039;border-radius:13px;overflow:hidden;background:linear-gradient(90deg,rgba(2,8,11,.92),rgba(4,12,12,.78)),url('/images/fundo.jpeg') center 48%/cover no-repeat;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 22px rgba(0,0,0,.22);transition:.18s ease}
+  .cpDeskGameCard::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.52),rgba(0,0,0,.22) 47%,rgba(0,0,0,.56)),radial-gradient(circle at 50% 40%,rgba(154,255,0,.08),transparent 40%)}
+  .cpDeskGameCard:hover{transform:translateY(-1px);border-color:rgba(154,255,0,.36);box-shadow:0 10px 28px rgba(0,0,0,.32),0 0 0 1px rgba(154,255,0,.04)}
+  .cpDeskGameMatch,.cpDeskGameData{position:relative;z-index:1;min-width:0}
+  .cpDeskGameLeague{display:flex;align-items:center;gap:8px;margin-bottom:7px;color:#93a2a5;font-size:8px;font-weight:900;text-transform:uppercase}.cpDeskGameLeague time{color:#9aff00;font-size:10px}.cpDeskGameLeague i{width:3px;height:3px;border-radius:50%;background:#536167}
+  .cpDeskTeams{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);align-items:center;gap:8px}
+  .cpDeskTeam{display:grid;grid-template-columns:38px minmax(0,1fr) 25px;align-items:center;gap:8px;min-width:0}.cpDeskTeam.away{grid-template-columns:25px minmax(0,1fr) 38px;text-align:right}.cpDeskTeamName{min-width:0;color:#fff;font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 7px #000}.cpDeskVersus{text-align:center;color:#738087;font-size:9px;font-weight:950}
+  .cpDeskBadge{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(255,255,255,.13);background:rgba(4,10,13,.84);box-shadow:0 5px 12px rgba(0,0,0,.32)}.cpDeskBadge img{width:31px;height:31px;object-fit:contain;display:block}.cpDeskBadge span{display:grid;place-items:center;width:100%;height:100%;color:#dce5e2;font-size:11px;font-weight:950;background:linear-gradient(145deg,#111b20,#07100c)}
+  .cpDeskFav{width:25px;height:25px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.13);border-radius:50%;background:rgba(3,9,12,.76);color:#859397;font-size:17px;line-height:1;transition:.16s ease}.cpDeskFav:hover{color:#fff;border-color:#66777d}.cpDeskFav.active{color:#9aff00;border-color:rgba(154,255,0,.5);background:rgba(52,94,15,.2);text-shadow:0 0 8px rgba(154,255,0,.55)}
+
+  .cpDeskGameData{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch}.cpDeskMetric{min-width:0;min-height:54px;padding:8px 9px;border:1px solid rgba(115,139,149,.2);border-radius:9px;background:rgba(4,11,14,.78);text-align:center}.cpDeskMetric small{display:block;color:#7f8d91;font-size:7px;font-weight:900;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cpDeskMetric b{display:block;margin-top:5px;color:#fff;font-size:12px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cpDeskMetric.market b{color:#9aff00}.cpDeskMetric.conf b{color:#b7ff76}
+  .cpDeskOpenMatch{grid-column:1/-1;height:28px;border:1px solid rgba(154,255,0,.32);border-radius:7px;background:rgba(154,255,0,.045);color:#9aff00;font-size:8px;font-weight:950;letter-spacing:.035em}.cpDeskOpenMatch:hover{background:rgba(154,255,0,.11);border-color:rgba(154,255,0,.58)}
+  .cpDeskEmpty{min-height:205px;display:grid;place-items:center;text-align:center;padding:26px;color:#849397;font-size:10px;font-weight:800}.cpDeskEmpty b{display:block;color:#dce6e2;font-size:13px;margin-bottom:5px}.cpDeskEmpty span{color:#9aff00}
+  .cpDeskLoading{min-height:205px;display:grid;place-items:center;color:#9aff00;font-size:10px;font-weight:900;letter-spacing:.04em}
+
+  @media (max-width:1280px){
+    .marketTabs.cpDeskTabsV1{grid-template-columns:repeat(3,1fr)!important}
+    .cpDeskGameCard{grid-template-columns:1fr!important}
+    .cpDeskGameList{max-height:none}
+  }
+}
