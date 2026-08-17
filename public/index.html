@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-desktop-markets-v3-20260817" />
-  <script src="script.js?v=cornerpro-desktop-markets-v3-20260817" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-desktop-markets-v4-20260817" />
+  <script src="script.js?v=cornerpro-desktop-markets-v4-20260817" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -746,5 +746,779 @@
       <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
       <button type="button"><span>•••</span><b>Mais</b></button>
     </nav>
+
+<script id="cpDesktopStandaloneV4">
+(() => {
+  "use strict";
+
+  if (window.__cpDesktopStandaloneV4Installed) return;
+  window.__cpDesktopStandaloneV4Installed = true;
+
+  const mq = window.matchMedia("(min-width:981px)");
+  if (!mq.matches) return;
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  const clean = (v, f = "") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined", "null", "NaN"].includes(s) ? s : f;
+  };
+
+  const esc = v => String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+  const num = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === "") continue;
+      const n = Number(String(value).replace("%", "").replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  };
+
+  const norm = value => String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  const CONFIG = {
+    corners: {
+      label: "ESCANTEIOS",
+      title: "TOTAL DE ESCANTEIOS",
+      lines: ["TODOS", "8.5", "9.5", "10.5", "11.5", "12.5"],
+      subs: [["TOTAL DE ESCANTEIOS", "all"], ["1º TEMPO", "ht"], ["2º TEMPO", "2h"], ["LINHAS ALTERNATIVAS", "alt"]]
+    },
+    goals: {
+      label: "GOLS",
+      title: "TOTAL DE GOLS",
+      lines: ["TODOS", "1.5", "2.5", "3.5", "4.5"],
+      subs: [["TOTAL DE GOLS", "all"], ["1º TEMPO", "ht"], ["2º TEMPO", "2h"]]
+    },
+    cards: {
+      label: "CARTÕES",
+      title: "TOTAL DE CARTÕES",
+      lines: ["TODOS", "2.5", "3.5", "4.5", "5.5"],
+      subs: [["TOTAL DE CARTÕES", "all"], ["CASA", "home"], ["FORA", "away"]]
+    },
+    handicap: {
+      label: "HANDICAP",
+      title: "HANDICAP ASIÁTICO",
+      lines: ["TODOS", "-2.0", "-1.5", "-1.0", "-0.5", "0.0", "+0.5", "+1.0", "+1.5", "+2.0"],
+      subs: [["HANDICAP ASIÁTICO", "all"], ["CASA", "home"], ["FORA", "away"]]
+    },
+    btts: {
+      label: "AMBAS MARCAM",
+      title: "AMBAS MARCAM",
+      lines: ["TODOS", "SIM", "NÃO"],
+      subs: [["TODOS", "all"], ["SIM", "yes"], ["NÃO", "no"]]
+    }
+  };
+
+  const state = {
+    market: "corners",
+    line: "10.5",
+    sub: "all",
+    engine: { corners: [], goals: [], cards: [], btts: [], handicap: [] },
+    base: [],
+    all: [],
+    hero: null,
+    limit: 8,
+    favorites: new Set(),
+    renderedOnce: false
+  };
+
+  try {
+    const stored = JSON.parse(localStorage.getItem("cornerProFavorites") || "[]");
+    if (Array.isArray(stored)) stored.forEach(x => state.favorites.add(norm(x)));
+  } catch {}
+
+  function saveFavorites() {
+    try {
+      localStorage.setItem("cornerProFavorites", JSON.stringify([...state.favorites]));
+    } catch {}
+  }
+
+  function currentDate() {
+    const hidden = $("#date")?.value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(hidden || "")) return hidden;
+
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Manaus",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(new Date());
+
+      const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+      return `${map.year}-${map.month}-${map.day}`;
+    } catch {
+      const d = new Date(Date.now() - 4 * 3600000);
+      return d.toISOString().slice(0, 10);
+    }
+  }
+
+  function team(game, side) {
+    const raw = game?.raw || game || {};
+    if (side === "home") {
+      return clean(
+        game?.home ?? game?.casa ?? game?.home_name ??
+        raw?.match_hometeam_name ?? raw?.event_home_team ??
+        raw?.event_raw?.match_hometeam_name,
+        "Casa"
+      );
+    }
+
+    return clean(
+      game?.away ?? game?.fora ?? game?.away_name ??
+      raw?.match_awayteam_name ?? raw?.event_away_team ??
+      raw?.event_raw?.match_awayteam_name,
+      "Fora"
+    );
+  }
+
+  function time(game) {
+    const raw = game?.raw || game || {};
+    const value = clean(
+      game?.time ?? game?.hora_manaus ?? game?.hora ??
+      raw?.match_time ?? raw?.time ?? raw?.event_time,
+      "--:--"
+    );
+    const match = value.match(/(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "--:--";
+  }
+
+  function gameId(game) {
+    const raw = game?.raw || game || {};
+    return clean(
+      game?.match_id ?? game?.event_id ?? game?.event_key ??
+      game?.fixture_id ?? game?.id ?? raw?.match_id ??
+      raw?.event_key ?? raw?.event_id,
+      `${team(game, "home")}|${team(game, "away")}|${time(game)}`
+    );
+  }
+
+  function league(game) {
+    const raw = game?.raw || game || {};
+    return clean(game?.league ?? game?.liga ?? raw?.league_name ?? raw?.league, "Liga");
+  }
+
+  function country(game) {
+    const raw = game?.raw || game || {};
+    return clean(raw?.country_name ?? raw?.country ?? raw?.league_country, "");
+  }
+
+  function badge(game, side) {
+    const raw = game?.raw || game || {};
+    const values = side === "home"
+      ? [
+          raw?.home_badge, raw?.team_home_badge, raw?.home_team_badge,
+          raw?.home_logo, raw?.home_team_logo, raw?.hometeam_logo,
+          raw?.event_raw?.team_home_badge, raw?.event_raw?.home_badge,
+          raw?.event_raw?.home_team_logo
+        ]
+      : [
+          raw?.away_badge, raw?.team_away_badge, raw?.away_team_badge,
+          raw?.away_logo, raw?.away_team_logo, raw?.awayteam_logo,
+          raw?.event_raw?.team_away_badge, raw?.event_raw?.away_badge,
+          raw?.event_raw?.away_team_logo
+        ];
+
+    return clean(values.find(v => /^https?:\/\//i.test(String(v || ""))), "");
+  }
+
+  function decision(game, market = state.market) {
+    const raw = game?.raw || game || {};
+    const field = market === "btts" ? "btts_ai" : `${market}_ai`;
+    return raw?.[field] || game?.[field] || {};
+  }
+
+  function decisionLine(game, market = state.market) {
+    return clean(decision(game, market)?.line, "").toUpperCase();
+  }
+
+  function confidence(game, market = state.market) {
+    let value = num(
+      decision(game, market)?.confidence,
+      game?.confidence,
+      game?.ai_score
+    );
+    if (value !== null && value > 0 && value <= 1) value *= 100;
+    return value === null ? 0 : Math.max(0, Math.min(95, Math.round(value)));
+  }
+
+  function projection(game, market = state.market) {
+    const raw = game?.raw || game || {};
+    const d = decision(game, market);
+
+    if (market === "corners") {
+      return num(
+        d?.projection, d?.projected,
+        raw?.proj_cantos, raw?.projection_corners,
+        raw?.corners_projection, raw?.expected_corners,
+        raw?.media_cantos
+      );
+    }
+
+    if (market === "goals") {
+      return num(
+        d?.projection, raw?.goal_projection,
+        raw?.expected_goals, raw?.goals_projection,
+        raw?.media_gols
+      );
+    }
+
+    if (market === "cards") {
+      return num(
+        d?.projection, raw?.cards_projection,
+        raw?.proj_cards, raw?.avg_cards,
+        raw?.media_cartoes
+      );
+    }
+
+    return num(d?.projection);
+  }
+
+  function average(game, market = state.market) {
+    const raw = game?.raw || game || {};
+    if (market === "corners") {
+      return num(
+        raw?.media_combinada, raw?.corner_avg, raw?.corners_avg,
+        raw?.total_corners_avg, raw?.corners_total_avg,
+        projection(game, market)
+      );
+    }
+    if (market === "goals") {
+      return num(raw?.goals_avg, raw?.total_goals_avg, projection(game, market));
+    }
+    if (market === "cards") {
+      return num(raw?.cards_avg, raw?.total_cards_avg, projection(game, market));
+    }
+    return projection(game, market);
+  }
+
+  function handicapSide(game) {
+    const d = decision(game, "handicap");
+    const value = norm(d?.side_key ?? d?.side ?? d?.team_side ?? "");
+    if (value.includes("away") || value.includes("fora")) return "away";
+    if (value.includes("home") || value.includes("casa")) return "home";
+    return "all";
+  }
+
+  function recursiveGames(payload, seen = new Set()) {
+    if (Array.isArray(payload)) {
+      return payload.filter(item => item && typeof item === "object");
+    }
+
+    if (!payload || typeof payload !== "object" || seen.has(payload)) return [];
+    seen.add(payload);
+
+    for (const key of [
+      "games", "jogos", "matches", "data", "items", "list",
+      "results", "top", "top6", "quentes", "mercados",
+      "recommendations", "opportunities"
+    ]) {
+      const value = payload[key];
+      if (Array.isArray(value) && value.length) {
+        return value.filter(item => item && typeof item === "object");
+      }
+      if (value && typeof value === "object") {
+        const nested = recursiveGames(value, seen);
+        if (nested.length) return nested;
+      }
+    }
+
+    for (const value of Object.values(payload)) {
+      if (!value || typeof value !== "object") continue;
+      const nested = recursiveGames(value, seen);
+      if (nested.length) return nested;
+    }
+
+    return [];
+  }
+
+  function unique(list) {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : []).filter(game => {
+      const id = gameId(game);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function mergeGeneric(list) {
+    if (!Array.isArray(list) || !list.length) return false;
+    state.base = unique([...state.base, ...list]);
+    state.all = unique([...state.all, ...list]);
+    return true;
+  }
+
+  function mergeEnginePayload(payload) {
+    if (!payload || typeof payload !== "object") return false;
+    let changed = false;
+
+    for (const market of ["corners", "goals", "cards", "btts", "handicap"]) {
+      const list = Array.isArray(payload?.[market])
+        ? payload[market]
+        : recursiveGames(payload?.[market]);
+
+      if (list.length) {
+        state.engine[market] = unique([...state.engine[market], ...list]);
+        state.all = unique([...state.all, ...list]);
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  async function fetchJSON(url, timeout = 18000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { Accept: "application/json" }
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function source() {
+    const engineList = state.engine[state.market];
+    if (Array.isArray(engineList) && engineList.length) return engineList;
+
+    if (state.base.length) return state.base;
+    return state.all;
+  }
+
+  function lineMatches(game) {
+    if (state.line === "TODOS") return true;
+
+    if (state.market === "btts") {
+      const line = decisionLine(game, "btts");
+      if (state.line === "SIM") {
+        return /(SIM|YES)/.test(line) && !/(NÃO|NAO|NO)/.test(line);
+      }
+      return /(NÃO|NAO|NO)/.test(line);
+    }
+
+    if (state.market === "handicap") {
+      const target = Number(state.line.replace("+", ""));
+      const line = decisionLine(game, "handicap").replace(",", ".");
+      const found = line.match(/[+-]?\d+(?:\.\d+)?/);
+      return found ? Math.abs(Number(found[0]) - target) < 0.011 : false;
+    }
+
+    const target = Number(state.line);
+    const p = projection(game, state.market);
+
+    if (p !== null) {
+      // "Over X" = projeção que alcança/supera a linha escolhida.
+      return p >= target;
+    }
+
+    return decisionLine(game, state.market).includes(state.line);
+  }
+
+  function subMatches(game) {
+    if (
+      (state.market === "handicap" || state.market === "cards") &&
+      (state.sub === "home" || state.sub === "away")
+    ) {
+      if (state.market === "handicap") return handicapSide(game) === state.sub;
+
+      const line = norm(decisionLine(game, "cards"));
+      return state.sub === "home"
+        ? line.includes("casa") || line.includes("home")
+        : line.includes("fora") || line.includes("away") || line.includes("visit");
+    }
+
+    if (state.market === "btts" && state.sub === "yes") {
+      const line = decisionLine(game, "btts");
+      return /(SIM|YES)/.test(line) && !/(NÃO|NAO|NO)/.test(line);
+    }
+
+    if (state.market === "btts" && state.sub === "no") {
+      return /(NÃO|NAO|NO)/.test(decisionLine(game, "btts"));
+    }
+
+    return true;
+  }
+
+  function filteredGames() {
+    return unique(source())
+      .filter(lineMatches)
+      .filter(subMatches)
+      .sort((a, b) =>
+        confidence(b) - confidence(a) ||
+        (projection(b) || 0) - (projection(a) || 0) ||
+        time(a).localeCompare(time(b))
+      );
+  }
+
+  function initials(name) {
+    return clean(name, "T")
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join("")
+      .toUpperCase();
+  }
+
+  function badgeHTML(game, side, mini = false) {
+    const url = badge(game, side);
+    const name = team(game, side);
+    const className = mini ? "cpd3MiniBadge" : "cpd3HeroBadge";
+
+    if (url) {
+      return `<div class="${className}">
+        <img src="${esc(url)}" alt="${esc(name)}" loading="lazy"
+          onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+        <i hidden>${esc(initials(name))}</i>
+      </div>`;
+    }
+
+    return `<div class="${className}"><i>${esc(initials(name))}</i></div>`;
+  }
+
+  function setHero(game) {
+    const fallback = filteredGames()[0] || source()[0] || state.all[0] || null;
+    state.hero = game || fallback;
+    const g = state.hero;
+
+    if (!g) return;
+
+    $("#cpd3HomeName").textContent = team(g, "home");
+    $("#cpd3AwayName").textContent = team(g, "away");
+    $("#cpd3KickLabel").textContent = `HOJE • ${time(g)}`;
+    $("#cpd3Clock").textContent = "PRÉ-JOGO";
+
+    const homeBadge = $("#cpd3HomeBadge");
+    const awayBadge = $("#cpd3AwayBadge");
+
+    if (homeBadge) {
+      homeBadge.outerHTML = badgeHTML(g, "home")
+        .replace('class="cpd3HeroBadge"', 'class="cpd3HeroBadge" id="cpd3HomeBadge"');
+    }
+
+    if (awayBadge) {
+      awayBadge.outerHTML = badgeHTML(g, "away")
+        .replace('class="cpd3HeroBadge"', 'class="cpd3HeroBadge" id="cpd3AwayBadge"');
+    }
+
+    $$("[data-cpd3-hero-fav]").forEach(button => {
+      const name = team(g, button.dataset.cpd3HeroFav);
+      const active = state.favorites.has(norm(name));
+      button.classList.toggle("active", active);
+      button.textContent = active ? "★" : "☆";
+    });
+  }
+
+  function renderSubs() {
+    const config = CONFIG[state.market];
+    $("#cpd3SubNav").innerHTML = config.subs.map(([text, value]) =>
+      `<button type="button"
+        class="${state.sub === value ? "active" : ""}"
+        data-cpd3-sub="${value}">${text}</button>`
+    ).join("");
+  }
+
+  function renderLines() {
+    const config = CONFIG[state.market];
+    $("#cpd3LineNav").innerHTML = config.lines.map(line =>
+      `<button type="button"
+        class="${state.line === line ? "active" : ""}"
+        data-cpd3-line="${esc(line)}">${esc(line)}</button>`
+    ).join("");
+  }
+
+  function titleText() {
+    const config = CONFIG[state.market];
+
+    if (state.market === "btts") {
+      return `${state.line === "TODOS" ? "AMBAS MARCAM" : state.line} • TODOS OS JOGOS`;
+    }
+
+    if (state.market === "handicap") {
+      const sideText = state.sub === "home" ? " • CASA" : state.sub === "away" ? " • FORA" : "";
+      return `${config.title}${state.line === "TODOS" ? "" : ` ${state.line}`}${sideText} • TODOS OS JOGOS`;
+    }
+
+    return `${state.line === "TODOS" ? config.title : `OVER ${state.line} ${config.label}`} • TODOS OS JOGOS`;
+  }
+
+  function rowHTML(game) {
+    const conf = confidence(game);
+    const proj = projection(game);
+    const avg = average(game);
+    const id = gameId(game);
+    const home = team(game, "home");
+    const away = team(game, "away");
+
+    return `
+      <div class="cpd3Row" data-cpd3-game="${esc(id)}">
+        <div class="cpd3MatchCell">
+          ${badgeHTML(game, "home", true)}
+          <div class="cpd3Names">
+            <div>
+              <b>${esc(home)}</b>
+              <button type="button" class="cpd3Fav ${state.favorites.has(norm(home)) ? "active" : ""}"
+                data-cpd3-fav="home" data-id="${esc(id)}">${state.favorites.has(norm(home)) ? "★" : "☆"}</button>
+            </div>
+            <div>
+              <b>${esc(away)}</b>
+              <button type="button" class="cpd3Fav ${state.favorites.has(norm(away)) ? "active" : ""}"
+                data-cpd3-fav="away" data-id="${esc(id)}">${state.favorites.has(norm(away)) ? "★" : "☆"}</button>
+            </div>
+          </div>
+          ${badgeHTML(game, "away", true)}
+        </div>
+
+        <div class="cpd3League"><b>${esc(league(game))}</b><small>${esc(country(game))}</small></div>
+        <div class="cpd3Start">Hoje<br><b>${esc(time(game))}</b></div>
+        <div class="cpd3Num">${proj === null ? "—" : proj.toFixed(1)}</div>
+        <div class="cpd3Num">${avg === null ? "—" : avg.toFixed(1)}</div>
+        <div class="cpd3Confidence">${conf || "—"}${conf ? "%" : ""}</div>
+        <div class="cpd3Trend"><i>☁</i><b>${conf >= 68 ? "ALTA" : conf >= 55 ? "MÉDIA" : "BAIXA"}</b></div>
+        <button type="button" class="cpd3Analyze" data-cpd3-open="${esc(id)}">Ver análise</button>
+      </div>`;
+  }
+
+  function render() {
+    const root = $("#cpDesktopExperienceV3");
+    if (!root) return;
+
+    const config = CONFIG[state.market];
+
+    $$("[data-cpd3-market]").forEach(button => {
+      button.classList.toggle("active", button.dataset.cpd3Market === state.market);
+    });
+
+    $("#cpd3TopTitle").textContent = `MELHOR APOSTA • ${config.label}`;
+    renderSubs();
+    renderLines();
+
+    const list = filteredGames();
+    $("#cpd3ResultsTitle").textContent = titleText();
+
+    if (list.length) {
+      $("#cpd3Rows").innerHTML = list.slice(0, state.limit).map(rowHTML).join("");
+      $("#cpd3More").hidden = list.length <= state.limit;
+      setHero(list[0]);
+      state.renderedOnce = true;
+    } else if (state.all.length || state.base.length) {
+      $("#cpd3Rows").innerHTML =
+        `<div class="cpd3Empty">Nenhum jogo encontrado nesta linha.<br>Escolha outra linha ou <b>TODOS</b>.</div>`;
+      $("#cpd3More").hidden = true;
+      setHero(source()[0] || state.all[0]);
+      state.renderedOnce = true;
+    }
+  }
+
+  function findGame(id) {
+    return unique([...source(), ...state.all, ...state.base])
+      .find(game => String(gameId(game)) === String(id));
+  }
+
+  function toggleFavorite(name) {
+    const key = norm(name);
+    if (!key) return;
+    state.favorites.has(key) ? state.favorites.delete(key) : state.favorites.add(key);
+    saveFavorites();
+  }
+
+  async function openMatch(game) {
+    if (!game) return;
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey = String(gameId(game));
+
+    try {
+      if (typeof window.updateDesktopMatchRail === "function") {
+        await window.updateDesktopMatchRail(game, state.all);
+      } else if (typeof window.openMatchCenter === "function") {
+        await window.openMatchCenter(game);
+      }
+    } catch (error) {
+      console.error("[CP Desktop V4] Match Center:", error);
+    }
+  }
+
+  function setLoading(text = "CARREGANDO JOGOS REAIS DO DIA...") {
+    const rows = $("#cpd3Rows");
+    if (rows && !state.renderedOnce) {
+      rows.innerHTML = `<div class="cpd3Loading">${esc(text)}</div>`;
+    }
+  }
+
+  function ingest(payload, kind = "generic") {
+    let changed = false;
+
+    if (kind === "engine") {
+      changed = mergeEnginePayload(payload);
+    } else {
+      changed = mergeGeneric(recursiveGames(payload));
+    }
+
+    if (changed) render();
+    return changed;
+  }
+
+  async function startDataFlow() {
+    setLoading("BUSCANDO JOGOS DO DIA...");
+
+    // Aproveita dados que o código atual já tenha carregado.
+    if (Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length) {
+      mergeGeneric(window.__cornerProAllGames);
+      render();
+    }
+
+    const date = currentDate();
+    const stamp = Date.now();
+
+    const requests = [
+      ["generic", `/quentes?date=${encodeURIComponent(date)}&ai=0&_webv4=${stamp}`],
+      ["engine", `/market_engines_fast?date=${encodeURIComponent(date)}&_webv4=${stamp}`],
+      ["generic", `/mercados?date=${encodeURIComponent(date)}&_webv4=${stamp}`],
+      ["engine", `/market_engines?date=${encodeURIComponent(date)}&_webv4=${stamp}`]
+    ];
+
+    let settled = 0;
+
+    requests.forEach(([kind, url]) => {
+      fetchJSON(url)
+        .then(payload => ingest(payload, kind))
+        .catch(error => console.warn("[CP Desktop V4]", url, error))
+        .finally(() => {
+          settled++;
+
+          if (settled === requests.length && !state.renderedOnce) {
+            if (state.all.length || state.base.length) {
+              render();
+            } else {
+              $("#cpd3Rows").innerHTML =
+                `<div class="cpd3Empty">
+                  Não consegui receber jogos das rotas do servidor.<br>
+                  Atualize a página; se continuar, verifique <b>/quentes</b> e <b>/mercados</b>.
+                </div>`;
+              $("#cpd3More").hidden = true;
+            }
+          }
+        });
+    });
+
+    // Ponte com o controlador atual: ele pode terminar de carregar depois.
+    let checks = 0;
+    const bridge = setInterval(() => {
+      checks++;
+
+      if (Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length) {
+        if (mergeGeneric(window.__cornerProAllGames)) render();
+      }
+
+      if (checks >= 30) clearInterval(bridge);
+    }, 1000);
+  }
+
+  document.addEventListener("click", event => {
+    if (!mq.matches) return;
+
+    const market = event.target.closest?.("[data-cpd3-market]");
+    if (market) {
+      event.preventDefault();
+      state.market = market.dataset.cpd3Market;
+      state.sub = "all";
+      state.line =
+        state.market === "corners" ? "10.5" :
+        state.market === "btts" ? "SIM" :
+        "TODOS";
+      state.limit = 8;
+      render();
+      return;
+    }
+
+    const sub = event.target.closest?.("[data-cpd3-sub]");
+    if (sub) {
+      event.preventDefault();
+      state.sub = sub.dataset.cpd3Sub;
+      state.limit = 8;
+      render();
+      return;
+    }
+
+    const line = event.target.closest?.("[data-cpd3-line]");
+    if (line) {
+      event.preventDefault();
+      state.line = line.dataset.cpd3Line;
+      state.limit = 8;
+      render();
+      return;
+    }
+
+    const favorite = event.target.closest?.("[data-cpd3-fav]");
+    if (favorite) {
+      event.preventDefault();
+      const game = findGame(favorite.dataset.id);
+      if (game) {
+        toggleFavorite(team(game, favorite.dataset.cpd3Fav));
+        render();
+      }
+      return;
+    }
+
+    const heroFavorite = event.target.closest?.("[data-cpd3-hero-fav]");
+    if (heroFavorite) {
+      event.preventDefault();
+      if (state.hero) {
+        toggleFavorite(team(state.hero, heroFavorite.dataset.cpd3HeroFav));
+        render();
+      }
+      return;
+    }
+
+    const analysis = event.target.closest?.("[data-cpd3-open]");
+    if (analysis) {
+      event.preventDefault();
+      openMatch(findGame(analysis.dataset.cpd3Open));
+      return;
+    }
+
+    if (event.target.closest?.("#cpd3More")) {
+      event.preventDefault();
+      state.limit += 8;
+      render();
+    }
+  }, true);
+
+  function boot() {
+    if (!$("#cpDesktopExperienceV3")) return;
+    renderSubs();
+    renderLines();
+    startDataFlow();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+})();
+</script>
+
 </body>
 </html>
