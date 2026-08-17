@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-desktop-markets-v5-20260817" />
-  <script src="script.js?v=cornerpro-desktop-markets-v5-20260817" defer></script>
+  <link rel="stylesheet" href="style.css?v=cornerpro-desktop-markets-v4-20260817" />
+  <script src="script.js?v=cornerpro-desktop-markets-v4-20260817" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -151,7 +151,7 @@
                ===================================================== -->
           <section class="cpd3Experience" id="cpDesktopExperienceV3" aria-label="Mercados desktop">
             <div class="cpd3Topline">
-              <div class="cpd3TopTitle"><span>🔥</span><strong id="cpd3TopTitle">MELHOR APOSTA • ESCANTEIOS</strong><small class="cpd3Version">WEB V5</small></div>
+              <div class="cpd3TopTitle"><span>🔥</span><strong id="cpd3TopTitle">MELHOR APOSTA • ESCANTEIOS</strong></div>
               <div class="cpd3TopActions">
                 <button type="button" id="cpd3TodayBtn">HOJE</button>
                 <button type="button" id="cpd3FilterBtn">☷ FILTROS</button>
@@ -747,12 +747,12 @@
       <button type="button"><span>•••</span><b>Mais</b></button>
     </nav>
 
-<script id="cpDesktopStandaloneV5">
+<script id="cpDesktopStandaloneV4">
 (() => {
   "use strict";
 
-  if (window.__cpDesktopStandaloneV5Installed) return;
-  window.__cpDesktopStandaloneV5Installed = true;
+  if (window.__cpDesktopStandaloneV4Installed) return;
+  window.__cpDesktopStandaloneV4Installed = true;
 
   const mq = window.matchMedia("(min-width:981px)");
   if (!mq.matches) return;
@@ -1355,7 +1355,7 @@
         await window.openMatchCenter(game);
       }
     } catch (error) {
-      console.error("[CP Desktop V5] Match Center:", error);
+      console.error("[CP Desktop V4] Match Center:", error);
     }
   }
 
@@ -1391,76 +1391,36 @@
     const date = currentDate();
     const stamp = Date.now();
 
-    // V5 — usa PRIMEIRO a mesma rota rápida do mobile.
-    // O servidor trata mobile=1/_mobile como fast-path e tenta cache persistido antes
-    // de disparar a análise pesada. Assim o desktop recebe nomes/jogos imediatamente.
-    const fastBaseUrls = [
-      `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=36`,
-      `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=36`
+    const requests = [
+      ["generic", `/quentes?date=${encodeURIComponent(date)}&ai=0&_webv4=${stamp}`],
+      ["engine", `/market_engines_fast?date=${encodeURIComponent(date)}&_webv4=${stamp}`],
+      ["generic", `/mercados?date=${encodeURIComponent(date)}&_webv4=${stamp}`],
+      ["engine", `/market_engines?date=${encodeURIComponent(date)}&_webv4=${stamp}`]
     ];
 
-    let baseResolved = false;
+    let settled = 0;
 
-    const fastBasePromise = new Promise((resolve, reject) => {
-      let pending = fastBaseUrls.length;
-      const errors = [];
+    requests.forEach(([kind, url]) => {
+      fetchJSON(url)
+        .then(payload => ingest(payload, kind))
+        .catch(error => console.warn("[CP Desktop V4]", url, error))
+        .finally(() => {
+          settled++;
 
-      fastBaseUrls.forEach((url, index) => {
-        fetchJSON(url, index === 0 ? 10000 : 14000)
-          .then(payload => {
-            if (baseResolved) return;
-            const games = recursiveGames(payload);
-            if (games.length) {
-              baseResolved = true;
-              mergeGeneric(games);
+          if (settled === requests.length && !state.renderedOnce) {
+            if (state.all.length || state.base.length) {
               render();
-              resolve(games);
-              return;
+            } else {
+              $("#cpd3Rows").innerHTML =
+                `<div class="cpd3Empty">
+                  Não consegui receber jogos das rotas do servidor.<br>
+                  Atualize a página; se continuar, verifique <b>/quentes</b> e <b>/mercados</b>.
+                </div>`;
+              $("#cpd3More").hidden = true;
             }
-            errors.push(new Error(`Sem jogos em ${url}`));
-          })
-          .catch(error => {
-            errors.push(error);
-          })
-          .finally(() => {
-            pending--;
-            if (!baseResolved && pending <= 0) {
-              reject(errors[0] || new Error("Nenhuma rota base devolveu jogos."));
-            }
-          });
-      });
+          }
+        });
     });
-
-    fastBasePromise.catch(error => {
-      console.warn("[CP Desktop V5] Base rápida:", error);
-    });
-
-    // Motores específicos complementam projeção/confiança em background.
-    const background = [
-      ["engine", `/market_engines_fast?date=${encodeURIComponent(date)}&_webv5=${stamp}`],
-      ["engine", `/market_engines?date=${encodeURIComponent(date)}&_webv5=${stamp}`]
-    ];
-
-    background.forEach(([kind, url], index) => {
-      setTimeout(() => {
-        fetchJSON(url, index === 0 ? 16000 : 30000)
-          .then(payload => ingest(payload, kind))
-          .catch(error => console.warn("[CP Desktop V5]", url, error));
-      }, index === 0 ? 250 : 1500);
-    });
-
-    // Depois de 16s, se nenhuma fonte trouxe jogos, mostra erro real em vez de
-    // permanecer eternamente em "CARREGANDO".
-    setTimeout(() => {
-      if (!state.renderedOnce && !state.all.length && !state.base.length) {
-        $("#cpd3Rows").innerHTML =
-          `<div class="cpd3Empty">
-            O servidor não devolveu jogos para a data ${esc(date)}.<br>
-            A rota rápida <b>/quentes?mobile=1</b> também não retornou partidas.
-          </div>`;
-        $("#cpd3More").hidden = true;
-      }
-    }, 16000);
 
     // Ponte com o controlador atual: ele pode terminar de carregar depois.
     let checks = 0;
