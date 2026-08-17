@@ -23135,193 +23135,281 @@
   }
 })();
 /* =========================================================
-   CORNER PRO WEB MARKETS V1 — SOMENTE DESKTOP
-   Mercado > linha > jogos. Escudos + favoritos + fundo estádio.
-   Não altera o app/mobile e não reescreve o Match Center.
+   CORNER PRO DESKTOP MARKETS V2 — WEB SOMENTE
+   Área independente: não disputa DOM com o renderer antigo.
+   Mobile/app e #desktopMatchRail permanecem intactos.
    ========================================================= */
-(function installCornerProDesktopMarketsV1(){
+(function installCornerProDesktopMarketsV2(){
   "use strict";
-  if (window.__cornerProDesktopMarketsV1) return;
-  window.__cornerProDesktopMarketsV1 = true;
+  if (window.__cornerProDesktopMarketsV2) return;
+  window.__cornerProDesktopMarketsV2 = true;
 
-  const mq = window.matchMedia("(min-width:981px)");
-  if (!mq.matches) return;
+  const desktopMQ = window.matchMedia("(min-width:981px)");
+  if (!desktopMQ.matches) return;
 
   const $ = (s,r=document) => r.querySelector(s);
   const $$ = (s,r=document) => Array.from(r.querySelectorAll(s));
-  const esc = (v) => String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  const clean = (v,f="") => { const s=String(v ?? "").trim(); return s && !["undefined","null","NaN"].includes(s) ? s : f; };
-  const num = (...vals) => { for (let v of vals){ if(v===null||v===undefined||v==="") continue; const n=Number(String(v).replace("%","").replace(",",".").replace(/[^0-9+.-]/g,"")); if(Number.isFinite(n)) return n; } return null; };
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number.isFinite(Number(n))?Number(n):0));
-  const norm = (v) => clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9+.-]+/g," ").replace(/\s+/g," ").trim();
-
-  const FAVORITES_KEY = "cornerProFavoriteTeams:v2";
-  function readFav(){ try{ const x=JSON.parse(localStorage.getItem(FAVORITES_KEY)||"[]"); return Array.isArray(x)?x:[]; }catch{return [];} }
-  function favKey(n){ return norm(n).replace(/[^a-z0-9]+/g," ").trim(); }
-  function isFav(n){ const k=favKey(n); return !!k && readFav().some(x=>favKey(x)===k); }
-  function toggleFav(n){
-    const name=clean(n); if(!name) return false;
-    const a=readFav(), k=favKey(name), i=a.findIndex(x=>favKey(x)===k);
-    if(i>=0) a.splice(i,1); else a.push(name);
-    try{ localStorage.setItem(FAVORITES_KEY,JSON.stringify(a)); }catch{}
-    return i<0;
-  }
+  const esc = v => String(v ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  const clean = (v,fb="") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined","null","NaN"].includes(s) ? s : fb;
+  };
+  const n = (...vals) => {
+    for (const raw of vals){
+      if (raw === null || raw === undefined || raw === "") continue;
+      const x = Number(String(raw).replace("%","").replace(",",".").replace(/[^0-9+.-]/g,""));
+      if (Number.isFinite(x)) return x;
+    }
+    return null;
+  };
+  const norm = v => clean(v).toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9+.-]+/g," ").replace(/\s+/g," ").trim();
 
   const CONFIG = {
-    corners:{label:"ESCANTEIOS",icon:"⚑",sub:"TOTAIS DO JOGO",title:"Mercado de Escanteios",hint:"Escolha uma linha para exibir todos os jogos compatíveis.",lines:["TODOS","8.5","9.5","10.5","11.5","12.5"],defaultLine:"10.5"},
-    goals:{label:"GOLS",icon:"⚽",sub:"TOTAIS DE GOLS",title:"Mercado de Gols",hint:"Filtre os jogos pela linha de gols desejada.",lines:["TODOS","1.5","2.5","3.5","4.5"],defaultLine:"2.5"},
-    cards:{label:"CARTÕES",icon:"▯",sub:"TOTAIS E POR EQUIPE",title:"Mercado de Cartões",hint:"Escolha a linha e, quando quiser, filtre Casa ou Fora.",lines:["TODOS","2.5","3.5","4.5","5.5"],sides:true,defaultLine:"3.5"},
-    handicap:{label:"HANDICAP ASIÁTICO",icon:"⚖",sub:"CASA OU FORA",title:"Handicap Asiático",hint:"Escolha a linha e depois Casa ou Fora para encontrar os jogos.",lines:["-2.0","-1.5","-1.0","-0.5","0.0","+0.5","+1.0","+1.5","+2.0"],sides:true,defaultLine:"0.0"},
-    btts:{label:"AMBAS MARCAM",icon:"◎",sub:"SIM OU NÃO",title:"Ambas Marcam",hint:"Selecione SIM ou NÃO para listar os jogos do mercado.",lines:["TODOS","SIM","NÃO"],defaultLine:"SIM"},
-    pregame:{label:"PRÉ-JOGO",icon:"◉",sub:"VISÃO GERAL",title:"Todos os Jogos Pré-Jogo",hint:"Visão geral dos jogos disponíveis no dia.",lines:["TODOS"],defaultLine:"TODOS"}
+    corners:{icon:"⚑",label:"ESCANTEIOS",title:"Mercado de Escanteios",sub:"TODAS AS LINHAS",hint:"Escolha uma linha para exibir todos os jogos compatíveis.",lines:["TODOS","8.5","9.5","10.5","11.5","12.5"]},
+    goals:{icon:"⚽",label:"GOLS",title:"Mercado de Gols",sub:"OVER / UNDER",hint:"Filtre rapidamente os jogos pela linha de gols.",lines:["TODOS","1.5","2.5","3.5","4.5"]},
+    cards:{icon:"▯",label:"CARTÕES",title:"Mercado de Cartões",sub:"TOTAL E POR EQUIPE",hint:"Escolha a linha e, quando quiser, filtre Casa ou Fora.",lines:["TODOS","2.5","3.5","4.5","5.5"],sides:true},
+    handicap:{icon:"⚖",label:"HANDICAP",title:"Handicap Asiático",sub:"CASA / FORA",hint:"Escolha a linha asiática e depois o lado: Casa ou Fora.",lines:["TODOS","-2.0","-1.5","-1.0","-0.5","0.0","+0.5","+1.0","+1.5","+2.0"],sides:true},
+    btts:{icon:"◎",label:"AMBAS MARCAM",title:"Ambas Marcam",sub:"SIM / NÃO",hint:"Escolha SIM ou NÃO para listar todos os jogos daquele cenário.",lines:["TODOS","SIM","NÃO"]},
+    pregame:{icon:"◉",label:"PRÉ-JOGO",title:"Análises Pré-Jogo",sub:"TODOS OS JOGOS",hint:"Visão geral dos jogos disponíveis para análise.",lines:["TODOS"]}
   };
 
-  const state={market:"corners",line:"10.5",side:"all",games:[],date:"",loading:false,stamp:0};
+  const state = { market:"corners", line:"10.5", side:"all", games:[], engine:{}, stamp:0 };
+  const FAV_KEY = "cornerProFavoriteTeams:v2";
 
-  function todayManaus(){
-    try{
-      const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-      const m=Object.fromEntries(parts.map(x=>[x.type,x.value])); return `${m.year}-${m.month}-${m.day}`;
-    }catch{return new Date(Date.now()-4*3600000).toISOString().slice(0,10);}
+  function readFav(){ try { const x=JSON.parse(localStorage.getItem(FAV_KEY)||"[]"); return Array.isArray(x)?x:[]; } catch { return []; } }
+  function favKey(name){ return norm(name).replace(/[^a-z0-9]+/g," ").trim(); }
+  function isFav(name){ const k=favKey(name); return readFav().some(x=>favKey(x)===k); }
+  function toggleFav(name){
+    const list=readFav(), k=favKey(name), idx=list.findIndex(x=>favKey(x)===k);
+    if(idx>=0) list.splice(idx,1); else list.push(name);
+    try{ localStorage.setItem(FAV_KEY,JSON.stringify(list)); }catch{}
   }
-  function selectedDate(){ const d=clean($("#date")?.value); return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:todayManaus(); }
-  function raw(g){ return g?.raw || g || {}; }
-  function team(g,side){ const r=raw(g); return side==="home"?clean(g?.home??r.casa??r.home??r.home_name??r.team_home??r.mandante??r.teams?.home?.name,"Casa"):clean(g?.away??r.fora??r.away??r.away_name??r.team_away??r.visitante??r.teams?.away?.name,"Fora"); }
-  function league(g){ const r=raw(g); return clean(g?.league??r.liga??r.league_name??r.league?.name??r.competition??r.competition_name,"Liga"); }
-  function time(g){ const r=raw(g); const t=clean(g?.time??r.hora_manaus??r.hora??r.match_time??r.event_time??r.time,"--:--"); const m=t.match(/(\d{1,2}):(\d{2})/); return m?`${m[1].padStart(2,"0")}:${m[2]}`:"--:--"; }
-  function id(g){ const r=raw(g); return clean(g?.match_id??g?.id??r.match_id??r.event_id??r.event_key??r.fixture_id??r.id,`${team(g,"home")}|${team(g,"away")}|${time(g)}`); }
-  function initials(n){ const p=clean(n,"--").split(/\s+/).filter(Boolean); return (p.length>1?p[0][0]+p[1][0]:p[0].slice(0,2)).toUpperCase(); }
-  function badge(g,side){
-    const r=raw(g), home=side==="home";
-    const arr=home?[r.home_badge,r.team_home_badge,r.home_team_badge,r.home_logo,r.home_team_logo,r.hometeam_logo,r.event_raw?.team_home_badge,r.event_raw?.home_badge,r.event_raw?.home_team_logo]:[r.away_badge,r.team_away_badge,r.away_team_badge,r.away_logo,r.away_team_logo,r.awayteam_logo,r.event_raw?.team_away_badge,r.event_raw?.away_badge,r.event_raw?.away_team_logo];
-    return clean(arr.find(v=>/^https?:\/\//i.test(String(v||"")))||"");
+
+  function team(g,side){
+    return side==="home"
+      ? clean(g?.casa ?? g?.home ?? g?.home_name ?? g?.mandante ?? g?.event_raw?.match_hometeam_name,"Casa")
+      : clean(g?.fora ?? g?.away ?? g?.away_name ?? g?.visitante ?? g?.event_raw?.match_awayteam_name,"Fora");
   }
-  function badgeHTML(g,side){ const name=team(g,side), url=badge(g,side); return `<span class="cpDeskBadge">${url?`<img src="${esc(url)}" alt="Escudo ${esc(name)}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<span>${esc(initials(name))}</span>'">`:`<span>${esc(initials(name))}</span>`}</span>`; }
+  function league(g){ return clean(g?.liga ?? g?.league_name ?? g?.league ?? g?.competition ?? g?.event_raw?.league_name,"Liga"); }
+  function time(g){
+    const v=clean(g?.hora_manaus ?? g?.hora ?? g?.match_time ?? g?.time ?? g?.event_raw?.match_time,"--:--");
+    const m=v.match(/(\d{1,2}):(\d{2})/); return m?`${m[1].padStart(2,"0")}:${m[2]}`:"--:--";
+  }
+  function gameId(g){ return clean(g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? g?.id ?? g?.event_raw?.match_id,`${team(g,"home")}|${team(g,"away")}|${time(g)}`); }
 
-  function decision(g,type){ const r=raw(g); return r?.[type+"_ai"] && typeof r[type+"_ai"]==="object" ? r[type+"_ai"] : {}; }
-  function projection(g,type){ const r=raw(g), d=decision(g,type); if(type==="corners") return num(d.projection,r.proj_cantos,r.projected_corners,r.real?.recentCombinedAvg); if(type==="goals") return num(d.projection,r.goal_projection,r.projected_goals,r.goals_projection,r.avg_goals); if(type==="cards") return num(d.projection,r.card_projection,r.projected_cards,r.avg_cards); return null; }
-  function confidence(g,type){ const r=raw(g), d=decision(g,type); let n=num(d.confidence,r[type+"_confidence"],r.confidence,r.ai_score); if(n===null) return 0; if(n>0&&n<=1)n*=100; while(n>100)n/=10; return Math.round(clamp(n,0,95)); }
-  function decisionLine(g,type){ const r=raw(g), d=decision(g,type); return clean(d.line,r[type+"_line"]||"").toUpperCase(); }
-  function sideKey(g,type){ const r=raw(g), d=decision(g,type); const v=norm(d.side_key??d.side??d.team_side??r[type+"_side"]??""); if(/home|casa|mandante/.test(v))return"home"; if(/away|fora|visitante/.test(v))return"away"; return""; }
-  function lineNumber(v){ const m=String(v??"").match(/[+-]?\d+(?:[.,]\d+)?/); return m?Number(m[0].replace(",",".")):null; }
-  function lineSigned(n){ if(n===null||!Number.isFinite(n))return""; const fixed=n.toFixed(1); return n>0?`+${fixed}`:fixed; }
+  function badgeUrl(g,side){
+    const r=g?.raw || g || {}, home=side==="home";
+    const vals=home ? [
+      r.home_badge,r.team_home_badge,r.home_team_badge,r.home_logo,r.home_team_logo,r.hometeam_logo,
+      r.event_raw?.team_home_badge,r.event_raw?.home_badge,r.event_raw?.home_team_logo
+    ] : [
+      r.away_badge,r.team_away_badge,r.away_team_badge,r.away_logo,r.away_team_logo,r.awayteam_logo,
+      r.event_raw?.team_away_badge,r.event_raw?.away_badge,r.event_raw?.away_team_logo
+    ];
+    return clean(vals.find(v=>/^https?:\/\//i.test(String(v||"")))||"");
+  }
+  function initials(name){ const p=clean(name,"TM").split(/\s+/).filter(Boolean); return ((p[0]?.[0]||"T")+(p[1]?.[0]||p[0]?.[1]||"M")).toUpperCase(); }
 
+  function decision(g,m){ return g?.[m+"_ai"] && typeof g[m+"_ai"]==="object" ? g[m+"_ai"] : null; }
+  function confidence(g,m){
+    const d=decision(g,m); let x=n(d?.confidence,d?.probability,d?.prob,g?.confidence,g?.ai_score);
+    if(x!==null && x>0 && x<=1) x*=100; while(x!==null && x>100) x/=10;
+    return x===null?0:Math.max(0,Math.min(99,Math.round(x)));
+  }
+  function decisionLine(g,m){ return clean(decision(g,m)?.line ?? g?.[m]?.line ?? g?.best_market,"").toUpperCase(); }
+  function projection(g,m){
+    if(m==="corners") return n(decision(g,m)?.projection,g?.proj_cantos,g?.corner_projection,g?.corners_projection);
+    if(m==="goals") return n(decision(g,m)?.projection,g?.goals_projection,g?.expected_goals,g?.xg_total);
+    if(m==="cards") return n(decision(g,m)?.projection,g?.cards_projection,g?.proj_cards,g?.total_cards_projection);
+    return null;
+  }
+  function sideKey(g,m){
+    const d=decision(g,m); const s=norm(d?.side_key ?? d?.side ?? d?.team_side ?? g?.[m+"_side"]);
+    if(/away|fora|visit/.test(s)) return "away"; if(/home|casa|mand/.test(s)) return "home"; return "";
+  }
+  function normalizeHandicapLine(v){
+    const x=n(v); if(x===null) return null; if(Math.abs(x)<.0001) return "0.0";
+    const abs=Math.abs(x); const txt=Number.isInteger(abs)?abs.toFixed(1):String(abs); return x>0?`+${txt}`:`-${txt}`;
+  }
   function handicapLines(g){
-    const r=raw(g), d=decision(g,"handicap"), out=new Set();
-    const add=v=>{ const n=lineNumber(typeof v==="object"?(v.line??v.value??v.handicap??v.name):v); if(n!==null)out.add(lineSigned(n)); };
-    [d.line,r.handicap_line].forEach(add);
-    const arrays=[d.available_lines,r.handicap_available_lines,r.available_handicaps,r.asian_handicap_lines];
-    arrays.forEach(a=>Array.isArray(a)&&a.forEach(add));
-    return [...out];
+    const set=new Set(); const d=decision(g,"handicap");
+    [d?.line,g?.handicap_line,g?.asian_handicap_line].forEach(v=>{const x=normalizeHandicapLine(v);if(x)set.add(x);});
+    const odds=g?.odds||g?.markets||{};
+    Object.keys(odds||{}).forEach(k=>{
+      const m=String(k).match(/(?:ah|asian|handicap)[^0-9+.-]*([+-]?\d+(?:\.\d+)?)/i);
+      if(m){const x=normalizeHandicapLine(m[1]);if(x)set.add(x);}
+    });
+    return [...set];
   }
-  function bttsChoice(g){ const r=raw(g), l=decisionLine(g,"btts"); if(/N[AÃ]O|\bNO\b/.test(l))return"NÃO"; if(/SIM|YES/.test(l))return"SIM"; const p=num(decision(g,"btts").probability,decision(g,"btts").prob,decision(g,"btts").confidence,r.btts_prob,r.prob_btts,r.ambas_marcam_prob); if(p!==null)return p>=52?"SIM":p<=42?"NÃO":""; if(r.markets?.btts===true||r.btts===true)return"SIM"; if(r.markets?.btts===false||r.btts===false)return"NÃO"; return""; }
+  function bttsChoice(g){
+    const l=norm(decisionLine(g,"btts"));
+    if(/nao|não| no\b|ambas nao/.test(l)) return "NÃO";
+    if(/sim|yes|ambas sim/.test(l)) return "SIM";
+    const p=n(decision(g,"btts")?.probability,decision(g,"btts")?.confidence,g?.btts_prob,g?.ambas_marcam_prob);
+    return p!==null && p>=50?"SIM":p!==null?"NÃO":"";
+  }
 
+  function sourceForMarket(m){
+    const arr=state.engine?.[m];
+    return Array.isArray(arr)&&arr.length ? arr : state.games;
+  }
   function passes(g){
-    const m=state.market, line=state.line, side=state.side, d=decision(g,m);
-    if(d.skip===true) return false;
+    const m=state.market, line=state.line, side=state.side;
     if(m==="pregame") return true;
-    if(m==="btts") return line==="TODOS" ? !!bttsChoice(g) : bttsChoice(g)===line;
+    if(m==="btts") return line==="TODOS" || bttsChoice(g)===line;
     if(m==="handicap"){
-      const has=handicapLines(g).includes(line);
-      if(!has) return false;
+      if(line!=="TODOS" && !handicapLines(g).includes(line)) return false;
       const sk=sideKey(g,"handicap");
       if(side!=="all" && sk && sk!==side) return false;
       return true;
     }
-    const ln=Number(line);
-    if(line!=="TODOS" && Number.isFinite(ln)){
-      const p=projection(g,m), dl=lineNumber(decisionLine(g,m));
-      const exact=dl!==null && Math.abs(Math.abs(dl)-ln)<0.01;
-      const projected=p!==null && p>=ln;
+    const target=n(line);
+    if(line!=="TODOS" && target!==null){
+      const dl=n(decisionLine(g,m)), p=projection(g,m);
+      const exact=dl!==null && Math.abs(Math.abs(dl)-target)<.02;
+      const projected=p!==null && p>=target;
       if(!exact && !projected) return false;
     }
-    if((m==="cards") && side!=="all"){
-      const sk=sideKey(g,"cards");
-      if(sk && sk!==side) return false;
+    if(m==="cards" && side!=="all"){
+      const sk=sideKey(g,"cards"); if(sk && sk!==side) return false;
     }
     return true;
   }
 
-  function marketLabel(g){
-    if(state.market==="handicap"){ const sk=sideKey(g,"handicap"); return `${sk==="away"?"FORA":sk==="home"?"CASA":state.side==="away"?"FORA":state.side==="home"?"CASA":"AH"} ${state.line}`; }
-    if(state.market==="btts") return `AMBAS ${state.line}`;
-    if(state.market==="pregame") return "PRÉ-JOGO";
-    return state.line==="TODOS" ? clean(decisionLine(g,state.market),"ANÁLISE") : `OVER ${state.line}`;
-  }
-  function metricProjection(g){ const p=projection(g,state.market); if(state.market==="handicap"||state.market==="btts") return "—"; return p===null?"—":p.toFixed(1); }
-  function metricTitle(){ return state.market==="corners"?"PROJ. CANTOS":state.market==="goals"?"PROJ. GOLS":state.market==="cards"?"PROJ. CARTÕES":"PROJEÇÃO"; }
-
-  function currentGames(){
-    const panel=$(".gamesPanel"), all=[];
-    const sources=[panel?.__cornerProAllGames,window.__cornerProAllGames,window.__cornerProGames];
-    try{ if(window.__cornerProMarketCache?.[selectedDate()])sources.unshift(window.__cornerProMarketCache[selectedDate()]); }catch{}
-    for(const src of sources){ if(Array.isArray(src)&&src.length){ src.forEach(g=>g&&all.push(g)); if(all.length)break; } }
-    const seen=new Set(); return all.filter(g=>{const k=id(g);if(seen.has(k))return false;seen.add(k);return true;});
+  function selectedDate(){
+    return clean($("#date")?.value || new URLSearchParams(location.search).get("date") || new URLSearchParams(location.search).get("data") || new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()));
   }
 
-  async function ensureGames(){
-    let games=currentGames(); if(games.length)return games;
-    const date=selectedDate();
-    try{
-      const res=await fetch(`/mercados?date=${encodeURIComponent(date)}&_webv1=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});
-      if(res.ok){ const payload=await res.json(); const arr=Array.isArray(payload)?payload:(payload.games||payload.jogos||payload.data||payload.matches||payload.items||[]); if(Array.isArray(arr)&&arr.length){ window.__cornerProAllGames=arr; window.__cornerProAllGamesDate=date; return arr; } }
-    }catch(e){ console.warn("[Desktop Markets V1] /mercados indisponível",e); }
+  async function getJSON(url){ const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"}}); if(!r.ok) throw new Error(`${r.status} ${url}`); return r.json(); }
+  function extract(payload){
+    if(Array.isArray(payload)) return payload;
+    if(!payload||typeof payload!=="object") return [];
+    for(const k of ["games","jogos","matches","data","items","list","results"]){ if(Array.isArray(payload[k])) return payload[k]; }
     return [];
   }
+  async function loadData(){
+    const date=selectedDate();
+    const [engines,base] = await Promise.allSettled([
+      getJSON(`/market_engines?date=${encodeURIComponent(date)}&_cpdesk=${Date.now()}`),
+      getJSON(`/mercados?date=${encodeURIComponent(date)}&_cpdesk=${Date.now()}`)
+    ]);
+    state.engine = engines.status==="fulfilled" && engines.value && typeof engines.value==="object" ? engines.value : {};
+    state.games = base.status==="fulfilled" ? extract(base.value) : [];
+    if(!state.games.length){
+      for(const key of ["corners","goals","cards","btts","handicap"]){
+        const a=state.engine?.[key]; if(Array.isArray(a)) state.games.push(...a);
+      }
+    }
+  }
 
-  function tabHTML(k){ const c=CONFIG[k]; return `<button class="marketTab ${state.market===k?"active":""}" type="button" data-cpdesk-market="${k}"><span>${c.icon}</span><div><b>${c.label}</b><small>${c.sub}</small></div></button>`; }
-  function installTabs(){ const box=$(".marketTabs"); if(!box)return; box.classList.add("cpDeskTabsV1"); box.innerHTML=["corners","goals","cards","handicap","btts","pregame"].map(tabHTML).join(""); }
+  function badgeHTML(g,side){
+    const url=badgeUrl(g,side), name=team(g,side);
+    return `<span class="cpd2Badge">${url?`<img src="${esc(url)}" alt="Escudo ${esc(name)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><i hidden>${esc(initials(name))}</i>`:`<i>${esc(initials(name))}</i>`}</span>`;
+  }
+  function teamHTML(g,side){
+    const name=team(g,side), fav=isFav(name);
+    if(side==="home") return `<div class="cpd2Team cpd2Home">${badgeHTML(g,side)}<strong>${esc(name)}</strong><button type="button" class="cpd2Fav ${fav?"active":""}" data-cpd2-fav="home" data-cpd2-id="${esc(gameId(g))}" aria-label="Favoritar ${esc(name)}">${fav?"★":"☆"}</button></div>`;
+    return `<div class="cpd2Team cpd2Away"><button type="button" class="cpd2Fav ${fav?"active":""}" data-cpd2-fav="away" data-cpd2-id="${esc(gameId(g))}" aria-label="Favoritar ${esc(name)}">${fav?"★":"☆"}</button><strong>${esc(name)}</strong>${badgeHTML(g,side)}</div>`;
+  }
+  function label(g){
+    if(state.market==="btts") return `AMBAS ${state.line}`;
+    if(state.market==="handicap") return `${state.side==="home"?"CASA ":state.side==="away"?"FORA ":""}${state.line}`;
+    if(state.line!=="TODOS") return `OVER ${state.line}`;
+    return clean(decisionLine(g,state.market),"ANÁLISE");
+  }
+  function metricTitle(){ return state.market==="corners"?"PROJ. CANTOS":state.market==="goals"?"PROJ. GOLS":state.market==="cards"?"PROJ. CARTÕES":"LEITURA IA"; }
+  function metricValue(g){ const p=projection(g,state.market); return p===null?"—":p.toFixed(1); }
 
+  function navHTML(){
+    return `<div class="cpd2Nav">${Object.entries(CONFIG).map(([k,c])=>`<button type="button" class="cpd2NavBtn ${state.market===k?"active":""}" data-cpd2-market="${k}"><span>${c.icon}</span><b>${c.label}</b><small>${c.sub}</small></button>`).join("")}</div>`;
+  }
   function controlsHTML(){
     const c=CONFIG[state.market];
-    const lines=c.lines.map(x=>`<button class="cpDeskPill ${state.line===x?"active":""}" type="button" data-cpdesk-line="${esc(x)}">${esc(x==="TODOS"?"TODOS":state.market==="btts"?x:state.market==="handicap"?x:`${x}`)}</button>`).join("");
-    const sides=c.sides?`<div class="cpDeskMarketControlRow"><span class="cpDeskMarketLabel">EQUIPE</span><div class="cpDeskMarketPills"><button class="cpDeskPill ${state.side==="all"?"active":""}" data-cpdesk-side="all">TODOS</button><button class="cpDeskPill cpHome ${state.side==="home"?"active":""}" data-cpdesk-side="home">🏠 CASA</button><button class="cpDeskPill cpAway ${state.side==="away"?"active":""}" data-cpdesk-side="away">✈ FORA</button></div></div>`:"";
-    return `<div class="cpDeskMarketControls"><div class="cpDeskMarketControlRow"><span class="cpDeskMarketLabel">${state.market==="btts"?"OPÇÃO":"LINHA"}</span><div class="cpDeskMarketPills">${lines}</div></div>${sides}</div>`;
+    const lines=c.lines.map(x=>`<button type="button" class="cpd2Pill ${state.line===x?"active":""}" data-cpd2-line="${esc(x)}">${esc(x)}</button>`).join("");
+    const sides=c.sides?`<div class="cpd2Control"><small>EQUIPE</small><div><button type="button" class="cpd2Pill ${state.side==="all"?"active":""}" data-cpd2-side="all">TODOS</button><button type="button" class="cpd2Pill ${state.side==="home"?"active":""}" data-cpd2-side="home">🏠 CASA</button><button type="button" class="cpd2Pill ${state.side==="away"?"active":""}" data-cpd2-side="away">✈ FORA</button></div></div>`:"";
+    return `<div class="cpd2Controls"><div class="cpd2Control"><small>${state.market==="btts"?"OPÇÃO":"LINHA"}</small><div>${lines}</div></div>${sides}</div>`;
+  }
+  function cardHTML(g){
+    const conf=confidence(g,state.market);
+    return `<article class="cpd2Game" data-cpd2-game="${esc(gameId(g))}">
+      <div class="cpd2Shade"></div>
+      <div class="cpd2Meta"><time>${esc(time(g))}</time><span>${esc(league(g))}</span></div>
+      <div class="cpd2Teams">${teamHTML(g,"home")}<i>VS</i>${teamHTML(g,"away")}</div>
+      <div class="cpd2Info">
+        <div><small>MERCADO</small><b>${esc(label(g))}</b></div>
+        <div><small>${esc(metricTitle())}</small><b>${esc(metricValue(g))}</b></div>
+        <div><small>CONFIANÇA</small><b class="green">${conf?conf+"%":"—"}</b></div>
+        <button type="button" data-cpd2-open="${esc(gameId(g))}">VER ANÁLISE ›</button>
+      </div>
+    </article>`;
   }
 
-  function teamHTML(g,side){ const n=team(g,side), fav=isFav(n); if(side==="home")return `<div class="cpDeskTeam home">${badgeHTML(g,side)}<strong class="cpDeskTeamName" title="${esc(n)}">${esc(n)}</strong><button class="cpDeskFav ${fav?"active":""}" type="button" data-cpdesk-fav="home" data-game-id="${esc(id(g))}" title="${fav?"Remover dos favoritos":"Favoritar time"}">${fav?"★":"☆"}</button></div>`; return `<div class="cpDeskTeam away"><button class="cpDeskFav ${fav?"active":""}" type="button" data-cpdesk-fav="away" data-game-id="${esc(id(g))}" title="${fav?"Remover dos favoritos":"Favoritar time"}">${fav?"★":"☆"}</button><strong class="cpDeskTeamName" title="${esc(n)}">${esc(n)}</strong>${badgeHTML(g,side)}</div>`; }
-
-  function rowHTML(g){ const conf=confidence(g,state.market); return `<article class="cpDeskGameCard" data-cpdesk-game="${esc(id(g))}"><div class="cpDeskGameMatch"><div class="cpDeskGameLeague"><time>${esc(time(g))}</time><i></i><span>${esc(league(g))}</span></div><div class="cpDeskTeams">${teamHTML(g,"home")}<span class="cpDeskVersus">VS</span>${teamHTML(g,"away")}</div></div><div class="cpDeskGameData"><div class="cpDeskMetric market"><small>MERCADO</small><b>${esc(marketLabel(g))}</b></div><div class="cpDeskMetric"><small>${esc(metricTitle())}</small><b>${esc(metricProjection(g))}</b></div><div class="cpDeskMetric conf"><small>CONFIANÇA</small><b>${conf?conf+"%":"—"}</b></div><button class="cpDeskOpenMatch" type="button" data-cpdesk-open="${esc(id(g))}">VER ANÁLISE DO JOGO ›</button></div></article>`; }
-
-  function headHTML(count){ const c=CONFIG[state.market]; return `<div class="cpDeskMarketHead"><div class="cpDeskMarketTitle"><small>${c.icon} MERCADOS • ${c.label}</small><h2>${esc(c.title)} <span>${state.line!=="TODOS"?esc(state.line):""}</span></h2><p>${esc(c.hint)}</p></div><div class="cpDeskMarketCounter">${count} JOGO${count===1?"":"S"}</div></div>`; }
-
-  async function render(){
-    const panel=$(".gamesPanel"); if(!panel)return;
-    panel.classList.add("cpDeskMarketPanelV1");
-    panel.innerHTML=`<div class="cpDeskLoading">CARREGANDO JOGOS DO MERCADO...</div>`;
-    const token=++state.stamp;
-    const games=await ensureGames(); if(token!==state.stamp)return;
-    state.games=games;
-    let filtered=games.filter(passes).sort((a,b)=>confidence(b,state.market)-confidence(a,state.market)||time(a).localeCompare(time(b)));
-    const max=40;
-    panel.innerHTML=headHTML(filtered.length)+controlsHTML()+`<div class="cpDeskGameList">${filtered.length?filtered.slice(0,max).map(rowHTML).join(""):`<div class="cpDeskEmpty"><div><b>Nenhum jogo encontrado</b>Tente outra linha ou escolha <span>TODOS</span>.</div></div>`}</div>`;
+  function ensureHub(){
+    let hub=$("#cpDesktopMarketsHubV2");
+    if(hub) return hub;
+    const oldPanel=$(".gamesPanel");
+    const anchor=oldPanel || $(".marketTabs")?.nextElementSibling;
+    if(!oldPanel?.parentElement) return null;
+    hub=document.createElement("section");
+    hub.id="cpDesktopMarketsHubV2";
+    hub.className="cpd2Hub";
+    oldPanel.parentElement.insertBefore(hub,oldPanel);
+    document.body.classList.add("cpDesktopMarketsV2On");
+    return hub;
   }
 
-  function findGame(gameId){ return state.games.find(g=>String(id(g))===String(gameId)) || currentGames().find(g=>String(id(g))===String(gameId)); }
-  async function openExistingMatchCenter(g){
-    if(!g)return;
+  function findGame(id){ return sourceForMarket(state.market).find(g=>String(gameId(g))===String(id)) || state.games.find(g=>String(gameId(g))===String(id)); }
+  async function openMatch(g){
+    if(!g) return;
     window.__selectedMatchCenterGame=g;
-    window.__selectedMatchCenterKey=String(id(g));
+    window.__selectedMatchCenterKey=String(gameId(g));
     try{
       if(typeof window.updateDesktopMatchRail==="function") await window.updateDesktopMatchRail(g,state.games);
       else if(typeof window.openMatchCenter==="function") await window.openMatchCenter(g);
-      const rail=$("#desktopMatchRail"); if(rail)rail.scrollIntoView({behavior:"smooth",block:"nearest"});
-    }catch(e){console.error("[Desktop Markets V1] Match Center",e);}
+    }catch(e){ console.error("[Desktop Markets V2] Match Center",e); }
   }
 
-  document.addEventListener("click",(ev)=>{
-    if(!mq.matches)return;
-    const tab=ev.target.closest("[data-cpdesk-market]"); if(tab){ ev.preventDefault(); ev.stopPropagation(); state.market=tab.dataset.cpdeskMarket; state.line=CONFIG[state.market].defaultLine; state.side="all"; installTabs(); render(); return; }
-    const line=ev.target.closest("[data-cpdesk-line]"); if(line){ ev.preventDefault(); ev.stopPropagation(); state.line=line.dataset.cpdeskLine; render(); return; }
-    const side=ev.target.closest("[data-cpdesk-side]"); if(side){ ev.preventDefault(); ev.stopPropagation(); state.side=side.dataset.cpdeskSide; render(); return; }
-    const fav=ev.target.closest("[data-cpdesk-fav]"); if(fav){ ev.preventDefault(); ev.stopPropagation(); const g=findGame(fav.dataset.gameId); if(!g)return; toggleFav(team(g,fav.dataset.cpdeskFav)); render(); return; }
-    const open=ev.target.closest("[data-cpdesk-open]"); if(open){ ev.preventDefault(); ev.stopPropagation(); openExistingMatchCenter(findGame(open.dataset.cpdeskOpen)); return; }
+  function render(){
+    const hub=ensureHub(); if(!hub) return;
+    const c=CONFIG[state.market];
+    const src=sourceForMarket(state.market);
+    const filtered=src.filter(passes).sort((a,b)=>confidence(b,state.market)-confidence(a,state.market)||time(a).localeCompare(time(b)));
+    hub.innerHTML=`${navHTML()}
+      <div class="cpd2Panel">
+        <header><div><small>${c.icon} ${c.label}</small><h2>${esc(c.title)}${state.line!=="TODOS"?` <span>${esc(state.line)}</span>`:""}</h2><p>${esc(c.hint)}</p></div><b>${filtered.length} JOGO${filtered.length===1?"":"S"}</b></header>
+        ${controlsHTML()}
+        <div class="cpd2List">${filtered.length?filtered.slice(0,60).map(cardHTML).join(""):`<div class="cpd2Empty"><b>Nenhum jogo encontrado nessa seleção.</b><span>Escolha outra linha ou clique em TODOS.</span></div>`}</div>
+      </div>`;
+  }
+
+  async function refresh(){
+    const hub=ensureHub(); if(!hub) return;
+    hub.innerHTML=`${navHTML()}<div class="cpd2Panel"><div class="cpd2Loading">CARREGANDO MERCADOS REAIS...</div></div>`;
+    const token=++state.stamp;
+    try{ await loadData(); if(token!==state.stamp)return; render(); }
+    catch(e){ console.error("[Desktop Markets V2]",e); if(token===state.stamp) hub.innerHTML=`${navHTML()}<div class="cpd2Panel"><div class="cpd2Empty"><b>Não foi possível carregar os mercados.</b><span>Verifique /market_engines e /mercados.</span></div></div>`; }
+  }
+
+  document.addEventListener("click",ev=>{
+    if(!desktopMQ.matches) return;
+    const market=ev.target.closest?.("[data-cpd2-market]");
+    if(market){ ev.preventDefault(); ev.stopImmediatePropagation(); state.market=market.dataset.cpd2Market; state.side="all"; state.line=state.market==="corners"?"10.5":state.market==="btts"?"SIM":"TODOS"; render(); return; }
+    const line=ev.target.closest?.("[data-cpd2-line]");
+    if(line){ ev.preventDefault(); ev.stopImmediatePropagation(); state.line=line.dataset.cpd2Line; render(); return; }
+    const side=ev.target.closest?.("[data-cpd2-side]");
+    if(side){ ev.preventDefault(); ev.stopImmediatePropagation(); state.side=side.dataset.cpd2Side; render(); return; }
+    const fav=ev.target.closest?.("[data-cpd2-fav]");
+    if(fav){ ev.preventDefault(); ev.stopImmediatePropagation(); const g=findGame(fav.dataset.cpd2Id); if(g){toggleFav(team(g,fav.dataset.cpd2Fav));render();} return; }
+    const open=ev.target.closest?.("[data-cpd2-open]");
+    if(open){ ev.preventDefault(); ev.stopImmediatePropagation(); openMatch(findGame(open.dataset.cpd2Open)); return; }
   },true);
 
-  function refreshForDate(){ const d=selectedDate(); if(d===state.date)return; state.date=d; state.games=[]; render(); }
-  document.addEventListener("change",ev=>{if(ev.target?.id==="date")setTimeout(refreshForDate,20);},true);
-  document.addEventListener("click",ev=>{if(ev.target.closest?.(".topCalendarDay,[data-cal-day],#topCalToday"))setTimeout(()=>{state.date="";refreshForDate();},80);},true);
+  function start(){ ensureHub(); refresh(); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",start,{once:true}); else start();
 
-  function start(){ state.date=selectedDate(); installTabs(); render(); setInterval(()=>{ if(!mq.matches)return; const now=currentGames(); if(now.length && (!state.games.length || now.length!==state.games.length)){ state.games=now; render(); } },2500); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true}); else start();
+  document.addEventListener("change",ev=>{ if(ev.target?.id==="date") setTimeout(refresh,30); },true);
+  document.addEventListener("click",ev=>{ if(ev.target.closest?.(".topCalendarDay,[data-cal-day],#topCalToday")) setTimeout(refresh,120); },true);
 })();
