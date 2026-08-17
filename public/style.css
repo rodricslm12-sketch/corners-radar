@@ -19073,3 +19073,14 @@ body.cpAuthModalOpen{
   .cpd3Loading,.cpd3Empty{min-height:190px;display:grid;place-items:center;color:#8b999c;font-size:10px;font-weight:900;text-align:center}.cpd3More{display:block;width:170px;height:31px;margin:4px auto 10px;border:1px solid #1f3036;border-radius:99px;background:#0c1419;color:#aab6b7;font-size:8px;font-weight:900}
   @media(max-width:1280px){.cpd3Hero{height:185px;grid-template-columns:1fr 125px 1fr}.cpd3HeroBadge,.cpd3HeroBadge img{width:78px;height:78px}.cpd3TableHead,.cpd3Row{grid-template-columns:minmax(150px,1.3fr) 85px 55px 62px 65px 62px 62px 70px}.cpd3HeroTeam strong{font-size:16px}}
 }
+
+@media (min-width:981px){
+  .cpd3Version{
+    margin-left:8px;
+    color:#63f127;
+    opacity:.42;
+    font-size:7px;
+    font-weight:900;
+    letter-spacing:.7px;
+  }
+}
