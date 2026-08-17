@@ -1,6 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
 import {
+  initializeAppCheck,
+  ReCaptchaV3Provider
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
+
+import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
@@ -22,16 +27,32 @@ const firebaseConfig = {
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
+
+/* =========================================================
+   FIREBASE APP CHECK
+   Cole SOMENTE a CHAVE DE SITE do reCAPTCHA v3 abaixo.
+   Nunca coloque a chave secreta aqui.
+========================================================= */
+
+const firebaseAppCheck = initializeAppCheck(firebaseApp, {
+  provider: new ReCaptchaV3Provider("6LfFtIktAAAAAABGoyxcDCPyk9jCONMvQ60Mt3GT"),
+  isTokenAutoRefreshEnabled: true
+});
+
 const firebaseAuth = getAuth(firebaseApp);
 
 const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
+
+googleProvider.setCustomParameters({
+  prompt: "select_account"
+});
 
 let presenceTimer = null;
 let presenceUserUid = null;
 
 function traduzirErroFirebase(erro) {
   const code = String(erro?.code || "");
+
   const mensagens = {
     "auth/email-already-in-use": "Este e-mail já possui uma conta.",
     "auth/invalid-email": "Digite um e-mail válido.",
@@ -46,33 +67,60 @@ function traduzirErroFirebase(erro) {
     "auth/missing-password": "Digite sua senha.",
     "auth/operation-not-allowed": "O login por e-mail e senha ainda não está ativado no Firebase."
   };
-  return new Error(mensagens[code] || erro?.message || "Não foi possível concluir a autenticação.");
+
+  return new Error(
+    mensagens[code] ||
+    erro?.message ||
+    "Não foi possível concluir a autenticação."
+  );
 }
 
 async function entrarComGoogle() {
   try {
-    const resultado = await signInWithPopup(firebaseAuth, googleProvider);
+    const resultado = await signInWithPopup(
+      firebaseAuth,
+      googleProvider
+    );
+
     const usuario = resultado.user;
-    return { usuario, token: await usuario.getIdToken(true) };
+
+    return {
+      usuario,
+      token: await usuario.getIdToken(true)
+    };
+
   } catch (erro) {
-    console.error("Erro ao entrar com Google:", erro?.code || erro?.message || erro);
+    console.error(
+      "Erro ao entrar com Google:",
+      erro?.code || erro?.message || erro
+    );
+
     throw traduzirErroFirebase(erro);
   }
 }
 
-async function criarContaComEmail({ nome, email, senha }) {
+async function criarContaComEmail({
+  nome,
+  email,
+  senha
+}) {
   try {
-    const credencial = await createUserWithEmailAndPassword(
-      firebaseAuth,
-      String(email || "").trim(),
-      String(senha || "")
-    );
+    const credencial =
+      await createUserWithEmailAndPassword(
+        firebaseAuth,
+        String(email || "").trim(),
+        String(senha || "")
+      );
 
     const usuario = credencial.user;
-    const nomeLimpo = String(nome || "").trim();
+
+    const nomeLimpo =
+      String(nome || "").trim();
 
     if (nomeLimpo) {
-      await updateProfile(usuario, { displayName: nomeLimpo });
+      await updateProfile(usuario, {
+        displayName: nomeLimpo
+      });
     }
 
     await usuario.reload();
@@ -81,156 +129,305 @@ async function criarContaComEmail({ nome, email, senha }) {
       usuario: firebaseAuth.currentUser || usuario,
       token: await usuario.getIdToken(true)
     };
+
   } catch (erro) {
-    console.error("Erro ao criar conta:", erro?.code || erro?.message || erro);
+    console.error(
+      "Erro ao criar conta:",
+      erro?.code || erro?.message || erro
+    );
+
     throw traduzirErroFirebase(erro);
   }
 }
 
-async function entrarComEmail({ email, senha }) {
+async function entrarComEmail({
+  email,
+  senha
+}) {
   try {
-    const credencial = await signInWithEmailAndPassword(
-      firebaseAuth,
-      String(email || "").trim(),
-      String(senha || "")
-    );
+    const credencial =
+      await signInWithEmailAndPassword(
+        firebaseAuth,
+        String(email || "").trim(),
+        String(senha || "")
+      );
 
     return {
       usuario: credencial.user,
       token: await credencial.user.getIdToken(true)
     };
+
   } catch (erro) {
-    console.error("Erro ao entrar com e-mail:", erro?.code || erro?.message || erro);
+    console.error(
+      "Erro ao entrar com e-mail:",
+      erro?.code || erro?.message || erro
+    );
+
     throw traduzirErroFirebase(erro);
   }
 }
 
 async function redefinirSenha(email) {
   try {
-    const endereco = String(email || "").trim();
-    if (!endereco) throw new Error("Digite seu e-mail primeiro.");
-    await sendPasswordResetEmail(firebaseAuth, endereco);
+    const endereco =
+      String(email || "").trim();
+
+    if (!endereco) {
+      throw new Error(
+        "Digite seu e-mail primeiro."
+      );
+    }
+
+    await sendPasswordResetEmail(
+      firebaseAuth,
+      endereco
+    );
+
     return true;
+
   } catch (erro) {
-    if (String(erro?.message || "") === "Digite seu e-mail primeiro.") throw erro;
+
+    if (
+      String(erro?.message || "") ===
+      "Digite seu e-mail primeiro."
+    ) {
+      throw erro;
+    }
+
     throw traduzirErroFirebase(erro);
   }
 }
 
 async function sairDaConta() {
   pararPresenca();
+
   await signOut(firebaseAuth);
 }
 
-async function obterTokenFirebase(force = false) {
-  const usuario = firebaseAuth.currentUser;
-  if (!usuario) return null;
+async function obterTokenFirebase(
+  force = false
+) {
+  const usuario =
+    firebaseAuth.currentUser;
+
+  if (!usuario) {
+    return null;
+  }
+
   return usuario.getIdToken(force);
 }
 
-async function fetchComToken(url, options, token) {
-  const headers = new Headers(options.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
+async function fetchComToken(
+  url,
+  options,
+  token
+) {
+
+  const headers =
+    new Headers(options.headers || {});
+
+  headers.set(
+    "Authorization",
+    `Bearer ${token}`
+  );
 
   if (
     options.body &&
     typeof options.body === "string" &&
     !headers.has("Content-Type")
   ) {
-    headers.set("Content-Type", "application/json");
+    headers.set(
+      "Content-Type",
+      "application/json"
+    );
   }
 
   return fetch(url, {
     ...options,
     headers,
-    cache: options.cache || "no-store"
+    cache:
+      options.cache || "no-store"
   });
 }
 
-async function fetchAutenticado(url, options = {}) {
-  let token = await obterTokenFirebase(false);
+async function fetchAutenticado(
+  url,
+  options = {}
+) {
+
+  let token =
+    await obterTokenFirebase(false);
 
   if (!token) {
-    throw new Error("Usuário não autenticado.");
+    throw new Error(
+      "Usuário não autenticado."
+    );
   }
 
-  let response = await fetchComToken(url, options, token);
+  let response =
+    await fetchComToken(
+      url,
+      options,
+      token
+    );
 
-  // Um token normalmente é renovado pelo Firebase automaticamente.
-  // Se a API responder 401, força renovação UMA vez e repete.
-  if (response.status === 401 && firebaseAuth.currentUser) {
-    token = await obterTokenFirebase(true);
-    response = await fetchComToken(url, options, token);
+  if (
+    response.status === 401 &&
+    firebaseAuth.currentUser
+  ) {
+
+    token =
+      await obterTokenFirebase(true);
+
+    response =
+      await fetchComToken(
+        url,
+        options,
+        token
+      );
   }
 
   return response;
 }
 
-async function enviarPresenca(usuario) {
-  if (!usuario || document.visibilityState === "hidden") return;
+async function enviarPresenca(
+  usuario
+) {
+
+  if (
+    !usuario ||
+    document.visibilityState === "hidden"
+  ) {
+    return;
+  }
 
   try {
-    const token = await usuario.getIdToken();
 
-    await fetch("/auth/presence", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        path: location.pathname
-      }),
-      cache: "no-store",
-      keepalive: true
-    });
+    const token =
+      await usuario.getIdToken();
+
+    await fetch(
+      "/auth/presence",
+      {
+        method: "POST",
+
+        headers: {
+          "Authorization":
+            `Bearer ${token}`,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          path: location.pathname
+        }),
+
+        cache: "no-store",
+
+        keepalive: true
+      }
+    );
+
   } catch (erro) {
-    // Presença é recurso auxiliar; não expõe token nem derruba o app em caso de falha.
-    console.debug("Presença indisponível:", erro?.message || erro);
+
+    console.debug(
+      "Presença indisponível:",
+      erro?.message || erro
+    );
   }
 }
 
 function pararPresenca() {
-  if (presenceTimer) clearInterval(presenceTimer);
+
+  if (presenceTimer) {
+    clearInterval(
+      presenceTimer
+    );
+  }
+
   presenceTimer = null;
   presenceUserUid = null;
 }
 
-function iniciarPresenca(usuario) {
-  if (!usuario) return pararPresenca();
-  if (presenceUserUid === usuario.uid && presenceTimer) return;
+function iniciarPresenca(
+  usuario
+) {
+
+  if (!usuario) {
+    return pararPresenca();
+  }
+
+  if (
+    presenceUserUid === usuario.uid &&
+    presenceTimer
+  ) {
+    return;
+  }
 
   pararPresenca();
-  presenceUserUid = usuario.uid;
+
+  presenceUserUid =
+    usuario.uid;
+
   enviarPresenca(usuario);
-  presenceTimer = setInterval(() => enviarPresenca(usuario), 60000);
+
+  presenceTimer =
+    setInterval(
+      () =>
+        enviarPresenca(usuario),
+      60000
+    );
 }
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && firebaseAuth.currentUser) {
-    enviarPresenca(firebaseAuth.currentUser);
-  }
-});
+document.addEventListener(
+  "visibilitychange",
+  () => {
 
-function observarAutenticacao(callback) {
-  return onAuthStateChanged(firebaseAuth, async (usuario) => {
-    if (!usuario) {
-      pararPresenca();
-      callback(null);
-      return;
+    if (
+      document.visibilityState ===
+        "visible" &&
+      firebaseAuth.currentUser
+    ) {
+
+      enviarPresenca(
+        firebaseAuth.currentUser
+      );
     }
+  }
+);
 
-    iniciarPresenca(usuario);
+function observarAutenticacao(
+  callback
+) {
 
-    callback({
-      usuario,
-      token: await usuario.getIdToken()
-    });
-  });
+  return onAuthStateChanged(
+    firebaseAuth,
+    async (usuario) => {
+
+      if (!usuario) {
+
+        pararPresenca();
+
+        callback(null);
+
+        return;
+      }
+
+      iniciarPresenca(usuario);
+
+      callback({
+        usuario,
+        token:
+          await usuario.getIdToken()
+      });
+    }
+  );
 }
 
 export {
   firebaseApp,
+  firebaseAppCheck,
   firebaseAuth,
   entrarComGoogle,
   criarContaComEmail,
