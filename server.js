@@ -18,6 +18,8 @@
 
 // ---------------- Imports ----------------
 import express from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 import path from "path";
@@ -30,13 +32,95 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Permite receber JSON nas rotas de autenticação.
+// =========================================================
+// SEGURANÇA V1 — camada HTTP
+// =========================================================
+
+// Render trabalha atrás de proxy. Usamos 1 salto em vez de `true` para não
+// confiar cegamente em X-Forwarded-For enviado pelo cliente.
+app.set("trust proxy", 1);
+
+// Não divulga Express no header.
+app.disable("x-powered-by");
+
+// Headers de segurança. CSP fica desativada nesta primeira versão porque
+// o front usa módulos Firebase carregados do gstatic e login Google por popup.
+// COOP permite o popup do Google sem abrir mão da proteção de origem.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+}));
+
+// Limites focados em autenticação/admin. Não alteram os endpoints dos mercados.
+const authLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 180,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas requisições de autenticação. Aguarde alguns minutos." }
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas tentativas de login. Aguarde alguns minutos." }
+});
+
+const presenceLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas atualizações de presença. Aguarde." }
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { ok: false, error: "Limite temporário do painel administrativo atingido." }
+});
+
+// Dados sensíveis nunca devem ser armazenados em cache por navegador/CDN.
+app.use("/auth", authLimiter, (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
+
+app.use("/admin", adminLimiter, (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  next();
+});
+
+// Permite receber JSON. Mantido em 1 MB para não interferir nas rotas existentes.
 app.use(express.json({ limit: "1mb" }));
 
 // --------- Static (site) ----------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "public")));
+const publicDir = path.join(__dirname, "public");
+
+// Admin HTML não é um segredo (a API é que precisa estar blindada), mas não
+// queremos indexação nem cache da página administrativa.
+app.get("/admin.html", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  return res.sendFile(path.join(publicDir, "admin.html"));
+});
+
+// Nega dotfiles e evita publicar arquivos ocultos acidentalmente.
+app.use(express.static(publicDir, {
+  dotfiles: "deny",
+  fallthrough: true
+}));
 
 // Google Search Console / SEO
 // Entrega o sitemap.xml explicitamente para evitar que outra rota/fallback intercepte.
@@ -3635,12 +3719,39 @@ async function verifyFirebaseToken(req, res, next) {
 
     const decodedToken = await auth.verifyIdToken(token);
     req.user = decodedToken;
+    req.firebaseToken = token;
     return next();
   } catch (err) {
-    console.warn("Firebase Auth inválido:", err?.message || err);
+    console.warn("Firebase Auth inválido:", err?.code || err?.message || err);
     return res.status(401).json({
       ok: false,
       error: "Token de autenticação inválido ou expirado."
+    });
+  }
+}
+
+// Para rotas administrativas fazemos verificação de revogação.
+// Assim, uma sessão administrativa revogada no Firebase deixa de ser aceita.
+async function verifyFirebaseAdminToken(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        error: "Autenticação administrativa necessária."
+      });
+    }
+
+    const decodedToken = await auth.verifyIdToken(token, true);
+    req.user = decodedToken;
+    req.firebaseToken = token;
+    return next();
+  } catch (err) {
+    console.warn("Token administrativo recusado:", err?.code || err?.message || err);
+    return res.status(401).json({
+      ok: false,
+      error: "Sessão administrativa inválida, expirada ou revogada."
     });
   }
 }
@@ -3683,19 +3794,46 @@ async function requirePremium(req, res, next) {
 }
 
 
-function getAdminEmails() {
+function csvSet(value) {
   return new Set(
-    String(process.env.ADMIN_EMAILS || "")
+    String(value || "")
       .split(",")
-      .map(email => email.trim().toLowerCase())
+      .map(item => item.trim())
       .filter(Boolean)
   );
 }
 
-function isAdminUser(decodedToken, profile = null) {
-  const email = String(decodedToken?.email || profile?.email || "").trim().toLowerCase();
+function getAdminEmails() {
+  return new Set(
+    [...csvSet(process.env.ADMIN_EMAILS)]
+      .map(email => email.toLowerCase())
+  );
+}
+
+function getAdminUids() {
+  return csvSet(process.env.ADMIN_UIDS);
+}
+
+function isAdminUser(decodedToken) {
+  if (!decodedToken?.uid) return false;
+
+  // 1) Melhor opção: Firebase Custom Claim definida pelo servidor.
+  if (decodedToken.admin === true) return true;
+
+  // 2) UID explícito no ambiente do Render.
+  const adminUids = getAdminUids();
+  if (adminUids.has(decodedToken.uid)) return true;
+
+  // 3) Compatibilidade com sua configuração atual por e-mail,
+  // mas somente quando o Firebase confirma que o e-mail foi verificado.
+  const email = String(decodedToken.email || "").trim().toLowerCase();
   const adminEmails = getAdminEmails();
-  return Boolean(profile?.admin === true || (email && adminEmails.has(email)));
+
+  return Boolean(
+    decodedToken.email_verified === true &&
+    email &&
+    adminEmails.has(email)
+  );
 }
 
 async function requireAdmin(req, res, next) {
@@ -3704,23 +3842,29 @@ async function requireAdmin(req, res, next) {
       return res.status(401).json({ ok: false, error: "Usuário não autenticado." });
     }
 
-    const snap = await db.collection("users").doc(req.user.uid).get();
-    const profile = snap.exists ? (snap.data() || {}) : {};
+    // NÃO confiamos mais em `users/{uid}.admin` para conceder acesso.
+    // Isso impede escalada de privilégio caso alguém tente manipular o Firestore.
+    if (!isAdminUser(req.user)) {
+      console.warn("Acesso admin negado:", {
+        uid: req.user.uid,
+        email: req.user.email || ""
+      });
 
-    if (!isAdminUser(req.user, profile)) {
       return res.status(403).json({
         ok: false,
-        error: "Acesso permitido somente para administradores."
+        error: "Acesso permitido somente para administradores autorizados."
       });
     }
 
-    req.adminProfile = profile;
+    const snap = await db.collection("users").doc(req.user.uid).get();
+    req.adminProfile = snap.exists ? (snap.data() || {}) : {};
+
     return next();
   } catch (err) {
     console.error("Erro ao validar administrador:", err?.message || err);
     return res.status(500).json({
       ok: false,
-      error: "Não foi possível validar o acesso administrativo."
+      error: "Não foi possível validar a permissão administrativa."
     });
   }
 }
@@ -3783,7 +3927,7 @@ async function saveAuthenticatedUser(decodedToken) {
 }
 
 // Recebe o ID token gerado pelo Firebase no navegador, valida e registra o usuário.
-app.post("/auth/firebase", async (req, res) => {
+app.post("/auth/firebase", loginLimiter, async (req, res) => {
   try {
     const bodyToken = String(req.body?.token || "").trim();
     const token = bodyToken || getBearerToken(req);
@@ -3806,7 +3950,7 @@ app.post("/auth/firebase", async (req, res) => {
         email: profile.email || decodedToken.email || "",
         foto: profile.foto || decodedToken.picture || "",
         premium: profile.premium === true,
-        admin: isAdminUser(decodedToken, profile)
+        admin: isAdminUser(decodedToken)
       }
     });
   } catch (err) {
@@ -3830,7 +3974,7 @@ app.get("/auth/me", verifyFirebaseToken, async (req, res) => {
         email: profile.email || req.user.email || "",
         foto: profile.foto || req.user.picture || "",
         premium: profile.premium === true,
-        admin: isAdminUser(req.user, profile)
+        admin: isAdminUser(req.user)
       }
     });
   } catch (err) {
@@ -3855,13 +3999,13 @@ app.get(
 
 // Presença real do usuário no app.
 // O navegador envia um heartbeat periódico enquanto a sessão está ativa.
-app.post("/auth/presence", verifyFirebaseToken, async (req, res) => {
+app.post("/auth/presence", presenceLimiter, verifyFirebaseToken, async (req, res) => {
   try {
     const ref = db.collection("users").doc(req.user.uid);
     await ref.set({
       lastSeen: FieldValue.serverTimestamp(),
-      paginaAtual: String(req.body?.path || "").slice(0, 180),
-      dispositivo: String(req.body?.device || req.headers["user-agent"] || "").slice(0, 300),
+      paginaAtual: String(req.body?.path || "").replace(/[\r\n\t]/g, "").slice(0, 180),
+      dispositivo: String(req.headers["user-agent"] || "").slice(0, 300),
       atualizadoEm: FieldValue.serverTimestamp()
     }, { merge: true });
 
@@ -3876,7 +4020,7 @@ app.post("/auth/presence", verifyFirebaseToken, async (req, res) => {
 // ADMIN — usuários e planos controlados pelo Firestore
 // Configure no Render: ADMIN_EMAILS=seuemail@gmail.com
 // =========================================================
-app.get("/admin/me", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.get("/admin/me", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   return res.json({
     ok: true,
     admin: true,
@@ -3889,7 +4033,7 @@ app.get("/admin/me", verifyFirebaseToken, requireAdmin, async (req, res) => {
   });
 });
 
-app.get("/admin/users", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.get("/admin/users", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit || 200), 1), 500);
     const search = String(req.query.search || "").trim().toLowerCase();
@@ -3917,14 +4061,22 @@ app.get("/admin/users", verifyFirebaseToken, requireAdmin, async (req, res) => {
   }
 });
 
-app.patch("/admin/users/:uid/plan", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.patch("/admin/users/:uid/plan", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   try {
     const uid = String(req.params.uid || "").trim();
-    const premium = req.body?.premium === true;
 
     if (!uid) {
       return res.status(400).json({ ok: false, error: "UID do usuário não enviado." });
     }
+
+    if (typeof req.body?.premium !== "boolean") {
+      return res.status(400).json({
+        ok: false,
+        error: "O campo premium precisa ser booleano (true ou false)."
+      });
+    }
+
+    const premium = req.body.premium;
 
     const ref = db.collection("users").doc(uid);
     const snap = await ref.get();
@@ -3936,9 +4088,19 @@ app.patch("/admin/users/:uid/plan", verifyFirebaseToken, requireAdmin, async (re
       premium,
       plano: premium ? "pro" : "free",
       planoAtualizadoEm: FieldValue.serverTimestamp(),
-      planoAtualizadoPor: req.user.email || req.user.uid,
+      planoAtualizadoPor: req.user.uid,
       atualizadoEm: FieldValue.serverTimestamp()
     }, { merge: true });
+
+    // Auditoria administrativa: registra quem mudou qual plano e quando.
+    await db.collection("admin_audit").add({
+      action: "user_plan_change",
+      targetUid: uid,
+      premium,
+      adminUid: req.user.uid,
+      adminEmail: req.user.email || "",
+      createdAt: FieldValue.serverTimestamp()
+    });
 
     const updated = await ref.get();
     return res.json({ ok: true, user: publicUserProfile(updated) });
@@ -3948,7 +4110,7 @@ app.patch("/admin/users/:uid/plan", verifyFirebaseToken, requireAdmin, async (re
   }
 });
 
-app.get("/admin/stats", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.get("/admin/stats", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   try {
     const snap = await db.collection("users").get();
     const users = snap.docs.map(publicUserProfile);
@@ -4000,7 +4162,7 @@ app.get("/admin/stats", verifyFirebaseToken, requireAdmin, async (req, res) => {
   }
 });
 
-app.get("/admin/online-users", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.get("/admin/online-users", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   try {
     const since = Date.now() - 2 * 60 * 1000;
     const snap = await db.collection("users").get();
@@ -4032,7 +4194,7 @@ app.get("/admin/online-users", verifyFirebaseToken, requireAdmin, async (req, re
   }
 });
 
-app.get("/admin/recent-activity", verifyFirebaseToken, requireAdmin, async (req, res) => {
+app.get("/admin/recent-activity", verifyFirebaseAdminToken, requireAdmin, async (req, res) => {
   try {
     const snap = await db.collection("users").get();
     const users = snap.docs.map(publicUserProfile);
