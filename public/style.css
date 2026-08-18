@@ -19270,3 +19270,16 @@ body.cpAuthModalOpen{
   border-right: 1px solid rgba(113, 240, 50, .48) !important;
   border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
 }
+
+/* =========================================================
+   CORNER PRO — PRIMEIRO JOGO IGUAL AOS DEMAIS
+   Remove somente o contorno/destaque verde extra da 1ª linha.
+   ========================================================= */
+.cpd3Rows .cpd3Row:first-child{
+  border-top: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .20) !important;
+}
