@@ -407,7 +407,7 @@
       return Array.isArray(arr)?arr:[];
     }
 
-    function applyWebEnginePayload(payload, sourceName="full"){
+    function applyWebEnginePayload(payload, sourceName="full", renderNow=true){
       if(!payload || typeof payload!=="object") return false;
       let changed=false;
       for(const market of ["corners","goals","cards","handicap","btts"]){
@@ -429,7 +429,7 @@
         state.engines[market]=mergeLists(state.engines[market]||[],incoming);
         changed=true;
       }
-      if(changed) render();
+      if(changed && renderNow) render();
       console.info(`[Corner Pro WEB IA] ${sourceName}`,{
         corners:state.engines.corners.length,
         goals:state.engines.goals.length,
@@ -483,7 +483,7 @@
         .catch(err=>console.warn("[Corner Pro WEB IA full]",err?.message||err));
     }
 
-    setTimeout(()=>loadDesktopAiEngines(todayManaus()),250);
+    // WEB V22: o carregamento visual é centralizado em load().
 
     function source(){
       // SEMPRE parte de todos os jogos-base.
@@ -820,13 +820,13 @@
       }
     }
   
-    function applyBase(payload){
+    function applyBase(payload, renderNow=true){
       const arr=extract(payload);
       if(!arr.length) return false;
-  
+
       state.games=mergeLists(state.games,arr);
       window.__cornerProAllGames=state.games.slice();
-      render();
+      if(renderNow) render();
       return true;
     }
   
@@ -918,61 +918,77 @@
   
     async function load(){
       renderControls();
-  
+
       const rows=$("#cpd3Rows");
-      if(rows) rows.innerHTML='<div class="cpd3Loading">CARREGANDO JOGOS REAIS DO DIA...</div>';
-  
+      if(rows){
+        rows.innerHTML='<div class="cpd3Loading">CARREGANDO JOGOS E ANÁLISE DA IA...</div>';
+      }
+
+      // Semente de cache sem desenhar tabela antes da IA.
       if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
         state.games=mergeLists(state.games,window.__cornerProAllGames);
-        render();
       }
-  
+
       const date=todayManaus();
       const stamp=Date.now();
-  
-      // 1) FONTE PRINCIPAL — /mercados.
-      // Seu server retorna diretamente buildMarketGamesList().
+
+      // 1) Jogos-base, silencioso.
       try{
-        const payload=await getJson(`/mercados?date=${encodeURIComponent(date)}&_webv10=${stamp}`,24000);
-        applyBase(payload);
+        const payload=await getJson(
+          `/mercados?date=${encodeURIComponent(date)}&_webv22=${stamp}`,
+          24000
+        );
+        applyBase(payload,false);
       }catch(err){
-        console.warn("[CP WEB V10 /mercados]",err?.message||err);
+        console.warn("[CP WEB V22 /mercados]",err?.message||err);
       }
-  
-      // 2) FALLBACK — /quentes fast.
+
       if(!state.games.length){
         try{
-          const payload=await getJson(`/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=39`,16000);
-          applyBase(payload);
+          const payload=await getJson(
+            `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=39`,
+            16000
+          );
+          applyBase(payload,false);
         }catch(err){
-          console.warn("[CP WEB V10 /quentes]",err?.message||err);
+          console.warn("[CP WEB V22 /quentes]",err?.message||err);
         }
       }
-  
-      // 3) MERCADOS IA em background. Nunca bloqueiam a tabela-base.
-      getJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_webv10=${stamp}`,24000)
-        .then(applyEngines)
-        .catch(err=>console.warn("[CP WEB V10 fast engines]",err?.message||err));
-  
-      getJson(`/market_engines?date=${encodeURIComponent(date)}&_webv10=${stamp}`,60000)
-        .then(applyEngines)
-        .catch(err=>console.warn("[CP WEB V10 full engines]",err?.message||err));
-  
+
+      // 2) IA de cantos: espera terminar antes de exibir a tabela.
+      try{
+        const cornersPayload=await webGetJson(
+          `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=21`,
+          33000
+        );
+        applyWebEnginePayload(cornersPayload,"corners-web",false);
+      }catch(err){
+        console.warn("[CP WEB V22 corners IA]",err?.message||err);
+      }
+
       state.loading=false;
+
+      // ÚNICA renderização inicial: jogos + IA já prontos.
       render();
-  
-      // 4) Ponte com qualquer outro módulo já existente, SEM apagar nada.
-      let count=0;
-      const bridge=setInterval(()=>{
-        count++;
-        if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
-          state.games=mergeLists(state.games,window.__cornerProAllGames);
-          render();
-        }
-        if(count>=120) clearInterval(bridge);
-      },1000);
+
+      // 3) Outros motores são pré-carregados em memória, sem redesenhar a tela.
+      Promise.allSettled([
+        webGetJson(
+          `/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
+          24000
+        ).then(payload=>applyWebEnginePayload(payload,"fast",false)),
+        webGetJson(
+          `/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
+          60000
+        ).then(payload=>applyWebEnginePayload(payload,"full",false))
+      ]).then(()=>{
+        console.info("[Corner Pro WEB V22] motores secundários prontos");
+      });
+
+      // Removida a ponte antiga de 1 segundo que re-renderizava e
+      // podia trocar a decisão exibida depois do primeiro carregamento.
     }
-  
+
     document.addEventListener("click",event=>{
       if(!mq.matches) return;
   
@@ -981,7 +997,9 @@
         event.preventDefault();
         state.market=market.dataset.cpd3Market;
         state.sub="all";
-        state.line="TODOS";
+        state.line=["corners","goals","cards","handicap","btts"].includes(state.market)
+          ? "IA"
+          : "TODOS";
         state.limit=8;
         render();
         return;

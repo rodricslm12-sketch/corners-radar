@@ -19203,3 +19203,15 @@ body.cpAuthModalOpen{
     white-space:nowrap;
   }
 }
+
+/* WEB V22 — carregamento único */
+@media (min-width:981px){
+  .cpd3Loading{
+    min-height:170px;
+    display:grid;
+    place-items:center;
+    color:#9eaba6;
+    font-weight:900;
+    letter-spacing:.25px;
+  }
+}
