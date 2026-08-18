@@ -327,6 +327,73 @@
       return [...map.values()];
     }
   
+
+    // WEB V14 — IA REAL DOS MERCADOS NO DESKTOP
+    let __cpWebAiLoadToken = 0;
+
+    function webEngineArray(payload, market){
+      if(!payload || typeof payload!=="object") return [];
+      const arr=extract(payload?.[market]);
+      return Array.isArray(arr)?arr:[];
+    }
+
+    function applyWebEnginePayload(payload, sourceName="full"){
+      if(!payload || typeof payload!=="object") return false;
+      let changed=false;
+      for(const market of ["corners","goals","cards","handicap","btts"]){
+        const incoming=webEngineArray(payload,market);
+        if(!incoming.length) continue;
+        state.engines[market]=mergeLists(state.engines[market]||[],incoming);
+        changed=true;
+      }
+      if(changed) render();
+      console.info(`[Corner Pro WEB IA] ${sourceName}`,{
+        corners:state.engines.corners.length,
+        goals:state.engines.goals.length,
+        cards:state.engines.cards.length,
+        handicap:state.engines.handicap.length,
+        btts:state.engines.btts.length
+      });
+      return changed;
+    }
+
+    async function webGetJson(url,timeoutMs=20000){
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),timeoutMs);
+      try{
+        const response=await fetch(url,{
+          cache:"no-store",
+          signal:controller.signal,
+          headers:{"Accept":"application/json"}
+        });
+        if(!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        return await response.json();
+      }finally{ clearTimeout(timer); }
+    }
+
+    function loadDesktopAiEngines(date=todayManaus()){
+      const token=++__cpWebAiLoadToken;
+      const stamp=Date.now();
+
+      // Primeira decisão rápida para Ambas + Handicap.
+      webGetJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,22000)
+        .then(payload=>{
+          if(token!==__cpWebAiLoadToken) return;
+          applyWebEnginePayload(payload,"fast");
+        })
+        .catch(err=>console.warn("[Corner Pro WEB IA fast]",err?.message||err));
+
+      // Motor completo para Escanteios, Gols, Cartões, Handicap e Ambas.
+      webGetJson(`/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,45000)
+        .then(payload=>{
+          if(token!==__cpWebAiLoadToken) return;
+          applyWebEnginePayload(payload,"full");
+        })
+        .catch(err=>console.warn("[Corner Pro WEB IA full]",err?.message||err));
+    }
+
+    setTimeout(()=>loadDesktopAiEngines(todayManaus()),250);
+
     function source(){
       // SEMPRE parte de todos os jogos-base.
       // O engine só injeta a IA no jogo correspondente.
