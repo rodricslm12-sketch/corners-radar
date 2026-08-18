@@ -19115,3 +19115,32 @@ body.cpAuthModalOpen{
   45%{filter:brightness(1.22)}
   100%{filter:brightness(1)}
 }
+
+
+/* CORNER PRO WEB V12 — Match Center direto */
+@media (min-width:981px){
+  .cpV12McHead,.cpV12McStats,.cpV12McEvents{border-color:rgba(99,241,39,.16)!important}
+  .cpV12McLeague{margin:7px 0 11px;color:#8e999d;font-size:9px;text-align:center}
+  .cpV12McTeams{display:grid;grid-template-columns:1fr 42px 1fr;align-items:center;gap:6px;margin:16px 0;text-align:center}
+  .cpV12McTeams strong{font-size:12px}
+  .cpV12McTeams em{font-style:normal;color:#63f127;font-weight:950}
+  .cpV12McScore{display:grid;grid-template-columns:1fr 66px 1fr;align-items:center;gap:7px;text-align:center}
+  .cpV12McScore>div strong{display:block;font-size:11px}.cpV12McScore>div small{display:block;margin-top:3px;color:#738083;font-size:7px}
+  .cpV12McScore>b{font-size:21px;color:#fff}
+  .cpV12McStats h3,.cpV12McEvents h3{margin:0 0 9px;font-size:10px}
+  .cpV12McMetric{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:6px;min-height:28px;border-top:1px solid #16252a;text-align:center}
+  .cpV12McMetric strong{font-size:11px;color:#fff}.cpV12McMetric span{font-size:8px;color:#8f9a9c}
+  .cpV12McEvents p{margin:0;padding:7px 0;border-top:1px solid #16252a;color:#9aa5a7;font-size:8px}
+  .cpV12McEvents p b{color:#63f127;margin-right:5px}
+  .cpV12McMuted{color:#758083!important}
+  .cpV12McError{margin:12px 0 0;color:#ff8e8e;font-size:9px;line-height:1.4;text-align:center}
+  .cpV12McLoading{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;color:#9da7a8;font-size:9px}
+  .cpV12McLoading i{width:14px;height:14px;border:2px solid #24352e;border-top-color:#63f127;border-radius:50%;animation:cpV12Spin .7s linear infinite}
+}
+@keyframes cpV12Spin{to{transform:rotate(360deg)}}
+
+@media (min-width:981px){
+  .cpd3Start.is-live{color:#ff6259!important;font-weight:950!important}
+  .cpd3Start.is-live:before{background:#ff3d35!important;box-shadow:0 0 10px rgba(255,61,53,.8)!important}
+  .cpd3Start.is-finished{color:#7f8b8e!important;font-weight:850!important}
+}

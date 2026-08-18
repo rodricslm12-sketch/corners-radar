@@ -11304,6 +11304,124 @@ function mcNormalizeEvents(event) {
   return output;
 }
 
+
+
+// =========================================================
+// WEB V13 — STATUS AO VIVO LEVE
+// PRÉ-JOGO / AO VIVO / INTERVALO / FIM em tempo real.
+// =========================================================
+app.get("/market_live_status", async (req, res) => {
+  const date = cleanText(req.query.date || toISODate());
+
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+
+  try {
+    const events = await withTimeout(
+      apiGetFreshAny({
+        action: "get_events",
+        from: date,
+        to: date,
+        timezone: API_TIMEZONE
+      }),
+      15000,
+      "status ao vivo"
+    );
+
+    const games = (Array.isArray(events) ? events : [])
+      .map(event => {
+        const matchId = cleanText(
+          event?.match_id ??
+          event?.event_key ??
+          event?.event_id ??
+          event?.id ??
+          ""
+        );
+        if (!matchId) return null;
+
+        const statusRaw = cleanText(
+          event?.match_status ??
+          event?.status ??
+          event?.event_status ??
+          ""
+        );
+
+        const statusText = String(statusRaw).trim().toLowerCase();
+
+        let minute = Number(
+          event?.match_minute ??
+          event?.minute ??
+          event?.elapsed ??
+          event?.match_elapsed ??
+          NaN
+        );
+
+        if (!Number.isFinite(minute)) {
+          const m = statusText.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
+          if (m) {
+            minute = Number(m[1]) + (m[2] ? Number(m[2]) : 0);
+          }
+        }
+
+        const finished =
+          /finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(statusText);
+
+        const halftime =
+          !finished &&
+          /half.?time|\bht\b|interval|break/.test(statusText);
+
+        const live =
+          !finished &&
+          (
+            halftime ||
+            /live|ao vivo|1st|2nd|in play/.test(statusText) ||
+            (Number.isFinite(minute) && minute > 0)
+          );
+
+        const homeScore = Number(
+          event?.match_hometeam_score ??
+          event?.home_score ??
+          event?.score_home ??
+          NaN
+        );
+
+        const awayScore = Number(
+          event?.match_awayteam_score ??
+          event?.away_score ??
+          event?.score_away ??
+          NaN
+        );
+
+        return {
+          match_id: matchId,
+          match_status: statusRaw,
+          status: statusRaw,
+          minute: Number.isFinite(minute) ? minute : null,
+          live,
+          halftime,
+          finished,
+          score_home: Number.isFinite(homeScore) ? homeScore : null,
+          score_away: Number.isFinite(awayScore) ? awayScore : null
+        };
+      })
+      .filter(Boolean);
+
+    return res.json({
+      ok: true,
+      date,
+      generated_at: new Date().toISOString(),
+      games
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: "Falha ao atualizar status ao vivo",
+      details: String(error?.message || error)
+    });
+  }
+});
+
 app.get("/match_center", async (req, res) => {
   const matchId = cleanText(req.query.match_id || req.query.event_id || "");
   if (!matchId) return res.status(400).json({ error: "match_id obrigatório" });

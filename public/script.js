@@ -217,8 +217,16 @@
       const minute=num(g?.minute,r?.minute,r?.match_minute,r?.elapsed,r?.event_raw?.match_minute);
       const hs=num(g?.score_home,r?.score_home,r?.match_hometeam_score,r?.home_score,r?.event_raw?.match_hometeam_score);
       const as=num(g?.score_away,r?.score_away,r?.match_awayteam_score,r?.away_score,r?.event_raw?.match_awayteam_score);
-      const finished=/finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(s);
-      const halftime=/half.?time|\bht\b|interval|break/.test(s);
+      const finished=
+        Boolean(g?.finished ?? r?.finished) ||
+        /finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(s);
+
+      const halftime=
+        !finished &&
+        (
+          Boolean(g?.halftime ?? r?.halftime) ||
+          /half.?time|\bht\b|interval|break/.test(s)
+        );
 
       const minuteFromStatus=(()=>{
         const m=s.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
@@ -227,7 +235,14 @@
       })();
 
       const realMinute=minute!==null ? minute : minuteFromStatus;
-      const live=!finished&&(halftime||/live|ao vivo|1st|2nd|in play/.test(s)||(realMinute!==null&&realMinute>0));
+      const live=
+        !finished &&
+        (
+          Boolean(g?.live ?? r?.live) ||
+          halftime ||
+          /live|ao vivo|1st|2nd|in play/.test(s) ||
+          (realMinute!==null&&realMinute>0)
+        );
       let label="PRÉ-JOGO";
       if(finished) label="FIM";
       else if(halftime) label="INTERVALO";
@@ -602,6 +617,71 @@
       return true;
     }
   
+    function applyLiveStatus(payload){
+      const liveRows=Array.isArray(payload?.games) ? payload.games : [];
+      if(!liveRows.length) return false;
+
+      const byId=new Map(
+        liveRows
+          .map(item=>[String(item?.match_id ?? ""),item])
+          .filter(([id])=>id)
+      );
+
+      let changed=false;
+
+      state.games=state.games.map(game=>{
+        const gid=String(key(game));
+        const live=byId.get(gid);
+        if(!live) return game;
+
+        const r=raw(game);
+
+        changed=true;
+
+        return {
+          ...game,
+          match_status: live.match_status ?? live.status ?? game?.match_status,
+          status: live.status ?? live.match_status ?? game?.status,
+          minute: live.minute ?? game?.minute,
+          live: Boolean(live.live),
+          halftime: Boolean(live.halftime),
+          finished: Boolean(live.finished),
+          score_home: live.score_home ?? game?.score_home,
+          score_away: live.score_away ?? game?.score_away,
+          raw:{
+            ...r,
+            match_status: live.match_status ?? live.status ?? r?.match_status,
+            status: live.status ?? live.match_status ?? r?.status,
+            minute: live.minute ?? r?.minute,
+            match_minute: live.minute ?? r?.match_minute,
+            elapsed: live.minute ?? r?.elapsed,
+            live: Boolean(live.live),
+            halftime: Boolean(live.halftime),
+            finished: Boolean(live.finished),
+            score_home: live.score_home ?? r?.score_home,
+            score_away: live.score_away ?? r?.score_away,
+            match_hometeam_score: live.score_home ?? r?.match_hometeam_score,
+            match_awayteam_score: live.score_away ?? r?.match_awayteam_score,
+            event_raw:{
+              ...(r?.event_raw || {}),
+              match_status: live.match_status ?? live.status ?? r?.event_raw?.match_status,
+              status: live.status ?? live.match_status ?? r?.event_raw?.status,
+              match_minute: live.minute ?? r?.event_raw?.match_minute,
+              match_hometeam_score: live.score_home ?? r?.event_raw?.match_hometeam_score,
+              match_awayteam_score: live.score_away ?? r?.event_raw?.match_awayteam_score
+            }
+          }
+        };
+      });
+
+      if(changed){
+        window.__cornerProAllGames=state.games.slice();
+        render();
+      }
+
+      return changed;
+    }
+
     function applyEngines(payload){
       if(!payload || typeof payload!=="object") return false;
       let changed=false;
@@ -790,13 +870,21 @@
       if(!$("#cpDesktopExperienceV3")) return;
       renderControls();
       load();
-      setInterval(async()=>{
+      const refreshLiveStatus=async()=>{
         try{
           const date=todayManaus();
-          const payload=await getJson(`/mercados?date=${encodeURIComponent(date)}&_live=${Date.now()}`,18000);
-          applyBase(payload);
-        }catch(err){ console.warn("[CP WEB V11 live refresh]",err?.message||err); }
-      },45000);
+          const payload=await getJson(
+            `/market_live_status?date=${encodeURIComponent(date)}&_live=${Date.now()}`,
+            18000
+          );
+          applyLiveStatus(payload);
+        }catch(err){
+          console.warn("[CP WEB V13 live status]",err?.message||err);
+        }
+      };
+
+      refreshLiveStatus();
+      setInterval(refreshLiveStatus,20000);
     }
   
     if(document.readyState==="loading"){
@@ -23944,3 +24032,269 @@
       start();
     }
   })();
+
+/* =========================================================
+   CORNER PRO WEB V12 — MATCH CENTER FINAL / DESKTOP
+   Este bloco fica NO FINAL do script para não ser sobrescrito
+   pelos vários módulos legados existentes no arquivo.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__cpDesktopMatchCenterV12Installed) return;
+  window.__cpDesktopMatchCenterV12Installed = true;
+
+  const desktop = () =>
+    window.matchMedia && window.matchMedia("(min-width:981px)").matches;
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+  }[ch]));
+
+  const clean = (v, fallback="") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined","null","NaN"].includes(s) ? s : fallback;
+  };
+
+  const norm = (v) => String(v ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+
+  const raw = (g) => g?.raw || g || {};
+
+  function home(g){
+    const r=raw(g);
+    return clean(g?.casa ?? g?.home ?? r?.casa ?? r?.home ??
+      r?.match_hometeam_name ?? r?.event_home_team, "Casa");
+  }
+
+  function away(g){
+    const r=raw(g);
+    return clean(g?.fora ?? g?.away ?? r?.fora ?? r?.away ??
+      r?.match_awayteam_name ?? r?.event_away_team, "Fora");
+  }
+
+  function gameId(g){
+    const r=raw(g);
+    return clean(
+      g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? g?.id ??
+      r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id,
+      ""
+    );
+  }
+
+  function localKey(g){
+    const r=raw(g);
+    const t=clean(g?.hora ?? g?.time ?? r?.hora ?? r?.match_time ?? "");
+    return `${norm(home(g))}|${norm(away(g))}|${t}`;
+  }
+
+  function findDesktopGame(button){
+    const wanted=String(button?.dataset?.cpd3Open ?? "");
+    const games=Array.isArray(window.__cornerProAllGames)
+      ? window.__cornerProAllGames
+      : [];
+
+    let game=games.find(g =>
+      String(gameId(g))===wanted ||
+      String(localKey(g))===wanted
+    );
+
+    if(game) return game;
+
+    const row=button?.closest?.("[data-cpd3-game]");
+    const rowKey=String(row?.dataset?.cpd3Game ?? "");
+    game=games.find(g =>
+      String(gameId(g))===rowKey ||
+      String(localKey(g))===rowKey
+    );
+
+    return game || window.__selectedMatchCenterGame || null;
+  }
+
+  function pair(data, name){
+    const block=data?.[name] || {};
+    return {
+      home: clean(block?.home, "—"),
+      away: clean(block?.away, "—")
+    };
+  }
+
+  function statusLabel(data, fallbackGame){
+    if(data?.finished) return "ENCERRADO";
+    const s=String(data?.status ?? data?.status_raw ?? "").toLowerCase();
+    if(/half.?time|\bht\b|interval/.test(s)) return "INTERVALO";
+    if(data?.live) return data?.minute ? `AO VIVO • ${data.minute}'` : "AO VIVO";
+
+    const r=raw(fallbackGame);
+    const fs=String(
+      fallbackGame?.match_status ?? fallbackGame?.status ??
+      r?.match_status ?? r?.status ?? ""
+    ).toLowerCase();
+
+    if(/finished|full.?time|\bft\b|encerr|finaliz|ended/.test(fs)) return "ENCERRADO";
+    if(/half.?time|\bht\b|interval/.test(fs)) return "INTERVALO";
+
+    const minute=Number(r?.minute ?? r?.match_minute ?? r?.elapsed);
+    if(Number.isFinite(minute) && minute>0) return `AO VIVO • ${Math.round(minute)}'`;
+
+    const m=fs.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
+    if(m){
+      const min=Number(m[1])+(m[2]?Number(m[2]):0);
+      return `AO VIVO • ${min}'`;
+    }
+
+    return "PRÉ-JOGO";
+  }
+
+  function metric(label, values){
+    return `<div class="cpV12McMetric">
+      <strong>${esc(values.home)}</strong>
+      <span>${esc(label)}</span>
+      <strong>${esc(values.away)}</strong>
+    </div>`;
+  }
+
+  function renderLoading(rail, game){
+    const matchId=gameId(game);
+    rail.innerHTML=`
+      <section class="railCard cpV12McHead">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>CARREGANDO</b></div>
+        <div class="cpV12McTeams">
+          <strong>${esc(home(game))}</strong><em>VS</em><strong>${esc(away(game))}</strong>
+        </div>
+        <div class="cpV12McLoading"><i></i><span>Buscando estatísticas reais da partida...</span></div>
+        ${!matchId?'<p class="cpV12McError">Esta partida não trouxe match_id no feed.</p>':""}
+      </section>`;
+  }
+
+  function renderError(rail, game, message){
+    rail.innerHTML=`
+      <section class="railCard cpV12McHead">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(statusLabel(null,game))}</b></div>
+        <div class="cpV12McTeams">
+          <strong>${esc(home(game))}</strong><em>VS</em><strong>${esc(away(game))}</strong>
+        </div>
+        <p class="cpV12McError">${esc(message)}</p>
+      </section>`;
+  }
+
+  function renderData(rail, data, game){
+    const corners=pair(data,"corners");
+    const shots=pair(data,"shots");
+    const target=pair(data,"shots_on_target");
+    const possession=pair(data,"possession");
+    const attacks=pair(data,"dangerous_attacks");
+    const passes=pair(data,"passes");
+    const fouls=pair(data,"fouls");
+    const cards=pair(data,"yellow_cards");
+
+    const h=clean(data?.home,home(game));
+    const a=clean(data?.away,away(game));
+    const league=clean(data?.league,clean(game?.liga ?? raw(game)?.liga,"Liga"));
+    const time=clean(data?.time,clean(game?.hora ?? raw(game)?.match_time,"—"));
+    const status=statusLabel(data,game);
+    const hs=clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score,"0");
+    const as=clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score,"0");
+
+    const events=Array.isArray(data?.events) ? data.events.slice(-6) : [];
+
+    rail.innerHTML=`
+      <section class="railCard cpV12McHead">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(status)}</b></div>
+        <div class="cpV12McLeague">${esc(league)} • ${esc(time)}</div>
+        <div class="cpV12McScore">
+          <div><strong>${esc(h)}</strong><small>CASA</small></div>
+          <b>${esc(hs)} - ${esc(as)}</b>
+          <div><strong>${esc(a)}</strong><small>FORA</small></div>
+        </div>
+      </section>
+
+      <section class="railCard cpV12McStats">
+        <h3>ESTATÍSTICAS DA PARTIDA</h3>
+        ${metric("Escanteios",corners)}
+        ${metric("Finalizações",shots)}
+        ${metric("No alvo",target)}
+        ${metric("Posse",possession)}
+        ${metric("Ataques perigosos",attacks)}
+        ${metric("Passes",passes)}
+        ${metric("Faltas",fouls)}
+        ${metric("Cartões",cards)}
+      </section>
+
+      <section class="railCard cpV12McEvents">
+        <h3>EVENTOS / LEITURA</h3>
+        ${events.length
+          ? `<div>${events.map(e=>`<p><b>${esc(e?.minute ?? "")}${e?.minute?"'":""}</b> ${esc(e?.label ?? e?.type ?? "Evento")}</p>`).join("")}</div>`
+          : `<p class="cpV12McMuted">Nenhum evento detalhado disponível.</p>`
+        }
+      </section>
+    `;
+  }
+
+  async function openMatchCenterV12(game){
+    const rail=document.getElementById("desktopMatchRail");
+    if(!rail || !game) return;
+
+    window.__selectedMatchCenterGame=game;
+    window.__selectedMatchCenterKey=String(gameId(game) || localKey(game));
+
+    rail.style.display="flex";
+    rail.style.visibility="visible";
+    rail.style.opacity="1";
+
+    renderLoading(rail,game);
+
+    const matchId=gameId(game);
+    if(!matchId){
+      renderError(rail,game,"Não foi possível abrir as estatísticas porque este jogo não possui match_id.");
+      return;
+    }
+
+    try{
+      const response=await fetch(
+        `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&t=${Date.now()}`,
+        {cache:"no-store",headers:{"Cache-Control":"no-cache","Accept":"application/json"}}
+      );
+
+      const data=await response.json().catch(()=>null);
+
+      if(!response.ok || !data || data?.error){
+        throw new Error(data?.error || `HTTP ${response.status}`);
+      }
+
+      renderData(rail,data,game);
+    }catch(error){
+      console.error("[CP WEB V12 Match Center]",error);
+      renderError(
+        rail,
+        game,
+        `Não foi possível carregar as estatísticas desta partida: ${error?.message || "erro desconhecido"}.`
+      );
+    }
+  }
+
+  window.cpOpenDesktopMatchCenterV12=openMatchCenterV12;
+
+  document.addEventListener("click",event=>{
+    if(!desktop()) return;
+
+    const button=event.target?.closest?.("[data-cpd3-open]");
+    if(!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    const game=findDesktopGame(button);
+    if(!game){
+      const rail=document.getElementById("desktopMatchRail");
+      if(rail){
+        rail.innerHTML=`<section class="railCard"><div class="railTitle"><span>▣ MATCH CENTER</span><b>ERRO</b></div><p class="cpV12McError">Não consegui localizar esta partida na lista carregada.</p></section>`;
+      }
+      return;
+    }
+
+    openMatchCenterV12(game);
+  },true);
+})();
