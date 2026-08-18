@@ -22,27 +22,27 @@
     const MARKET = {
       corners: {
         label:"ESCANTEIOS",
-        lines:["TODOS","8.5","9.5","10.5","11.5","12.5"],
+        lines:["IA","TODOS","8.5","9.5","10.5","11.5","12.5"],
         subs:[["TOTAL DE ESCANTEIOS","all"],["1º TEMPO","ht"],["2º TEMPO","2h"],["LINHAS ALTERNATIVAS","alt"]]
       },
       goals: {
         label:"GOLS",
-        lines:["TODOS","1.5","2.5","3.5","4.5"],
+        lines:["IA","TODOS","1.5","2.5","3.5","4.5"],
         subs:[["TOTAL DE GOLS","all"],["1º TEMPO","ht"],["2º TEMPO","2h"]]
       },
       cards: {
         label:"CARTÕES",
-        lines:["TODOS","2.5","3.5","4.5","5.5"],
+        lines:["IA","TODOS","2.5","3.5","4.5","5.5"],
         subs:[["TOTAL DE CARTÕES","all"],["CASA","home"],["FORA","away"]]
       },
       handicap: {
         label:"HANDICAP",
-        lines:["TODOS","-2.0","-1.5","-1.0","-0.5","0.0","+0.5","+1.0","+1.5","+2.0"],
+        lines:["IA","TODOS","-2.0","-1.5","-1.0","-0.5","0.0","+0.5","+1.0","+1.5","+2.0"],
         subs:[["HANDICAP ASIÁTICO","all"],["CASA","home"],["FORA","away"]]
       },
       btts: {
         label:"AMBAS MARCAM",
-        lines:["TODOS","SIM","NÃO"],
+        lines:["IA","TODOS","SIM","NÃO"],
         subs:[["TODOS","all"],["SIM","yes"],["NÃO","no"]]
       },
       result:{label:"RESULTADO",lines:["TODOS","CASA","EMPATE","FORA"],subs:[["1X2","all"],["CASA","home"],["EMPATE","draw"],["FORA","away"]]},
@@ -53,7 +53,7 @@
   
     const state = {
       market:"corners",
-      line:"10.5",
+      line:"IA",
       sub:"all",
       games:[],
       engines:{corners:[],goals:[],cards:[],handicap:[],btts:[],result:[],doublechance:[],teamgoals:[],builder:[]},
@@ -401,6 +401,17 @@
     }
   
     function matchesLine(g){
+      if(state.line==="IA"){
+        if(!["corners","goals","cards","handicap","btts"].includes(state.market)) return true;
+        const d=decision(g,state.market);
+        const line=clean(d?.line,"").toUpperCase();
+        const pending=Boolean(d?.updating) ||
+          !line ||
+          line==="DADOS EM ATUALIZAÇÃO" ||
+          line==="ANALISANDO PARTIDA";
+        return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
+      }
+
       if(state.line==="TODOS") return true;
   
       if(state.market==="btts"){
@@ -557,6 +568,9 @@
     function title(){
       const c=MARKET[state.market];
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
+      if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
+        return `✦ IA • MELHORES SUGESTÕES DE ${c.label}`;
+      }
       if(state.market==="btts") return `${state.line==="TODOS"?"AMBAS MARCAM":state.line} • TODOS OS JOGOS`;
       if(state.market==="result"||state.market==="doublechance") return `${c.label}${state.line==="TODOS"?"":` • ${state.line}`} • TODOS OS JOGOS`;
       if(state.market==="teamgoals"){

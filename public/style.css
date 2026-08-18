@@ -19144,3 +19144,18 @@ body.cpAuthModalOpen{
   .cpd3Start.is-live:before{background:#ff3d35!important;box-shadow:0 0 10px rgba(255,61,53,.8)!important}
   .cpd3Start.is-finished{color:#7f8b8e!important;font-weight:850!important}
 }
+
+/* WEB V15 — botão IA ativo nos mercados desktop */
+@media (min-width:981px){
+  #cpd3LineNav [data-cpd3-line="IA"]{
+    border:1px solid rgba(99,241,39,.5);
+    font-weight:950;
+    letter-spacing:.2px;
+  }
+  #cpd3LineNav [data-cpd3-line="IA"]::before{
+    content:"✦ ";
+  }
+  #cpd3LineNav [data-cpd3-line="IA"].active{
+    box-shadow:0 0 18px rgba(99,241,39,.14);
+  }
+}
