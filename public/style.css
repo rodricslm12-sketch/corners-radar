@@ -19231,3 +19231,21 @@ body.cpAuthModalOpen{
     z-index:99999;
   }
 }
+
+
+/* WEB V26 — calendário desktop oficial */
+@media (min-width:981px){
+  #topCalendarDropdown{
+    position:fixed !important;
+    z-index:2147483000 !important;
+    pointer-events:none;
+    opacity:0;
+    visibility:hidden;
+  }
+  #topCalendarDropdown.is-open{
+    pointer-events:auto;
+    opacity:1;
+    visibility:visible;
+    display:block !important;
+  }
+}

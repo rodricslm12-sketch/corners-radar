@@ -935,7 +935,15 @@
         state.games=mergeLists(state.games,window.__cornerProAllGames);
       }
 
-      const date=todayManaus();
+      const inputDate=$("#date")?.value;
+      const urlDate=new URLSearchParams(window.location.search).get("date");
+      const date=/^\d{4}-\d{2}-\d{2}$/.test(String(inputDate||""))
+        ? String(inputDate)
+        : /^\d{4}-\d{2}-\d{2}$/.test(String(urlDate||""))
+          ? String(urlDate)
+          : todayManaus();
+
+      if($("#date")) $("#date").value=date;
       const stamp=Date.now();
 
       // 1) Jogos-base, silencioso.
@@ -15254,7 +15262,10 @@
     
           if (!btnCalendario || !calendarModal || !calendarDays) return;
     
-          const MONTHS = [
+          
+          // WEB V26: no desktop usamos somente o dropdown da topbar.
+          if (window.innerWidth > 980) return;
+const MONTHS = [
             "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
             "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
           ];
@@ -15596,7 +15607,7 @@
           btn.addEventListener("mouseleave", closeSoon);
           btn.addEventListener("click", (e) => {
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             if(drop.classList.contains("is-open")){
               btn.classList.remove("is-open");
               drop.classList.remove("is-open");
