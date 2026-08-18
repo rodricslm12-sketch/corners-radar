@@ -301,7 +301,12 @@
         return line;
       }
 
-      if(["corners","goals","cards"].includes(market)){
+      if(market==="corners"){
+        if(/^UNDER\b/.test(line)) return "SEM ENTRADA";
+        return line || "—";
+      }
+
+      if(["goals","cards"].includes(market)){
         return line || "—";
       }
 
@@ -438,6 +443,14 @@
           !line ||
           line==="DADOS EM ATUALIZAÇÃO" ||
           line==="ANALISANDO PARTIDA";
+
+        // WEB V18 — Escanteios no modo IA é exclusivamente OVER.
+        // Se o motor antigo devolver UNDER 9.5/10.5/11.5, o desktop
+        // trata como "sem entrada" em vez de exibir a sugestão.
+        if(state.market==="corners" && /^UNDER\b/.test(line)){
+          return false;
+        }
+
         return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
       }
 
@@ -598,6 +611,9 @@
       const c=MARKET[state.market];
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
+        if(state.market==="corners"){
+          return `✦ IA • MELHORES OVERS DE ESCANTEIOS`;
+        }
         return `✦ IA • LINHA ESCOLHIDA AUTOMATICAMENTE • ${c.label}`;
       }
       if(state.market==="btts") return `${state.line==="TODOS"?"AMBAS MARCAM":state.line} • TODOS OS JOGOS`;
