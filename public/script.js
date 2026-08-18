@@ -1177,36 +1177,190 @@
       }
     
       function matchesLine(g){
+        // A linha manual não deve zerar a tela.
+        // A seleção real será feita por pontuação/ranking em list().
         if(state.line==="IA"){
           if(!["corners","goals","cards","handicap","btts"].includes(state.market)) return true;
           const d=decision(g,state.market);
           const line=clean(d?.line,"").toUpperCase();
-          const pending=Boolean(d?.updating) || !line ||
-            line==="DADOS EM ATUALIZAÇÃO" || line==="ANALISANDO PARTIDA";
+          const pending=Boolean(d?.updating) ||
+            !line ||
+            line==="DADOS EM ATUALIZAÇÃO" ||
+            line==="ANALISANDO PARTIDA";
 
-          if(state.market==="corners") return desktopCornersAiRecommendation(g).valid;
+          if(state.market==="corners"){
+            return desktopCornersAiRecommendation(g).valid;
+          }
+
           return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
         }
 
-        // IMPORTANTE:
-        // Nos botões manuais (8.5, 10.5, 3.5, handicap etc.) NÃO eliminamos
-        // partidas da tabela. A linha escolhida muda o MERCADO exibido/analisado.
-        // Isso evita "0 jogos" quando a projeção está abaixo da linha.
         return true;
       }
 
       function matchesSub(g){
-        // Submercado seleciona a leitura/mercado, não apaga jogos da lista.
+        if(state.market==="handicap" && ["home","away"].includes(state.sub)){
+          const s=handicapSide(g);
+          return !s || s==="all" || s===state.sub;
+        }
+
+        if(state.market==="cards" && ["home","away"].includes(state.sub)){
+          const t=norm(lineText(g,"cards"));
+          if(!t) return true;
+          return state.sub==="home"
+            ? (t.includes("casa")||t.includes("home"))
+            : (t.includes("fora")||t.includes("away")||t.includes("visit"));
+        }
+
+        if(state.market==="btts" && state.sub==="yes"){
+          const t=lineText(g,"btts");
+          return !t || /(SIM|YES)/.test(t);
+        }
+
+        if(state.market==="btts" && state.sub==="no"){
+          const t=lineText(g,"btts");
+          return !t || /(NAO|NÃO|NO)/.test(t);
+        }
+
         return true;
       }
 
-      function list(){
-        return unique(source())
-          .filter(matchesLine)
-          .filter(matchesSub)
-          .sort((a,b)=>confidence(b)-confidence(a) || (projection(b)||0)-(projection(a)||0) || time(a).localeCompare(time(b)));
+      function manualLineNumber(){
+        if(["IA","TODOS","SIM","NÃO","CASA","EMPATE","FORA","1X","12","X2"].includes(state.line)) return null;
+        const n=Number(String(state.line).replace("+","").replace(",","."));
+        return Number.isFinite(n) ? n : null;
       }
-    
+
+      function handicapLineNumber(g){
+        const t=lineText(g,"handicap").replace(",",".");
+        const m=t.match(/[+-]?\d+(?:\.\d+)?/);
+        return m ? Number(m[0]) : null;
+      }
+
+      function teamGoalsProjection(g){
+        const r=raw(g);
+        const hp=num(
+          r?.home_goals_projection,r?.projected_home_goals,r?.expected_home_goals,
+          r?.goals_ai?.home_projection,r?.goals_ai?.home
+        );
+        const ap=num(
+          r?.away_goals_projection,r?.projected_away_goals,r?.expected_away_goals,
+          r?.goals_ai?.away_projection,r?.goals_ai?.away
+        );
+
+        if(state.sub==="home") return hp;
+        if(state.sub==="away") return ap;
+        if(Number.isFinite(hp) && Number.isFinite(ap)) return Math.max(hp,ap);
+        return Number.isFinite(hp) ? hp : ap;
+      }
+
+      function marketSuitability(g){
+        const conf=confidence(g,state.market) || 0;
+
+        // IA mantém a lógica do próprio motor.
+        if(state.line==="IA") return conf;
+
+        if(state.market==="corners" || state.market==="goals" || state.market==="cards"){
+          const target=manualLineNumber();
+          const p=projection(g,state.market);
+          if(target===null) return conf + (Number.isFinite(p)?p*3:0);
+          if(!Number.isFinite(p)) return conf-30;
+
+          // Quanto maior a margem sobre a linha, melhor.
+          // Ainda mantém jogos abaixo da linha no fim da lista em vez de zerar.
+          const margin=p-target;
+          return conf + margin*18 + p*2;
+        }
+
+        if(state.market==="handicap"){
+          const target=manualLineNumber();
+          const own=handicapLineNumber(g);
+          const side=handicapSide(g);
+          let score=conf;
+
+          if(target!==null){
+            if(Number.isFinite(own)){
+              // Prioriza linha exata; próximas linhas vêm depois.
+              score += 80 - Math.abs(own-target)*45;
+            }else{
+              // Sem linha do motor, continua visível, mas atrás.
+              score -= 25;
+            }
+          }
+
+          if(state.sub==="home"){
+            if(side==="home") score+=25;
+            else if(side==="away") score-=25;
+          }else if(state.sub==="away"){
+            if(side==="away") score+=25;
+            else if(side==="home") score-=25;
+          }
+
+          return score;
+        }
+
+        if(state.market==="btts"){
+          const t=lineText(g,"btts");
+          let score=conf;
+          if(state.line==="SIM"){
+            if(/(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)) score+=70;
+            else if(t) score-=50;
+          }else if(state.line==="NÃO"){
+            if(/(NAO|NÃO|NO)/.test(t)) score+=70;
+            else if(t) score-=50;
+          }
+          return score;
+        }
+
+        if(state.market==="result"){
+          const pick=clean(marketPickText(g,"result"),"").toUpperCase();
+          return conf + (state.line==="TODOS" ? 0 : pick===state.line ? 80 : -30);
+        }
+
+        if(state.market==="doublechance"){
+          const pick=clean(marketPickText(g,"doublechance"),"").toUpperCase();
+          return conf + (state.line==="TODOS" ? 0 : pick===state.line ? 80 : -30);
+        }
+
+        if(state.market==="teamgoals"){
+          const target=manualLineNumber();
+          const p=teamGoalsProjection(g);
+          if(target===null) return conf + (Number.isFinite(p)?p*5:0);
+          if(!Number.isFinite(p)) return conf-25;
+          return conf + (p-target)*22 + p*3;
+        }
+
+        return conf;
+      }
+
+      function list(){
+        const base=unique(source()).filter(matchesSub);
+
+        // IA: mantém filtro específico existente.
+        if(state.line==="IA"){
+          return base
+            .filter(matchesLine)
+            .sort((a,b)=>marketSuitability(b)-marketSuitability(a) || time(a).localeCompare(time(b)));
+        }
+
+        // TODOS: ordenação padrão do mercado.
+        if(state.line==="TODOS"){
+          return base.sort((a,b)=>
+            confidence(b,state.market)-confidence(a,state.market) ||
+            (projection(b,state.market)||0)-(projection(a,state.market)||0) ||
+            time(a).localeCompare(time(b))
+          );
+        }
+
+        // LINHAS MANUAIS:
+        // Não zera a tela. Reordena os jogos de acordo com a linha escolhida,
+        // fazendo o conjunto visível mudar de verdade para 8.5, 10.5, 3.5, handicap etc.
+        return base.sort((a,b)=>
+          marketSuitability(b)-marketSuitability(a) ||
+          time(a).localeCompare(time(b))
+        );
+      }
+
       function initials(name){
         return clean(name,"T").split(/\s+/).slice(0,2).map(p=>p[0]).join("").toUpperCase();
       }
@@ -25258,3 +25412,14 @@
       openMatchCenterV12(game);
     },true);
   })();
+/* WEB V25 — debug opcional dos seletores */
+window.CornerProMarketDebug = function(){
+  try{
+    const rows=[...document.querySelectorAll("#cpd3Rows .cpd3Row")];
+    return {
+      market: document.querySelector("[data-cpd3-market].active")?.dataset?.cpd3Market || null,
+      line: document.querySelector("[data-cpd3-line].active")?.dataset?.cpd3Line || null,
+      visibleGames: rows.map(r=>r.dataset.cpd3Game)
+    };
+  }catch(e){ return {error:String(e)}; }
+};
