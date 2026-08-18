@@ -19416,20 +19416,3 @@ body.cpAuthModalOpen{
     box-shadow:none !important;
   }
 }
-
-/* =========================================================
-   CORNER PRO — ALINHAMENTO FINAL COLUNA DIREITA
-   Faz o Match Center começar na mesma altura do card principal.
-   ========================================================= */
-@media (min-width:981px){
-  .dashboardGrid{
-    align-items:start !important;
-  }
-
-  #desktopMatchRail.dashboardRightRail,
-  .dashboardRightRail#desktopMatchRail{
-    margin-top:40px !important;
-    height:calc(100% - 40px) !important;
-    max-height:calc(100% - 40px) !important;
-  }
-}
