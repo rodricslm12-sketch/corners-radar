@@ -335,65 +335,38 @@
   
     function matchesLine(g){
       if(state.line==="TODOS") return true;
-
-      // ESCANTEIOS / GOLS / CARTÕES:
-      // a linha clicada filtra de verdade os jogos pela projeção do mercado.
-      if(["corners","goals","cards"].includes(state.market)){
-        const target=Number(String(state.line).replace(",","."));
-        if(!Number.isFinite(target)) return true;
-
-        const p=projection(g,state.market);
-        if(p===null) return false;
-
-        // Ex.: projeção 10.2 entra em Over 9.5, mas não em Over 10.5.
-        return p>target;
-      }
-
+  
       if(state.market==="btts"){
         const t=lineText(g,"btts");
-        if(!t) return false;
+        if(!t) return true; // enquanto IA não chegou, não esconde o jogo
         return state.line==="SIM"
           ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
           : /(NAO|NÃO|NO)/.test(t);
       }
-
+  
       if(state.market==="result"){
-        return marketPickText(g,"result")===state.line;
+        if(state.line==="TODOS") return true;
+        const pick=marketPickText(g,"result");
+        return pick===state.line || pick==="1X2";
       }
-
       if(state.market==="doublechance"){
+        if(state.line==="TODOS") return true;
         return marketPickText(g,"doublechance")===state.line;
       }
-
-      if(state.market==="teamgoals"){
-        return true;
-      }
-
+      if(state.market==="teamgoals") return true;
       if(state.market==="handicap"){
-        const target=Number(String(state.line).replace("+","").replace(",","."));
-        if(!Number.isFinite(target)) return true;
-
-        const r=raw(g);
-        const available=Array.isArray(r?.handicap_available_lines)
-          ? r.handicap_available_lines
-          : [];
-
-        if(available.length){
-          return available.some(value=>{
-            const n=Number(String(value).replace("+","").replace(",","."));
-            return Number.isFinite(n) && Math.abs(n-target)<0.011;
-          });
-        }
-
         const t=lineText(g,"handicap").replace(",",".");
-        const m=t.match(/[+-]?\\d+(?:\\.\\d+)?/);
-        if(!m) return false;
-        return Math.abs(Number(m[0])-target)<0.011;
+        if(!t) return true;
+        const target=Number(state.line.replace("+",""));
+        const m=t.match(/[+-]?\d+(?:\.\d+)?/);
+        return m ? Math.abs(Number(m[0])-target)<0.011 : true;
       }
-
+  
+      // Para escanteios/gols/cartões, a linha escolhida é o mercado visual.
+      // Nunca deixa a tela zerada por falta da projeção da IA.
       return true;
     }
-
+  
     function matchesSub(g){
       if(state.market==="handicap" && ["home","away"].includes(state.sub)){
         const s=handicapSide(g);
