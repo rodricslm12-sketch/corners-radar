@@ -995,6 +995,42 @@
       // podia trocar a decisão exibida depois do primeiro carregamento.
     }
 
+    async function reloadDesktopDate(ymd){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||""))) return;
+
+      const input=$("#date");
+      if(input) input.value=ymd;
+
+      // Limpa somente o estado desktop da data anterior.
+      state.games=[];
+      state.engines={
+        corners:[],
+        goals:[],
+        cards:[],
+        handicap:[],
+        btts:[],
+        result:[],
+        doublechance:[],
+        teamgoals:[]
+      };
+      state.hero=null;
+      state.loading=true;
+      state.limit=8;
+
+      // Atualiza a URL sem recarregar a página.
+      try{
+        const url=new URL(window.location.href);
+        url.searchParams.delete("data");
+        url.searchParams.set("date",ymd);
+        history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }catch(_){}
+
+      await load();
+    }
+
+    // Ponte pública usada pelo calendário do topo.
+    window.CornerProDesktopReloadDate = reloadDesktopDate;
+
     document.addEventListener("click",event=>{
       if(!mq.matches) return;
   
@@ -1093,6 +1129,26 @@
         }catch(err){
           console.error("[CP WEB V11 Match Center]",err);
         }
+        return;
+      }
+
+      if(event.target.closest?.("#cpd3TodayBtn")){
+        event.preventDefault();
+        const now=new Date();
+        let ymd;
+        try{
+          const parts=new Intl.DateTimeFormat("en-CA",{
+            timeZone:"America/Manaus",
+            year:"numeric",
+            month:"2-digit",
+            day:"2-digit"
+          }).formatToParts(now);
+          const obj=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+          ymd=`${obj.year}-${obj.month}-${obj.day}`;
+        }catch{
+          ymd=new Date(Date.now()-4*3600000).toISOString().slice(0,10);
+        }
+        reloadDesktopDate(ymd);
         return;
       }
 
@@ -15486,8 +15542,13 @@
     
             if (input){
               input.value = ymd;
-              input.dispatchEvent(new Event("input", { bubbles:true }));
-              input.dispatchEvent(new Event("change", { bubbles:true }));
+
+              // No desktop o reload é controlado por CornerProDesktopReloadDate,
+              // evitando os listeners antigos que poderiam disparar outro carregamento.
+              if (window.innerWidth <= 980){
+                input.dispatchEvent(new Event("input", { bubbles:true }));
+                input.dispatchEvent(new Event("change", { bubbles:true }));
+              }
             }
     
             btn.classList.remove("is-open");
@@ -15495,8 +15556,14 @@
             drop.setAttribute("aria-hidden","true");
     
             try{
-              // Esta tela do seu dashboard usa o carregador real abaixo.
-              // Ele busca /quentes na data escolhida e renderiza dentro de .gamesPanel.
+              // WEB V25 — o calendário controla diretamente o dashboard desktop.
+              // Mantém o mesmo layout e faz UM carregamento da data escolhida.
+              if (typeof window.CornerProDesktopReloadDate === "function"){
+                await window.CornerProDesktopReloadDate(ymd);
+                return;
+              }
+
+              // Fallback legado para outras telas.
               if (typeof window.CornerProReloadRealGames === "function"){
                 await window.CornerProReloadRealGames(ymd);
                 return;
@@ -15529,7 +15596,14 @@
           btn.addEventListener("mouseleave", closeSoon);
           btn.addEventListener("click", (e) => {
             e.preventDefault();
-            open();
+            e.stopPropagation();
+            if(drop.classList.contains("is-open")){
+              btn.classList.remove("is-open");
+              drop.classList.remove("is-open");
+              drop.setAttribute("aria-hidden","true");
+            }else{
+              open();
+            }
           });
     
           drop.addEventListener("mouseenter", keepOpen);
@@ -15557,6 +15631,14 @@
             selectDate(day.dataset.date);
           });
     
+          document.addEventListener("click", (e) => {
+            if(!drop.classList.contains("is-open")) return;
+            if(drop.contains(e.target) || btn.contains(e.target)) return;
+            btn.classList.remove("is-open");
+            drop.classList.remove("is-open");
+            drop.setAttribute("aria-hidden","true");
+          });
+
           document.addEventListener("keydown", (e) => {
             if (e.key !== "Escape") return;
             btn.classList.remove("is-open");

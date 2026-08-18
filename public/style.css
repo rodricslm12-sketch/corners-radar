@@ -19215,3 +19215,19 @@ body.cpAuthModalOpen{
     letter-spacing:.25px;
   }
 }
+
+
+/* WEB V25 — calendário desktop ativo */
+@media (min-width:981px){
+  #btnCalendario{
+    cursor:pointer;
+  }
+  #btnCalendario.is-open{
+    background:rgba(99,241,39,.12);
+    color:#7cff36;
+    border-color:rgba(99,241,39,.30);
+  }
+  #topCalendarDropdown.is-open{
+    z-index:99999;
+  }
+}
