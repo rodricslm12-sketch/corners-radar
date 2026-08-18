@@ -9579,97 +9579,306 @@ app.get("/market_engines_fast", async (req, res) => {
 
 
 // =========================================================
-// WEB V20 — IA DE ESCANTEIOS EXCLUSIVA DO DESKTOP
-// Não altera o app/mobile. Gera projeção real por forma recente
-// e converte APENAS em OVER 8.5 / 9.5 / 10.5 / 11.5.
-// =========================================================
-const WEB_CORNERS_AI_MAX_GAMES = Number(process.env.WEB_CORNERS_AI_MAX_GAMES || 14);
+// WEB V21 — IA DE ESCANTEIOS INDIVIDUAL POR CONFRONTO (DESKTOP)
+ // Não altera o app/mobile.
+ // Prioridade: cantos REAIS dos últimos jogos de cada equipe.
+ // Só usa a média-base da liga como estabilizador, nunca como projeção principal.
+ // =========================================================
+const WEB_CORNERS_AI_MAX_GAMES = Number(process.env.WEB_CORNERS_AI_MAX_GAMES || 16);
 const WEB_CORNERS_AI_CONCURRENCY = Math.max(
   3,
   Number(process.env.WEB_CORNERS_AI_CONCURRENCY || 6)
 );
+const WEB_CORNERS_RECENT_N = Math.max(
+  5,
+  Number(process.env.WEB_CORNERS_RECENT_N || 6)
+);
 
-function webCornersOverFromProjection(decision) {
-  const projection = Number(decision?.projection);
-  const source =
-    decision?.calculation_source ??
-    decision?.extra?.calculation_source ??
-    "";
-  const sampleGames = Number(
-    decision?.sample_games ??
-    decision?.extra?.sample_games ??
-    0
+function webCornersNum(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function webCornersDirectPair(match) {
+  const home = webCornersNum(
+    match?.match_hometeam_corner ??
+    match?.match_hometeam_corners ??
+    match?.hometeam_corner ??
+    match?.home_corners ??
+    match?.corners_home ??
+    match?.stats?.corners?.home
   );
 
-  if (!Number.isFinite(projection)) {
+  const away = webCornersNum(
+    match?.match_awayteam_corner ??
+    match?.match_awayteam_corners ??
+    match?.awayteam_corner ??
+    match?.away_corners ??
+    match?.corners_away ??
+    match?.stats?.corners?.away
+  );
+
+  return {
+    home: Number.isFinite(home) ? home : null,
+    away: Number.isFinite(away) ? away : null
+  };
+}
+
+async function webCornersPairForMatch(match) {
+  const direct = webCornersDirectPair(match);
+  if (direct.home !== null && direct.away !== null) {
+    return { ...direct, source: "event" };
+  }
+
+  const matchId = match?.match_id ?? match?.event_key ?? match?.id ?? null;
+  if (!matchId) return { home: null, away: null, source: "none" };
+
+  try {
+    const statsMap = await getStats(matchId);
+    const metrics = extractMatchMetrics(statsMap);
+
+    if (
+      metrics &&
+      metrics.cornersHome !== null &&
+      metrics.cornersAway !== null
+    ) {
+      return {
+        home: Number(metrics.cornersHome),
+        away: Number(metrics.cornersAway),
+        source: "statistics"
+      };
+    }
+  } catch {}
+
+  return { home: null, away: null, source: "none" };
+}
+
+async function webCornersRecentProfile(teamName, matches, limit = WEB_CORNERS_RECENT_N) {
+  const teamKey = normTeamKey(teamName);
+  const list = Array.isArray(matches) ? matches.slice(0, Math.max(limit, 8)) : [];
+
+  const rows = [];
+
+  for (const match of list) {
+    const homeName = teamFromEvent(match, "home");
+    const awayName = teamFromEvent(match, "away");
+
+    const isHome = normTeamKey(homeName) === teamKey;
+    const isAway = normTeamKey(awayName) === teamKey;
+    if (!isHome && !isAway) continue;
+
+    const pair = await webCornersPairForMatch(match);
+    if (pair.home === null || pair.away === null) continue;
+
+    rows.push({
+      for: isHome ? pair.home : pair.away,
+      against: isHome ? pair.away : pair.home,
+      total: pair.home + pair.away,
+      source: pair.source
+    });
+
+    if (rows.length >= limit) break;
+  }
+
+  if (!rows.length) {
     return {
-      ...(decision || {}),
+      cornerGames: 0,
+      cornersForAvg: null,
+      cornersAgainstAvg: null,
+      combinedAvg: null,
+      recentTotals: [],
+      source: "none"
+    };
+  }
+
+  // Mais peso para os jogos mais recentes; evita que uma partida antiga
+  // distorça a projeção atual.
+  const weights = rows.map((_, index) => Math.pow(0.88, index));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+
+  const weighted = field =>
+    rows.reduce((sum, row, index) => sum + row[field] * weights[index], 0) /
+    weightSum;
+
+  return {
+    cornerGames: rows.length,
+    cornersForAvg: weighted("for"),
+    cornersAgainstAvg: weighted("against"),
+    combinedAvg: weighted("total"),
+    recentTotals: rows.map(row => row.total),
+    source: rows.some(row => row.source === "statistics")
+      ? "event+statistics"
+      : "event"
+  };
+}
+
+function webCornersIndividualDecision(game, home, away) {
+  const homeGames = Number(home?.cornerGames || 0);
+  const awayGames = Number(away?.cornerGames || 0);
+  const sampleGames = Math.min(homeGames, awayGames);
+
+  const enough =
+    sampleGames >= 2 &&
+    Number.isFinite(home?.cornersForAvg) &&
+    Number.isFinite(home?.cornersAgainstAvg) &&
+    Number.isFinite(away?.cornersForAvg) &&
+    Number.isFinite(away?.cornersAgainstAvg);
+
+  if (!enough) {
+    return {
+      market: "ESCANTEIOS",
       skip: true,
-      line: "DADOS EM ATUALIZAÇÃO",
-      updating: true,
+      updating: false,
+      line: "SEM APOSTA",
+      projection: null,
       confidence: 0,
       score: 0,
-      reason: "Aguardando projeção real de escanteios.",
+      sample_games: sampleGames,
+      calculation_source: "insufficient_recent_corners",
+      reason:
+        "Sem amostra recente suficiente de escanteios reais para gerar uma entrada.",
       web_desktop_corners_ai: true
     };
   }
 
-  // Mesmos degraus usados pelo motor de cantos, agora incluindo 8.5.
+  // Ataque de um lado + capacidade do adversário de ceder cantos.
+  const expectedHome =
+    Number(home.cornersForAvg) * 0.56 +
+    Number(away.cornersAgainstAvg) * 0.44;
+
+  const expectedAway =
+    Number(away.cornersForAvg) * 0.56 +
+    Number(home.cornersAgainstAvg) * 0.44;
+
+  const recentProjection = expectedHome + expectedAway;
+
+  const leagueBase = engineClamp(
+    engineGameNumber(game, [
+      "baseCorners",
+      "base_corners",
+      "league_base_corners",
+      "event_raw.baseCorners"
+    ], 9.6),
+    8.4,
+    11.5
+  );
+
+  // A média da liga apenas estabiliza. Quanto melhor a amostra real,
+  // menor sua influência.
+  const recentWeight =
+    sampleGames >= 5 ? 0.88 :
+    sampleGames >= 4 ? 0.84 :
+    sampleGames >= 3 ? 0.78 :
+    0.70;
+
+  const projection = engineClamp(
+    recentProjection * recentWeight +
+    leagueBase * (1 - recentWeight),
+    6.5,
+    16.5
+  );
+
+  // Escolhe a MAIOR linha OVER que ainda tenha uma margem prudente.
   let line = "SEM APOSTA";
-  if (projection >= 11.75) line = "OVER 11.5";
-  else if (projection >= 10.75) line = "OVER 10.5";
-  else if (projection >= 9.75) line = "OVER 9.5";
-  else if (projection >= 8.90) line = "OVER 8.5";
+  let lineNumber = null;
+
+  if (projection >= 12.10) {
+    line = "OVER 11.5";
+    lineNumber = 11.5;
+  } else if (projection >= 11.10) {
+    line = "OVER 10.5";
+    lineNumber = 10.5;
+  } else if (projection >= 10.10) {
+    line = "OVER 9.5";
+    lineNumber = 9.5;
+  } else if (projection >= 9.10) {
+    line = "OVER 8.5";
+    lineNumber = 8.5;
+  }
+
+  const consistencyValues = [
+    ...(Array.isArray(home?.recentTotals) ? home.recentTotals : []),
+    ...(Array.isArray(away?.recentTotals) ? away.recentTotals : [])
+  ];
+
+  const consistencyAvg = consistencyValues.length
+    ? consistencyValues.reduce((a, b) => a + b, 0) / consistencyValues.length
+    : projection;
+
+  const variance = consistencyValues.length
+    ? consistencyValues.reduce(
+        (sum, value) => sum + Math.pow(value - consistencyAvg, 2),
+        0
+      ) / consistencyValues.length
+    : 4;
+
+  const stabilityBonus = variance <= 4 ? 5 : variance <= 7 ? 2 : -2;
+  const sampleBonus = Math.min(10, sampleGames * 2);
 
   if (line === "SEM APOSTA") {
     return {
-      ...(decision || {}),
+      market: "ESCANTEIOS",
       skip: true,
       updating: false,
       line,
+      projection,
       confidence: 0,
-      score: Number(decision?.score || 0),
-      reason:
-        `Projeção de ${projection.toFixed(1)} cantos: abaixo do mínimo para uma entrada OVER.`,
-      calculation_source: source,
+      score: projection,
       sample_games: sampleGames,
-      web_desktop_corners_ai: true
+      calculation_source: "recent_real_corners",
+      reason:
+        `Projeção individual de ${projection.toFixed(1)} cantos, abaixo da margem mínima para OVER 8.5.`,
+      web_desktop_corners_ai: true,
+      web_profile: { home, away, expectedHome, expectedAway, recentProjection }
     };
   }
 
-  const baseConfidence = Number(decision?.confidence || 0);
+  const cushion = projection - lineNumber;
   const confidence = Math.max(
-    58,
+    60,
     Math.min(
       88,
-      baseConfidence > 0
-        ? Math.round(baseConfidence)
-        : Math.round(58 + Math.max(0, projection - 8.9) * 7)
+      Math.round(
+        57 +
+        sampleBonus +
+        Math.min(14, Math.max(0, cushion) * 8) +
+        stabilityBonus
+      )
     )
   );
 
   return {
-    ...(decision || {}),
+    market: "ESCANTEIOS",
     skip: false,
     updating: false,
     line,
     projection,
     confidence,
-    score: Math.max(
-      Number(decision?.score || 0),
-      confidence + projection
-    ),
-    reason:
-      `${line}: projeção real de ${projection.toFixed(1)} cantos` +
-      `${sampleGames ? ` com amostra recente de ${sampleGames} jogos` : ""}.`,
-    calculation_source: source,
+    score: confidence + projection + cushion * 2,
     sample_games: sampleGames,
-    web_desktop_corners_ai: true
+    calculation_source: "recent_real_corners",
+    reason:
+      `${line}: projeção individual de ${projection.toFixed(1)} cantos. ` +
+      `${game.casa}: ${Number(home.cornersForAvg).toFixed(1)} a favor / ` +
+      `${Number(home.cornersAgainstAvg).toFixed(1)} contra; ` +
+      `${game.fora}: ${Number(away.cornersForAvg).toFixed(1)} a favor / ` +
+      `${Number(away.cornersAgainstAvg).toFixed(1)} contra.`,
+    web_desktop_corners_ai: true,
+    web_profile: {
+      home,
+      away,
+      expectedHome,
+      expectedAway,
+      recentProjection,
+      leagueBase,
+      recentWeight
+    }
   };
 }
 
 async function buildWebCornersAi({ date }) {
-  const cacheKey = `web-corners-ai-v20:${date}`;
+  const cacheKey = `web-corners-ai-v21:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -9681,8 +9890,8 @@ async function buildWebCornersAi({ date }) {
     WEB_CORNERS_AI_CONCURRENCY,
     async game => {
       const [homeResult, awayResult] = await Promise.allSettled([
-        engineRecentEventsByTeam(game.home_team_id, date, 8),
-        engineRecentEventsByTeam(game.away_team_id, date, 8)
+        engineRecentEventsByTeam(game.home_team_id, date, 10),
+        engineRecentEventsByTeam(game.away_team_id, date, 10)
       ]);
 
       const homeMatches =
@@ -9696,25 +9905,15 @@ async function buildWebCornersAi({ date }) {
           : [];
 
       const [homeProfile, awayProfile] = await Promise.all([
-        engineRecentProfile(
-          game.casa,
-          homeMatches,
-          MULTI_MARKET_ENGINE.RECENT_N
-        ),
-        engineRecentProfile(
-          game.fora,
-          awayMatches,
-          MULTI_MARKET_ENGINE.RECENT_N
-        )
+        webCornersRecentProfile(game.casa, homeMatches, WEB_CORNERS_RECENT_N),
+        webCornersRecentProfile(game.fora, awayMatches, WEB_CORNERS_RECENT_N)
       ]);
 
-      const rawDecision = cornersEngineDecision({
+      const corners_ai = webCornersIndividualDecision(
         game,
-        home: homeProfile,
-        away: awayProfile
-      });
-
-      const corners_ai = webCornersOverFromProjection(rawDecision);
+        homeProfile,
+        awayProfile
+      );
 
       return {
         ...game,
@@ -9723,7 +9922,8 @@ async function buildWebCornersAi({ date }) {
           home: homeProfile,
           away: awayProfile
         },
-        web_corners_ai: true
+        web_corners_ai: true,
+        web_corners_ai_version: "v21-real-recent"
       };
     }
   );
@@ -9739,7 +9939,7 @@ async function buildWebCornersAi({ date }) {
 
   const payload = {
     ok: true,
-    version: "web-corners-v20",
+    version: "web-corners-v21-real-recent",
     date,
     corners
   };
@@ -9759,17 +9959,17 @@ app.get("/web_corners_ai", async (req, res) => {
   try {
     const payload = await withTimeout(
       buildWebCornersAi({ date }),
-      28000,
-      "IA rápida de escanteios WEB"
+      32000,
+      "IA individual de escanteios WEB"
     );
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[web_corners_ai]", err?.message || err);
+    console.warn("[web_corners_ai v21]", err?.message || err);
 
     return res.status(500).json({
       ok: false,
-      error: "Erro ao calcular IA de escanteios WEB",
+      error: "Erro ao calcular IA individual de escanteios WEB",
       details: String(err?.message || err)
     });
   }

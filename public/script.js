@@ -413,6 +413,19 @@
       for(const market of ["corners","goals","cards","handicap","btts"]){
         const incoming=webEngineArray(payload,market);
         if(!incoming.length) continue;
+
+        // A rota /web_corners_ai é a autoridade de cantos no desktop.
+        // O /market_engines completo não pode sobrescrever sua decisão depois.
+        if(
+          market==="corners" &&
+          sourceName==="full" &&
+          (state.engines.corners||[]).some(
+            game => Boolean(raw(game)?.corners_ai?.web_desktop_corners_ai)
+          )
+        ){
+          continue;
+        }
+
         state.engines[market]=mergeLists(state.engines[market]||[],incoming);
         changed=true;
       }
@@ -446,7 +459,7 @@
       const stamp=Date.now();
 
       // Escanteios WEB: motor dedicado com forma recente e linhas 8.5/9.5/10.5/11.5.
-      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=20`,30000)
+      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=21`,30000)
         .then(payload=>{
           if(token!==__cpWebAiLoadToken) return;
           applyWebEnginePayload(payload,"corners-web");
@@ -656,7 +669,7 @@
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
         if(state.market==="corners"){
-          return `✦ IA • MELHORES OVERS • LINHA DEFINIDA PELA PROJEÇÃO`;
+          return `✦ IA • ANÁLISE INDIVIDUAL • FORMA RECENTE DE CANTOS`;
         }
         return `✦ IA • LINHA ESCOLHIDA AUTOMATICAMENTE • ${c.label}`;
       }
