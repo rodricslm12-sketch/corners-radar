@@ -217,13 +217,24 @@
       const minute=num(g?.minute,r?.minute,r?.match_minute,r?.elapsed,r?.event_raw?.match_minute);
       const hs=num(g?.score_home,r?.score_home,r?.match_hometeam_score,r?.home_score,r?.event_raw?.match_hometeam_score);
       const as=num(g?.score_away,r?.score_away,r?.match_awayteam_score,r?.away_score,r?.event_raw?.match_awayteam_score);
-      const finished=/finished|full.?time|\bft\b|encerr|finaliz|ended/.test(s);
-      const halftime=/half.?time|\bht\b|interval/.test(s);
-      const live=!finished&&(halftime||/live|ao vivo|1st|2nd|in play/.test(s)||(minute!==null&&minute>0));
+      const finished=/finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(s);
+      const halftime=/half.?time|\bht\b|interval|break/.test(s);
+
+      const minuteFromStatus=(()=>{
+        const m=s.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
+        if(!m) return null;
+        return Number(m[1]) + (m[2] ? Number(m[2]) : 0);
+      })();
+
+      const realMinute=minute!==null ? minute : minuteFromStatus;
+      const live=!finished&&(halftime||/live|ao vivo|1st|2nd|in play/.test(s)||(realMinute!==null&&realMinute>0));
       let label="PRÉ-JOGO";
-      if(finished) label="FIM"; else if(halftime) label="INTERVALO"; else if(live) label=minute?`AO VIVO • ${Math.round(minute)}'`:"AO VIVO";
-      return {finished,halftime,live,label,minute,hs,as};
+      if(finished) label="FIM";
+      else if(halftime) label="INTERVALO";
+      else if(live) label=realMinute?`AO VIVO • ${Math.round(realMinute)}'`:"AO VIVO";
+      return {finished,halftime,live,label,minute:realMinute,hs,as};
     }
+
     function startLabel(g){
       const st=gameStatus(g);
       if(st.live||st.finished){
@@ -426,11 +437,29 @@
       state.hero=g;
   
       const hn=$("#cpd3HomeName"), an=$("#cpd3AwayName"), kl=$("#cpd3KickLabel"), clock=$("#cpd3Clock");
+      const st=gameStatus(g);
       if(hn) hn.textContent=home(g);
       if(an) an.textContent=away(g);
-      if(kl) kl.textContent=`HOJE • ${time(g)}`;
-      if(clock) clock.textContent="PRÉ-JOGO";
-  
+
+      if(kl){
+        if(st.finished){
+          kl.textContent=(st.hs!==null&&st.as!==null) ? `PLACAR FINAL • ${st.hs} × ${st.as}` : "PARTIDA ENCERRADA";
+        }else if(st.halftime){
+          kl.textContent=(st.hs!==null&&st.as!==null) ? `INTERVALO • ${st.hs} × ${st.as}` : "INTERVALO";
+        }else if(st.live){
+          kl.textContent=(st.hs!==null&&st.as!==null) ? `PLACAR • ${st.hs} × ${st.as}` : "PARTIDA EM ANDAMENTO";
+        }else{
+          kl.textContent=`COMEÇA ÀS ${time(g)}`;
+        }
+      }
+
+      if(clock){
+        if(st.finished) clock.textContent="FIM";
+        else if(st.halftime) clock.textContent="INTERVALO";
+        else if(st.live) clock.textContent=st.minute ? `${Math.round(st.minute)}' • AO VIVO` : "AO VIVO";
+        else clock.textContent="PRÉ-JOGO";
+      }
+
       const hb=$("#cpd3HomeBadge"), ab=$("#cpd3AwayBadge");
       if(hb) hb.outerHTML=badgeHtml(g,"home").replace('class="cpd3HeroBadge"','class="cpd3HeroBadge" id="cpd3HomeBadge"');
       if(ab) ab.outerHTML=badgeHtml(g,"away").replace('class="cpd3HeroBadge"','class="cpd3HeroBadge" id="cpd3AwayBadge"');
@@ -709,19 +738,47 @@
         event.preventDefault();
         const g=findGame(open.dataset.cpd3Open);
         if(!g) return;
-  
-        window.__selectedMatchCenterGame=g;
+
+        const r=raw(g);
+        const matchPayload={
+          ...r,
+          ...g,
+          match_id: clean(
+            g?.match_id ?? g?.event_id ?? g?.event_key ??
+            r?.match_id ?? r?.event_id ?? r?.event_key,
+            ""
+          ),
+          casa: home(g),
+          fora: away(g),
+          liga: league(g),
+          hora: time(g),
+          match_status: clean(g?.match_status ?? g?.status ?? r?.match_status ?? r?.status,""),
+          raw:r
+        };
+
+        window.__selectedMatchCenterGame=matchPayload;
         window.__selectedMatchCenterKey=String(key(g));
-  
+
         try{
-          if(typeof window.updateDesktopMatchRail==="function") window.updateDesktopMatchRail(g,state.games);
-          else if(typeof window.openMatchCenter==="function") window.openMatchCenter(g);
+          if(typeof window.updateDesktopMatchRail==="function"){
+            Promise.resolve(
+              window.updateDesktopMatchRail(
+                matchPayload,
+                state.games.map(x=>({...raw(x),...x}))
+              )
+            ).catch(err=>console.warn("[CP WEB V11 Match Center async]",err));
+          }else if(typeof window.openMatchCenter==="function"){
+            window.openMatchCenter(matchPayload);
+          }
+
+          const rail=document.getElementById("desktopMatchRail");
+          if(rail) rail.classList.add("mc-selected");
         }catch(err){
-          console.error("[CP WEB V10 Match Center]",err);
+          console.error("[CP WEB V11 Match Center]",err);
         }
         return;
       }
-  
+
       if(event.target.closest?.("#cpd3More")){
         event.preventDefault();
         state.limit+=8;
