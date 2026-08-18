@@ -305,7 +305,6 @@
         if(proj>=11.75) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
         if(proj>=10.75) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
         if(proj>=9.75)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
-        if(proj>=8.90)  return {valid:true,line:"OVER 8.5", projection:proj,confidence:c,source:"projection"};
       }
 
       return {
@@ -459,7 +458,7 @@
       const stamp=Date.now();
 
       // Escanteios WEB: motor dedicado com forma recente e linhas 8.5/9.5/10.5/11.5.
-      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=21`,30000)
+      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=23`,30000)
         .then(payload=>{
           if(token!==__cpWebAiLoadToken) return;
           applyWebEnginePayload(payload,"corners-web");
@@ -669,7 +668,7 @@
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
         if(state.market==="corners"){
-          return `✦ IA • ANÁLISE INDIVIDUAL • FORMA RECENTE DE CANTOS`;
+          return `✦ IA • LINHA AUTOMÁTICA 9.5+ • FORMA RECENTE DE CANTOS`;
         }
         return `✦ IA • LINHA ESCOLHIDA AUTOMATICAMENTE • ${c.label}`;
       }
@@ -958,7 +957,7 @@
       // 2) IA de cantos: espera terminar antes de exibir a tabela.
       try{
         const cornersPayload=await webGetJson(
-          `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=21`,
+          `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=23`,
           33000
         );
         applyWebEnginePayload(cornersPayload,"corners-web",false);

@@ -9779,7 +9779,9 @@ function webCornersIndividualDecision(game, home, away) {
     16.5
   );
 
-  // Escolhe a MAIOR linha OVER que ainda tenha uma margem prudente.
+  // WEB V23 — IA automática de cantos começa em OVER 9.5.
+  // OVER 8.5 continua disponível apenas no modo manual.
+  // A IA escolhe a maior linha compatível com a projeção real.
   let line = "SEM APOSTA";
   let lineNumber = null;
 
@@ -9792,9 +9794,6 @@ function webCornersIndividualDecision(game, home, away) {
   } else if (projection >= 10.10) {
     line = "OVER 9.5";
     lineNumber = 9.5;
-  } else if (projection >= 9.10) {
-    line = "OVER 8.5";
-    lineNumber = 8.5;
   }
 
   const consistencyValues = [
@@ -9828,7 +9827,7 @@ function webCornersIndividualDecision(game, home, away) {
       sample_games: sampleGames,
       calculation_source: "recent_real_corners",
       reason:
-        `Projeção individual de ${projection.toFixed(1)} cantos, abaixo da margem mínima para OVER 8.5.`,
+        `Projeção individual de ${projection.toFixed(1)} cantos, abaixo da margem mínima da IA para OVER 9.5.`,
       web_desktop_corners_ai: true,
       web_profile: { home, away, expectedHome, expectedAway, recentProjection }
     };
@@ -9878,7 +9877,7 @@ function webCornersIndividualDecision(game, home, away) {
 }
 
 async function buildWebCornersAi({ date }) {
-  const cacheKey = `web-corners-ai-v21:${date}`;
+  const cacheKey = `web-corners-ai-v23:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -9923,7 +9922,7 @@ async function buildWebCornersAi({ date }) {
           away: awayProfile
         },
         web_corners_ai: true,
-        web_corners_ai_version: "v21-real-recent"
+        web_corners_ai_version: "v23-over95plus"
       };
     }
   );
@@ -9939,7 +9938,7 @@ async function buildWebCornersAi({ date }) {
 
   const payload = {
     ok: true,
-    version: "web-corners-v21-real-recent",
+    version: "web-corners-v23-over95plus",
     date,
     corners
   };
@@ -9965,7 +9964,7 @@ app.get("/web_corners_ai", async (req, res) => {
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[web_corners_ai v21]", err?.message || err);
+    console.warn("[web_corners_ai v23]", err?.message || err);
 
     return res.status(500).json({
       ok: false,
