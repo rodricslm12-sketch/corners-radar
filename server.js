@@ -9785,13 +9785,13 @@ function webCornersIndividualDecision(game, home, away) {
   let line = "SEM APOSTA";
   let lineNumber = null;
 
-  if (projection >= 12.10) {
+  if (projection >= 11.75) {
     line = "OVER 11.5";
     lineNumber = 11.5;
-  } else if (projection >= 11.10) {
+  } else if (projection >= 10.75) {
     line = "OVER 10.5";
     lineNumber = 10.5;
-  } else if (projection >= 10.10) {
+  } else if (projection >= 9.55) {
     line = "OVER 9.5";
     lineNumber = 9.5;
   }
@@ -9877,7 +9877,7 @@ function webCornersIndividualDecision(game, home, away) {
 }
 
 async function buildWebCornersAi({ date }) {
-  const cacheKey = `web-corners-ai-v23:${date}`;
+  const cacheKey = `web-corners-ai-v24:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -9922,7 +9922,7 @@ async function buildWebCornersAi({ date }) {
           away: awayProfile
         },
         web_corners_ai: true,
-        web_corners_ai_version: "v23-over95plus"
+        web_corners_ai_version: "v24-stable-picks"
       };
     }
   );
@@ -9938,7 +9938,7 @@ async function buildWebCornersAi({ date }) {
 
   const payload = {
     ok: true,
-    version: "web-corners-v23-over95plus",
+    version: "web-corners-v24-stable-picks",
     date,
     corners
   };
@@ -9964,7 +9964,7 @@ app.get("/web_corners_ai", async (req, res) => {
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[web_corners_ai v23]", err?.message || err);
+    console.warn("[web_corners_ai v24]", err?.message || err);
 
     return res.status(500).json({
       ok: false,

@@ -304,7 +304,7 @@
 
         if(proj>=11.75) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
         if(proj>=10.75) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
-        if(proj>=9.75)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
+        if(proj>=9.55)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
       }
 
       return {
@@ -458,7 +458,7 @@
       const stamp=Date.now();
 
       // Escanteios WEB: motor dedicado com forma recente e linhas 8.5/9.5/10.5/11.5.
-      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=23`,30000)
+      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,30000)
         .then(payload=>{
           if(token!==__cpWebAiLoadToken) return;
           applyWebEnginePayload(payload,"corners-web");
@@ -623,7 +623,14 @@
     }
   
     function setHero(g){
-      g=g || list()[0] || source()[0] || state.games[0];
+      if(!g){
+        const recommended=list()[0];
+        if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
+          g=recommended || state.hero || null;
+        }else{
+          g=recommended || source()[0] || state.games[0];
+        }
+      }
       if(!g) return;
       state.hero=g;
   
@@ -788,7 +795,7 @@
       }
   
       if(state.games.length){
-        rows.innerHTML='<div class="cpd3Empty">Nenhum jogo nesta seleção. Escolha outra linha ou TODOS.</div>';
+        rows.innerHTML='<div class="cpd3Empty">A IA não encontrou entrada 9.5+ com margem suficiente neste momento.</div>';
         if(more) more.hidden=true;
         setHero(state.games[0]);
         state.loading=false;
@@ -957,7 +964,7 @@
       // 2) IA de cantos: espera terminar antes de exibir a tabela.
       try{
         const cornersPayload=await webGetJson(
-          `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=23`,
+          `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,
           33000
         );
         applyWebEnginePayload(cornersPayload,"corners-web",false);
