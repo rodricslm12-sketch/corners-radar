@@ -298,15 +298,14 @@
         };
       }
 
-      // Corrige o legado UNDER apenas no desktop:
-      // usa a projeção real já calculada para escolher uma linha OVER compatível.
+      // Fallback visual alinhado ao motor WEB dedicado.
       if(p!==null && Number.isFinite(Number(p))){
         const proj=Number(p);
 
-        if(proj>=11.85) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
-        if(proj>=10.85) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
-        if(proj>=9.55)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
-        if(proj>=8.85)  return {valid:true,line:"OVER 8.5", projection:proj,confidence:c,source:"projection"};
+        if(proj>=11.75) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
+        if(proj>=10.75) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
+        if(proj>=9.75)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
+        if(proj>=8.90)  return {valid:true,line:"OVER 8.5", projection:proj,confidence:c,source:"projection"};
       }
 
       return {
@@ -445,6 +444,14 @@
     function loadDesktopAiEngines(date=todayManaus()){
       const token=++__cpWebAiLoadToken;
       const stamp=Date.now();
+
+      // Escanteios WEB: motor dedicado com forma recente e linhas 8.5/9.5/10.5/11.5.
+      webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=20`,30000)
+        .then(payload=>{
+          if(token!==__cpWebAiLoadToken) return;
+          applyWebEnginePayload(payload,"corners-web");
+        })
+        .catch(err=>console.warn("[Corner Pro WEB IA corners]",err?.message||err));
 
       // Primeira decisão rápida para Ambas + Handicap.
       webGetJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,22000)

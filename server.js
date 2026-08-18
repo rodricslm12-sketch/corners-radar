@@ -9577,6 +9577,204 @@ app.get("/market_engines_fast", async (req, res) => {
 });
 
 
+
+// =========================================================
+// WEB V20 — IA DE ESCANTEIOS EXCLUSIVA DO DESKTOP
+// Não altera o app/mobile. Gera projeção real por forma recente
+// e converte APENAS em OVER 8.5 / 9.5 / 10.5 / 11.5.
+// =========================================================
+const WEB_CORNERS_AI_MAX_GAMES = Number(process.env.WEB_CORNERS_AI_MAX_GAMES || 14);
+const WEB_CORNERS_AI_CONCURRENCY = Math.max(
+  3,
+  Number(process.env.WEB_CORNERS_AI_CONCURRENCY || 6)
+);
+
+function webCornersOverFromProjection(decision) {
+  const projection = Number(decision?.projection);
+  const source =
+    decision?.calculation_source ??
+    decision?.extra?.calculation_source ??
+    "";
+  const sampleGames = Number(
+    decision?.sample_games ??
+    decision?.extra?.sample_games ??
+    0
+  );
+
+  if (!Number.isFinite(projection)) {
+    return {
+      ...(decision || {}),
+      skip: true,
+      line: "DADOS EM ATUALIZAÇÃO",
+      updating: true,
+      confidence: 0,
+      score: 0,
+      reason: "Aguardando projeção real de escanteios.",
+      web_desktop_corners_ai: true
+    };
+  }
+
+  // Mesmos degraus usados pelo motor de cantos, agora incluindo 8.5.
+  let line = "SEM APOSTA";
+  if (projection >= 11.75) line = "OVER 11.5";
+  else if (projection >= 10.75) line = "OVER 10.5";
+  else if (projection >= 9.75) line = "OVER 9.5";
+  else if (projection >= 8.90) line = "OVER 8.5";
+
+  if (line === "SEM APOSTA") {
+    return {
+      ...(decision || {}),
+      skip: true,
+      updating: false,
+      line,
+      confidence: 0,
+      score: Number(decision?.score || 0),
+      reason:
+        `Projeção de ${projection.toFixed(1)} cantos: abaixo do mínimo para uma entrada OVER.`,
+      calculation_source: source,
+      sample_games: sampleGames,
+      web_desktop_corners_ai: true
+    };
+  }
+
+  const baseConfidence = Number(decision?.confidence || 0);
+  const confidence = Math.max(
+    58,
+    Math.min(
+      88,
+      baseConfidence > 0
+        ? Math.round(baseConfidence)
+        : Math.round(58 + Math.max(0, projection - 8.9) * 7)
+    )
+  );
+
+  return {
+    ...(decision || {}),
+    skip: false,
+    updating: false,
+    line,
+    projection,
+    confidence,
+    score: Math.max(
+      Number(decision?.score || 0),
+      confidence + projection
+    ),
+    reason:
+      `${line}: projeção real de ${projection.toFixed(1)} cantos` +
+      `${sampleGames ? ` com amostra recente de ${sampleGames} jogos` : ""}.`,
+    calculation_source: source,
+    sample_games: sampleGames,
+    web_desktop_corners_ai: true
+  };
+}
+
+async function buildWebCornersAi({ date }) {
+  const cacheKey = `web-corners-ai-v20:${date}`;
+  const cached = cacheGet(cacheKey);
+  if (cached && typeof cached === "object") return cached;
+
+  const baseGames = (await buildMobileFastList(date))
+    .slice(0, WEB_CORNERS_AI_MAX_GAMES);
+
+  const analyzed = await mapLimit(
+    baseGames,
+    WEB_CORNERS_AI_CONCURRENCY,
+    async game => {
+      const [homeResult, awayResult] = await Promise.allSettled([
+        engineRecentEventsByTeam(game.home_team_id, date, 8),
+        engineRecentEventsByTeam(game.away_team_id, date, 8)
+      ]);
+
+      const homeMatches =
+        homeResult.status === "fulfilled" && Array.isArray(homeResult.value)
+          ? homeResult.value
+          : [];
+
+      const awayMatches =
+        awayResult.status === "fulfilled" && Array.isArray(awayResult.value)
+          ? awayResult.value
+          : [];
+
+      const [homeProfile, awayProfile] = await Promise.all([
+        engineRecentProfile(
+          game.casa,
+          homeMatches,
+          MULTI_MARKET_ENGINE.RECENT_N
+        ),
+        engineRecentProfile(
+          game.fora,
+          awayMatches,
+          MULTI_MARKET_ENGINE.RECENT_N
+        )
+      ]);
+
+      const rawDecision = cornersEngineDecision({
+        game,
+        home: homeProfile,
+        away: awayProfile
+      });
+
+      const corners_ai = webCornersOverFromProjection(rawDecision);
+
+      return {
+        ...game,
+        corners_ai,
+        engine_profiles: {
+          home: homeProfile,
+          away: awayProfile
+        },
+        web_corners_ai: true
+      };
+    }
+  );
+
+  const corners = analyzed
+    .slice()
+    .sort((a, b) => {
+      const da = a?.corners_ai || {};
+      const db = b?.corners_ai || {};
+      if (Boolean(da.skip) !== Boolean(db.skip)) return da.skip ? 1 : -1;
+      return Number(db.score || 0) - Number(da.score || 0);
+    });
+
+  const payload = {
+    ok: true,
+    version: "web-corners-v20",
+    date,
+    corners
+  };
+
+  cacheSet(cacheKey, payload, 3 * 60 * 1000);
+  return payload;
+}
+
+app.get("/web_corners_ai", async (req, res) => {
+  const date = req.query.date || toISODate();
+
+  res.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+
+  try {
+    const payload = await withTimeout(
+      buildWebCornersAi({ date }),
+      28000,
+      "IA rápida de escanteios WEB"
+    );
+
+    return res.json(payload);
+  } catch (err) {
+    console.warn("[web_corners_ai]", err?.message || err);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Erro ao calcular IA de escanteios WEB",
+      details: String(err?.message || err)
+    });
+  }
+});
+
 // =========================================================
 // V60 — HANDICAP ASIÁTICO ISOLADO
 // Este bloco é exclusivo do Handicap. Não participa do BTTS.
