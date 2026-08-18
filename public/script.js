@@ -708,22 +708,22 @@
       const MARKET = {
         corners: {
           label:"ESCANTEIOS",
-          lines:["IA","TODOS","8.5","9.5","10.5","11.5","12.5","13.5","14.5"],
+          lines:["IA","TODOS","8.5","9.5","10.5","11.5","12.5"],
           subs:[["TOTAL DE ESCANTEIOS","all"],["1º TEMPO","ht"],["2º TEMPO","2h"],["LINHAS ALTERNATIVAS","alt"]]
         },
         goals: {
           label:"GOLS",
-          lines:["IA","TODOS","0.5","1.5","2.5","3.5","4.5","5.5","6.5"],
+          lines:["IA","TODOS","1.5","2.5","3.5","4.5"],
           subs:[["TOTAL DE GOLS","all"],["1º TEMPO","ht"],["2º TEMPO","2h"]]
         },
         cards: {
           label:"CARTÕES",
-          lines:["IA","TODOS","1.5","2.5","3.5","4.5","5.5","6.5","7.5"],
+          lines:["IA","TODOS","2.5","3.5","4.5","5.5"],
           subs:[["TOTAL DE CARTÕES","all"],["CASA","home"],["FORA","away"]]
         },
         handicap: {
           label:"HANDICAP",
-          lines:["IA","TODOS","-3.0","-2.5","-2.0","-1.5","-1.0","-0.75","-0.5","-0.25","0.0","+0.25","+0.5","+0.75","+1.0","+1.5","+2.0","+2.5","+3.0"],
+          lines:["IA","TODOS","-2.0","-1.5","-1.0","-0.5","0.0","+0.5","+1.0","+1.5","+2.0"],
           subs:[["HANDICAP ASIÁTICO","all"],["CASA","home"],["FORA","away"]]
         },
         btts: {
@@ -733,7 +733,7 @@
         },
         result:{label:"RESULTADO",lines:["TODOS","CASA","EMPATE","FORA"],subs:[["1X2","all"],["CASA","home"],["EMPATE","draw"],["FORA","away"]]},
         doublechance:{label:"DUPLA CHANCE",lines:["TODOS","1X","12","X2"],subs:[["DUPLA CHANCE","all"],["CASA/EMPATE","1x"],["CASA/FORA","12"],["EMPATE/FORA","x2"]]},
-        teamgoals:{label:"GOLS DO TIME",lines:["TODOS","0.5","1.5","2.5","3.5","4.5"],subs:[["TOTAL DO TIME","all"],["CASA","home"],["FORA","away"]]},
+        teamgoals:{label:"GOLS DO TIME",lines:["TODOS","0.5","1.5","2.5"],subs:[["TOTAL DO TIME","all"],["CASA","home"],["FORA","away"]]},
         builder:{label:"APOSTA PRONTA",lines:["TODOS"],subs:[["MAIOR CONFIANÇA","all"]]}
       };
     
@@ -1181,103 +1181,25 @@
           if(!["corners","goals","cards","handicap","btts"].includes(state.market)) return true;
           const d=decision(g,state.market);
           const line=clean(d?.line,"").toUpperCase();
-          const pending=Boolean(d?.updating) ||
-            !line ||
-            line==="DADOS EM ATUALIZAÇÃO" ||
-            line==="ANALISANDO PARTIDA";
+          const pending=Boolean(d?.updating) || !line ||
+            line==="DADOS EM ATUALIZAÇÃO" || line==="ANALISANDO PARTIDA";
 
           if(state.market==="corners") return desktopCornersAiRecommendation(g).valid;
           return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
         }
 
-        if(state.line==="TODOS") return true;
-
-        // Totais: cada botão usa sua própria linha.
-        // Mantém os jogos visíveis mesmo quando não há projeção calculada,
-        // para que NENHUMA linha fique "morta".
-        if(["corners","goals","cards"].includes(state.market)){
-          const target=Number(String(state.line).replace(",","."));
-          if(!Number.isFinite(target)) return true;
-          const p=projection(g,state.market);
-          return !Number.isFinite(p) ? true : Number(p)>target;
-        }
-
-        if(state.market==="btts"){
-          const t=lineText(g,"btts");
-          if(!t) return true;
-          return state.line==="SIM"
-            ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
-            : /(NAO|NÃO|NO)/.test(t);
-        }
-
-        if(state.market==="result"){
-          const pick=clean(marketPickText(g,"result"),"").toUpperCase();
-          if(!pick || pick==="1X2") return true;
-          return pick===state.line;
-        }
-
-        if(state.market==="doublechance"){
-          const pick=clean(marketPickText(g,"doublechance"),"").toUpperCase();
-          if(!pick) return true;
-          return pick===state.line;
-        }
-
-        if(state.market==="teamgoals"){
-          const target=Number(String(state.line).replace(",","."));
-          if(!Number.isFinite(target)) return true;
-          const r=raw(g);
-          const hp=num(r?.home_goals_projection,r?.projected_home_goals,r?.expected_home_goals,r?.goals_ai?.home_projection,r?.goals_ai?.home);
-          const ap=num(r?.away_goals_projection,r?.projected_away_goals,r?.expected_away_goals,r?.goals_ai?.away_projection,r?.goals_ai?.away);
-          if(state.sub==="home") return !Number.isFinite(hp) ? true : hp>target;
-          if(state.sub==="away") return !Number.isFinite(ap) ? true : ap>target;
-          if(!Number.isFinite(hp) && !Number.isFinite(ap)) return true;
-          return Math.max(Number.isFinite(hp)?hp:-999,Number.isFinite(ap)?ap:-999)>target;
-        }
-
-        // Handicap: o botão SEMPRE abre a linha escolhida.
-        // Se a IA tiver exatamente essa linha, prioriza esses jogos;
-        // se o backend não tiver devolvido handicap ainda, não deixa a tela vazia.
-        if(state.market==="handicap"){
-          const target=Number(String(state.line).replace("+","").replace(",","."));
-          if(!Number.isFinite(target)) return true;
-          const t=lineText(g,"handicap").replace(",",".");
-          if(!t) return true;
-          const m=t.match(/[+-]?\d+(?:\.\d+)?/);
-          if(!m) return true;
-          return Math.abs(Number(m[0])-target)<0.011;
-        }
-
+        // IMPORTANTE:
+        // Nos botões manuais (8.5, 10.5, 3.5, handicap etc.) NÃO eliminamos
+        // partidas da tabela. A linha escolhida muda o MERCADO exibido/analisado.
+        // Isso evita "0 jogos" quando a projeção está abaixo da linha.
         return true;
       }
 
       function matchesSub(g){
-        if(state.market==="handicap" && ["home","away"].includes(state.sub)){
-          const s=handicapSide(g);
-          // sem side_key no backend = mantém visível, em vez de matar o mercado
-          return !s || s==="all" || s===state.sub;
-        }
-    
-        if(state.market==="cards" && ["home","away"].includes(state.sub)){
-          const t=norm(lineText(g,"cards"));
-          if(!t) return true;
-          return state.sub==="home"
-            ? (t.includes("casa")||t.includes("home"))
-            : (t.includes("fora")||t.includes("away")||t.includes("visit"));
-        }
-    
-        if(state.market==="btts" && state.sub==="yes"){
-          const t=lineText(g,"btts");
-          return !t || /(SIM|YES)/.test(t);
-        }
-    
-        if(state.market==="btts" && state.sub==="no"){
-          const t=lineText(g,"btts");
-          return !t || /(NAO|NÃO|NO)/.test(t);
-        }
-    
+        // Submercado seleciona a leitura/mercado, não apaga jogos da lista.
         return true;
       }
-    
+
       function list(){
         return unique(source())
           .filter(matchesLine)
@@ -1503,7 +1425,7 @@
         }
     
         if(state.games.length){
-          rows.innerHTML='<div class="cpd3Empty">A IA não encontrou entrada 9.5+ com margem suficiente neste momento.</div>';
+          rows.innerHTML='<div class="cpd3Empty">Nenhum jogo disponível para esta seleção neste momento.</div>';
           if(more) more.hidden=true;
           setHero(state.games[0]);
           state.loading=false;
@@ -25336,40 +25258,3 @@
       openMatchCenterV12(game);
     },true);
   })();
-
-/* =========================================================
-   WEB V24 — TODOS OS MERCADOS / TODAS AS LINHAS ATIVAS
-   ========================================================= */
-(function(){
-  const style=document.createElement("style");
-  style.textContent=`
-    #cpd3LineNav{
-      display:flex !important;
-      flex-wrap:nowrap !important;
-      overflow-x:auto !important;
-      overflow-y:hidden !important;
-      max-width:100% !important;
-      scrollbar-width:thin;
-      scroll-behavior:smooth;
-      -webkit-overflow-scrolling:touch;
-      padding-bottom:4px;
-    }
-    #cpd3LineNav > button{
-      display:inline-flex !important;
-      visibility:visible !important;
-      opacity:1 !important;
-      flex:0 0 auto !important;
-      pointer-events:auto !important;
-    }
-    #cpd3LineNav > button[hidden]{
-      display:inline-flex !important;
-    }
-  `;
-  document.head.appendChild(style);
-
-  document.addEventListener("click",function(e){
-    const btn=e.target.closest?.("[data-cpd3-line]");
-    if(!btn) return;
-    requestAnimationFrame(()=>btn.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"}));
-  },true);
-})();
