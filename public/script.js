@@ -279,6 +279,35 @@
       return lineText(g,market);
     }
   
+
+    function aiRecommendationText(g, market=state.market){
+      const d=decision(g,market);
+      let line=clean(d?.line,"").toUpperCase();
+
+      if(market==="handicap"){
+        const side=handicapSide(g);
+        const teamName=clean(
+          d?.team,
+          side==="away" ? away(g) : side==="home" ? home(g) : ""
+        );
+        if(!line || line==="SEM APOSTA") return line || "—";
+        return teamName ? `${teamName} ${line}` : line;
+      }
+
+      if(market==="btts"){
+        if(!line) return "—";
+        if(/NÃO|NAO|\bNO\b/.test(line)) return "AMBAS NÃO";
+        if(/SIM|YES/.test(line)) return "AMBAS SIM";
+        return line;
+      }
+
+      if(["corners","goals","cards"].includes(market)){
+        return line || "—";
+      }
+
+      return marketPickText(g,market) || line || "—";
+    }
+
     function handicapSide(g){
       const s=norm(decision(g,"handicap")?.side_key ?? decision(g,"handicap")?.side ?? "");
       if(s.includes("away")||s.includes("fora")) return "away";
@@ -569,7 +598,7 @@
       const c=MARKET[state.market];
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
-        return `✦ IA • MELHORES SUGESTÕES DE ${c.label}`;
+        return `✦ IA • LINHA ESCOLHIDA AUTOMATICAMENTE • ${c.label}`;
       }
       if(state.market==="btts") return `${state.line==="TODOS"?"AMBAS MARCAM":state.line} • TODOS OS JOGOS`;
       if(state.market==="result"||state.market==="doublechance") return `${c.label}${state.line==="TODOS"?"":` • ${state.line}`} • TODOS OS JOGOS`;
@@ -599,7 +628,13 @@
         </div>
         <div class="cpd3League"><b>${esc(league(g))}</b><small>${esc(country(g))}</small></div>
         <div class="cpd3Start ${gameStatus(g).live?"is-live":gameStatus(g).finished?"is-finished":""}">${startLabel(g)}</div>
-        <div class="cpd3Num">${["result","doublechance","teamgoals"].includes(state.market)?`<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`:(p===null?"—":p.toFixed(1))}</div>
+        <div class="cpd3Num">${
+          state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)
+            ? `<span class="cpd3AiPickBadge">${esc(aiRecommendationText(g,state.market))}</span>`
+            : ["result","doublechance","teamgoals"].includes(state.market)
+              ? `<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`
+              : (p===null?"—":p.toFixed(1))
+        }</div>
         <div class="cpd3Num">${a===null?"—":a.toFixed(1)}</div>
         <div class="cpd3Confidence">${c?`${c}%`:"—"}</div>
         <div class="cpd3Trend"><i>☁</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
@@ -616,6 +651,17 @@
       const titleEl=$("#cpd3ResultsTitle");
       const more=$("#cpd3More");
       const games=list();
+
+      const tableHead=$("#cpd3TableHead");
+      if(tableHead){
+        const cols=$$("span",tableHead);
+        if(cols[3]){
+          cols[3].textContent =
+            state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)
+              ? "IA / LINHA"
+              : "PROJEÇÃO";
+        }
+      }
 
       if(state.market==="builder"){
         if(titleEl) titleEl.textContent=title();
