@@ -280,6 +280,44 @@
     }
   
 
+
+    function desktopCornersAiRecommendation(g){
+      const d=decision(g,"corners");
+      const serverLine=clean(d?.line,"").toUpperCase();
+      const p=projection(g,"corners");
+      const c=confidence(g,"corners");
+
+      // Se o servidor já trouxe um OVER válido, respeita.
+      if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(serverLine)){
+        return {
+          valid:true,
+          line:serverLine,
+          projection:p,
+          confidence:c,
+          source:"server"
+        };
+      }
+
+      // Corrige o legado UNDER apenas no desktop:
+      // usa a projeção real já calculada para escolher uma linha OVER compatível.
+      if(p!==null && Number.isFinite(Number(p))){
+        const proj=Number(p);
+
+        if(proj>=11.85) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
+        if(proj>=10.85) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
+        if(proj>=9.55)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
+        if(proj>=8.85)  return {valid:true,line:"OVER 8.5", projection:proj,confidence:c,source:"projection"};
+      }
+
+      return {
+        valid:false,
+        line:"SEM ENTRADA",
+        projection:p,
+        confidence:c,
+        source:"none"
+      };
+    }
+
     function aiRecommendationText(g, market=state.market){
       const d=decision(g,market);
       let line=clean(d?.line,"").toUpperCase();
@@ -302,8 +340,7 @@
       }
 
       if(market==="corners"){
-        if(/^UNDER\b/.test(line)) return "SEM ENTRADA";
-        return line || "—";
+        return desktopCornersAiRecommendation(g).line;
       }
 
       if(["goals","cards"].includes(market)){
@@ -444,11 +481,11 @@
           line==="DADOS EM ATUALIZAÇÃO" ||
           line==="ANALISANDO PARTIDA";
 
-        // WEB V18 — Escanteios no modo IA é exclusivamente OVER.
-        // Se o motor antigo devolver UNDER 9.5/10.5/11.5, o desktop
-        // trata como "sem entrada" em vez de exibir a sugestão.
-        if(state.market==="corners" && /^UNDER\b/.test(line)){
-          return false;
+        // WEB V19 — Escanteios no modo IA é exclusivamente OVER,
+        // mas não some com todos os jogos quando o backend legado devolve UNDER.
+        // Nesse caso usamos a projeção já calculada para selecionar 8.5/9.5/10.5/11.5.
+        if(state.market==="corners"){
+          return desktopCornersAiRecommendation(g).valid;
         }
 
         return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
@@ -612,7 +649,7 @@
       if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
         if(state.market==="corners"){
-          return `✦ IA • MELHORES OVERS DE ESCANTEIOS`;
+          return `✦ IA • MELHORES OVERS • LINHA DEFINIDA PELA PROJEÇÃO`;
         }
         return `✦ IA • LINHA ESCOLHIDA AUTOMATICAMENTE • ${c.label}`;
       }
