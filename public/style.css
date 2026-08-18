@@ -19251,47 +19251,11 @@ body.cpAuthModalOpen{
 }
 
 /* =========================================================
-   CORNER PRO — SEPARADOR VISUAL ENTRE OS JOGOS
-   Somente reforça a linha horizontal entre as partidas.
-   ========================================================= */
-.cpd3Rows .cpd3Row{
-  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .20);
-}
-
-.cpd3Rows .cpd3Row:last-child{
-  border-bottom-color: rgba(150, 170, 176, .34) !important;
-}
-
-/* Mantém o destaque especial do primeiro jogo sem perder a separação. */
-.cpd3Rows .cpd3Row:first-child{
-  border-top: 1px solid rgba(113, 240, 50, .48) !important;
-  border-left: 1px solid rgba(113, 240, 50, .48) !important;
-  border-right: 1px solid rgba(113, 240, 50, .48) !important;
-  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
-}
-
-/* =========================================================
-   CORNER PRO — PRIMEIRO JOGO IGUAL AOS DEMAIS
-   Remove somente o contorno/destaque verde extra da 1ª linha.
-   ========================================================= */
-.cpd3Rows .cpd3Row:first-child{
-  border-top: 0 !important;
-  border-left: 0 !important;
-  border-right: 0 !important;
-  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
-  border-radius: 0 !important;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .20) !important;
-}
-
-/* =========================================================
-   CORNER PRO — RESPIRO ENTRE NOME DO TIME E FORMA (V/E/D)
-   Somente aumenta levemente o espaço vertical no card principal.
+   CORNER PRO — RESPIRO REAL: NOME x V/E/D
+   O elemento correto do card principal é .cpd3Form.
    ========================================================= */
 @media (min-width:981px){
-  .homeHero .heroSide .heroForm,
-  .homeHero .heroSide .formDots,
-  .homeHero .heroSide [class*="form"]{
-    margin-top: 7px !important;
+  #cpd3Hero .cpd3HeroTeam .cpd3Form{
+    margin-top: 16px !important;
   }
 }
