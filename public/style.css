@@ -19416,3 +19416,45 @@ body.cpAuthModalOpen{
     box-shadow:none !important;
   }
 }
+
+/* =========================================================
+   CORNER PRO — MERCADOS COM LARGURAS EXATAMENTE IGUAIS
+   Ajuste somente da barra: Escanteios ... Aposta Pronta.
+   ========================================================= */
+@media (min-width:981px){
+  #cpDesktopExperienceV3 .cpd3MarketNav{
+    display:flex !important;
+    width:100% !important;
+    gap:0 !important;
+    overflow:hidden !important;
+    align-items:stretch !important;
+  }
+
+  #cpDesktopExperienceV3 .cpd3MarketNav > button{
+    flex:1 1 0 !important;
+    width:0 !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:48px !important;
+    min-height:48px !important;
+    padding:0 6px !important;
+    margin:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Aposta Pronta conserva apenas a cor, sem ganhar largura extra. */
+  #cpDesktopExperienceV3 .cpd3MarketNav .cpd3BuilderTab{
+    flex:1 1 0 !important;
+    width:0 !important;
+    min-width:0 !important;
+    max-width:none !important;
+    padding-left:6px !important;
+    padding-right:6px !important;
+    border-left:1px solid rgba(105,255,42,.24) !important;
+  }
+}
