@@ -19283,3 +19283,15 @@ body.cpAuthModalOpen{
   border-radius: 0 !important;
   box-shadow: 0 1px 0 rgba(0, 0, 0, .20) !important;
 }
+
+/* =========================================================
+   CORNER PRO — RESPIRO ENTRE NOME DO TIME E FORMA (V/E/D)
+   Somente aumenta levemente o espaço vertical no card principal.
+   ========================================================= */
+@media (min-width:981px){
+  .homeHero .heroSide .heroForm,
+  .homeHero .heroSide .formDots,
+  .homeHero .heroSide [class*="form"]{
+    margin-top: 7px !important;
+  }
+}
