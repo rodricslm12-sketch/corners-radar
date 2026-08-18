@@ -1,5 +1,5 @@
 /* =========================================================
-   CORNER PRO WEB V10 — DESKTOP BOOT INDEPENDENTE
+   CORNER PRO WEB V11 — DESKTOP + LIVE + MULTIMERCADOS
    IMPORTANTE:
    - fica NO TOPO do script.js;
    - não depende dos módulos antigos terminarem de executar;
@@ -10,8 +10,8 @@
    (() => {
     "use strict";
   
-    if (window.__cpWebV10Installed) return;
-    window.__cpWebV10Installed = true;
+    if (window.__cpWebV11Installed) return;
+    window.__cpWebV11Installed = true;
   
     const mq = window.matchMedia("(min-width:981px)");
     if (!mq.matches) return;
@@ -44,7 +44,11 @@
         label:"AMBAS MARCAM",
         lines:["TODOS","SIM","NÃO"],
         subs:[["TODOS","all"],["SIM","yes"],["NÃO","no"]]
-      }
+      },
+      result:{label:"RESULTADO",lines:["TODOS","CASA","EMPATE","FORA"],subs:[["1X2","all"],["CASA","home"],["EMPATE","draw"],["FORA","away"]]},
+      doublechance:{label:"DUPLA CHANCE",lines:["TODOS","1X","12","X2"],subs:[["DUPLA CHANCE","all"],["CASA/EMPATE","1x"],["CASA/FORA","12"],["EMPATE/FORA","x2"]]},
+      teamgoals:{label:"GOLS DO TIME",lines:["TODOS","0.5","1.5","2.5"],subs:[["TOTAL DO TIME","all"],["CASA","home"],["FORA","away"]]},
+      builder:{label:"APOSTA PRONTA",lines:["TODOS"],subs:[["MAIOR CONFIANÇA","all"]]}
     };
   
     const state = {
@@ -52,7 +56,7 @@
       line:"10.5",
       sub:"all",
       games:[],
-      engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},
+      engines:{corners:[],goals:[],cards:[],handicap:[],btts:[],result:[],doublechance:[],teamgoals:[],builder:[]},
       hero:null,
       limit:8,
       favorites:new Set(),
@@ -176,6 +180,12 @@
     }
   
     function confidence(g, market=state.market){
+      if(["result","doublechance","teamgoals"].includes(market)){
+        const r=raw(g);
+        let x=num(market==="teamgoals"?r?.goals_ai?.confidence:null,r?.handicap_ai?.confidence,r?.goals_ai?.confidence,g?.confidence,r?.ai_score);
+        if(x!==null && x>0 && x<=1) x*=100;
+        return x===null?0:Math.max(0,Math.min(95,Math.round(x)));
+      }
       let x=num(decision(g,market)?.confidence,g?.confidence,raw(g)?.ai_score);
       if(x!==null && x>0 && x<=1) x*=100;
       return x===null ? 0 : Math.max(0,Math.min(95,Math.round(x)));
@@ -186,6 +196,7 @@
       if(market==="corners") return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
       if(market==="goals") return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
       if(market==="cards") return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
+      if(["result","doublechance","teamgoals"].includes(market)) return num(r?.goals_ai?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
       return num(d?.projection);
     }
   
@@ -199,6 +210,47 @@
   
     function lineText(g, market=state.market){
       return clean(decision(g,market)?.line,"").toUpperCase();
+    }
+    function gameStatus(g){
+      const r=raw(g);
+      const s=clean(g?.match_status ?? g?.status ?? r?.match_status ?? r?.status ?? r?.event_status ?? r?.event_raw?.match_status ?? r?.event_raw?.status,"").toLowerCase();
+      const minute=num(g?.minute,r?.minute,r?.match_minute,r?.elapsed,r?.event_raw?.match_minute);
+      const hs=num(g?.score_home,r?.score_home,r?.match_hometeam_score,r?.home_score,r?.event_raw?.match_hometeam_score);
+      const as=num(g?.score_away,r?.score_away,r?.match_awayteam_score,r?.away_score,r?.event_raw?.match_awayteam_score);
+      const finished=/finished|full.?time|\bft\b|encerr|finaliz|ended/.test(s);
+      const halftime=/half.?time|\bht\b|interval/.test(s);
+      const live=!finished&&(halftime||/live|ao vivo|1st|2nd|in play/.test(s)||(minute!==null&&minute>0));
+      let label="PRÉ-JOGO";
+      if(finished) label="FIM"; else if(halftime) label="INTERVALO"; else if(live) label=minute?`AO VIVO • ${Math.round(minute)}'`:"AO VIVO";
+      return {finished,halftime,live,label,minute,hs,as};
+    }
+    function startLabel(g){
+      const st=gameStatus(g);
+      if(st.live||st.finished){
+        const score=(st.hs!==null&&st.as!==null)?`${st.hs} × ${st.as}`:"";
+        return `${st.label}${score?`<br><b>${score}</b>`:""}`;
+      }
+      return `Hoje<br><b>${esc(time(g))}</b>`;
+    }
+    function marketPickText(g,market=state.market){
+      const r=raw(g);
+      if(market==="result"){
+        const s=norm(r?.handicap_ai?.side_key ?? r?.handicap_ai?.side ?? r?.oddsInfo?.fav?.side ?? "");
+        if(s.includes("away")||s.includes("fora")) return "FORA";
+        if(s.includes("home")||s.includes("casa")) return "CASA";
+        return "1X2";
+      }
+      if(market==="doublechance"){
+        const s=norm(r?.handicap_ai?.side_key ?? r?.handicap_ai?.side ?? "");
+        if(s.includes("away")||s.includes("fora")) return "X2";
+        if(s.includes("home")||s.includes("casa")) return "1X";
+        return "12";
+      }
+      if(market==="teamgoals"){
+        const side=state.sub==="away"?"FORA":state.sub==="home"?"CASA":"TIME";
+        return `${side} OVER ${state.line==="TODOS"?"0.5":state.line}`;
+      }
+      return lineText(g,market);
     }
   
     function handicapSide(g){
@@ -266,6 +318,16 @@
           : /(NAO|NÃO|NO)/.test(t);
       }
   
+      if(state.market==="result"){
+        if(state.line==="TODOS") return true;
+        const pick=marketPickText(g,"result");
+        return pick===state.line || pick==="1X2";
+      }
+      if(state.market==="doublechance"){
+        if(state.line==="TODOS") return true;
+        return marketPickText(g,"doublechance")===state.line;
+      }
+      if(state.market==="teamgoals") return true;
       if(state.market==="handicap"){
         const t=lineText(g,"handicap").replace(",",".");
         if(!t) return true;
@@ -383,14 +445,20 @@
   
     function title(){
       const c=MARKET[state.market];
+      if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
       if(state.market==="btts") return `${state.line==="TODOS"?"AMBAS MARCAM":state.line} • TODOS OS JOGOS`;
+      if(state.market==="result"||state.market==="doublechance") return `${c.label}${state.line==="TODOS"?"":` • ${state.line}`} • TODOS OS JOGOS`;
+      if(state.market==="teamgoals"){
+        const side=state.sub==="home"?"CASA":state.sub==="away"?"FORA":"TODOS";
+        return `${c.label} • ${side}${state.line==="TODOS"?"":` • OVER ${state.line}`}`;
+      }
       if(state.market==="handicap"){
         const side=state.sub==="home"?" • CASA":state.sub==="away"?" • FORA":"";
         return `${c.label}${state.line==="TODOS"?"":` ${state.line}`}${side} • TODOS OS JOGOS`;
       }
       return `${state.line==="TODOS"?c.label:`OVER ${state.line} ${c.label}`} • TODOS OS JOGOS`;
     }
-  
+
     function row(g){
       const p=projection(g), a=average(g), c=confidence(g), gid=key(g);
       const h=home(g), aw=away(g);
@@ -405,8 +473,8 @@
           ${badgeHtml(g,"away",true)}
         </div>
         <div class="cpd3League"><b>${esc(league(g))}</b><small>${esc(country(g))}</small></div>
-        <div class="cpd3Start">Hoje<br><b>${esc(time(g))}</b></div>
-        <div class="cpd3Num">${p===null?"—":p.toFixed(1)}</div>
+        <div class="cpd3Start ${gameStatus(g).live?"is-live":gameStatus(g).finished?"is-finished":""}">${startLabel(g)}</div>
+        <div class="cpd3Num">${["result","doublechance","teamgoals"].includes(state.market)?`<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`:(p===null?"—":p.toFixed(1))}</div>
         <div class="cpd3Num">${a===null?"—":a.toFixed(1)}</div>
         <div class="cpd3Confidence">${c?`${c}%`:"—"}</div>
         <div class="cpd3Trend"><i>☁</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
@@ -423,6 +491,34 @@
       const titleEl=$("#cpd3ResultsTitle");
       const more=$("#cpd3More");
       const games=list();
+
+      if(state.market==="builder"){
+        if(titleEl) titleEl.textContent=title();
+        if(!rows) return;
+        const pool=unique(state.games).filter(g=>!gameStatus(g).finished);
+        const picks=[];
+        for(const [mk,label] of [["corners","Escanteios"],["goals","Gols"],["btts","Ambas marcam"],["handicap","Handicap"]]){
+          const best=pool.slice().sort((a,b)=>confidence(b,mk)-confidence(a,mk)).find(g=>confidence(g,mk)>=55);
+          if(best){
+            const d=decision(best,mk);
+            picks.push({g:best,mk,label,conf:confidence(best,mk),pick:clean(d?.line,label)});
+          }
+        }
+        picks.sort((a,b)=>b.conf-a.conf);
+        const chosen=picks.slice(0,3);
+        rows.innerHTML=chosen.length?`<div class="cpd3Builder">
+          <div class="cpd3BuilderHero"><span>⚡</span><div><strong>APOSTA PRONTA IA</strong><small>Maiores confianças disponíveis nos dados atuais. Não existe aposta garantida.</small></div></div>
+          ${chosen.map(x=>`<article class="cpd3BuilderPick">
+            <div>${badgeHtml(x.g,"home",true)}<b>${esc(home(x.g))} × ${esc(away(x.g))}</b>${badgeHtml(x.g,"away",true)}</div>
+            <small>${esc(x.label)}</small><strong>${esc(x.pick)}</strong><em>${x.conf}% confiança</em>
+            <button type="button" data-cpd3-open="${esc(key(x.g))}">Ver análise</button>
+          </article>`).join("")}
+        </div>`:'<div class="cpd3Empty">Ainda não há dados suficientes para montar uma aposta pronta.</div>';
+        if(more) more.hidden=true;
+        if(chosen[0]) setHero(chosen[0].g);
+        state.loading=false;
+        return;
+      }
   
       if(titleEl) titleEl.textContent=`${title()} • ${games.length} JOGOS`;
       if(!rows) return;
@@ -637,6 +733,13 @@
       if(!$("#cpDesktopExperienceV3")) return;
       renderControls();
       load();
+      setInterval(async()=>{
+        try{
+          const date=todayManaus();
+          const payload=await getJson(`/mercados?date=${encodeURIComponent(date)}&_live=${Date.now()}`,18000);
+          applyBase(payload);
+        }catch(err){ console.warn("[CP WEB V11 live refresh]",err?.message||err); }
+      },45000);
     }
   
     if(document.readyState==="loading"){
