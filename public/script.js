@@ -24628,3 +24628,438 @@ const MONTHS = [
     openMatchCenterV12(game);
   },true);
 })();
+
+/* =========================================================
+   CORNER PRO WEB V27 — PATCH CIRÚRGICO
+   SOMENTE: CALENDÁRIO DESKTOP + MATCH CENTER DESKTOP
+   - não altera mercados
+   - não altera IA
+   - não altera layout
+   - não altera mobile
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__cpWebV27CalendarMatchCenter) return;
+  window.__cpWebV27CalendarMatchCenter = true;
+
+  const isDesktop = () => window.matchMedia("(min-width:981px)").matches;
+  const $ = (selector, root = document) => root.querySelector(selector);
+
+  const clean = (value, fallback = "") => {
+    const text = String(value ?? "").trim();
+    return text && !["undefined", "null", "NaN"].includes(text) ? text : fallback;
+  };
+
+  const norm = value => String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  const rawGame = game => game?.raw || game || {};
+
+  const gameHome = game => {
+    const raw = rawGame(game);
+    return clean(
+      game?.casa ?? game?.home ??
+      raw?.casa ?? raw?.home ??
+      raw?.match_hometeam_name ?? raw?.event_home_team,
+      "Casa"
+    );
+  };
+
+  const gameAway = game => {
+    const raw = rawGame(game);
+    return clean(
+      game?.fora ?? game?.away ??
+      raw?.fora ?? raw?.away ??
+      raw?.match_awayteam_name ?? raw?.event_away_team,
+      "Fora"
+    );
+  };
+
+  const gameTime = game => {
+    const raw = rawGame(game);
+    return clean(
+      game?.hora ?? game?.time ??
+      raw?.hora ?? raw?.time ??
+      raw?.match_time ?? raw?.event_time,
+      ""
+    );
+  };
+
+  const gameId = game => {
+    const raw = rawGame(game);
+    return clean(
+      game?.match_id ?? game?.event_id ?? game?.event_key ?? game?.fixture_id ?? game?.id ??
+      raw?.match_id ?? raw?.event_id ?? raw?.event_key ?? raw?.fixture_id ?? raw?.id,
+      ""
+    );
+  };
+
+  const localKey = game =>
+    `${norm(gameHome(game))}|${norm(gameAway(game))}|${gameTime(game)}`;
+
+  function collectDesktopGames() {
+    const pools = [
+      window.__cornerProAllGames,
+      window.__lastRawGames,
+      window.__premiumFilteredGames,
+      window.__premiumMarketGames
+    ];
+
+    const out = [];
+    const seen = new Set();
+
+    for (const pool of pools) {
+      if (!Array.isArray(pool)) continue;
+
+      for (const game of pool) {
+        if (!game || typeof game !== "object") continue;
+
+        const id = gameId(game);
+        const key = id || localKey(game);
+        if (!key || seen.has(key)) continue;
+
+        seen.add(key);
+        out.push(game);
+      }
+    }
+
+    return out;
+  }
+
+  function resolveDesktopGame(button) {
+    const wanted = clean(button?.dataset?.cpd3Open, "");
+    const row = button?.closest?.("[data-cpd3-game]");
+    const rowKey = clean(row?.dataset?.cpd3Game, "");
+    const games = collectDesktopGames();
+
+    let game = games.find(item => {
+      const id = gameId(item);
+      const key = localKey(item);
+      return (
+        (wanted && (id === wanted || key === wanted)) ||
+        (rowKey && (id === rowKey || key === rowKey))
+      );
+    });
+
+    if (game) return game;
+
+    /* Fallback: mantém o Match Center abrindo mesmo se a linha tiver
+       sido renderizada por um módulo antigo. */
+    if (row) {
+      const names = [...row.querySelectorAll(".cpd3Names b")]
+        .map(el => clean(el.textContent, ""));
+
+      const league = clean(row.querySelector(".cpd3League b")?.textContent, "Liga");
+      const start = clean(row.querySelector(".cpd3Start")?.textContent, "");
+
+      game = {
+        match_id: /^\d+$/.test(wanted) ? wanted : "",
+        event_id: /^\d+$/.test(wanted) ? wanted : "",
+        casa: names[0] || "Casa",
+        fora: names[1] || "Fora",
+        liga: league,
+        hora: (start.match(/(\d{1,2}):(\d{2})/) || []).slice(1).join(":") || "",
+        raw: {}
+      };
+    }
+
+    return game || window.__selectedMatchCenterGame || null;
+  }
+
+  /* ---------------- CALENDÁRIO DESKTOP ---------------- */
+  const MONTHS = [
+    "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
+    "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"
+  ];
+
+  const pad = n => String(n).padStart(2, "0");
+  const toYMD = date =>
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+  const parseYMD = value => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return new Date();
+    const [year, month, day] = String(value).split("-").map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0);
+  };
+
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  let calendarViewDate = parseYMD(
+    $("#date")?.value ||
+    new URLSearchParams(location.search).get("date") ||
+    toYMD(new Date())
+  );
+
+  function calendarElements() {
+    return {
+      button: $("#btnCalendario"),
+      dropdown: $("#topCalendarDropdown"),
+      days: $("#topCalendarDays"),
+      title: $("#topCalTitle")
+    };
+  }
+
+  function selectedYMD() {
+    const input = $("#date");
+    const fromUrl = new URLSearchParams(location.search).get("date");
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(input?.value || ""))
+      ? input.value
+      : /^\d{4}-\d{2}-\d{2}$/.test(String(fromUrl || ""))
+        ? fromUrl
+        : toYMD(new Date());
+  }
+
+  function renderCalendarV27() {
+    const { days, title } = calendarElements();
+    if (!days || !title) return;
+
+    days.innerHTML = "";
+
+    const selected = parseYMD(selectedYMD());
+    const today = new Date();
+    const year = calendarViewDate.getFullYear();
+    const month = calendarViewDate.getMonth();
+
+    title.textContent = `${MONTHS[month]} ${year}`;
+
+    const first = new Date(year, month, 1, 12, 0, 0);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+
+      const day = document.createElement("button");
+      day.type = "button";
+      day.className = "topCalendarDay";
+      day.textContent = String(date.getDate());
+      day.dataset.date = toYMD(date);
+
+      if (date.getMonth() !== month) day.classList.add("is-muted");
+      if (sameDay(date, today)) day.classList.add("is-today");
+      if (sameDay(date, selected)) day.classList.add("is-selected");
+
+      days.appendChild(day);
+    }
+  }
+
+  function positionCalendarV27() {
+    const { button, dropdown } = calendarElements();
+    if (!button || !dropdown) return;
+
+    const rect = button.getBoundingClientRect();
+    const width = dropdown.offsetWidth || 320;
+    const gap = 8;
+
+    let left = rect.left + rect.width / 2 - width / 2;
+    left = Math.max(12, Math.min(left, window.innerWidth - width - 12));
+
+    dropdown.style.position = "fixed";
+    dropdown.style.left = `${left}px`;
+    dropdown.style.right = "auto";
+    dropdown.style.top = `${rect.bottom + gap}px`;
+  }
+
+  function openCalendarV27() {
+    const { button, dropdown } = calendarElements();
+    if (!button || !dropdown) return;
+
+    calendarViewDate = parseYMD(selectedYMD());
+    renderCalendarV27();
+
+    dropdown.style.display = "block";
+    dropdown.classList.add("is-open");
+    dropdown.setAttribute("aria-hidden", "false");
+    button.classList.add("is-open");
+
+    requestAnimationFrame(positionCalendarV27);
+  }
+
+  function closeCalendarV27() {
+    const { button, dropdown } = calendarElements();
+    if (!dropdown) return;
+
+    dropdown.classList.remove("is-open");
+    dropdown.setAttribute("aria-hidden", "true");
+    button?.classList.remove("is-open");
+  }
+
+  async function selectCalendarDateV27(ymd) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || ""))) return;
+
+    const input = $("#date");
+    if (input) input.value = ymd;
+
+    try {
+      const url = new URL(location.href);
+      url.hash = "";
+      url.searchParams.delete("data");
+      url.searchParams.set("date", ymd);
+      history.replaceState({}, "", `${url.pathname}${url.search}`);
+    } catch (_) {}
+
+    closeCalendarV27();
+
+    if (typeof window.CornerProDesktopReloadDate === "function") {
+      await window.CornerProDesktopReloadDate(ymd);
+      return;
+    }
+
+    if (typeof window.CornerProReloadRealGames === "function") {
+      await window.CornerProReloadRealGames(ymd);
+      return;
+    }
+
+    location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
+  }
+
+  /* Captura no WINDOW: executa antes dos listeners antigos do document
+     e impede conflito/duplo carregamento. */
+  window.addEventListener("click", async event => {
+    if (!isDesktop()) return;
+
+    const calendarButton = event.target?.closest?.("#btnCalendario");
+    if (calendarButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const dropdown = $("#topCalendarDropdown");
+      if (dropdown?.classList.contains("is-open")) closeCalendarV27();
+      else openCalendarV27();
+      return;
+    }
+
+    const prev = event.target?.closest?.("#topCalPrev");
+    if (prev) {
+      event.preventDefault();
+      event.stopPropagation();
+      calendarViewDate = new Date(
+        calendarViewDate.getFullYear(),
+        calendarViewDate.getMonth() - 1,
+        1, 12, 0, 0
+      );
+      renderCalendarV27();
+      return;
+    }
+
+    const next = event.target?.closest?.("#topCalNext");
+    if (next) {
+      event.preventDefault();
+      event.stopPropagation();
+      calendarViewDate = new Date(
+        calendarViewDate.getFullYear(),
+        calendarViewDate.getMonth() + 1,
+        1, 12, 0, 0
+      );
+      renderCalendarV27();
+      return;
+    }
+
+    const today = event.target?.closest?.("#topCalToday");
+    if (today) {
+      event.preventDefault();
+      event.stopPropagation();
+      const ymd = toYMD(new Date());
+      calendarViewDate = parseYMD(ymd);
+      await selectCalendarDateV27(ymd);
+      return;
+    }
+
+    const day = event.target?.closest?.("#topCalendarDropdown .topCalendarDay");
+    if (day) {
+      event.preventDefault();
+      event.stopPropagation();
+      await selectCalendarDateV27(day.dataset.date);
+      return;
+    }
+
+    if (
+      $("#topCalendarDropdown")?.classList.contains("is-open") &&
+      !event.target?.closest?.("#topCalendarDropdown")
+    ) {
+      closeCalendarV27();
+    }
+  }, true);
+
+  window.addEventListener("resize", () => {
+    if (isDesktop() && $("#topCalendarDropdown")?.classList.contains("is-open")) {
+      positionCalendarV27();
+    }
+  });
+
+  /* ---------------- MATCH CENTER DESKTOP ---------------- */
+  window.addEventListener("click", event => {
+    if (!isDesktop()) return;
+
+    const button = event.target?.closest?.("[data-cpd3-open]");
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const game = resolveDesktopGame(button);
+    const rail = $("#desktopMatchRail") || $(".dashboardRightRail");
+
+    if (!game) {
+      if (rail) {
+        rail.innerHTML = `
+          <section class="railCard">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>ERRO</b></div>
+            <p>Não foi possível localizar esta partida.</p>
+          </section>`;
+      }
+      return;
+    }
+
+    window.__selectedMatchCenterGame = game;
+    window.__selectedMatchCenterKey = gameId(game) || localKey(game);
+
+    if (rail) {
+      rail.style.display = "flex";
+      rail.style.visibility = "visible";
+      rail.style.opacity = "1";
+    }
+
+    /* Usa o Match Center V12 já existente no projeto, agora recebendo
+       a partida correta antes que listeners antigos interfiram. */
+    if (typeof window.cpOpenDesktopMatchCenterV12 === "function") {
+      window.cpOpenDesktopMatchCenterV12(game);
+      return;
+    }
+
+    if (typeof window.updateDesktopMatchRail === "function") {
+      Promise.resolve(
+        window.updateDesktopMatchRail(game, collectDesktopGames())
+      ).catch(error => console.warn("[CP WEB V27 Match Center]", error));
+      return;
+    }
+
+    if (typeof window.openMatchCenter === "function") {
+      window.openMatchCenter(game);
+    }
+  }, true);
+
+  /* Botão HOJE do cabeçalho da área principal também volta à data atual. */
+  window.addEventListener("click", event => {
+    if (!isDesktop()) return;
+    const button = event.target?.closest?.("#cpd3TodayBtn");
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectCalendarDateV27(toYMD(new Date()));
+  }, true);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeCalendarV27();
+  });
+})();
