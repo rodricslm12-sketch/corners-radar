@@ -347,12 +347,11 @@
       if(state.market==="result"){
         if(state.line==="TODOS") return true;
         const pick=marketPickText(g,"result");
-        return !pick || pick==="1X2" || pick===state.line;
+        return pick===state.line || pick==="1X2";
       }
       if(state.market==="doublechance"){
         if(state.line==="TODOS") return true;
-        const pick=marketPickText(g,"doublechance");
-        return !pick || pick==="12" || pick===state.line;
+        return marketPickText(g,"doublechance")===state.line;
       }
       if(state.market==="teamgoals") return true;
       if(state.market==="handicap"){
@@ -395,21 +394,6 @@
       return true;
     }
   
-    function selectBestGameForCurrentMarket(){
-      const games=list();
-      return games[0] || source()[0] || state.games[0] || null;
-    }
-
-    function marketTargetLabel(){
-      const m=MARKET[state.market];
-      if(!m) return "";
-      if(state.market==="btts") return state.line==="TODOS" ? "AMBAS MARCAM" : state.line;
-      if(state.market==="handicap") return state.line==="TODOS" ? "HANDICAP" : `HANDICAP ${state.line}`;
-      if(state.market==="result" || state.market==="doublechance") return state.line==="TODOS" ? m.label : state.line;
-      if(state.market==="teamgoals") return state.line==="TODOS" ? "GOLS DO TIME" : `OVER ${state.line}`;
-      return state.line==="TODOS" ? m.label : `OVER ${state.line}`;
-    }
-
     function list(){
       return unique(source())
         .filter(matchesLine)
@@ -534,9 +518,7 @@
         </div>
         <div class="cpd3League"><b>${esc(league(g))}</b><small>${esc(country(g))}</small></div>
         <div class="cpd3Start ${gameStatus(g).live?"is-live":gameStatus(g).finished?"is-finished":""}">${startLabel(g)}</div>
-        <div class="cpd3Num">${["result","doublechance","teamgoals"].includes(state.market)?`<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`:(p===null?"—":p.toFixed(1))}
-          <small class="cpd3MarketRowChip">${esc(marketTargetLabel())}</small>
-        </div>
+        <div class="cpd3Num">${["result","doublechance","teamgoals"].includes(state.market)?`<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`:(p===null?"—":p.toFixed(1))}</div>
         <div class="cpd3Num">${a===null?"—":a.toFixed(1)}</div>
         <div class="cpd3Confidence">${c?`${c}%`:"—"}</div>
         <div class="cpd3Trend"><i>☁</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
@@ -789,9 +771,6 @@
         state.line="TODOS";
         state.limit=8;
         render();
-
-        const selected=selectBestGameForCurrentMarket();
-        if(selected) setHero(selected);
         return;
       }
   
@@ -810,13 +789,6 @@
         state.line=line.dataset.cpd3Line;
         state.limit=8;
         render();
-
-        const selected=selectBestGameForCurrentMarket();
-        if(selected){
-          setHero(selected);
-          const title=$("#cpd3ResultsTitle");
-          if(title) title.textContent=`${marketTargetLabel()} • ${list().length} JOGOS`;
-        }
         return;
       }
   
@@ -841,19 +813,6 @@
         return;
       }
   
-      const rowTarget=event.target.closest?.("[data-cpd3-game]");
-      if(rowTarget && !event.target.closest?.("button")){
-        const gid=rowTarget.dataset.cpd3Game;
-        const game=findGame(gid);
-        if(game){
-          setHero(game);
-          if(typeof window.cpOpenDesktopMatchCenterV12==="function"){
-            window.cpOpenDesktopMatchCenterV12(game);
-          }
-        }
-        return;
-      }
-
       const open=event.target.closest?.("[data-cpd3-open]");
       if(open){
         event.preventDefault();
