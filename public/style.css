@@ -19144,3 +19144,11 @@ body.cpAuthModalOpen{
   .cpd3Start.is-live:before{background:#ff3d35!important;box-shadow:0 0 10px rgba(255,61,53,.8)!important}
   .cpd3Start.is-finished{color:#7f8b8e!important;font-weight:850!important}
 }
+
+@media (min-width:981px){
+  .cpd3Row{cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+  .cpd3Row:hover{background:rgba(99,241,39,.045)!important;border-color:rgba(99,241,39,.20)!important;transform:translateX(2px)}
+  .cpd3MarketRowChip{display:block;margin-top:3px;color:#63f127;font-size:5.5px;font-weight:900;letter-spacing:.2px}
+  .cpd3MarketNav button,.cpd3LineNav button,.cpd3SubNav button{cursor:pointer}
+  .cpd3MarketNav button.active,.cpd3LineNav button.active,.cpd3SubNav button.active{box-shadow:inset 0 -2px 0 #63f127}
+}
