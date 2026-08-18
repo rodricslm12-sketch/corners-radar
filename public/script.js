@@ -630,7 +630,20 @@
         <div class="cpd3Start ${gameStatus(g).live?"is-live":gameStatus(g).finished?"is-finished":""}">${startLabel(g)}</div>
         <div class="cpd3Num">${
           state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)
-            ? `<span class="cpd3AiPickBadge">${esc(aiRecommendationText(g,state.market))}</span>`
+            ? `<span class="cpd3AiPickWrap">
+                 <span class="cpd3AiPickBadge">${esc(aiRecommendationText(g,state.market))}</span>
+                 ${
+                   p!==null && ["corners","goals","cards"].includes(state.market)
+                     ? `<small class="cpd3AiProjection">${
+                         state.market==="corners"
+                           ? `Proj. ${p.toFixed(1)} cantos`
+                           : state.market==="goals"
+                             ? `Proj. ${p.toFixed(1)} gols`
+                             : `Proj. ${p.toFixed(1)} cartões`
+                       }</small>`
+                     : ""
+                 }
+               </span>`
             : ["result","doublechance","teamgoals"].includes(state.market)
               ? `<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`
               : (p===null?"—":p.toFixed(1))
@@ -658,7 +671,7 @@
         if(cols[3]){
           cols[3].textContent =
             state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)
-              ? "IA / LINHA"
+              ? "IA / PROJEÇÃO"
               : "PROJEÇÃO";
         }
       }

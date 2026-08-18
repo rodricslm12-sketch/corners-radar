@@ -19183,3 +19183,23 @@ body.cpAuthModalOpen{
     box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
   }
 }
+
+
+/* WEB V17 — mostra linha escolhida + projeção numérica da IA */
+@media (min-width:981px){
+  .cpd3AiPickWrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+  }
+  .cpd3AiProjection{
+    display:block;
+    color:#d9e6df;
+    font-size:9px;
+    font-weight:850;
+    line-height:1;
+    white-space:nowrap;
+  }
+}
