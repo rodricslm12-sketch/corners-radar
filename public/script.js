@@ -1185,50 +1185,85 @@
             !line ||
             line==="DADOS EM ATUALIZAÇÃO" ||
             line==="ANALISANDO PARTIDA";
-  
-          // WEB V19 — Escanteios no modo IA é exclusivamente OVER,
-          // mas não some com todos os jogos quando o backend legado devolve UNDER.
-          // Nesse caso usamos a projeção já calculada para selecionar 8.5/9.5/10.5/11.5.
+
           if(state.market==="corners"){
             return desktopCornersAiRecommendation(g).valid;
           }
-  
+
           return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
         }
-  
+
         if(state.line==="TODOS") return true;
-    
+
+        // ESCANTEIOS / GOLS / CARTÕES — FILTRO REAL DA LINHA CLICADA
+        if(["corners","goals","cards"].includes(state.market)){
+          const target=Number(String(state.line).replace(",","."));
+          const p=projection(g,state.market);
+          if(!Number.isFinite(target)) return true;
+          if(!Number.isFinite(p)) return false;
+          return Number(p) > target;
+        }
+
+        // AMBAS MARCAM
         if(state.market==="btts"){
           const t=lineText(g,"btts");
-          if(!t) return true; // enquanto IA não chegou, não esconde o jogo
+          if(!t) return false;
           return state.line==="SIM"
             ? /(SIM|YES)/.test(t) && !/(NAO|NÃO|NO)/.test(t)
             : /(NAO|NÃO|NO)/.test(t);
         }
-    
+
+        // RESULTADO 1X2
         if(state.market==="result"){
-          if(state.line==="TODOS") return true;
-          const pick=marketPickText(g,"result");
-          return pick===state.line || pick==="1X2";
+          const pick=clean(marketPickText(g,"result"),"").toUpperCase();
+          return pick===state.line;
         }
+
+        // DUPLA CHANCE
         if(state.market==="doublechance"){
-          if(state.line==="TODOS") return true;
-          return marketPickText(g,"doublechance")===state.line;
+          const pick=clean(marketPickText(g,"doublechance"),"").toUpperCase();
+          return pick===state.line;
         }
-        if(state.market==="teamgoals") return true;
+
+        // GOLS DO TIME
+        if(state.market==="teamgoals"){
+          const target=Number(String(state.line).replace(",","."));
+          if(!Number.isFinite(target)) return true;
+
+          const r=raw(g);
+          const homeProj=num(
+            r?.home_goals_projection,r?.projected_home_goals,r?.expected_home_goals,
+            r?.goals_ai?.home_projection,r?.goals_ai?.home
+          );
+          const awayProj=num(
+            r?.away_goals_projection,r?.projected_away_goals,r?.expected_away_goals,
+            r?.goals_ai?.away_projection,r?.goals_ai?.away
+          );
+
+          if(state.sub==="home") return Number.isFinite(homeProj) && homeProj>target;
+          if(state.sub==="away") return Number.isFinite(awayProj) && awayProj>target;
+
+          if(Number.isFinite(homeProj)||Number.isFinite(awayProj)){
+            return Math.max(
+              Number.isFinite(homeProj)?homeProj:-Infinity,
+              Number.isFinite(awayProj)?awayProj:-Infinity
+            ) > target;
+          }
+          return false;
+        }
+
+        // HANDICAP — linha exata selecionada
         if(state.market==="handicap"){
           const t=lineText(g,"handicap").replace(",",".");
-          if(!t) return true;
-          const target=Number(state.line.replace("+",""));
+          if(!t) return false;
+          const target=Number(String(state.line).replace("+","").replace(",","."));
           const m=t.match(/[+-]?\d+(?:\.\d+)?/);
-          return m ? Math.abs(Number(m[0])-target)<0.011 : true;
+          return m ? Math.abs(Number(m[0])-target)<0.011 : false;
         }
-    
-        // Para escanteios/gols/cartões, a linha escolhida é o mercado visual.
-        // Nunca deixa a tela zerada por falta da projeção da IA.
+
         return true;
       }
-    
+
       function matchesSub(g){
         if(state.market==="handicap" && ["home","away"].includes(state.sub)){
           const s=handicapSide(g);
@@ -1481,7 +1516,7 @@
         }
     
         if(state.games.length){
-          rows.innerHTML='<div class="cpd3Empty">A IA não encontrou entrada 9.5+ com margem suficiente neste momento.</div>';
+          rows.innerHTML=`<div class="cpd3Empty">Nenhum jogo atende ao mercado <b>${esc(MARKET[state.market]?.label || state.market)}</b>${state.line && state.line!=="TODOS" ? ` na linha <b>${esc(state.line)}</b>` : ""} neste momento.</div>`;
           if(more) more.hidden=true;
           setHero(state.games[0]);
           state.loading=false;
