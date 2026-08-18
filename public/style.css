@@ -19249,3 +19249,24 @@ body.cpAuthModalOpen{
     display:block !important;
   }
 }
+
+/* =========================================================
+   CORNER PRO — SEPARADOR VISUAL ENTRE OS JOGOS
+   Somente reforça a linha horizontal entre as partidas.
+   ========================================================= */
+.cpd3Rows .cpd3Row{
+  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .20);
+}
+
+.cpd3Rows .cpd3Row:last-child{
+  border-bottom-color: rgba(150, 170, 176, .34) !important;
+}
+
+/* Mantém o destaque especial do primeiro jogo sem perder a separação. */
+.cpd3Rows .cpd3Row:first-child{
+  border-top: 1px solid rgba(113, 240, 50, .48) !important;
+  border-left: 1px solid rgba(113, 240, 50, .48) !important;
+  border-right: 1px solid rgba(113, 240, 50, .48) !important;
+  border-bottom: 1px solid rgba(150, 170, 176, .34) !important;
+}
