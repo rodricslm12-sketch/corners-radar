@@ -1413,12 +1413,22 @@
             if(prob===null){
               prob=baseConf || 50;
               if(Number.isFinite(target) && Number.isFinite(own)){
-                // Para o mesmo time, uma linha numericamente maior é mais favorável.
-                prob += ((target-own)/0.5)*7;
+                // A distância para a linha oficial ajuda, mas não pode dominar o modelo.
+                // Antes +1.0 podia empurrar praticamente todos os jogos para 95%.
+                const steps=(target-own)/0.5;
+                const adjustment=Math.max(-18,Math.min(18,steps*3.5));
+                prob += adjustment;
+
+                // Linhas negativas exigem força real maior; positivas recebem bônus
+                // conservador, preservando diferença entre os confrontos.
+                if(target<0 && own>=0) prob-=10;
+                if(target<=-1 && own>-0.5) prob-=8;
+                if(target>0 && own<0) prob+=3;
               }else if(Number.isFinite(target) && !Number.isFinite(own)){
-                prob-=12;
+                prob-=15;
               }
-              prob=clampPct(prob);
+              // Handicap manual não usa teto artificial de 95% para todo mundo.
+              prob=Math.max(1,Math.min(92,prob));
               source="engine-adjusted";
             }
   
@@ -1546,9 +1556,32 @@
             );
           }
   
-          // LINHAS MANUAIS:
-          // Não zera a tela. Reordena os jogos de acordo com a linha escolhida,
-          // fazendo o conjunto visível mudar de verdade para 8.5, 10.5, 3.5, handicap etc.
+          // HANDICAP MANUAL — cada linha precisa produzir uma seleção própria.
+          // Não apenas troca o número/confiança: filtra pela qualidade da leitura
+          // específica da linha e então ranqueia os melhores confrontos.
+          if(state.market==="handicap"){
+            const ranked=base
+              .map(g=>({g,a:lineAnalysis(g,"handicap",state.line)}))
+              .filter(x=>x.a?.valid && Number.isFinite(Number(x.a.probability)))
+              .sort((x,y)=>
+                Number(y.a.probability)-Number(x.a.probability) ||
+                marketSuitability(y.g)-marketSuitability(x.g) ||
+                time(x.g).localeCompare(time(y.g))
+              );
+
+            // Corte dinâmico: evita listar os mesmos 37 jogos em toda linha.
+            // Linhas agressivas exigem evidência maior; linhas positivas continuam
+            // competitivas, mas não recebem 95% automático apenas por serem +1/+2.
+            const target=manualLineNumber();
+            const minProb = Number.isFinite(target)
+              ? (target<=-1.5 ? 64 : target<0 ? 61 : target===0 ? 59 : 57)
+              : 59;
+            const strong=ranked.filter(x=>Number(x.a.probability)>=minProb);
+            const chosen=(strong.length?strong:ranked.slice(0,12)).map(x=>x.g);
+            return chosen;
+          }
+
+          // Demais linhas manuais mantêm o ranking específico já existente.
           return base.sort((a,b)=>
             marketSuitability(b)-marketSuitability(a) ||
             time(a).localeCompare(time(b))
