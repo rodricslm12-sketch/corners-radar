@@ -19473,3 +19473,10 @@ body.cpAuthModalOpen{
     pointer-events:none!important;
   }
 }
+
+/* AJUSTE FINO — baixa levemente os escudos do card principal */
+@media (max-width:980px){
+  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge{
+    top:16px !important;
+  }
+}
