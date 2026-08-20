@@ -2670,7 +2670,18 @@
           if (state.activeMarket === "cards") {
             return cpRefNum(raw.cards_ai?.projection, raw.card_projection, raw.projected_cards, raw.avg_cards);
           }
-          return cpRefNum(raw.corners_ai?.projection, raw.proj_cantos, raw.projected_corners);
+          return cpRefNum(
+            raw.corners_ai?.projection,
+            raw.proj_cantos,
+            raw.projCorners,
+            raw.corners_projection,
+            raw.corner_projection,
+            raw.projected_corners,
+            raw.projection,
+            raw.proj,
+            raw.real?.recentCombinedAvg,
+            raw.avg_total
+          );
         }
     
         function cpRefGoalsAverage(game) {
@@ -2684,65 +2695,43 @@
         function cpRefCornersAverage(game) {
           const raw = game?.raw || {};
           return cpRefNum(
-            raw.corners_ai?.projection, raw.proj_cantos, raw.projected_corners,
-            raw.real?.recentCombinedAvg
+            raw.real?.recentCombinedAvg,
+            raw.recentCombinedAvg,
+            raw.avg_total,
+            raw.avg_corners,
+            raw.corners_avg,
+            raw.stats?.corners_avg,
+            raw.corners_ai?.projection,
+            raw.proj_cantos,
+            raw.projected_corners
           );
         }
     
         function cprCornerTop1DecisionReady(game) {
           if (state.activeMarket !== "corners") return true;
-
+    
           const raw = game?.raw || game || {};
           const decision = raw?.corners_ai;
-
-          // V82 MOBILE — o /official_corner_pick já devolve o Top 1 aprovado.
-          // Nem todo retorno oficial traz corners_ai aninhado; em alguns casos
-          // linha/confiança/projeção vêm no objeto normalizado. Antes disso, o
-          // card ficava eternamente em "ANALISANDO" mesmo com a IA concluída.
-          const official = state.officialCornerBest;
-          const sameOfficial = Boolean(
-            official &&
-            String(official.id ?? "") === String(game?.id ?? "")
-          );
-
-          const line = String(
-            decision?.line ??
-            game?.line ??
-            raw?.line ??
-            raw?.market_line ??
-            ""
-          ).toUpperCase().trim();
-
-          if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return false;
-          if (decision?.skip || decision?.updating) return false;
-
-          const conf = cpRefNum(
-            decision?.confidence,
-            game?.confidence,
-            raw?.confidence,
-            raw?.over95_prob_adj,
-            raw?.over95_prob
-          );
-
-          const proj = cpRefNum(
-            decision?.projection,
-            game?.projection,
-            game?.proj_cantos,
-            raw?.proj_cantos,
-            raw?.projected_corners,
-            raw?.corner_projection
-          );
-
-          // Se é exatamente o Top 1 oficial aprovado, basta haver linha válida
-          // + confiança + projeção reais. Não exige corners_ai aninhado.
-          if (sameOfficial) {
-            return conf !== null && conf > 0 && proj !== null && proj > 0;
-          }
-
-          // Para jogos comuns continua conservador: exige decisão corners_ai.
+    
           if (!decision || typeof decision !== "object") return false;
-
-          return conf !== null && conf > 0 && proj !== null && proj > 0;
+          if (decision.skip || decision.updating) return false;
+    
+          const line = String(decision.line || "").toUpperCase().trim();
+          if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return false;
+    
+          const conf = cpRefNum(decision.confidence);
+          const proj = cpRefNum(
+            decision.projection,
+            raw.proj_cantos,
+            raw.projected_corners
+          );
+    
+          return (
+            conf !== null &&
+            conf > 0 &&
+            proj !== null &&
+            proj > 0
+          );
         }
     
         function cpRefUpdateHero(game) {
@@ -2752,7 +2741,22 @@
           const projection = cpRefProjection(game);
           const corners = cpRefCornersAverage(game);
           const goals = cpRefGoalsAverage(game);
-          const confidenceValue = Math.max(0, Math.min(95, Number(game.confidence || 0)));
+          const confidenceValue = Math.max(
+            0,
+            Math.min(
+              95,
+              Math.round(
+                Number(
+                  game.confidence ||
+                  game?.raw?.corners_ai?.confidence ||
+                  game?.raw?.over95_prob_adj ||
+                  game?.raw?.over95_prob ||
+                  game?.raw?.confidence ||
+                  0
+                )
+              )
+            )
+          );
     
           const projectionLabel = $("#cpRefProjectionLabel");
           const projectionEl = $("#cpRefProjection");
@@ -3087,37 +3091,39 @@
             );
     
           cprText("#cprProjectionLabel", projectionLabel);
+
+          // V83 APP — waitingTop1 não apaga mais números reais.
           cprText(
             "#cprProjection",
-            waitingTop1 ? "—" : cprMetric(projection, 2)
+            projection !== null ? cprMetric(projection, 2) : "—"
           );
           cprText(
             "#cprCornersAvg",
-            waitingTop1 ? "—" : cprMetric(cornerAvg, 1)
+            cornerAvg !== null ? cprMetric(cornerAvg, 1) : "—"
           );
           cprText(
             "#cprGoalsAvg",
-            waitingTop1 && goalsAvg === null ? "—" : cprMetric(goalsAvg, 1)
+            goalsAvg !== null ? cprMetric(goalsAvg, 1) : "—"
           );
           cprText(
             "#cprConfidence",
-            waitingTop1 ? "—" : (confidence > 0 ? `${confidence}%` : "—")
+            confidence > 0 ? `${confidence}%` : "—"
           );
-    
+
           const trend =
             waitingTop1 ? "ANALISANDO" :
             confidence >= 72 ? "ALTA" :
             confidence >= 62 ? "MÉDIA" :
             "CAUTELA";
-    
+
           cprText(
             "#cprTrend",
             waitingTop1 ? "💭 ANALISANDO" : `↗ ${trend}`
           );
           cprText("#cprConfidenceLabel", trend);
-    
+
           const gauge = $("#cprGauge");
-          if (gauge) gauge.style.setProperty("--p", waitingTop1 ? 0 : confidence);
+          if (gauge) gauge.style.setProperty("--p", confidence > 0 ? confidence : 0);
     
           const loader = $("#cprLoading");
           if (loader) loader.hidden = true;
@@ -3770,17 +3776,12 @@
           state.officialCornerLoading = true;
           state.officialCornerNoOpportunity = false;
     
-          // Estado visual correto durante o processamento:
-          // nenhum "0", nenhum "CAUTELA" e nenhuma confiança inventada.
+          // V83 APP — durante a confirmação do Top 1, preserva todas as
+          // métricas reais que já chegaram com o jogo-base.
+          // Só o selo/texto informa que a escolha oficial ainda está sendo analisada.
           cprText("#cprMarket", "ANALISANDO TOP 1");
-          cprText("#cprProjection", "—");
-          cprText("#cprCornersAvg", "—");
-          cprText("#cprConfidence", "—");
           cprText("#cprTrend", "💭 ANALISANDO");
           cprText("#cprConfidenceLabel", "ANALISANDO");
-    
-          const gauge = $("#cprGauge");
-          if (gauge) gauge.style.setProperty("--p", 0);
     
           try {
             const favorites = cprFavoritesForTop1Query();
