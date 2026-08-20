@@ -19426,3 +19426,176 @@ body.cpAuthModalOpen{
    - posição final do conjunto times/escudos: top 72px
    - nenhuma lógica/mercado/desktop alterado
    ========================================================= */
+
+/* =========================================================
+   CORNER PRO — PERFIL DO USUÁRIO NO TOPO / DESKTOP
+   Ajuste somente do canto superior direito.
+   ========================================================= */
+@media (min-width:981px){
+
+  .topbar{
+    overflow:visible !important;
+  }
+
+  #authAreaDesktop.topUser{
+    position:relative !important;
+    z-index:100 !important;
+    height:100% !important;
+    min-width:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:10px !important;
+    margin-left:auto !important;
+  }
+
+  #authAreaDesktop .bell{
+    flex:0 0 32px !important;
+    width:32px !important;
+    height:32px !important;
+    min-width:32px !important;
+    display:grid !important;
+    place-items:center !important;
+    margin:0 4px 0 0 !important;
+    padding:0 !important;
+    font-size:18px !important;
+    line-height:1 !important;
+    color:#9eaaa7 !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+  }
+
+  #authUserProfile.authUserProfile{
+    position:static !important;
+    inset:auto !important;
+    transform:none !important;
+    width:auto !important;
+    min-width:188px !important;
+    max-width:250px !important;
+    height:48px !important;
+    min-height:48px !important;
+    margin:0 !important;
+    padding:5px 8px !important;
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:9px !important;
+    overflow:hidden !important;
+    background:#0a1014 !important;
+    border-radius:12px !important;
+    box-shadow:none !important;
+    vertical-align:middle !important;
+  }
+
+  #authUserProfile[hidden]{
+    display:none !important;
+  }
+
+  #authUserPhoto.authUserPhoto{
+    position:static !important;
+    inset:auto !important;
+    transform:none !important;
+    flex:0 0 38px !important;
+    width:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    height:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:block !important;
+    object-fit:cover !important;
+    object-position:center !important;
+    border-radius:50% !important;
+    background:#11191d !important;
+    box-shadow:0 0 0 2px rgba(99,241,39,.16) !important;
+  }
+
+  #authUserProfile .userText{
+    position:static !important;
+    inset:auto !important;
+    transform:none !important;
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    height:auto !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    gap:2px !important;
+    text-align:left !important;
+    line-height:1 !important;
+  }
+
+  #authUserName{
+    width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:block !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    color:#f4f7f5 !important;
+    font-size:10px !important;
+    font-weight:850 !important;
+    line-height:12px !important;
+    text-transform:none !important;
+  }
+
+  #authUserPlan{
+    width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:block !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    color:#63f127 !important;
+    font-size:7px !important;
+    font-weight:900 !important;
+    line-height:9px !important;
+    letter-spacing:.25px !important;
+  }
+
+  #btnGoogleLogout.authLogoutButton{
+    position:static !important;
+    inset:auto !important;
+    transform:none !important;
+    flex:0 0 auto !important;
+    width:auto !important;
+    min-width:auto !important;
+    height:28px !important;
+    min-height:28px !important;
+    margin:0 0 0 2px !important;
+    padding:0 8px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    color:#8f9a97 !important;
+    background:transparent !important;
+    border-radius:8px !important;
+    font-size:7px !important;
+    font-weight:900 !important;
+    line-height:1 !important;
+    letter-spacing:.25px !important;
+    box-shadow:none !important;
+  }
+
+  #btnGoogleLogout.authLogoutButton:hover{
+    color:#63f127 !important;
+    background:rgba(99,241,39,.07) !important;
+  }
+
+  /* O botão de login também fica contido na altura da barra. */
+  #btnGoogleLogin.authLoginButton{
+    height:38px !important;
+    max-height:38px !important;
+    margin:0 !important;
+    border-radius:10px !important;
+  }
+}
