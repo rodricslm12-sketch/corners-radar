@@ -25983,3 +25983,155 @@
       };
     }catch(e){ return {error:String(e)}; }
   };
+
+
+/* =========================================================
+   CORNER PRO WEB V32 — TRAVA REAL DA LISTA ACIMA DO RODAPÉ
+   Mede a posição REAL do rodapé no navegador e limita a lista
+   em pixels. Isso evita conflitos entre patches CSS antigos.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__CP_WEB_V32_ROW_CLAMP__) return;
+  window.__CP_WEB_V32_ROW_CLAMP__ = true;
+
+  const isDesktop = () =>
+    window.matchMedia && window.matchMedia("(min-width:981px)").matches;
+
+  let raf = 0;
+
+  function pxHeight(el){
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    return Math.max(0, r.height || el.offsetHeight || 0);
+  }
+
+  function clampDesktopRows(){
+    if (!isDesktop()) return;
+
+    const content = document.querySelector(".content");
+    const grid = document.querySelector(".dashboardGrid");
+    const mainColumn = document.querySelector(".dashboardMainColumn");
+    const experience = document.querySelector("#cpDesktopExperienceV3");
+    const panel = document.querySelector("#cpDesktopExperienceV3 .cpd3ResultsPanel");
+    const rows = document.querySelector("#cpd3Rows");
+    const footer = document.querySelector(".content > .bottomStrip");
+    const head = document.querySelector("#cpDesktopExperienceV3 .cpd3ResultsHead");
+    const tableHead = document.querySelector("#cpDesktopExperienceV3 .cpd3TableHead");
+    const more = document.querySelector("#cpd3More");
+
+    if (!content || !grid || !mainColumn || !experience || !panel || !rows || !footer) return;
+
+    const footerRect = footer.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+
+    // Se ainda está no primeiro frame e as medidas não existem, tenta de novo.
+    if (!footerRect.top || !panelRect.top) {
+      scheduleClamp();
+      return;
+    }
+
+    const SAFE_GAP = 8;
+    const panelAvailable = Math.floor(footerRect.top - panelRect.top - SAFE_GAP);
+
+    if (panelAvailable <= 80) return;
+
+    // O painel termina fisicamente antes do rodapé.
+    panel.style.setProperty("height", panelAvailable + "px", "important");
+    panel.style.setProperty("max-height", panelAvailable + "px", "important");
+    panel.style.setProperty("min-height", "0", "important");
+    panel.style.setProperty("flex", "0 0 " + panelAvailable + "px", "important");
+    panel.style.setProperty("overflow", "hidden", "important");
+
+    const fixed =
+      pxHeight(head) +
+      pxHeight(tableHead) +
+      pxHeight(more) +
+      14;
+
+    const rowsAvailable = Math.max(60, Math.floor(panelAvailable - fixed));
+
+    rows.style.setProperty("height", rowsAvailable + "px", "important");
+    rows.style.setProperty("max-height", rowsAvailable + "px", "important");
+    rows.style.setProperty("min-height", "0", "important");
+    rows.style.setProperty("flex", "0 0 " + rowsAvailable + "px", "important");
+    rows.style.setProperty("overflow-x", "hidden", "important");
+    rows.style.setProperty("overflow-y", "auto", "important");
+
+    // Segurança adicional: o grid também nunca alcança a área do rodapé.
+    const contentRect = content.getBoundingClientRect();
+    const gridTop = grid.getBoundingClientRect().top;
+    const gridAvailable = Math.floor(footerRect.top - gridTop - SAFE_GAP);
+
+    if (gridAvailable > 150) {
+      grid.style.setProperty("height", gridAvailable + "px", "important");
+      grid.style.setProperty("max-height", gridAvailable + "px", "important");
+      grid.style.setProperty("overflow", "hidden", "important");
+
+      mainColumn.style.setProperty("height", "100%", "important");
+      mainColumn.style.setProperty("max-height", "100%", "important");
+      mainColumn.style.setProperty("overflow", "hidden", "important");
+
+      experience.style.setProperty("height", "100%", "important");
+      experience.style.setProperty("max-height", "100%", "important");
+      experience.style.setProperty("overflow", "hidden", "important");
+    }
+  }
+
+  function scheduleClamp(){
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      clampDesktopRows();
+      setTimeout(clampDesktopRows, 60);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleClamp, {once:true});
+  } else {
+    scheduleClamp();
+  }
+
+  window.addEventListener("load", scheduleClamp, {once:true});
+  window.addEventListener("resize", scheduleClamp);
+
+  // A lista é recriada pelo JS quando mercado/data/filtro muda.
+  const startObserver = () => {
+    const rows = document.querySelector("#cpd3Rows");
+    const footer = document.querySelector(".bottomStrip");
+    if (!rows || !footer) {
+      setTimeout(startObserver, 250);
+      return;
+    }
+
+    new MutationObserver(scheduleClamp).observe(rows, {
+      childList:true,
+      subtree:false
+    });
+
+    if ("ResizeObserver" in window) {
+      const ro = new ResizeObserver(scheduleClamp);
+      ro.observe(footer);
+      const hero = document.querySelector("#cpDesktopExperienceV3 .cpd3Hero");
+      const nav = document.querySelector("#cpDesktopExperienceV3 .cpd3MarketNav");
+      if (hero) ro.observe(hero);
+      if (nav) ro.observe(nav);
+    }
+
+    scheduleClamp();
+  };
+
+  startObserver();
+
+  // Recalcula também após cliques que trocam mercados/linhas.
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(
+      "[data-cpd3-market],[data-cpd3-line],[data-cpd3-sub],#cpd3TodayBtn,#topCalendarDays,#cpd3More"
+    )) {
+      setTimeout(scheduleClamp, 0);
+      setTimeout(scheduleClamp, 120);
+      setTimeout(scheduleClamp, 350);
+    }
+  }, true);
+})();

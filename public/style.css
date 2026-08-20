@@ -20012,3 +20012,39 @@ body.cpAuthModalOpen{
     background:#0d1419 !important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO WEB V32 — LIMITE FÍSICO DA LISTA DE JOGOS
+   Complemento do JS V32. Evita qualquer linha fora do painel.
+   ========================================================= */
+@media screen and (min-width:981px){
+  #cpDesktopExperienceV3,
+  #cpDesktopExperienceV3 .cpd3ResultsPanel,
+  #cpDesktopExperienceV3 #cpd3Rows{
+    box-sizing:border-box !important;
+  }
+
+  #cpDesktopExperienceV3 .cpd3ResultsPanel{
+    overflow:hidden !important;
+    min-height:0 !important;
+  }
+
+  #cpDesktopExperienceV3 #cpd3Rows{
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    min-height:0 !important;
+    overscroll-behavior:contain !important;
+  }
+
+  #cpDesktopExperienceV3 #cpd3Rows > .cpd3Row{
+    position:relative !important;
+    flex:0 0 auto !important;
+  }
+
+  .content > .bottomStrip{
+    flex:none !important;
+    isolation:isolate !important;
+    overflow:hidden !important;
+  }
+}
