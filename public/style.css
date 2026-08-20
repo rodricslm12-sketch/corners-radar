@@ -19841,3 +19841,125 @@ body.cpAuthModalOpen{
     height:36px !important;
   }
 }
+/* =========================================================
+   WEB V31 — FIX DEFINITIVO: LISTA NÃO PASSA DO RODAPÉ
+   Mantém o rodapé fora da área rolável e cria um único
+   scroll dentro da lista de jogos no desktop.
+   ========================================================= */
+@media screen and (min-width:981px){
+  /* A área principal sempre reserva o espaço do rodapé. */
+  .main > .content,
+  .content{
+    position:relative !important;
+    height:calc(100vh - var(--top)) !important;
+    min-height:0 !important;
+    max-height:calc(100vh - var(--top)) !important;
+    padding:0 !important;
+    overflow:hidden !important;
+  }
+
+  .content > .dashboardGrid,
+  .dashboardGrid{
+    position:absolute !important;
+    inset:12px 14px 54px 14px !important;
+    width:auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:hidden !important;
+    align-items:stretch !important;
+  }
+
+  .dashboardGrid > .dashboardMainColumn,
+  .dashboardMainColumn{
+    height:100% !important;
+    min-height:0 !important;
+    max-height:100% !important;
+    overflow:hidden !important;
+  }
+
+  /* O desktop ocupa exatamente a altura útil do grid. */
+  #cpDesktopExperienceV3{
+    height:100% !important;
+    min-height:0 !important;
+    max-height:100% !important;
+    overflow:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  /* Cabeçalhos não encolhem. */
+  #cpDesktopExperienceV3 > .cpd3Topline,
+  #cpDesktopExperienceV3 > .cpd3Hero,
+  #cpDesktopExperienceV3 > .cpd3MarketNav,
+  #cpDesktopExperienceV3 > .cpd3SubNav,
+  #cpDesktopExperienceV3 > .cpd3LineNav{
+    flex:0 0 auto !important;
+  }
+
+  /* Grid interno: título + cabeçalho + lista rolável + botão. */
+  #cpDesktopExperienceV3 > .cpd3ResultsPanel{
+    flex:1 1 0 !important;
+    height:0 !important;
+    min-height:0 !important;
+    max-height:100% !important;
+    overflow:hidden !important;
+    display:grid !important;
+    grid-template-rows:auto auto minmax(0,1fr) auto !important;
+  }
+
+  #cpDesktopExperienceV3 .cpd3ResultsHead,
+  #cpDesktopExperienceV3 .cpd3TableHead{
+    min-height:0 !important;
+    position:relative !important;
+    z-index:2 !important;
+  }
+
+  /* SOMENTE esta área rola. */
+  #cpDesktopExperienceV3 #cpd3Rows,
+  #cpDesktopExperienceV3 .cpd3Rows{
+    min-height:0 !important;
+    height:auto !important;
+    max-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain !important;
+    position:relative !important;
+    z-index:1 !important;
+    margin:0 !important;
+    padding:0 7px 6px !important;
+  }
+
+  #cpDesktopExperienceV3 #cpd3Rows > .cpd3Row{
+    flex:none !important;
+  }
+
+  #cpDesktopExperienceV3 #cpd3More{
+    position:relative !important;
+    z-index:3 !important;
+    flex:none !important;
+    width:170px !important;
+    height:31px !important;
+    min-height:31px !important;
+    max-height:31px !important;
+    margin:4px auto 7px !important;
+    background:#0c1419 !important;
+  }
+
+  /* Rodapé fica numa faixa própria, sem sobrepor os jogos. */
+  .content > .bottomStrip,
+  .bottomStrip{
+    position:absolute !important;
+    left:14px !important;
+    right:14px !important;
+    bottom:0 !important;
+    top:auto !important;
+    width:auto !important;
+    height:44px !important;
+    min-height:44px !important;
+    max-height:44px !important;
+    margin:0 !important;
+    overflow:hidden !important;
+    z-index:50 !important;
+  }
+}
