@@ -11256,6 +11256,29 @@ function officialCornerSnapshot(game) {
     liga: game?.liga || game?.league_name || "",
     league_id: game?.league_id ?? null,
     corners_ai: game?.corners_ai || null,
+
+    // CARD FIX — preserva no snapshot oficial os números usados pelo card.
+    proj_cantos: Number.isFinite(Number(game?.proj_cantos))
+      ? Number(game.proj_cantos)
+      : null,
+    over95_prob: Number.isFinite(Number(game?.over95_prob))
+      ? Number(game.over95_prob)
+      : null,
+    over95_prob_adj: Number.isFinite(Number(game?.over95_prob_adj))
+      ? Number(game.over95_prob_adj)
+      : null,
+    recentCombinedAvg: Number.isFinite(
+      Number(game?.real?.recentCombinedAvg ?? game?.recentCombinedAvg)
+    )
+      ? Number(game?.real?.recentCombinedAvg ?? game?.recentCombinedAvg)
+      : null,
+    real: game?.real || null,
+    goals_avg: Number.isFinite(
+      Number(game?.goals_avg ?? game?.avg_goals ?? game?.goal_avg)
+    )
+      ? Number(game?.goals_avg ?? game?.avg_goals ?? game?.goal_avg)
+      : null,
+
     corner_elite_score: Number(
       game?.corner_elite_score ??
       cornerEliteScore(game)

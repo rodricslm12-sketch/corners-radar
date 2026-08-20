@@ -2685,28 +2685,32 @@
         }
     
         function cpRefGoalsAverage(game) {
-          const raw = game?.raw || {};
+          const raw = game?.raw || game || {};
           return cpRefNum(
+            game?.goals_avg, game?.avg_goals, game?.goal_avg,
             raw.goals_avg, raw.avg_goals, raw.goal_avg, raw.goals_average,
-            raw.real?.goalsAvg, raw.stats?.goals_avg
+            raw.real?.goalsAvg, raw.real?.goals_avg,
+            raw.stats?.goals_avg, raw.event_raw?.goals_avg
           );
         }
-    
+
         function cpRefCornersAverage(game) {
-          const raw = game?.raw || {};
+          const raw = game?.raw || game || {};
           return cpRefNum(
+            game?.recentCombinedAvg, game?.avg_total, game?.avg_corners,
             raw.real?.recentCombinedAvg,
             raw.recentCombinedAvg,
             raw.avg_total,
             raw.avg_corners,
             raw.corners_avg,
             raw.stats?.corners_avg,
+            raw.corners_ai?.recentCombinedAvg,
             raw.corners_ai?.projection,
             raw.proj_cantos,
             raw.projected_corners
           );
         }
-    
+
         function cprCornerTop1DecisionReady(game) {
           if (state.activeMarket !== "corners") return true;
     
@@ -2791,10 +2795,17 @@
                 ? "MÉDIA"
                 : "CAUTELA";
     
+          // CARD FIX — mantém os números reais durante a confirmação do Top 1.
           if (waitingTop1) {
-            if (projectionEl) projectionEl.textContent = "—";
-            if (cornersEl) cornersEl.textContent = "—";
-            if (goalsEl && goals === null) goalsEl.textContent = "—";
+            if (projectionEl && projection !== null) {
+              projectionEl.textContent = projection.toFixed(2).replace(/\.00$/, "");
+            }
+            if (cornersEl && corners !== null) {
+              cornersEl.textContent = corners.toFixed(1);
+            }
+            if (goalsEl && goals !== null) {
+              goalsEl.textContent = goals.toFixed(1);
+            }
           }
     
           if (trendEl) {
@@ -3816,13 +3827,29 @@
             state.activeMarket = 'corners';
     
             const current = Array.isArray(state.corners) ? state.corners : [];
-            const existingIndex = current.findIndex(
+
+            // CARD FIX — junta o Top 1 oficial com o jogo-base já carregado,
+            // preservando projeção, médias e demais estatísticas do card.
+            let existingIndex = current.findIndex(
               item => String(item.id) === String(best.id)
             );
 
+            if (existingIndex < 0) {
+              const homeKey = cprNormalizeTeamKey(best.home);
+              const awayKey = cprNormalizeTeamKey(best.away);
+
+              existingIndex = current.findIndex(item =>
+                cprNormalizeTeamKey(item?.home) === homeKey &&
+                cprNormalizeTeamKey(item?.away) === awayKey
+              );
+            }
+
+            let heroBest = best;
+
             if (existingIndex >= 0) {
               const next = current.slice();
-              next[existingIndex] = {
+
+              heroBest = {
                 ...next[existingIndex],
                 ...best,
                 raw: {
@@ -3830,13 +3857,20 @@
                   ...(best?.raw || {})
                 }
               };
+
+              next[existingIndex] = heroBest;
               state.corners = next;
+              state.officialCornerBest = heroBest;
+            } else {
+              state.corners = [best, ...current.filter(
+                item => String(item.id) !== String(best.id)
+              )];
             }
 
             window.__cpMobileDirectGames = state.corners;
 
-            // V81 — atualiza só o card principal, sem trocar a lista.
-            cprSyncHero(best, state.corners);
+            // Atualiza somente o card principal com o objeto enriquecido.
+            cprSyncHero(heroBest, state.corners);
           } catch (error) {
             if (state.date !== date) return;
             state.officialCornerLoading = false;
