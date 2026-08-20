@@ -1404,36 +1404,107 @@
   
           if(market==="handicap"){
             const target=Number(String(selectedLine).replace("+","").replace(",","."));
-            const own=handicapLineNumber(g);
-            const side=handicapSide(g);
-            const team=side==="away"?away(g):side==="home"?home(g):"";
-            let prob=directLineProbability(g,market,selectedLine);
-            let source="server-line";
-  
-            if(prob===null){
-              prob=baseConf || 50;
-              if(Number.isFinite(target) && Number.isFinite(own)){
-                // A distância para a linha oficial ajuda, mas não pode dominar o modelo.
-                // Antes +1.0 podia empurrar praticamente todos os jogos para 95%.
-                const steps=(target-own)/0.5;
-                const adjustment=Math.max(-18,Math.min(18,steps*3.5));
-                prob += adjustment;
-
-                // Linhas negativas exigem força real maior; positivas recebem bônus
-                // conservador, preservando diferença entre os confrontos.
-                if(target<0 && own>=0) prob-=10;
-                if(target<=-1 && own>-0.5) prob-=8;
-                if(target>0 && own<0) prob+=3;
-              }else if(Number.isFinite(target) && !Number.isFinite(own)){
-                prob-=15;
-              }
-              // Handicap manual não usa teto artificial de 95% para todo mundo.
-              prob=Math.max(1,Math.min(92,prob));
-              source="engine-adjusted";
+            if(!Number.isFinite(target)){
+              return {valid:false,probability:0,pick:"—",source:"invalid-line",pickedSide:"all"};
             }
-  
-            const signed=Number.isFinite(target) ? (target>0?`+${target.toFixed(1)}`:target.toFixed(1)) : selectedLine;
-            return {valid:prob!==null,probability:prob,pick:`${team?team+" ":""}${signed}`,source};
+
+            const r=raw(g);
+            const engineSide=handicapSide(g); // favorito/lado escolhido pela IA automática
+            const markets=Array.isArray(r?.asian_handicap_markets)
+              ? r.asian_handicap_markets
+              : Array.isArray(g?.asian_handicap_markets)
+                ? g.asian_handicap_markets
+                : [];
+
+            // Cada botão de Handicap passa a consultar a linha REAL daquele lado.
+            // Ex.: -1.0 procura CASA -1.0 ou FORA -1.0; +1.0 procura CASA +1.0 ou FORA +1.0.
+            const candidates=[];
+            for(const item of markets){
+              const hl=Number(item?.home_line), al=Number(item?.away_line);
+              const ho=Number(item?.home_odd), ao=Number(item?.away_odd);
+              if(Number.isFinite(hl) && Math.abs(hl-target)<0.001 && Number.isFinite(ho) && ho>1){
+                candidates.push({side:"home",team:home(g),line:hl,odd:ho});
+              }
+              if(Number.isFinite(al) && Math.abs(al-target)<0.001 && Number.isFinite(ao) && ao>1){
+                candidates.push({side:"away",team:away(g),line:al,odd:ao});
+              }
+            }
+
+            // Se a API não trouxe a grade AH completa, ainda podemos usar a lista de
+            // linhas do servidor, mas sem inventar uma confiança de 95%.
+            const available=[
+              ...(Array.isArray(r?.handicap_available_lines)?r.handicap_available_lines:[]),
+              ...(Array.isArray(decision(g,"handicap")?.available_lines)?decision(g,"handicap").available_lines:[])
+            ].map(v=>Number(String(v).replace("+","").replace(",","."))).filter(Number.isFinite);
+
+            let chosen=null;
+            if(candidates.length){
+              // Linha negativa/zero: buscamos o lado forte indicado pela IA.
+              // Linha positiva: buscamos o lado protegido (normalmente o adversário do favorito).
+              const preferredSide = target>0
+                ? (engineSide==="home"?"away":engineSide==="away"?"home":"all")
+                : engineSide;
+
+              candidates.sort((a,b)=>{
+                const ap = a.side===preferredSide ? 1 : 0;
+                const bp = b.side===preferredSide ? 1 : 0;
+                if(bp!==ap) return bp-ap;
+                // Na mesma linha, odd menor representa maior probabilidade implícita.
+                return a.odd-b.odd;
+              });
+              chosen=candidates[0];
+            }
+
+            if(!chosen){
+              const lineExists=available.some(v=>Math.abs(v-target)<0.001);
+              if(!lineExists){
+                return {valid:false,probability:0,pick:"—",source:"line-unavailable",pickedSide:"all"};
+              }
+
+              // Fallback: define corretamente o lado da linha, sem reutilizar cegamente
+              // o mesmo time da IA automática para linhas positivas.
+              const fallbackSide = target>0
+                ? (engineSide==="home"?"away":engineSide==="away"?"home":"all")
+                : engineSide;
+              if(fallbackSide==="all"){
+                return {valid:false,probability:0,pick:"—",source:"side-unavailable",pickedSide:"all"};
+              }
+              chosen={
+                side:fallbackSide,
+                team:fallbackSide==="home"?home(g):away(g),
+                line:target,
+                odd:null
+              };
+            }
+
+            // Confiança específica da linha. Não aumenta todos os jogos para 95% só
+            // porque o handicap ficou positivo. Em + linhas, valorizamos jogos mais
+            // equilibrados; em - linhas, favoritos realmente fortes.
+            let prob;
+            if(target>0){
+              prob = 55 + (100-baseConf)*0.28;
+            }else if(target<0){
+              const aggression=Math.abs(target);
+              prob = baseConf - Math.max(0, aggression-0.5)*10;
+            }else{
+              prob = baseConf;
+            }
+
+            if(Number.isFinite(chosen.odd)){
+              const implied=100/chosen.odd;
+              prob = prob*0.72 + implied*0.28;
+            }
+            prob=clampPct(prob) ?? 0;
+
+            const signed=target>0?`+${target.toFixed(1)}`:target.toFixed(1);
+            return {
+              valid:prob>=48,
+              probability:prob,
+              pick:`${chosen.team} ${signed}`,
+              source:Number.isFinite(chosen.odd)?"real-ah-line":"available-line",
+              pickedSide:chosen.side,
+              marketOdd:Number.isFinite(chosen.odd)?chosen.odd:null
+            };
           }
   
           if(market==="btts"){
@@ -1538,7 +1609,13 @@
         }
   
         function list(){
-          const base=unique(source()).filter(matchesSub);
+          // No Handicap manual, o lado (CASA/FORA) depende da linha clicada.
+          // Portanto não aplicamos matchesSub usando o lado da IA automática antes
+          // de calcular a recomendação específica da linha.
+          const rawBase=unique(source());
+          const base=(state.market==="handicap" && !["IA","TODOS"].includes(state.line))
+            ? rawBase
+            : rawBase.filter(matchesSub);
   
           // IA: mantém filtro específico existente.
           if(state.line==="IA"){
@@ -1556,32 +1633,22 @@
             );
           }
   
-          // HANDICAP MANUAL — cada linha precisa produzir uma seleção própria.
-          // Não apenas troca o número/confiança: filtra pela qualidade da leitura
-          // específica da linha e então ranqueia os melhores confrontos.
+          // HANDICAP MANUAL: cada linha forma uma lista própria.
+          // Só entram partidas em que a linha existe/é válida e CASA/FORA é aplicado
+          // ao lado escolhido especificamente para aquela linha.
           if(state.market==="handicap"){
-            const ranked=base
+            return base
               .map(g=>({g,a:lineAnalysis(g,"handicap",state.line)}))
-              .filter(x=>x.a?.valid && Number.isFinite(Number(x.a.probability)))
+              .filter(x=>x.a.valid)
+              .filter(x=>state.sub==="all" || x.a.pickedSide===state.sub)
               .sort((x,y)=>
-                Number(y.a.probability)-Number(x.a.probability) ||
-                marketSuitability(y.g)-marketSuitability(x.g) ||
+                (y.a.probability||0)-(x.a.probability||0) ||
                 time(x.g).localeCompare(time(y.g))
-              );
-
-            // Corte dinâmico: evita listar os mesmos 37 jogos em toda linha.
-            // Linhas agressivas exigem evidência maior; linhas positivas continuam
-            // competitivas, mas não recebem 95% automático apenas por serem +1/+2.
-            const target=manualLineNumber();
-            const minProb = Number.isFinite(target)
-              ? (target<=-1.5 ? 64 : target<0 ? 61 : target===0 ? 59 : 57)
-              : 59;
-            const strong=ranked.filter(x=>Number(x.a.probability)>=minProb);
-            const chosen=(strong.length?strong:ranked.slice(0,12)).map(x=>x.g);
-            return chosen;
+              )
+              .map(x=>x.g);
           }
 
-          // Demais linhas manuais mantêm o ranking específico já existente.
+          // DEMAIS LINHAS MANUAIS:
           return base.sort((a,b)=>
             marketSuitability(b)-marketSuitability(a) ||
             time(a).localeCompare(time(b))
