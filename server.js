@@ -8151,6 +8151,40 @@ function marketEngineGameFinished(game) {
   );
 }
 
+
+function marketEngineGameLive(game) {
+  if (!game || marketEngineGameFinished(game)) return false;
+
+  const status = String(
+    game?.status ??
+    game?.match_status ??
+    game?.event_status ??
+    game?.event_raw?.match_status ??
+    game?.event_raw?.status ??
+    ""
+  ).trim().toLowerCase();
+
+  const minuteRaw =
+    game?.minute ??
+    game?.match_minute ??
+    game?.elapsed ??
+    game?.match_elapsed ??
+    game?.event_raw?.match_minute ??
+    game?.event_raw?.match_elapsed ??
+    "";
+
+  const minute = Number(String(minuteRaw).replace(/[^\d]/g, ""));
+
+  return Boolean(
+    game?.live ||
+    game?.halftime ||
+    game?.event_raw?.live ||
+    game?.event_raw?.halftime ||
+    (Number.isFinite(minute) && minute > 0) ||
+    /live|ao vivo|half.?time|\bht\b|interval|break|1st half|2nd half|in play/.test(status)
+  );
+}
+
 function marketEngineDecisionIsStable(decision) {
   if (!decision || typeof decision !== "object") return false;
 
@@ -8291,27 +8325,37 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
     }
 
     const finished = marketEngineGameFinished(game);
-    const lockPregameAtFinal =
-      finished &&
-      (decisionField === "btts_ai" || decisionField === "handicap_ai") &&
+    const live = marketEngineGameLive(game);
+
+    const oldWasPregame = Boolean(
+      oldGame &&
+      !marketEngineGameLive(oldGame) &&
+      !marketEngineGameFinished(oldGame)
+    );
+
+    // V80 — a recomendação publicada no pré-jogo não muda de lado após o início.
+    // Ex.: OVER 2.5 não pode virar UNDER 2.5 no intervalo só porque está 0x0.
+    const lockPublishedPregameDecision =
+      (live || finished) &&
+      oldWasPregame &&
       marketEngineDecisionIsStable(oldDecision);
 
-    // BTTS e Handicap encerrados preservam a última indicação pré-jogo.
-    // Assim o front liquida GREEN/RED pelo placar real, sem recalcular
-    // a aposta depois que o jogo terminou.
-    if (lockPregameAtFinal) {
+    if (lockPublishedPregameDecision) {
       return marketEngineStripForeignDecisions({
         ...oldGame,
         ...game,
         [decisionField]: {
           ...marketEnginePreserveDecision(oldDecision),
-          final_settlement_locked: true
+          pregame_line_locked: true,
+          live_tracking_only: live && !finished,
+          final_settlement_locked: finished
         },
-        analysis_snapshot_preserved: true
+        analysis_snapshot_preserved: true,
+        pregame_recommendation_locked: true
       }, decisionField);
     }
 
-    // Em pré-jogo/ao vivo, uma análise nova válida pode substituir a anterior.
+    // Sem snapshot pré-jogo anterior, mantém o comportamento normal.
     if (marketEngineDecisionIsStable(currentDecision)) {
       return marketEngineStripForeignDecisions(
         game,

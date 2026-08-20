@@ -3249,6 +3249,149 @@
           startAutoSlide();
         }
       
+
+        // V80 — trava local da recomendação pré-jogo quando o jogo inicia.
+        function cprMarketStatus(item) {
+          const g = item?.raw || item || {};
+          const status = String(
+            g?.match_status ??
+            g?.status ??
+            g?.event_status ??
+            g?.event_raw?.match_status ??
+            g?.event_raw?.status ??
+            ""
+          ).trim().toLowerCase();
+
+          const minuteRaw =
+            g?.minute ??
+            g?.match_minute ??
+            g?.elapsed ??
+            g?.match_elapsed ??
+            g?.event_raw?.match_minute ??
+            "";
+
+          const minute = Number(String(minuteRaw).replace(/[^\d]/g, ""));
+
+          const finished = Boolean(
+            g?.finished ||
+            g?.event_raw?.finished ||
+            /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status)
+          );
+
+          const halftime =
+            !finished &&
+            Boolean(
+              g?.halftime ||
+              g?.event_raw?.halftime ||
+              /half.?time|\bht\b|interval|break/.test(status)
+            );
+
+          const live =
+            !finished &&
+            Boolean(
+              g?.live ||
+              g?.event_raw?.live ||
+              halftime ||
+              (Number.isFinite(minute) && minute > 0) ||
+              /live|ao vivo|1st|2nd|in play/.test(status)
+            );
+
+          return { live, halftime, finished };
+        }
+
+        function cprStableMarketDecision(decision) {
+          if (!decision || typeof decision !== "object") return false;
+          const text = clean(decision.line, "").toUpperCase();
+          return Boolean(
+            !decision.skip &&
+            !decision.updating &&
+            text &&
+            !["SEM APOSTA", "DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(text)
+          );
+        }
+
+        function cprPreservePregameMarketDecision(currentList, incomingRaw, type) {
+          const incoming = buildMarket(incomingRaw, type);
+          if (!Array.isArray(currentList) || !currentList.length) return incoming;
+
+          const currentById = new Map(
+            currentList.map(item => [String(item.id), item])
+          );
+          const field = ENGINE_DECISION_FIELD[type];
+
+          return incoming.map(item => {
+            const previous = currentById.get(String(item.id));
+            if (!previous) return item;
+
+            const status = cprMarketStatus(item);
+            if (!status.live && !status.finished) return item;
+
+            const previousDecision = previous?.raw?.[field];
+            if (!cprStableMarketDecision(previousDecision)) return item;
+
+            const mergedRaw = {
+              ...(previous?.raw || {}),
+              ...(item?.raw || {}),
+              [field]: {
+                ...previousDecision,
+                pregame_line_locked: true,
+                live_tracking_only: status.live && !status.finished,
+                final_settlement_locked: status.finished
+              }
+            };
+
+            return {
+              ...previous,
+              ...item,
+              line: clean(previousDecision.line, previous.line),
+              confidence: Number(previousDecision.confidence ?? previous.confidence ?? 0),
+              raw: mergedRaw
+            };
+          });
+        }
+
+
+        function cprMergeEngineKeepingVisibleGames(currentList, incomingRaw, type) {
+          const current = Array.isArray(currentList) ? currentList.slice() : [];
+          const incoming = buildMarket(incomingRaw, type);
+          if (!current.length) return incoming;
+
+          const incomingById = new Map(
+            incoming.map(item => [String(item.id), item])
+          );
+
+          return current.map(previous => {
+            const next = incomingById.get(String(previous.id));
+            if (!next) return previous;
+
+            const field = ENGINE_DECISION_FIELD[type];
+            const previousDecision = previous?.raw?.[field];
+            const nextDecision = next?.raw?.[field];
+            const status = cprMarketStatus(next);
+
+            if (
+              (status.live || status.finished) &&
+              cprStableMarketDecision(previousDecision)
+            ) {
+              return cprPreservePregameMarketDecision(
+                [previous],
+                [next.raw || next],
+                type
+              )[0] || previous;
+            }
+
+            return {
+              ...previous,
+              ...next,
+              raw: {
+                ...(previous?.raw || {}),
+                ...(next?.raw || {}),
+                [field]: nextDecision ?? previousDecision
+              }
+            };
+          });
+        }
+
         function loadMarketEnginesInBackground(date, stamp) {
           const applyEnginePayload = (payload, source = "full") => {
             if (state.date !== date || !payload || typeof payload !== "object") return;
@@ -3262,19 +3405,28 @@
             const handicapGames = extract(payload?.handicap);
     
             if (cornerGames.length) {
-              const engineCorners = buildMarket(cornerGames, "corners");
-              if (state.officialCornerBest) {
-                state.corners = [
-                  state.officialCornerBest,
-                  ...engineCorners.filter(item => String(item.id) !== String(state.officialCornerBest.id))
-                ];
-              } else {
-                state.corners = engineCorners;
-              }
+              state.corners = cprMergeEngineKeepingVisibleGames(
+                state.corners,
+                cornerGames,
+                "corners"
+              );
             }
     
-            if (goalGames.length) state.goals = buildMarket(goalGames, "goals");
-            if (cardGames.length) state.cards = buildMarket(cardGames, "cards");
+            if (goalGames.length) {
+              state.goals = cprMergeEngineKeepingVisibleGames(
+                state.goals,
+                goalGames,
+                "goals"
+              );
+            }
+
+            if (cardGames.length) {
+              state.cards = cprMergeEngineKeepingVisibleGames(
+                state.cards,
+                cardGames,
+                "cards"
+              );
+            }
     
             const keepResolvedFastDecision = (currentList, incomingRaw, type) => {
               const incoming = buildMarket(incomingRaw, type);
@@ -3309,12 +3461,28 @@
                   )
                 );
     
+                const incomingStatus = cprMarketStatus(item);
+                if (
+                  prevResolved &&
+                  (incomingStatus.live || incomingStatus.finished)
+                ) {
+                  return cprPreservePregameMarketDecision(
+                    [previous],
+                    [item.raw || item],
+                    type
+                  )[0] || previous;
+                }
+
                 return prevResolved && nextPending ? previous : item;
               });
             };
     
             if (bttsGames.length) {
-              state.btts = keepResolvedFastDecision(state.btts, bttsGames, "btts");
+              state.btts = cprMergeEngineKeepingVisibleGames(
+                state.btts,
+                bttsGames,
+                "btts"
+              );
             }
             if (handicapGames.length) {
               const hasHandicapV60 = Array.isArray(state.handicap) && state.handicap.some(
@@ -3322,7 +3490,11 @@
               );
     
               if (!hasHandicapV60) {
-                state.handicap = keepResolvedFastDecision(state.handicap, handicapGames, "handicap");
+                state.handicap = cprMergeEngineKeepingVisibleGames(
+                  state.handicap,
+                  handicapGames,
+                  "handicap"
+                );
               }
             }
     
@@ -3364,7 +3536,7 @@
           // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
           // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
           getJson(
-            `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
+            `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=81`,
             22000
           )
             .then(payload => applyEnginePayload(payload, "fast"))
@@ -3374,7 +3546,7 @@
     
           // Motor completo continua em paralelo, mas não bloqueia a tela nem o /mercados.
           getJson(
-            `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=53`,
+            `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=81`,
             90000
           )
             .then(payload => applyEnginePayload(payload, "full"))
@@ -3508,46 +3680,30 @@
     
     
         async function cprFirstBaseGames(date, stamp) {
-          const urls = [
-            `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=36`,
-            `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=36`
-          ];
-    
-          return await new Promise((resolve, reject) => {
-            let pending = urls.length;
-            const errors = [];
-            let done = false;
-    
-            urls.forEach((url, index) => {
-              getJson(url, index === 0 ? 10000 : 14000)
-                .then(payload => {
-                  if (done) return;
-    
-                  const games = extract(payload);
-                  if (games.length) {
-                    done = true;
-                    resolve(games);
-                    return;
-                  }
-    
-                  errors.push(new Error(`Fonte ${index + 1} retornou sem jogos.`));
-                  pending -= 1;
-                  if (!pending && !done) {
-                    reject(errors[0] || new Error("Nenhuma fonte retornou jogos."));
-                  }
-                })
-                .catch(error => {
-                  errors.push(error);
-                  pending -= 1;
-                  if (!pending && !done) {
-                    reject(errors[0] || error);
-                  }
-                });
-            });
-          });
+          // V81 — UMA ÚNICA FONTE VISUAL.
+          // /mercados é a fonte oficial; /quentes só é fallback.
+          try {
+            const payload = await getJson(
+              `/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=81`,
+              18000
+            );
+            const games = extract(payload);
+            if (games.length) return games;
+          } catch (error) {
+            console.warn("[CP V81 /mercados]", error?.message || error);
+          }
+
+          const fallback = await getJson(
+            `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=81`,
+            14000
+          );
+          const games = extract(fallback);
+          if (games.length) return games;
+
+          throw new Error("Nenhuma fonte retornou jogos.");
         }
-    
-    
+
+
         function cprFavoritesForTop1Query() {
           try {
             return encodeURIComponent(JSON.stringify(cprReadFavorites().slice(0, 40)));
@@ -3630,13 +3786,27 @@
             state.activeMarket = 'corners';
     
             const current = Array.isArray(state.corners) ? state.corners : [];
-            state.corners = [
-              best,
-              ...current.filter(item => String(item.id) !== String(best.id))
-            ];
-    
+            const existingIndex = current.findIndex(
+              item => String(item.id) === String(best.id)
+            );
+
+            if (existingIndex >= 0) {
+              const next = current.slice();
+              next[existingIndex] = {
+                ...next[existingIndex],
+                ...best,
+                raw: {
+                  ...(next[existingIndex]?.raw || {}),
+                  ...(best?.raw || {})
+                }
+              };
+              state.corners = next;
+            }
+
             window.__cpMobileDirectGames = state.corners;
-            renderActive({ animate: true, direction: -1 });
+
+            // V81 — atualiza só o card principal, sem trocar a lista.
+            cprSyncHero(best, state.corners);
           } catch (error) {
             if (state.date !== date) return;
             state.officialCornerLoading = false;
@@ -3647,40 +3817,16 @@
         }
     
         async function loadSecondaryDataInBackground(date, stamp) {
-          // Mercado completo pode ser pesado. Nunca bloqueia a Home.
-          Promise.allSettled([
-            getJson(`/mercados?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=33`, 18000),
-            loadMarketEnginesInBackground(date, stamp)
-          ]).then(([marketResult]) => {
-            if (state.date !== date) return;
-    
-            if (marketResult.status === "fulfilled") {
-              const marketGames = extract(marketResult.value);
-              if (marketGames.length) {
-                state.all = marketGames;
-                state.pregame = buildMarket(marketGames, "pregame");
-                state.combined = buildMarket(marketGames, "combined");
-                state.props = buildMarket(marketGames, "props");
-    
-                // Escanteios manual permanece disponível imediatamente.
-                if (!state.corners?.length) {
-                  state.corners = buildMarket(marketGames, "corners");
-                }
-    
-                window.__cornerProAllGames = marketGames;
-    
-                // Atualiza também a Home isolada diretamente.
-                cprRenderBaseGamesImmediately(marketGames);
-    
-                // V54 — não rouba o mercado que o usuário já abriu.
-                // /mercados é atualização de dados, não navegação.
-                window.__cpMobileDirectGames = activeList();
-                renderActive({ animate: false });
-              }
-            }
-          }).catch(() => {});
+          // V81 — sem segundo carregamento visual.
+          // Só enriquece os mesmos jogos com IA.
+          try {
+            await loadMarketEnginesInBackground(date, stamp);
+          } catch (error) {
+            console.warn("[CP V81 background engines]", error?.message || error);
+          }
         }
-    
+
+
         async function loadData() {
           if (state.loading) return;
     
@@ -3726,9 +3872,9 @@
     
             // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
             cprRenderBaseGamesImmediately(raw);
-            cprBridgeExistingGames();
-    
-            setLoading(false);
+
+            // V81 — sem redraw imediato da mesma lista.
+setLoading(false);
     
             // O card principal fica fixo em CANTOS. A lista rápida só preenche a tela;
             // a recomendação real vem da rota oficial e pode decidir por SEM ENTRADA.
@@ -21980,7 +22126,7 @@
       
             // Congela a fotografia dos cards de cada mercado. O resultado da partida
             // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
-            const MOBILE_MARKET_LOCK_VERSION='v7-live-card-data';
+            const MOBILE_MARKET_LOCK_VERSION='v8-pregame-line-lock';
             function mobileMarketDate(){
               const value=String(document.getElementById('date')?.value||'').trim();
               if(/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
