@@ -2691,29 +2691,58 @@
     
         function cprCornerTop1DecisionReady(game) {
           if (state.activeMarket !== "corners") return true;
-    
+
           const raw = game?.raw || game || {};
           const decision = raw?.corners_ai;
-    
-          if (!decision || typeof decision !== "object") return false;
-          if (decision.skip || decision.updating) return false;
-    
-          const line = String(decision.line || "").toUpperCase().trim();
+
+          // V82 MOBILE — o /official_corner_pick já devolve o Top 1 aprovado.
+          // Nem todo retorno oficial traz corners_ai aninhado; em alguns casos
+          // linha/confiança/projeção vêm no objeto normalizado. Antes disso, o
+          // card ficava eternamente em "ANALISANDO" mesmo com a IA concluída.
+          const official = state.officialCornerBest;
+          const sameOfficial = Boolean(
+            official &&
+            String(official.id ?? "") === String(game?.id ?? "")
+          );
+
+          const line = String(
+            decision?.line ??
+            game?.line ??
+            raw?.line ??
+            raw?.market_line ??
+            ""
+          ).toUpperCase().trim();
+
           if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return false;
-    
-          const conf = cpRefNum(decision.confidence);
+          if (decision?.skip || decision?.updating) return false;
+
+          const conf = cpRefNum(
+            decision?.confidence,
+            game?.confidence,
+            raw?.confidence,
+            raw?.over95_prob_adj,
+            raw?.over95_prob
+          );
+
           const proj = cpRefNum(
-            decision.projection,
-            raw.proj_cantos,
-            raw.projected_corners
+            decision?.projection,
+            game?.projection,
+            game?.proj_cantos,
+            raw?.proj_cantos,
+            raw?.projected_corners,
+            raw?.corner_projection
           );
-    
-          return (
-            conf !== null &&
-            conf > 0 &&
-            proj !== null &&
-            proj > 0
-          );
+
+          // Se é exatamente o Top 1 oficial aprovado, basta haver linha válida
+          // + confiança + projeção reais. Não exige corners_ai aninhado.
+          if (sameOfficial) {
+            return conf !== null && conf > 0 && proj !== null && proj > 0;
+          }
+
+          // Para jogos comuns continua conservador: exige decisão corners_ai.
+          if (!decision || typeof decision !== "object") return false;
+
+          return conf !== null && conf > 0 && proj !== null && proj > 0;
         }
     
         function cpRefUpdateHero(game) {
