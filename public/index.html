@@ -2,6 +2,14 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+  <script>
+    (function(){
+      if (window.matchMedia && window.matchMedia("(min-width:981px)").matches) {
+        document.documentElement.classList.add("cpDesktopBoot");
+      }
+    })();
+  </script>
+
   <meta charset="UTF-8" />
   <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-web-v26-calendar-fix" />
+  <link rel="stylesheet" href="style.css?v=cornerpro-web-v27-stable-boot" />
   <script src="script.js?v=cornerpro-app-v85-clean-hero" defer></script>
 
   <style id="cpMobileV8Style">
@@ -43,6 +51,15 @@
 
 </head>
 <body class="dashboard">
+
+  <div id="cpDesktopBootScreen" aria-hidden="true">
+    <div class="cpBootBox">
+      <div class="cpBootBrand"><i>⚑</i><b>CORNER<span>PRO</span></b></div>
+      <div class="cpBootDots"><i></i><i></i><i></i></div>
+      <small>CARREGANDO PAINEL</small>
+    </div>
+  </div>
+
   <input type="hidden" id="date" name="date" value="">
 
   <aside class="sidebar">
@@ -760,6 +777,77 @@
       <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
       <button type="button"><span>•••</span><b>Mais</b></button>
     </nav>
+
+
+<script id="cpDesktopStableBoot">
+(function(){
+  "use strict";
+
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) {
+    document.documentElement.classList.remove("cpDesktopBoot");
+    return;
+  }
+
+  let released = false;
+  const started = performance.now();
+
+  function layoutLooksReady(){
+    const main = document.querySelector(".main");
+    const grid = document.querySelector(".dashboardGrid");
+    const experience = document.getElementById("cpDesktopExperienceV3");
+    const hero = document.getElementById("cpd3Hero");
+
+    if (!main || !grid || !experience || !hero) return false;
+
+    const mr = main.getBoundingClientRect();
+    const gr = grid.getBoundingClientRect();
+    const er = experience.getBoundingClientRect();
+
+    // O estado quebrado mostrado no carregamento fica estreito.
+    // Só libera quando o dashboard já ocupou a largura real do desktop.
+    if (mr.width < 700 || gr.width < 700 || er.width < 500) return false;
+
+    const style = getComputedStyle(experience);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+
+    return true;
+  }
+
+  function release(){
+    if (released) return;
+    released = true;
+    document.documentElement.classList.remove("cpDesktopBoot");
+    document.documentElement.classList.add("cpDesktopReady");
+  }
+
+  function check(){
+    if (released) return;
+
+    if (layoutLooksReady()) {
+      // Dois frames extras evitam mostrar o meio da reorganização do grid.
+      requestAnimationFrame(() => requestAnimationFrame(release));
+      return;
+    }
+
+    // Segurança: nunca deixa a página presa caso alguma API falhe.
+    if (performance.now() - started > 2600) {
+      release();
+      return;
+    }
+
+    requestAnimationFrame(check);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", check, {once:true});
+  } else {
+    check();
+  }
+
+  window.addEventListener("load", check, {once:true});
+  setTimeout(release, 2800);
+})();
+</script>
 
 </body>
 </html>
