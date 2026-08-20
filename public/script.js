@@ -1029,28 +1029,33 @@
           const serverLine=clean(d?.line,"").toUpperCase();
           const p=projection(g,"corners");
           const c=confidence(g,"corners");
-
-          // IA ORIGINAL DE CANTOS: /web_corners_ai é a única autoridade.
-          // Sem fallback, sem Poisson e sem recalcular a linha no navegador.
-          const pending=
-            Boolean(d?.updating) ||
-            !serverLine ||
-            serverLine==="DADOS EM ATUALIZAÇÃO" ||
-            serverLine==="ANALISANDO PARTIDA";
-
-          const rejected=
-            Boolean(d?.skip) ||
-            serverLine==="SEM APOSTA" ||
-            serverLine==="SEM ENTRADA";
-
-          const validServerLine=/^OVER\\s+(9\\.5|10\\.5|11\\.5|12\\.5)$/.test(serverLine);
-
+    
+          // Se o servidor já trouxe um OVER válido, respeita.
+          if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(serverLine)){
+            return {
+              valid:true,
+              line:serverLine,
+              projection:p,
+              confidence:c,
+              source:"server"
+            };
+          }
+    
+          // Fallback visual alinhado ao motor WEB dedicado.
+          if(p!==null && Number.isFinite(Number(p))){
+            const proj=Number(p);
+    
+            if(proj>=11.75) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
+            if(proj>=10.75) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
+            if(proj>=9.55)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
+          }
+    
           return {
-            valid:!pending && !rejected && validServerLine,
-            line:(!pending && !rejected && validServerLine) ? serverLine : "SEM ENTRADA",
+            valid:false,
+            line:"SEM ENTRADA",
             projection:p,
             confidence:c,
-            source:"web_corners_ai"
+            source:"none"
           };
         }
     
@@ -1620,22 +1625,7 @@
             ? rawBase
             : rawBase.filter(matchesSub);
   
-          // IA ORIGINAL DE ESCANTEIOS:
-          // usa SOMENTE os jogos aprovados pelo /web_corners_ai.
-          if(state.line==="IA" && state.market==="corners"){
-            return unique(state.engines.corners || [])
-              .filter(matchesSub)
-              .filter(matchesLine)
-              .sort((a,b)=>{
-                const da=decision(a,"corners");
-                const db=decision(b,"corners");
-                return Number(db?.score || 0)-Number(da?.score || 0) ||
-                  confidence(b,"corners")-confidence(a,"corners") ||
-                  time(a).localeCompare(time(b));
-              });
-          }
-
-          // Demais IAs permanecem inalteradas.
+          // IA: mantém filtro específico existente.
           if(state.line==="IA"){
             return base
               .filter(matchesLine)
