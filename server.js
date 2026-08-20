@@ -9653,7 +9653,7 @@ app.get("/market_engines_fast", async (req, res) => {
  // Prioridade: cantos REAIS dos últimos jogos de cada equipe.
  // Só usa a média-base da liga como estabilizador, nunca como projeção principal.
  // =========================================================
-const WEB_CORNERS_AI_MAX_GAMES = Number(process.env.WEB_CORNERS_AI_MAX_GAMES || 40);
+const WEB_CORNERS_AI_MAX_GAMES = Number(process.env.WEB_CORNERS_AI_MAX_GAMES || 16);
 const WEB_CORNERS_AI_CONCURRENCY = Math.max(
   3,
   Number(process.env.WEB_CORNERS_AI_CONCURRENCY || 6)
@@ -9795,62 +9795,18 @@ function webCornersIndividualDecision(game, home, away) {
     Number.isFinite(away?.cornersAgainstAvg);
 
   if (!enough) {
-    // WEB V25 — fallback SOMENTE da IA ORIGINAL de escanteios do PC.
-    // Se a API não entregar amostra recente suficiente, não zeramos a IA inteira.
-    // Usamos a projeção estrutural já calculada pelo próprio servidor.
-    const fallbackProjection = engineFallbackCornersProjection(game);
-
-    if (Number.isFinite(fallbackProjection) && fallbackProjection >= 9.55) {
-      let fallbackLine = "OVER 9.5";
-      let fallbackLineNumber = 9.5;
-
-      if (fallbackProjection >= 11.75) {
-        fallbackLine = "OVER 11.5";
-        fallbackLineNumber = 11.5;
-      } else if (fallbackProjection >= 10.75) {
-        fallbackLine = "OVER 10.5";
-        fallbackLineNumber = 10.5;
-      }
-
-      const cushion = fallbackProjection - fallbackLineNumber;
-      const confidence = Math.max(
-        58,
-        Math.min(
-          74,
-          Math.round(59 + Math.min(10, Math.max(0, cushion) * 7))
-        )
-      );
-
-      return {
-        market: "ESCANTEIOS",
-        skip: false,
-        updating: false,
-        line: fallbackLine,
-        projection: fallbackProjection,
-        confidence,
-        score: confidence + fallbackProjection + cushion,
-        sample_games: sampleGames,
-        calculation_source: "desktop_structural_fallback",
-        reason:
-          `${fallbackLine}: a API não entregou amostra recente completa; ` +
-          `a IA original usou a projeção estrutural de ${fallbackProjection.toFixed(1)} cantos.`,
-        web_desktop_corners_ai: true,
-        web_fallback_used: true
-      };
-    }
-
     return {
       market: "ESCANTEIOS",
       skip: true,
       updating: false,
       line: "SEM APOSTA",
-      projection: Number.isFinite(fallbackProjection) ? fallbackProjection : null,
+      projection: null,
       confidence: 0,
-      score: Number.isFinite(fallbackProjection) ? fallbackProjection : 0,
+      score: 0,
       sample_games: sampleGames,
       calculation_source: "insufficient_recent_corners",
       reason:
-        "Sem amostra recente suficiente e sem projeção estrutural mínima para OVER 9.5.",
+        "Sem amostra recente suficiente de escanteios reais para gerar uma entrada.",
       web_desktop_corners_ai: true
     };
   }
@@ -9990,7 +9946,7 @@ function webCornersIndividualDecision(game, home, away) {
 }
 
 async function buildWebCornersAi({ date }) {
-  const cacheKey = `web-corners-ai-v25:${date}`;
+  const cacheKey = `web-corners-ai-v24:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
@@ -10035,7 +9991,7 @@ async function buildWebCornersAi({ date }) {
           away: awayProfile
         },
         web_corners_ai: true,
-        web_corners_ai_version: "v25-original-ai-fallback"
+        web_corners_ai_version: "v24-stable-picks"
       };
     }
   );
@@ -10051,7 +10007,7 @@ async function buildWebCornersAi({ date }) {
 
   const payload = {
     ok: true,
-    version: "web-corners-v25-original-ai-fallback",
+    version: "web-corners-v24-stable-picks",
     date,
     corners
   };
@@ -10077,7 +10033,7 @@ app.get("/web_corners_ai", async (req, res) => {
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[web_corners_ai v25]", err?.message || err);
+    console.warn("[web_corners_ai v24]", err?.message || err);
 
     return res.status(500).json({
       ok: false,
