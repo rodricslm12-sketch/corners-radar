@@ -19474,17 +19474,9 @@ body.cpAuthModalOpen{
   }
 }
 
-/* AJUSTE FINO — baixa levemente os escudos do card principal */
+/* BAIXAR LEVEMENTE ESCUDOS + TIMES */
 @media (max-width:980px){
-  :is(#cpHomeBest,.cpHomeBestClone) .cpBestTeamBadge{
-    top:16px !important;
-  }
-}
-
-
-@media (max-width:980px){
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams,
-  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams.cpBestTeamsProfessional{
-    top:68px!important;
+  .cprMatch .cprTeam{
+    transform: translateY(8px) !important;
   }
 }
