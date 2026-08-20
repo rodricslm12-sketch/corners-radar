@@ -9087,12 +9087,37 @@ app.get("/official_corner_pick", async (req, res) => {
   const favoriteTeams = top1FavoriteSet(req.query.favorites || "[]");
 
   try {
-    const out = await buildQuentesList({ date, fresh });
+    // CARD APP FIX V84:
+    // /mercados é propositalmente leve e não possui as métricas pesadas.
+    // Para o card não ficar preso em "ANALISANDO", reaproveita primeiro
+    // o resultado rico já persistido por /quentes. Só recalcula se necessário.
+    let out = null;
+
+    if (!fresh) {
+      try {
+        const persisted = await withTimeout(
+          readPersist(date),
+          2500,
+          "official corner persisted"
+        );
+
+        if (Array.isArray(persisted) && persisted.length) {
+          out = sanitizeSelectionList(persisted).map(normalizeTeamsOnGame);
+        }
+      } catch (_) {}
+    }
+
+    if (!Array.isArray(out) || !out.length) {
+      out = await buildQuentesList({ date, fresh });
+    }
+
     const official = resolveOfficialCornerPick({
       date,
       games: rankGamesByCornerStrength(out),
       favoriteTeams
     });
+
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
 
     return res.json({
       ok: true,

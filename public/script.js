@@ -2660,17 +2660,24 @@
         }
     
         function cpRefProjection(game) {
-          const raw = game?.raw || {};
+          const raw = game?.raw || game || {};
           if (state.activeMarket === "goals") {
             return cpRefNum(
+              game?.projection, game?.goals_projection,
               raw.goals_ai?.projection, raw.goal_projection, raw.projected_goals,
               raw.goals_projection, raw.avg_goals, raw.goal_avg
             );
           }
           if (state.activeMarket === "cards") {
-            return cpRefNum(raw.cards_ai?.projection, raw.card_projection, raw.projected_cards, raw.avg_cards);
+            return cpRefNum(
+              game?.projection,
+              raw.cards_ai?.projection, raw.card_projection,
+              raw.projected_cards, raw.avg_cards
+            );
           }
           return cpRefNum(
+            game?.projection,
+            game?.proj_cantos,
             raw.corners_ai?.projection,
             raw.proj_cantos,
             raw.projCorners,
@@ -3812,6 +3819,32 @@
             }
     
             const best = normalize(rawGame, 'corners', 0);
+
+            // CARD APP FIX V84 — espelha no wrapper normalizado as métricas
+            // do objeto rico retornado pela rota oficial.
+            best.projection = cpRefNum(
+              rawGame?.corners_ai?.projection,
+              rawGame?.proj_cantos,
+              rawGame?.projected_corners
+            );
+            best.recentCombinedAvg = cpRefNum(
+              rawGame?.real?.recentCombinedAvg,
+              rawGame?.recentCombinedAvg,
+              rawGame?.avg_total
+            );
+            best.goals_avg = cpRefNum(
+              rawGame?.goals_avg,
+              rawGame?.avg_goals,
+              rawGame?.goal_avg,
+              rawGame?.real?.goalsAvg
+            );
+            best.confidence = Math.round(cpRefNum(
+              rawGame?.corners_ai?.confidence,
+              rawGame?.over95_prob_adj,
+              rawGame?.over95_prob,
+              best.confidence
+            ) || 0);
+
             const line = String(best.line || '').toUpperCase();
     
             // Segurança do front: mesmo que algum cache antigo devolva 8.5, não publica.
