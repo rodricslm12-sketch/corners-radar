@@ -1457,12 +1457,11 @@
 
             if(!chosen){
               const lineExists=available.some(v=>Math.abs(v-target)<0.001);
-              if(!lineExists){
-                return {valid:false,probability:0,pick:"—",source:"line-unavailable",pickedSide:"all"};
-              }
 
-              // Fallback: define corretamente o lado da linha, sem reutilizar cegamente
-              // o mesmo time da IA automática para linhas positivas.
+              // V3: não zera a lista quando a API não publica a grade AH completa.
+              // A linha exata continua tendo prioridade quando existe; quando não existe,
+              // usamos a força do motor para ESTIMAR a adequação da linha escolhida.
+              // Isso mantém os jogos visíveis e ainda permite listas diferentes por linha.
               const fallbackSide = target>0
                 ? (engineSide==="home"?"away":engineSide==="away"?"home":"all")
                 : engineSide;
@@ -1473,7 +1472,8 @@
                 side:fallbackSide,
                 team:fallbackSide==="home"?home(g):away(g),
                 line:target,
-                odd:null
+                odd:null,
+                estimated:!lineExists
               };
             }
 
@@ -1482,10 +1482,14 @@
             // equilibrados; em - linhas, favoritos realmente fortes.
             let prob;
             if(target>0){
-              prob = 55 + (100-baseConf)*0.28;
+              // Handicap positivo protege o lado oposto ao favorito.
+              // Quanto mais dominante o favorito automático, MENOR a confiança no protegido.
+              // Isso faz +0.5/+1.0/+1.5 terem ranking próprio, em vez de repetir -1.0.
+              prob = 72 - Math.max(0, baseConf-50)*0.42 + Math.min(2, target)*4;
             }else if(target<0){
+              // Handicap negativo exige domínio do favorito; linhas mais agressivas penalizam.
               const aggression=Math.abs(target);
-              prob = baseConf - Math.max(0, aggression-0.5)*10;
+              prob = baseConf - Math.max(0, aggression-0.5)*11;
             }else{
               prob = baseConf;
             }
@@ -1501,7 +1505,11 @@
               valid:prob>=48,
               probability:prob,
               pick:`${chosen.team} ${signed}`,
-              source:Number.isFinite(chosen.odd)?"real-ah-line":"available-line",
+              source:Number.isFinite(chosen.odd)
+                ? "real-ah-line"
+                : chosen.estimated
+                  ? "estimated-ah-line"
+                  : "available-line",
               pickedSide:chosen.side,
               marketOdd:Number.isFinite(chosen.odd)?chosen.odd:null
             };
@@ -1637,15 +1645,20 @@
           // Só entram partidas em que a linha existe/é válida e CASA/FORA é aplicado
           // ao lado escolhido especificamente para aquela linha.
           if(state.market==="handicap"){
-            return base
+            const analyzed=base
               .map(g=>({g,a:lineAnalysis(g,"handicap",state.line)}))
-              .filter(x=>x.a.valid)
               .filter(x=>state.sub==="all" || x.a.pickedSide===state.sub)
               .sort((x,y)=>
                 (y.a.probability||0)-(x.a.probability||0) ||
                 time(x.g).localeCompare(time(y.g))
-              )
-              .map(x=>x.g);
+              );
+
+            const valid=analyzed.filter(x=>x.a.valid);
+
+            // Se houver recomendações válidas, usa-as. Se a API não trouxe linhas AH
+            // suficientes naquele dia, mantém os jogos analisáveis em vez de mostrar 0.
+            const selected=valid.length ? valid : analyzed.filter(x=>x.a.pickedSide!=="all");
+            return selected.map(x=>x.g);
           }
 
           // DEMAIS LINHAS MANUAIS:
