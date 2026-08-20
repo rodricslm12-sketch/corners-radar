@@ -17456,18 +17456,6 @@ button.railFullBtn {
   }
 }
 
-@media (max-width:390px){
-  .cprHero{height:548px!important}
-  .cprMatch{top:112px!important;height:202px!important}
-  .cprBadgeBox{width:100px!important;height:100px!important}
-  .cprBadgeBox img{width:90px!important;height:90px!important}
-  .cprBadgeBox > span{width:82px!important;height:82px!important;font-size:25px!important}
-  .cprTeam h2{max-width:126px!important;font-size:18px!important}
-  .cprStats{height:143px!important}
-  .cprStats article > b{font-size:20px!important}
-  .cprGauge{width:72px!important;height:72px!important}
-  .cprMarkets > button{height:205px!important}
-}
 
 
 /* =========================================================
@@ -17825,47 +17813,6 @@ button.railFullBtn {
   }
 }
 
-@media (max-width:390px){
-  .cprHero{
-    height:426px!important;
-    min-height:426px!important;
-    max-height:426px!important;
-  }
-
-  .cprMatch{
-    top:75px!important;
-    height:162px!important;
-  }
-
-  .cprBadgeBox{
-    width:70px!important;
-    height:70px!important;
-  }
-
-  .cprBadgeBox img{
-    width:66px!important;
-    height:66px!important;
-  }
-
-  .cprBadgeBox > span{
-    width:62px!important;
-    height:62px!important;
-    font-size:20px!important;
-  }
-
-  .cprTeam h2{
-    max-width:112px!important;
-    font-size:16px!important;
-  }
-
-  .cprStats{
-    height:122px!important;
-  }
-
-  .cprMarkets > button{
-    height:168px!important;
-  }
-}
 
 
 /* =========================================================
@@ -18214,7 +18161,7 @@ button.railFullBtn {
   }
 
   .cprMatch{
-    top:64px!important;
+    top:72px!important;
     height:143px!important;
   }
 
@@ -19473,10 +19420,9 @@ body.cpAuthModalOpen{
     pointer-events:none!important;
   }
 }
-
-/* BAIXAR LEVEMENTE ESCUDOS + TIMES */
-@media (max-width:980px){
-  .cprMatch .cprTeam{
-    transform: translateY(8px) !important;
-  }
-}
+/* =========================================================
+   LIMPEZA SEGURA — CARD PRINCIPAL MOBILE
+   - removidos 2 blocos <=390px já totalmente sobrescritos
+   - posição final do conjunto times/escudos: top 72px
+   - nenhuma lógica/mercado/desktop alterado
+   ========================================================= */
