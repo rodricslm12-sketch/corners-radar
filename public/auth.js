@@ -13,7 +13,8 @@ const estadoAuth = {
   ocupado: false,
   usuario: null,
   perfil: null,
-  modo: "login"
+  modo: "login",
+  obrigatorio: false
 };
 
 const elementos = {
@@ -218,6 +219,7 @@ function renderizarDeslogado() {
 }
 
 function renderizarLogado(usuario, perfil) {
+  estadoAuth.obrigatorio = false;
   sincronizarEstadoGlobal(usuario, perfil);
   removerInterfaceAntigaDuplicada();
 
@@ -395,6 +397,13 @@ function configurarModo(modo = "login") {
     elementos.submit.querySelector("span").textContent = cadastro ? "CRIAR CONTA" : "ENTRAR";
   }
 
+  if (elementos.passwordInput) {
+    elementos.passwordInput.setAttribute(
+      "autocomplete",
+      cadastro ? "new-password" : "current-password"
+    );
+  }
+
   if (elementos.switchText) {
     elementos.switchText.textContent = cadastro ? "Já possui uma conta?" : "Ainda não possui conta?";
   }
@@ -406,16 +415,42 @@ function configurarModo(modo = "login") {
   mostrarMensagemFormulario("");
 }
 
-function abrirModal(modo = "login") {
+function abrirModal(modo = "login", opcoes = {}) {
   if (!elementos.modal) {
     realizarLoginGoogle();
     return;
   }
 
+  const obrigatorio = opcoes?.obrigatorio === true;
+
+  if (obrigatorio) {
+    estadoAuth.obrigatorio = true;
+  }
+
   configurarModo(modo);
+
   elementos.modal.hidden = false;
   elementos.modal.setAttribute("aria-hidden", "false");
+  elementos.modal.classList.toggle("is-required", estadoAuth.obrigatorio);
   document.body.classList.add("cpAuthModalOpen");
+
+  // Quando o visitante ainda não está autenticado, o login é a porta de entrada
+  // tanto no site quanto no app/mobile. O Google continua intacto.
+  if (elementos.modalClose) {
+    elementos.modalClose.hidden = estadoAuth.obrigatorio;
+    elementos.modalClose.setAttribute(
+      "aria-hidden",
+      estadoAuth.obrigatorio ? "true" : "false"
+    );
+  }
+
+  if (elementos.modalBackdrop) {
+    elementos.modalBackdrop.disabled = estadoAuth.obrigatorio;
+    elementos.modalBackdrop.setAttribute(
+      "aria-label",
+      estadoAuth.obrigatorio ? "Autenticação obrigatória" : "Fechar autenticação"
+    );
+  }
 
   window.setTimeout(() => {
     const alvo = estadoAuth.modo === "register"
@@ -425,11 +460,33 @@ function abrirModal(modo = "login") {
   }, 80);
 }
 
-function fecharModal() {
+function fecharModal(opcoes = {}) {
   if (!elementos.modal) return;
+
+  const forcar = opcoes?.forcar === true;
+
+  // Não permite fechar a porta de entrada enquanto não houver usuário logado.
+  if (estadoAuth.obrigatorio && !estadoAuth.usuario && !forcar) {
+    return;
+  }
+
+  estadoAuth.obrigatorio = false;
+
   elementos.modal.hidden = true;
   elementos.modal.setAttribute("aria-hidden", "true");
+  elementos.modal.classList.remove("is-required");
   document.body.classList.remove("cpAuthModalOpen");
+
+  if (elementos.modalClose) {
+    elementos.modalClose.hidden = false;
+    elementos.modalClose.setAttribute("aria-hidden", "false");
+  }
+
+  if (elementos.modalBackdrop) {
+    elementos.modalBackdrop.disabled = false;
+    elementos.modalBackdrop.setAttribute("aria-label", "Fechar autenticação");
+  }
+
   mostrarMensagemFormulario("");
 }
 
@@ -551,6 +608,7 @@ async function realizarLogout() {
     await sairDaConta();
     renderizarDeslogado();
     mostrarMensagem("Você saiu da conta.", "success");
+    abrirModal("login", { obrigatorio: true });
   } catch (erro) {
     console.error("Falha no logout Firebase:", erro);
     mostrarMensagem(erro?.message || "Não foi possível sair da conta.", "error");
@@ -585,7 +643,12 @@ function instalarEventos() {
   elementos.forgot?.addEventListener("click", recuperarSenha);
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && elementos.modal && !elementos.modal.hidden) {
+    if (
+      event.key === "Escape" &&
+      elementos.modal &&
+      !elementos.modal.hidden &&
+      !estadoAuth.obrigatorio
+    ) {
       fecharModal();
     }
   });
@@ -621,6 +684,7 @@ function iniciarAutenticacao() {
 
     if (!usuario) {
       renderizarDeslogado();
+      abrirModal("login", { obrigatorio: true });
       return;
     }
 
@@ -628,10 +692,12 @@ function iniciarAutenticacao() {
       definirOcupado(true);
       const perfil = await sincronizarComServidor(usuario, false);
       renderizarLogado(usuario, perfil);
+      fecharModal({ forcar: true });
     } catch (erro) {
       console.error("Falha ao restaurar perfil no servidor:", erro);
       const perfilFirebase = perfilNormalizado(usuario, {});
       renderizarLogado(usuario, perfilFirebase);
+      fecharModal({ forcar: true });
       mostrarMensagem(
         "Conta restaurada. O plano será sincronizado quando o servidor responder.",
         "info"
