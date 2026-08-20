@@ -19480,3 +19480,11 @@ body.cpAuthModalOpen{
     top:16px !important;
   }
 }
+
+
+@media (max-width:980px){
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams,
+  :is(#cpHomeBest,.cpHomeBestClone) .cpHomeBestTeams.cpBestTeamsProfessional{
+    top:68px!important;
+  }
+}
