@@ -578,16 +578,77 @@
         `;
       }
     
-      async function openMatchCenter(game) {
+      function renderMcEmpty() {
+        const target = rail();
+        if (!target) return;
+
+        if (typeof window.resetDesktopMatchRailToEmpty === "function") {
+          try {
+            window.resetDesktopMatchRailToEmpty();
+            return;
+          } catch (_) {}
+        }
+
+        target.innerHTML = `
+          <section class="railCard matchRailCard railEmptyHero">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+            <div class="railEmptyText" style="text-align:center;padding:22px 10px">
+              <strong>Aguardando partida</strong>
+              <span style="display:block;margin-top:7px;color:#91a0a3">
+                Selecione um jogo para iniciar o Match Center e ver todas as análises.
+              </span>
+            </div>
+          </section>
+          <section class="railCard railEmptyStatsCard">
+            <h3>ESTATÍSTICAS DA PARTIDA</h3>
+            <div class="railEmptyHint">Selecione uma partida para carregar as estatísticas.</div>
+          </section>
+          <section class="railCard railEmptyEventsCard">
+            <h3>EVENTOS / LEITURA</h3>
+            <div class="railEmptyHint">Aguardando partida.</div>
+          </section>
+        `;
+      }
+
+      function clearMatchCenterSelection() {
+        window.__cpV28MatchCenterToken = (window.__cpV28MatchCenterToken || 0) + 1;
+        window.__selectedMatchCenterGame = null;
+        window.__selectedMatchCenterKey = null;
+
+        document.querySelectorAll("[data-cpd3-open].is-open")
+          .forEach(el => el.classList.remove("is-open"));
+
+        document.querySelectorAll(".cpd3Row.match-center-selected")
+          .forEach(el => el.classList.remove("match-center-selected"));
+
+        rail()?.classList.remove("mc-selected");
+        renderMcEmpty();
+      }
+
+      async function openMatchCenter(game, sourceButton = null) {
         if (!game) return;
-    
+
+        const selectedKey = gameId(game) || localKey(game);
+        const requestToken = (window.__cpV28MatchCenterToken || 0) + 1;
+        window.__cpV28MatchCenterToken = requestToken;
+
         window.__selectedMatchCenterGame = game;
-        window.__selectedMatchCenterKey = gameId(game) || localKey(game);
-    
+        window.__selectedMatchCenterKey = selectedKey;
+
+        document.querySelectorAll("[data-cpd3-open].is-open")
+          .forEach(el => el.classList.remove("is-open"));
+
+        document.querySelectorAll(".cpd3Row.match-center-selected")
+          .forEach(el => el.classList.remove("match-center-selected"));
+
+        sourceButton?.classList.add("is-open");
+        sourceButton?.closest?.(".cpd3Row")?.classList.add("match-center-selected");
+        rail()?.classList.add("mc-selected");
+
         renderMcLoading(game);
-    
+
         const id = gameId(game);
-    
+
         if (!id) {
           renderMcError(
             game,
@@ -595,7 +656,7 @@
           );
           return;
         }
-    
+
         try {
           const response = await fetch(
             `/match_center?match_id=${encodeURIComponent(id)}&fresh=1&t=${Date.now()}`,
@@ -607,15 +668,26 @@
               }
             }
           );
-    
+
           const data = await response.json().catch(() => null);
-    
+
+          // Se fechou ou trocou de jogo enquanto carregava, ignora a resposta antiga.
+          if (
+            requestToken !== window.__cpV28MatchCenterToken ||
+            window.__selectedMatchCenterKey !== selectedKey
+          ) return;
+
           if (!response.ok || !data || data?.error) {
             throw new Error(data?.error || `HTTP ${response.status}`);
           }
-    
+
           renderMcData(game, data);
         } catch (error) {
+          if (
+            requestToken !== window.__cpV28MatchCenterToken ||
+            window.__selectedMatchCenterKey !== selectedKey
+          ) return;
+
           console.error("[CP V28 Match Center]", error);
           renderMcError(
             game,
@@ -623,7 +695,7 @@
           );
         }
       }
-    
+
       /* WINDOW + CAPTURE:
          executa antes dos listeners antigos registrados no document. */
       window.addEventListener("click", event => {
@@ -693,10 +765,22 @@
         if (analysis) {
           event.preventDefault();
           event.stopImmediatePropagation();
-    
+
           const game = resolveGame(analysis);
+
           if (game) {
-            openMatchCenter(game);
+            const clickedKey = gameId(game) || localKey(game);
+
+            // 1) Segundo clique no MESMO "Ver análise" = fecha.
+            if (
+              window.__selectedMatchCenterKey &&
+              window.__selectedMatchCenterKey === clickedKey
+            ) {
+              clearMatchCenterSelection();
+            } else {
+              // 2) Clique em outro jogo = troca direto.
+              openMatchCenter(game, analysis);
+            }
           } else {
             const targetRail = rail();
             if (targetRail) {
@@ -710,15 +794,24 @@
           }
           return;
         }
-    
+
         if (
           $("#topCalendarDropdown")?.classList.contains("is-open") &&
           !target.closest("#topCalendarDropdown")
         ) {
           closeCalendar();
         }
+
+        // 3) Clique fora do Match Center fecha a seleção.
+        // Clique dentro do próprio Match Center NÃO fecha.
+        if (
+          window.__selectedMatchCenterKey &&
+          !target.closest("#desktopMatchRail,.dashboardRightRail")
+        ) {
+          clearMatchCenterSelection();
+        }
       }, true);
-    
+
       window.addEventListener("resize", () => {
         if (
           desktop() &&
@@ -729,7 +822,10 @@
       });
     
       document.addEventListener("keydown", event => {
-        if (event.key === "Escape") closeCalendar();
+        if (event.key === "Escape") {
+          closeCalendar();
+          if (window.__selectedMatchCenterKey) clearMatchCenterSelection();
+        }
       });
     
       /* Exposição somente para diagnóstico no console. */
@@ -737,6 +833,7 @@
         openCalendar,
         closeCalendar,
         openMatchCenter,
+        closeMatchCenter: clearMatchCenterSelection,
         collectGames
       };
     })();
