@@ -6408,6 +6408,157 @@
             return decision;
           }
         
+
+          /* =========================================================
+             MOBILE APP — GOLS: TRAVA DA DECISÃO PRÉ-JOGO
+             ========================================================= */
+          function goalsLocalLockKey(game) {
+            const raw = game?.raw || game || {};
+            const id =
+              raw?.match_id ?? raw?.event_key ?? raw?.event_id ?? raw?.fixture_id ??
+              game?.match_id ?? game?.id ??
+              `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
+            return `cornerProGoalsPregameLock:v1:${String(id)}`;
+          }
+
+          function readGoalsLocalLock(game) {
+            try { return JSON.parse(localStorage.getItem(goalsLocalLockKey(game)) || "null"); }
+            catch (_) { return null; }
+          }
+
+          function writeGoalsLocalLock(game, decision) {
+            try {
+              const line = String(decision?.line || "").toUpperCase().trim();
+              if (!/^(OVER|UNDER)\s+(0\.5|1\.5|2\.5|3\.5|4\.5)$/.test(line)) return;
+              localStorage.setItem(
+                goalsLocalLockKey(game),
+                JSON.stringify({
+                  line,
+                  projection: decision?.projection ?? null,
+                  confidence: decision?.confidence ?? 0,
+                  reason: decision?.reason || "",
+                  saved_at: new Date().toISOString()
+                })
+              );
+            } catch (_) {}
+          }
+
+          function applyGoalsLocalLineLock(game, decision) {
+            if (!decision) return decision;
+
+            const status = marketLiveStatus(game);
+            const existing = readGoalsLocalLock(game);
+            const line = String(decision.line || "").toUpperCase().trim();
+            const validLine = /^(OVER|UNDER)\s+(0\.5|1\.5|2\.5|3\.5|4\.5)$/.test(line);
+            const stable = validLine && !decision.skip && !decision.updating;
+
+            if (!status.live && !status.finished && stable) {
+              if (!existing?.line) {
+                writeGoalsLocalLock(game, decision);
+                return { ...decision, pregame_locked:true, local_pregame_locked:true };
+              }
+
+              return {
+                ...decision,
+                line: existing.line,
+                projection: existing.projection ?? decision.projection,
+                confidence: existing.confidence ?? decision.confidence,
+                reason: existing.reason || decision.reason,
+                skip:false,
+                updating:false,
+                pregame_locked:true,
+                local_pregame_locked:true
+              };
+            }
+
+            if ((status.live || status.finished) && existing?.line) {
+              return {
+                ...decision,
+                line: existing.line,
+                projection: existing.projection ?? decision.projection,
+                confidence: existing.confidence ?? decision.confidence,
+                reason: `${existing.reason || "Leitura definida antes da partida."} Linha pré-jogo preservada durante a partida.`,
+                skip:false,
+                updating:false,
+                pregame_locked:true,
+                local_pregame_locked:true,
+                live_tracking_only: status.live && !status.finished,
+                final_settlement_locked: status.finished
+              };
+            }
+
+            if ((status.live || status.finished) && !existing?.line) {
+              return {
+                ...decision,
+                skip:true,
+                line:"SEM RECOMENDAÇÃO PRÉ-JOGO",
+                confidence:0,
+                reason:"O jogo já começou e não existe uma recomendação pré-jogo salva para esta partida."
+              };
+            }
+
+            return decision;
+          }
+
+          function goalsPregameListKey() {
+            return `cornerProGoalsPregameList:v1:${String(state.date || todayManaus())}`;
+          }
+
+          function goalItemKey(game) {
+            const raw = game?.raw || game || {};
+            return String(
+              raw?.match_id ?? raw?.event_key ?? raw?.event_id ?? raw?.fixture_id ??
+              game?.match_id ?? game?.id ??
+              `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`
+            );
+          }
+
+          function readGoalsPregameList() {
+            try {
+              const parsed = JSON.parse(localStorage.getItem(goalsPregameListKey()) || "null");
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (_) { return []; }
+          }
+
+          function saveGoalsPregameList(entries) {
+            try {
+              const data = entries.map(({game}) => ({ key:goalItemKey(game), snapshot:game }));
+              localStorage.setItem(goalsPregameListKey(), JSON.stringify(data));
+            } catch (_) {}
+          }
+
+          function preserveGoalsPreparedList(prepared) {
+            if (!Array.isArray(prepared)) return [];
+
+            const anyStarted = prepared.some(({game}) => {
+              const s = marketLiveStatus(game);
+              return s.live || s.finished;
+            });
+
+            if (!anyStarted) {
+              const first = prepared.slice(0,7);
+              if (first.length) saveGoalsPregameList(first);
+              return first;
+            }
+
+            const locked = readGoalsPregameList();
+            if (!locked.length) return prepared.slice(0,7);
+
+            const currentByKey = new Map(prepared.map(entry => [goalItemKey(entry.game), entry]));
+
+            return locked.slice(0,7).map((saved,index) => {
+              const current = currentByKey.get(String(saved.key));
+              if (current) return current;
+
+              const game = saved.snapshot;
+              return {
+                game,
+                originalIndex:index,
+                recommendation:analysisProjection(game,"goals")
+              };
+            }).filter(Boolean);
+          }
+
           function analysisProjection(game, marketType) {
             const raw = game?.raw || {};
             const serverDecision = raw?.[`${marketType}_ai`];
@@ -6493,6 +6644,9 @@
               // V11: decisões vindas do servidor NÃO passam por uma segunda
               // trava em localStorage. O server é a única autoridade do lock
               // pré-jogo de Escanteios.
+              if (marketType === "goals") {
+                return applyGoalsLocalLineLock(game, serverRecommendation);
+              }
               return serverRecommendation;
             }
             const originalConfidence = Number(game?.confidence || 68);
@@ -6566,14 +6720,18 @@
                 62 + distance * 9 + (originalConfidence - 68) * .18 + factorC * 4
               )));
         
-              return {
+              const calculatedGoalsDecision = {
                 line,
                 projection: projection.toFixed(1),
                 confidence,
                 reason: Number.isFinite(current.total)
-                  ? `O jogo já possui ${current.total} gol${current.total === 1 ? "" : "s"}; a linha foi atualizada para ${line}.`
-                  : `Projeção própria de ${projection.toFixed(1)} gols para este confronto, considerando perfil ofensivo, defesa e contexto.`
+                  ? `A partida está em andamento. A recomendação pré-jogo original será preservada.`
+                  : `Projeção própria de ${projection.toFixed(1)} gols para este confronto, considerando perfil ofensivo, defesa e contexto.`,
+                skip: false,
+                source: "calculated"
               };
+
+              return applyGoalsLocalLineLock(game, calculatedGoalsDecision);
             }
         
             if (marketType === "corners") {
@@ -6771,14 +6929,18 @@
                 const projectionDiff =
                   Number(b.recommendation.projection) -
                   Number(a.recommendation.projection);
-        
+
                 if (Math.abs(projectionDiff) > 0.05) return projectionDiff;
-        
+
                 return b.recommendation.confidence - a.recommendation.confidence;
-              })
-              .slice(0, 7);
-        
-        
+              });
+
+            if (marketType === "goals") {
+              prepared = preserveGoalsPreparedList(prepared);
+            } else {
+              prepared = prepared.slice(0, 7);
+            }
+
             const settlementEntries = [];
             const liveEntries = [];
         
