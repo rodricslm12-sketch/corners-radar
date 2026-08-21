@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=cornerpro-web-v32-row-clamp" />
+  <link rel="stylesheet" href="style.css?v=20260821-auth-profissional-final" />
   <script src="script.js?v=cornerpro-web-v33-grid-final" defer></script>
 
   <style id="cpMobileV8Style">
@@ -49,6 +49,10 @@
   }
 </style>
 
+
+  <style id="cpAuthHiddenSafety">
+    #cpAuthModal [hidden] { display: none !important; }
+  </style>
 </head>
 <body class="dashboard">
 
@@ -721,25 +725,25 @@
 
       <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
 
-      <form class="cpAuthForm" novalidate>
+      <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
         <label id="cpAuthNameWrap" hidden>
           <span>Nome</span>
-          <input id="cpAuthName" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
+          <input id="cpAuthName" name="name" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
         </label>
 
         <label>
           <span>E-mail</span>
-          <input id="cpAuthEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+          <input id="cpAuthEmail" name="email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="seu@email.com">
         </label>
 
         <label>
           <span>Senha</span>
-          <input id="cpAuthPassword" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
+          <input id="cpAuthPassword" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
         </label>
 
         <label id="cpAuthConfirmWrap" hidden>
           <span>Confirmar senha</span>
-          <input id="cpAuthPasswordConfirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
+          <input id="cpAuthPasswordConfirm" name="password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
         </label>
 
         <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
@@ -764,7 +768,7 @@
   </section>
 
   <!-- Login Firebase no navegador. O auth.js importa o firebase-client.js. -->
-  <script type="module" src="auth.js?v=20260820-auth-gate-v2"></script>
+  <script type="module" src="auth.js?v=20260821-auth-profissional-final"></script>
 
   <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
 

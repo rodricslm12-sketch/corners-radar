@@ -383,6 +383,31 @@ function configurarModo(modo = "login") {
   if (elementos.confirmWrap) elementos.confirmWrap.hidden = !cadastro;
   if (elementos.forgot) elementos.forgot.hidden = cadastro;
 
+  // Autofill profissional: cada campo informa exatamente sua finalidade.
+  if (elementos.nameInput) {
+    elementos.nameInput.setAttribute("name", "name");
+    elementos.nameInput.setAttribute("autocomplete", "name");
+  }
+
+  if (elementos.emailInput) {
+    elementos.emailInput.setAttribute("name", "email");
+    elementos.emailInput.setAttribute("autocomplete", "email");
+    elementos.emailInput.setAttribute("inputmode", "email");
+    elementos.emailInput.setAttribute("autocapitalize", "none");
+    elementos.emailInput.setAttribute("spellcheck", "false");
+  }
+
+  if (elementos.confirmInput) {
+    elementos.confirmInput.setAttribute("name", "password-confirm");
+    elementos.confirmInput.setAttribute("autocomplete", "new-password");
+  }
+
+  // Ao voltar para ENTRAR, remove resíduos de campos exclusivos do cadastro.
+  if (!cadastro) {
+    if (elementos.nameInput) elementos.nameInput.value = "";
+    if (elementos.confirmInput) elementos.confirmInput.value = "";
+  }
+
   if (elementos.modalTitle) {
     elementos.modalTitle.textContent = cadastro ? "Crie sua conta" : "Bem-vindo de volta";
   }
@@ -429,6 +454,7 @@ function abrirModal(modo = "login", opcoes = {}) {
 
   configurarModo(modo);
 
+  // O modo é definido antes de exibir o modal para evitar flash de campos do cadastro.
   elementos.modal.hidden = false;
   elementos.modal.setAttribute("aria-hidden", "false");
   elementos.modal.classList.toggle("is-required", estadoAuth.obrigatorio);

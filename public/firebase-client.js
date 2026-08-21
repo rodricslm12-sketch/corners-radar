@@ -14,7 +14,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -30,8 +32,8 @@ const firebaseApp = initializeApp(firebaseConfig);
 
 /* =========================================================
    FIREBASE APP CHECK
-   Cole SOMENTE a CHAVE DE SITE do reCAPTCHA v3 abaixo.
-   Nunca coloque a chave secreta aqui.
+   Use somente a CHAVE DE SITE do reCAPTCHA v3.
+   Nunca coloque a chave secreta no navegador.
 ========================================================= */
 
 const firebaseAppCheck = initializeAppCheck(firebaseApp, {
@@ -41,11 +43,26 @@ const firebaseAppCheck = initializeAppCheck(firebaseApp, {
 
 const firebaseAuth = getAuth(firebaseApp);
 
+/* =========================================================
+   SESSÃO PERSISTENTE
+   Mantém o usuário autenticado no navegador até ele clicar
+   em "Sair" ou limpar os dados do site.
+========================================================= */
+try {
+  await setPersistence(firebaseAuth, browserLocalPersistence);
+} catch (erro) {
+  console.warn(
+    "Não foi possível definir a persistência local do Firebase:",
+    erro?.message || erro
+  );
+}
+
 const googleProvider = new GoogleAuthProvider();
 
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
+/*
+  Não força "select_account".
+  Assim o Google pode reutilizar a sessão existente de forma mais fluida.
+*/
 
 let presenceTimer = null;
 let presenceUserUid = null;

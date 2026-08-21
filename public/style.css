@@ -19699,3 +19699,34 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     color:#fff !important;
   }
 }
+
+/* =========================================================
+   CORNER PRO — AUTH HIDDEN FIX / LOGIN PROFISSIONAL
+   Mantém campos exclusivos do cadastro realmente ocultos
+   na aba ENTRAR e respeita o atributo HTML [hidden].
+   ========================================================= */
+#cpAuthModal[hidden],
+#cpAuthModal [hidden]{
+  display:none !important;
+}
+
+/* Reforço específico contra a regra antiga:
+   .cpAuthForm label { display:block; }
+*/
+#cpAuthNameWrap[hidden],
+#cpAuthConfirmWrap[hidden],
+#cpAuthFormMessage[hidden]{
+  display:none !important;
+}
+
+/* Autofill do navegador sem alterar o visual do formulário */
+#cpAuthEmail,
+#cpAuthPassword,
+#cpAuthName,
+#cpAuthPasswordConfirm{
+  min-width:0;
+}
+
+#cpAuthEmail{
+  text-transform:none !important;
+}
