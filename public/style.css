@@ -19583,3 +19583,119 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
 #cpDesktopExperienceV3 .cpd3MarketNav,#cpDesktopExperienceV3 .cpd3MarketNav>button{height:38px!important;min-height:38px!important}
 #cpDesktopExperienceV3 .cpd3SubNav,#cpDesktopExperienceV3 .cpd3LineNav{height:32px!important;min-height:32px!important}
 }
+
+
+
+/* =========================================================
+   CORNER PRO — AJUSTE DO PERFIL NO TOPO / DESKTOP
+   Corrige foto, nome, plano e botão SAIR sem alterar o restante.
+   ========================================================= */
+@media screen and (min-width:981px){
+
+  #authAreaDesktop.topUser{
+    min-width:0 !important;
+    height:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:10px !important;
+    overflow:visible !important;
+  }
+
+  #authUserProfile.authUserProfile{
+    min-width:0 !important;
+    max-width:210px !important;
+    height:48px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:8px !important;
+    padding:0 !important;
+    margin:0 !important;
+    overflow:hidden !important;
+  }
+
+  #authUserProfile.authUserProfile[hidden]{
+    display:none !important;
+  }
+
+  #authUserPhoto.authUserPhoto{
+    flex:0 0 38px !important;
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    min-height:38px !important;
+    max-width:38px !important;
+    max-height:38px !important;
+    display:block !important;
+    object-fit:cover !important;
+    border-radius:50% !important;
+    border:2px solid rgba(99,241,39,.65) !important;
+    margin:0 !important;
+  }
+
+  #authUserProfile .userText{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    max-width:118px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:center !important;
+    align-items:flex-start !important;
+    gap:1px !important;
+    margin:0 !important;
+    padding:0 !important;
+    line-height:1 !important;
+  }
+
+  #authUserProfile #authUserName{
+    display:block !important;
+    width:100% !important;
+    max-width:118px !important;
+    margin:0 !important;
+    padding:0 !important;
+    color:#fff !important;
+    font-size:10px !important;
+    line-height:12px !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    text-transform:none !important;
+  }
+
+  #authUserProfile #authUserPlan{
+    display:block !important;
+    width:100% !important;
+    max-width:118px !important;
+    margin:1px 0 0 !important;
+    padding:0 !important;
+    color:#63f127 !important;
+    font-size:7px !important;
+    line-height:9px !important;
+    font-weight:950 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  #btnGoogleLogout.authLogoutButton{
+    flex:0 0 auto !important;
+    width:auto !important;
+    height:22px !important;
+    min-height:22px !important;
+    margin:0 !important;
+    padding:0 5px !important;
+    border:0 !important;
+    background:transparent !important;
+    color:#9aa5a7 !important;
+    font-size:6px !important;
+    line-height:22px !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+  }
+
+  #btnGoogleLogout.authLogoutButton:hover{
+    color:#fff !important;
+  }
+}
