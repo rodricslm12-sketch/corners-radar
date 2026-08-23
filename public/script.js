@@ -995,14 +995,52 @@
           );
         }
       
+        const CP_LEAGUE_NAMES = new Map([
+          [152,"Premier League"],[302,"La Liga"],[175,"Bundesliga"],
+          [207,"Serie A"],[168,"Ligue 1"],[244,"Eredivisie"],
+          [266,"Primeira Liga"],[99,"Brasileirão Série A"],
+          [18,"Libertadores"],[3,"Champions League"],[4,"Europa League"],
+          [63,"Belgium First Division A"],[279,"Premiership"],[322,"Süper Lig"]
+        ]);
+
+        function validLeagueText(value){
+          if(value && typeof value==="object"){
+            value = value?.name ?? value?.league_name ?? "";
+          }
+          const s=clean(value,"");
+          if(!s) return "";
+          if(/^liga\s*(undefined|null|nan)?\s*$/i.test(s)) return "";
+          if(/^(undefined|null|nan|\[object object\])$/i.test(s)) return "";
+          return s;
+        }
+
         function league(g){
           const r=raw(g);
-          return clean(g?.league ?? g?.liga ?? r?.liga ?? r?.league_name ?? r?.league,"Liga");
+          const er=r?.event_raw || g?.event_raw || {};
+          const id=num(g?.league_id,r?.league_id,er?.league_id,er?.match_league_id);
+
+          const candidates=[
+            g?.liga,g?.league_name,g?.league,
+            r?.liga,r?.league_name,r?.league,
+            er?.league_name,er?.match_league_name,er?.league
+          ];
+
+          for(const candidate of candidates){
+            const text=validLeagueText(candidate);
+            if(text) return text;
+          }
+
+          return CP_LEAGUE_NAMES.get(Number(id)) || (id ? `Liga ${id}` : "Liga");
         }
-      
+
         function country(g){
           const r=raw(g);
-          return clean(r?.country_name ?? r?.country ?? r?.league_country,"");
+          const er=r?.event_raw || g?.event_raw || {};
+          return clean(
+            r?.country_name ?? r?.country ?? r?.league_country ??
+            er?.country_name ?? er?.country ?? er?.league_country,
+            ""
+          );
         }
       
         function badge(g, side){
@@ -1208,9 +1246,18 @@
         function mergeGame(base, extra){
           if(!base) return extra;
           if(!extra) return base;
-      
+
           const br=raw(base), er=raw(extra);
-          return {
+
+          // Engines não podem apagar uma liga válida com "Liga undefined".
+          const baseLeague=league(base);
+          const extraLeague=league(extra);
+          const finalLeague=
+            validLeagueText(extraLeague) && !/^liga\s*$/i.test(extraLeague)
+              ? extraLeague
+              : baseLeague;
+
+          const merged={
             ...base,
             ...extra,
             raw:{
@@ -1224,8 +1271,21 @@
               handicap_ai:er?.handicap_ai ?? br?.handicap_ai
             }
           };
+
+          if(validLeagueText(finalLeague)){
+            merged.liga=finalLeague;
+            merged.raw.liga=finalLeague;
+          }
+
+          const finalLeagueId=num(extra?.league_id,er?.league_id,base?.league_id,br?.league_id);
+          if(finalLeagueId!==null){
+            merged.league_id=finalLeagueId;
+            merged.raw.league_id=finalLeagueId;
+          }
+
+          return merged;
         }
-      
+
         function mergeLists(base,incoming){
           const map=new Map();
           for(const g of (Array.isArray(base)?base:[])) map.set(String(key(g)),g);

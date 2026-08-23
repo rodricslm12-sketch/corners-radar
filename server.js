@@ -3612,7 +3612,32 @@ async function aiThinkBestPick(best, top6, date){
    ========================================================= */
 
 // heurística leve pra dar “peso” e “baseCorners” quando a liga é desconhecida
-function guessLeagueMeta({ id, name, country }){
+function guessLeagueMeta(input = {}){
+  // FIX LIGAS V1 — aceita campos normalizados e campos crus da API.
+  const id = Number(
+    input?.id ??
+    input?.league_id ??
+    input?.leagueId ??
+    input?.match_league_id ??
+    0
+  ) || null;
+
+  const name = cleanText(
+    input?.name ??
+    input?.league_name ??
+    input?.leagueName ??
+    input?.match_league_name ??
+    input?.league ??
+    ""
+  );
+
+  const country = cleanText(
+    input?.country ??
+    input?.country_name ??
+    input?.countryName ??
+    ""
+  );
+
   const nm = String(name || "").toLowerCase();
   const ct = String(country || "").toLowerCase();
 
@@ -3638,7 +3663,13 @@ function guessLeagueMeta({ id, name, country }){
   const ov = LEAGUE_OVERRIDES.get(Number(id));
   if (ov) return { ...ov };
 
-  return { id: Number(id), name: String(name || `Liga ${id}`), baseCorners, importance };
+  return {
+    id: Number.isFinite(Number(id)) && Number(id) > 0 ? Number(id) : null,
+    name: cleanText(name) || (id ? `Liga ${id}` : "Liga"),
+    country: cleanText(country),
+    baseCorners,
+    importance
+  };
 }
 
 // tenta buscar TODAS as ligas via API (v3 -> v2)
@@ -9276,9 +9307,9 @@ function leagueMetaFromEvent(e) {
   if (known) return known;
 
   return guessLeagueMeta({
-    league_id: leagueId,
-    league_name: e?.league_name ?? e?.match_league_name ?? e?.league ?? `Liga ${leagueId || ""}`,
-    country_name: e?.country_name ?? e?.country ?? ""
+    id: leagueId,
+    name: e?.league_name ?? e?.match_league_name ?? e?.league ?? (leagueId ? `Liga ${leagueId}` : "Liga"),
+    country: e?.country_name ?? e?.country ?? ""
   });
 }
 
@@ -9945,12 +9976,45 @@ function webCornersIndividualDecision(game, home, away) {
   };
 }
 
+function webCornersLeaguePriority(game) {
+  const id = Number(game?.league_id ?? game?.event_raw?.league_id ?? 0);
+  const name = String(
+    game?.liga ??
+    game?.league_name ??
+    game?.event_raw?.league_name ??
+    ""
+  ).toLowerCase();
+
+  if (TOP1_CORNER_PREMIUM_LEAGUES.has(id)) return 100;
+  if (/premier league|la liga|bundesliga|serie a|ligue 1|eredivisie|primeira liga|liga portugal/.test(name)) return 96;
+  if (/champions league|europa league|libertadores|brasileir/.test(name)) return 94;
+  if (/jupiler|belgium first|premiership|super lig|championship/.test(name)) return 86;
+  return 70;
+}
+
 async function buildWebCornersAi({ date }) {
-  const cacheKey = `web-corners-ai-v24:${date}`;
+  // v25 invalida o cache antigo que podia conter ligas incorretas.
+  const cacheKey = `web-corners-ai-v25-leagues:${date}`;
   const cached = cacheGet(cacheKey);
   if (cached && typeof cached === "object") return cached;
 
-  const baseGames = (await buildMobileFastList(date))
+  const allBaseGames = await buildMobileFastList(date);
+
+  // Antes o servidor cortava os primeiros jogos antes de priorizar ligas fortes.
+  // Agora Premier League, La Liga e demais ligas principais entram primeiro no lote.
+  const baseGames = allBaseGames
+    .slice()
+    .sort((a, b) => {
+      const leagueDiff = webCornersLeaguePriority(b) - webCornersLeaguePriority(a);
+      if (leagueDiff !== 0) return leagueDiff;
+
+      const strengthDiff =
+        Number(b?.corner_elite_score ?? b?.corner_strength ?? b?.score_adj ?? b?.score ?? 0) -
+        Number(a?.corner_elite_score ?? a?.corner_strength ?? a?.score_adj ?? a?.score ?? 0);
+
+      if (strengthDiff !== 0) return strengthDiff;
+      return String(a?.hora || "").localeCompare(String(b?.hora || ""));
+    })
     .slice(0, WEB_CORNERS_AI_MAX_GAMES);
 
   const analyzed = await mapLimit(
@@ -9991,7 +10055,7 @@ async function buildWebCornersAi({ date }) {
           away: awayProfile
         },
         web_corners_ai: true,
-        web_corners_ai_version: "v24-stable-picks"
+        web_corners_ai_version: "v25-leagues-fixed"
       };
     }
   );
@@ -10007,7 +10071,7 @@ async function buildWebCornersAi({ date }) {
 
   const payload = {
     ok: true,
-    version: "web-corners-v24-stable-picks",
+    version: "web-corners-v25-leagues-fixed",
     date,
     corners
   };
@@ -10033,7 +10097,7 @@ app.get("/web_corners_ai", async (req, res) => {
 
     return res.json(payload);
   } catch (err) {
-    console.warn("[web_corners_ai v24]", err?.message || err);
+    console.warn("[web_corners_ai v25]", err?.message || err);
 
     return res.status(500).json({
       ok: false,
