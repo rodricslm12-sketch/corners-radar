@@ -1,660 +1,857 @@
-import {
-  firebaseAuth,
-  entrarComGoogle,
-  sairDaConta,
-  observarAutenticacao,
-  fetchAutenticado
-} from "./firebase-client.js";
+<!-- Corner Pro V11 -->
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <script>
+    (function(){
+      if (window.matchMedia && window.matchMedia("(min-width:981px)").matches) {
+        document.documentElement.classList.add("cpDesktopBoot");
+      }
+    })();
+  </script>
 
-const state = {
-  user: null,
-  users: [],
-  userFilter: "all",
-  userSearch: "",
-  timerStats: null,
-  timerOnline: null,
-  timerActivity: null
-};
+  <meta charset="UTF-8" />
+  <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corner Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260821-auth-profissional-final" />
+  <script src="script.js?v=cornerpro-web-v33-grid-final" defer></script>
 
-const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-
-function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-async function readJsonSafe(response) {
-  try { return await response.json(); }
-  catch { return {}; }
-}
-
-async function adminFetch(url, options = {}) {
-  const response = await fetchAutenticado(url, { cache: "no-store", ...options });
-  const data = await readJsonSafe(response);
-  if (!response.ok) {
-    throw new Error(data?.error || data?.message || "Falha na operação administrativa.");
-  }
-  return data;
-}
-
-function showUsersMessage(text = "", type = "info") {
-  const el = $("#adminUsersMessage");
-  if (!el) return;
-  el.hidden = !text;
-  el.textContent = text;
-  el.dataset.type = type;
-}
-
-function formatDate(value) {
-  if (!value) return "Nunca";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(date);
-}
-
-function formatTimeAgo(value) {
-  if (!value) return "agora";
-  const ms = Date.now() - new Date(value).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "agora";
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return "agora";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} min atrás`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h} h atrás`;
-  return formatDate(value);
-}
-
-function providerLabel(value = "") {
-  const p = String(value).toLowerCase();
-  if (p.includes("google")) return "Google";
-  if (p.includes("password")) return "E-mail/senha";
-  return "Firebase";
-}
-
-function updateAdminProfile(user) {
-  const name = user?.displayName || user?.email || "Admin";
-  const avatar = $(".adminProfile .avatar");
-  const strong = $(".adminProfile strong");
-  if (strong) strong.textContent = name;
-  if (avatar) avatar.textContent = name.trim().charAt(0).toUpperCase() || "A";
-}
-
-function installClock() {
-  const topbar = $(".topbar");
-  if (!topbar || $(".adminClock")) return;
-  const timeEl = document.createElement("div");
-  timeEl.className = "adminClock";
-  topbar.appendChild(timeEl);
-  const update = () => {
-    timeEl.textContent = new Date().toLocaleTimeString("pt-BR", {
-      hour: "2-digit", minute: "2-digit", second: "2-digit"
-    });
-  };
-  update();
-  setInterval(update, 1000);
-}
-
-function switchView(view) {
-  const usersView = $("#adminUsersView");
-  const dashboardStats = $(".statsGrid");
-  const dashboardGrid = $(".realAdminGrid");
-  const isUsers = view === "users";
-
-  if (usersView) usersView.hidden = !isUsers;
-  if (dashboardStats) dashboardStats.hidden = isUsers;
-  if (dashboardGrid) dashboardGrid.hidden = isUsers;
-
-  $$("[data-admin-view]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.adminView === view);
-  });
-
-  const title = $(".titleBlock h2");
-  const subtitle = $(".titleBlock p");
-  if (title) title.textContent = isUsers ? "Usuários" : "Painel Administrativo";
-  if (subtitle) subtitle.textContent = isUsers
-    ? "Contas reais cadastradas no Corner Pro"
-    : "Usuários e atividade real do Corner Pro";
-
-  if (isUsers) loadUsers();
-}
-
-function installNavigation() {
-  $$("[data-admin-view]").forEach(btn => {
-    btn.addEventListener("click", () => switchView(btn.dataset.adminView));
-  });
-  $("#openUsersManager")?.addEventListener("click", () => switchView("users"));
-}
-
-async function loadAdminStats() {
-  try {
-    const data = await adminFetch("/admin/stats");
-    if ($("#dashTotalUsers")) $("#dashTotalUsers").textContent = data.totalUsers ?? 0;
-    if ($("#dashOnlineUsers")) $("#dashOnlineUsers").textContent = data.onlineUsers ?? 0;
-    if ($("#dashNewToday")) $("#dashNewToday").textContent = data.newToday ?? 0;
-    if ($("#dashActiveToday")) $("#dashActiveToday").textContent = data.activeToday ?? 0;
-    if ($("#dashPremiumUsers")) $("#dashPremiumUsers").textContent = data.premiumUsers ?? 0;
-  } catch (error) {
-    console.error("Erro admin stats:", error);
-  }
-}
-
-async function loadOnlineUsers() {
-  const list = $("#onlineUsersList");
-  if (!list) return;
-
-  try {
-    const data = await adminFetch("/admin/online-users");
-    const users = Array.isArray(data?.users) ? data.users : [];
-
-    if (!users.length) {
-      list.innerHTML = '<div class="simpleEmpty">Nenhum usuário online agora.</div>';
-      return;
+  <style id="cpMobileV8Style">
+    @media (max-width:980px){
+      .cpMobileLayer.is-open{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+      body.cpMobileLayerOpen{overflow:hidden!important}
+      .cpV8MatchHero{padding:24px 18px;text-align:center;background:linear-gradient(145deg,#06110f,#071b12);border:1px solid rgba(105,255,42,.28);border-radius:18px}
+      .cpV8MatchHero time,.cpV8MatchHero span{display:block;color:#78ff2d;font-weight:900}
+      .cpV8MatchHero div{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;font-size:20px}
+      .cpV8MatchHero b{display:block;margin-top:10px;font-size:13px}
+      .cpV8MatchTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+      .cpV8MatchTabs button{padding:12px;border-radius:12px;border:1px solid #26332f;background:#0a1112;color:#8c9995;font-weight:900}
+      .cpV8MatchTabs button.active{border-color:#64ff20;color:#64ff20}
+      .cpV8MatchStats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .cpV8MatchStats div,.cpV8MatchRead{padding:14px;border:1px solid #1f302b;border-radius:14px;background:#081012}
+      .cpV8MatchStats small{display:block;color:#7f8c89;font-size:10px}
+      .cpV8MatchStats strong{display:block;margin-top:5px;color:#fff}
+      .cpV8MatchRead{margin-top:12px}.cpV8MatchRead h3{color:#70ff28}.cpV8MatchRead p{color:#aab5b2;line-height:1.5}
     }
+  </style>
 
-    list.innerHTML = users.map(user => `
-      <div class="onlineUser realOnlineUser">
-        <div class="onlineUserLeft">
-          ${user.foto
-            ? `<img class="realUserAvatar" src="${escapeHtml(user.foto)}" alt="">`
-            : `<span class="realUserAvatar fallback">${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
-          <div>
-            <strong><i class="onlinePulse"></i>${escapeHtml(user.nome || "Usuário")}</strong>
-            <p>${escapeHtml(user.email || "—")}</p>
-          </div>
-        </div>
-        <div class="realUserMeta">
-          <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
-          <small>${escapeHtml(formatTimeAgo(user.lastSeen))}</small>
-        </div>
-      </div>
-    `).join("");
-  } catch (error) {
-    console.error("Erro online users:", error);
-    list.innerHTML = '<div class="simpleEmpty">Não foi possível carregar a presença.</div>';
+
+<style id="cpHideHeroMetricsOnly">
+  /* APP V85 — remove somente o painel Projeção/Confiança/Tendência do card principal */
+  .cpHomeBestCard .cpHomeMetrics,
+  .cpHomeHero .cpHomeMetrics,
+  #cpHomeBest .cpHomeMetrics {
+    display: none !important;
   }
-}
+</style>
 
-async function loadRecentActivity() {
-  const list = $("#realActivityList");
-  if (!list) return;
 
-  try {
-    const data = await adminFetch("/admin/recent-activity");
-    const events = Array.isArray(data?.events) ? data.events : [];
+  <style id="cpAuthHiddenSafety">
+    #cpAuthModal [hidden] { display: none !important; }
+  </style>
+</head>
+<body class="dashboard">
 
-    if (!events.length) {
-      list.innerHTML = `
-        <div class="activityEmptyState">
-          <div class="activityEmptyIcon">◌</div>
-          <strong>Nenhuma atividade recente</strong>
-          <span>Logins e cadastros aparecerão aqui.</span>
-        </div>
-      `;
-      return;
-    }
+  <div id="cpDesktopBootScreen" aria-hidden="true">
+    <div class="cpBootBox">
+      <div class="cpBootBrand"><i>⚑</i><b>CORNER<span>PRO</span></b></div>
+      <div class="cpBootDots"><i></i><i></i><i></i></div>
+      <small>CARREGANDO PAINEL</small>
+    </div>
+  </div>
 
-    list.innerHTML = events.slice(0, 6).map(event => {
-      const signup = event.type === "signup";
-      const title = signup ? "Novo cadastro" : "Login realizado";
-      const icon = signup ? "✦" : "↪";
-      const who = event.nome || event.email || "Usuário";
-      const provider = providerLabel(event.provider);
+  <input type="hidden" id="date" name="date" value="">
 
-      return `
-        <div class="activityCleanRow ${signup ? "signup" : "login"}">
-          <div class="activityCleanIcon">${icon}</div>
-
-          <div class="activityCleanText">
-            <strong>${escapeHtml(title)}</strong>
-            <span>${escapeHtml(who)}</span>
-          </div>
-
-          <div class="activityProvider">${escapeHtml(provider)}</div>
-
-          <time>${escapeHtml(formatTimeAgo(event.at))}</time>
-        </div>
-      `;
-    }).join("");
-  } catch (error) {
-    console.error("Erro activity:", error);
-    list.innerHTML = `
-      <div class="activityEmptyState error">
-        <div class="activityEmptyIcon">!</div>
-        <strong>Não foi possível carregar</strong>
-        <span>Tente atualizar em alguns segundos.</span>
-      </div>
-    `;
-  }
-}
-
-function renderRecentUsers(users) {
-  const list = $("#recentUsersList");
-  if (!list) return;
-
-  const sorted = [...users]
-    .sort((a, b) => new Date(b.criadoEm || b.ultimoLogin || 0) - new Date(a.criadoEm || a.ultimoLogin || 0))
-    .slice(0, 6);
-
-  if (!sorted.length) {
-    list.innerHTML = '<div class="simpleEmpty">Nenhum usuário cadastrado.</div>';
-    return;
-  }
-
-  list.innerHTML = sorted.map(user => `
-    <div class="recentUserRow">
-      <div class="adminUserIdentity">
-        ${user.foto
-          ? `<img src="${escapeHtml(user.foto)}" alt="">`
-          : `<span>${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
+  <aside class="sidebar">
+    <div class="brandBlock">
+      <div class="brandLogo">
+        <span class="brandMark">⚑</span>
         <div>
-          <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-          <small>${escapeHtml(user.email || "—")}</small>
+          <strong>CORNER<span>PRO</span></strong>
+          <small>ANÁLISES ESPORTIVAS</small>
         </div>
-      </div>
-      <div class="recentUserInfo">
-        <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
-        <small>Último acesso: ${escapeHtml(formatDate(user.ultimoLogin))}</small>
       </div>
     </div>
-  `).join("");
-}
 
-function isUserOnline(user) {
-  if (!user?.lastSeen) return false;
-  const ms = new Date(user.lastSeen).getTime();
-  return Number.isFinite(ms) && (Date.now() - ms <= 2 * 60 * 1000);
-}
+    <nav class="sidebar-nav" aria-label="Menu lateral">
+      <a class="side-item active"><span>⌂</span><b>Dashboard</b></a>
+      <a class="side-item"><span>⚽</span><b>Pré-Jogo</b></a>
+      <a class="side-item"><span>◎</span><b>Ao Vivo</b></a>
+      <a class="side-item"><span>⚑</span><b>Escanteios</b></a>
+      <a class="side-item"><span>◌</span><b>Gols</b></a>
+      <a class="side-item"><span>▯</span><b>Cartões</b></a>
+      <a class="side-item cpDesktopOnlyNav" data-cpd3-nav="handicap"><span>⇆</span><b>Handicap</b></a>
+      <a class="side-item cpDesktopOnlyNav" data-cpd3-nav="btts"><span>◉</span><b>Ambas Marcam</b></a>
+      <a class="side-item"><span>♞</span><b>Player Props</b></a>
+      <a class="side-item"><span>◉</span><b>Ligas</b></a>
+      <a class="side-item"><span>☆</span><b>Favoritos</b></a>
+      <a class="side-item"><span>♧</span><b>Meus Alertas</b></a>
+      <a class="side-item"><span>▤</span><b>Relatórios</b></a>
+      <a class="side-item"><span>◈</span><b>Lives & Vídeos</b></a>
+      <a class="side-item"><span>ⓘ</span><b>Suporte</b></a>
+    </nav>
 
-function userStatusLabel(user) {
-  return isUserOnline(user) ? "Online" : "Offline";
-}
+    <div class="proBox">
+      <h3>SEJA PRO</h3>
+      <p>Tenha acesso a ferramentas exclusivas e aumente seus lucros!</p>
+      <div class="crown">♛</div>
+      <button>ASSINAR AGORA</button>
+    </div>
+  </aside>
 
-function applyUsersFilter() {
-  const query = String(state.userSearch || "").trim().toLowerCase();
-  const filter = state.userFilter || "all";
+  <div class="mobileOverlay" id="mobileOverlay" aria-hidden="true"></div>
 
-  const filtered = state.users.filter(user => {
-    const matchesSearch =
-      !query ||
-      String(user.nome || "").toLowerCase().includes(query) ||
-      String(user.email || "").toLowerCase().includes(query);
+  <header class="mobileHeader">
+    <button class="mobileMenuBtn" id="mobileMenuBtn" type="button" aria-label="Abrir menu">☰</button>
+    <div class="mobileBrand">
+      <strong>CORNER<span>PRO</span></strong>
+      <small>ANÁLISES ESPORTIVAS</small>
+    </div>
+    <button type="button" class="mobileCalendarBtn" id="mobileCalendarBtn" aria-label="Calendário">📅</button>
+  </header>
 
-    if (!matchesSearch) return false;
+  <main class="main">
+    <div class="mobileGreeting" id="mobileAuthArea">
+      <span class="mobileGreetingIcon">♧</span>
+      <strong id="mobileAuthName">Entrar com Google</strong>
+      <button type="button" id="mobileAuthButton" class="mobileGreetingChev" aria-label="Entrar com Google">⌄</button>
+    </div>
 
-    if (filter === "online") return isUserOnline(user);
-    if (filter === "offline") return !isUserOnline(user);
-    if (filter === "pro") return user.premium === true;
-    if (filter === "free") return user.premium !== true;
-    return true;
-  });
+    <header class="topbar">
+      <nav class="nav">
+        <a>PRÉ-JOGO</a>
+        <a>AO VIVO</a>
+        <a>ESCANTEIOS</a>
+        <a>GOLS</a>
+        <a>CARTÕES</a>
+        <a>PLAYER PROPS</a>
+        <a>ESTATÍSTICAS</a>
+        <a>BOTS</a>
+        <button type="button" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</button>
+      </nav>
+      <div class="topUser" id="authAreaDesktop">
+        <button class="bell" type="button" aria-label="Notificações">♧</button>
 
-  renderUsers(filtered);
-}
+        <button type="button" id="btnGoogleLogin" class="authLoginButton">
+          <span aria-hidden="true">G</span>
+          <b>ENTRAR / CRIAR CONTA</b>
+        </button>
 
-function renderUsers(users) {
-  const list = $("#adminUsersTableBody");
-  if (!list) return;
+        <div class="authUserProfile" id="authUserProfile" hidden>
+          <img id="authUserPhoto" class="authUserPhoto" src="" alt="Foto do usuário" referrerpolicy="no-referrer" />
+          <div class="userText">
+            <strong id="authUserName">Usuário</strong>
+            <small id="authUserPlan">PLANO GRATUITO</small>
+          </div>
+          <button type="button" id="btnGoogleLogout" class="authLogoutButton" aria-label="Sair da conta">SAIR</button>
+        </div>
+      </div>
+    </header>
 
-  if (!users.length) {
-    list.innerHTML = '<div class="simpleEmpty usersEmpty">Nenhum usuário encontrado.</div>';
-    return;
-  }
+    <div class="topCalendarDropdown" id="topCalendarDropdown" aria-hidden="true">
+      <div class="topCalendarBox">
+        <div class="topCalendarHeader">
+          <button class="topCalNav" type="button" id="topCalPrev" aria-label="Mês anterior">‹</button>
+          <strong id="topCalTitle">Calendário</strong>
+          <button class="topCalNav" type="button" id="topCalNext" aria-label="Próximo mês">›</button>
+        </div>
 
-  list.innerHTML = users.map(user => {
-    const online = isUserOnline(user);
-    const provider = providerLabel(user.provedor);
-    const created = user.criadoEm ? formatDate(user.criadoEm) : "—";
-    const lastAccess = user.ultimoLogin ? formatDate(user.ultimoLogin) : "Nunca";
+        <div class="topCalendarWeek">
+          <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+        </div>
 
-    return `
-      <article class="userManageCard ${online ? "is-online" : "is-offline"}" data-user-uid="${escapeHtml(user.uid)}">
-        <div class="userManageIdentity">
-          ${user.foto
-            ? `<img src="${escapeHtml(user.foto)}" alt="">`
-            : `<span class="userManageAvatarFallback">${escapeHtml((user.nome || "U").charAt(0).toUpperCase())}</span>`}
-          <div>
-            <strong>${escapeHtml(user.nome || "Usuário")}</strong>
-            <small>${escapeHtml(user.email || "—")}</small>
-            <em>${escapeHtml(provider)}</em>
+        <div class="topCalendarDays" id="topCalendarDays"></div>
+
+        <div class="topCalendarFooter">
+          <button type="button" id="topCalToday">HOJE</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="content">
+      <div class="dashboardGrid">
+        <section class="dashboardMainColumn">
+          <!-- =====================================================
+               CORNER PRO WEB DESKTOP V3 — estrutura fixa no HTML.
+               O mobile/app continua usando os blocos antigos abaixo.
+               O Match Center da coluna direita NÃO é alterado.
+               ===================================================== -->
+          <section class="cpd3Experience" id="cpDesktopExperienceV3" aria-label="Mercados desktop">
+            <div class="cpd3Topline">
+              <div class="cpd3TopTitle"><span>🔥</span><strong id="cpd3TopTitle">MELHOR APOSTA • ESCANTEIOS</strong><small class="cpWebVersion">WEB V26 • CALENDÁRIO OK</small></div>
+              <div class="cpd3TopActions">
+                <button type="button" id="cpd3TodayBtn">HOJE</button>
+                <button type="button" id="cpd3FilterBtn">☷ FILTROS</button>
+              </div>
+            </div>
+
+            <section class="cpd3Hero" id="cpd3Hero">
+              <div class="cpd3HeroShade"></div>
+              <div class="cpd3HeroTeam cpd3HeroHome">
+                <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="home" aria-label="Favoritar time da casa">☆</button>
+                <div class="cpd3HeroBadge" id="cpd3HomeBadge"><i>CP</i></div>
+                <strong id="cpd3HomeName">Carregando...</strong>
+                <div class="cpd3Form" id="cpd3HomeForm"><span>V</span><span>V</span><span>E</span><span>D</span><span>V</span></div>
+              </div>
+              <div class="cpd3HeroCenter">
+                <small id="cpd3KickLabel">HOJE • --:--</small>
+                <b id="cpd3Clock">PRÉ-JOGO</b>
+                <em>VS</em>
+              </div>
+              <div class="cpd3HeroTeam cpd3HeroAway">
+                <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="away" aria-label="Favoritar time visitante">☆</button>
+                <div class="cpd3HeroBadge" id="cpd3AwayBadge"><i>CP</i></div>
+                <strong id="cpd3AwayName">Carregando...</strong>
+                <div class="cpd3Form" id="cpd3AwayForm"><span>V</span><span>E</span><span>V</span><span>D</span><span>V</span></div>
+              </div>
+            </section>
+
+            <nav class="cpd3MarketNav" aria-label="Mercados">
+              <button type="button" class="active" data-cpd3-market="corners">ESCANTEIOS</button>
+              <button type="button" data-cpd3-market="goals">GOLS</button>
+              <button type="button" data-cpd3-market="cards">CARTÕES</button>
+              <button type="button" data-cpd3-market="handicap">HANDICAP</button>
+              <button type="button" data-cpd3-market="btts">AMBAS MARCAM</button>
+              <button type="button" data-cpd3-market="result">RESULTADO</button>
+              <button type="button" data-cpd3-market="doublechance">DUPLA CHANCE</button>
+              <button type="button" data-cpd3-market="teamgoals">GOLS DO TIME</button>
+              <button type="button" class="cpd3BuilderTab" data-cpd3-market="builder">⚡ APOSTA PRONTA</button>
+            </nav>
+
+            <div class="cpd3SubNav" id="cpd3SubNav"></div>
+            <div class="cpd3LineNav" id="cpd3LineNav"></div>
+
+            <section class="cpd3ResultsPanel">
+              <header class="cpd3ResultsHead">
+                <div><span>★</span><strong id="cpd3ResultsTitle">OVER 10.5 ESCANTEIOS • TODOS OS JOGOS</strong></div>
+                <button type="button" id="cpd3AdvancedFilter">⚲ Exibir filtros</button>
+              </header>
+              <div class="cpd3TableHead" id="cpd3TableHead">
+                <span>JOGO</span><span>LIGA</span><span>INÍCIO</span><span>PROJEÇÃO</span><span>MÉDIA</span><span>CONFIANÇA</span><span>TENDÊNCIA</span><span>ANÁLISE</span>
+              </div>
+              <div class="cpd3Rows" id="cpd3Rows">
+                <div class="cpd3Loading">CARREGANDO JOGOS REAIS DO DIA...</div>
+              </div>
+              <button type="button" class="cpd3More" id="cpd3More">Ver mais jogos⌄</button>
+            </section>
+          </section>
+
+          <section class="heroPanel">
+            <div class="heroCopy">
+              <h1>ANÁLISE. ESTATÍSTICA.<br><span>VANTAGEM!</span></h1>
+              <p>Pré-jogo completo, escanteios, gols e muito mais. Informação que gera lucro!</p>
+              <div class="heroStats"></div>
+            </div>
+            <div class="heroPlayer" aria-hidden="true"></div>
+          </section>
+
+          <section class="marketTabs">
+            <button class="marketTab active" type="button"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
+            <button class="marketTab" type="button"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
+            <button class="marketTab" type="button"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
+            <button class="marketTab" type="button"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
+            <button class="marketTab" type="button"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
+          </section>
+
+          <section class="gamesPanel">
+            <div class="sectionHead">
+              <h2>Jogos em Destaque</h2>
+              <div class="cornerOrderSwitch" aria-label="Ordenar jogos">
+                <button type="button" class="active" data-corner-order="strength" aria-pressed="true">🔥 Força de cantos</button>
+                <button type="button" data-corner-order="time" aria-pressed="false">🕒 Horário</button>
+              </div>
+              <div class="filterPills">
+                <button type="button">Todos</button>
+                <button type="button" class="active">Hoje</button>
+                <button type="button">Amanhã</button>
+              </div>
+              <a>Ver todos ›</a>
+            </div>
+            <div class="cornerProStatus" id="initialGamesLoading" role="status" aria-live="polite">Carregando jogos reais do dia...</div>
+          </section>
+        </section>
+
+        <aside class="dashboardRightRail" id="desktopMatchRail">
+          <section class="railCard matchRailCard railEmptyHero">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+            <div class="railEmptyRadar" aria-hidden="true">
+              <span class="radarRing ring1"></span>
+              <span class="radarRing ring2"></span>
+              <span class="radarRing ring3"></span>
+              <span class="radarSweep"></span>
+              <span class="radarBall">⚽</span>
+            </div>
+            <div class="railEmptyText"><strong>Aguardando partida</strong><span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span></div>
+          </section>
+          <section class="railCard railEmptyStatsCard">
+            <h3>ESTATÍSTICAS DO FILTRO</h3>
+            <div class="railEmptyStatsGrid">
+              <div class="railEmptyStatBox"><i>🛡</i><span>Força do filtro</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Aguardando</small></div>
+            </div>
+            <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
+          </section>
+          <section class="railCard railEmptyEventsCard">
+            <h3>EVENTOS / LEITURA</h3>
+            <div class="railEmptyEventIcons">
+              <span><i>◎</i><b>Pressão</b><small>--</small></span>
+              <span><i>◔</i><b>Posse</b><small>--</small></span>
+              <span><i>▣</i><b>Cartões</b><small>--</small></span>
+              <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+              <span><i>⚽</i><b>Gols</b><small>--</small></span>
+            </div>
+            <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="railEmptyReadBox"><b>📋</b><p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p></div>
+          </section>
+          <button class="railFullBtn railFullBtnDisabled" type="button" disabled><span>▶ INICIAR MATCH CENTER</span><small>Selecione um jogo para continuar</small></button>
+        </aside>
+      </div>
+
+      <footer class="bottomStrip">
+        <div><b>◎ ANÁLISES 24H</b><span>Conteúdo atualizado diariamente</span></div>
+        <div><b>♧ SUPORTE PREMIUM</b><span>Suporte rápido e especializado</span></div>
+        <div><b>◉ FERRAMENTAS EXCLUSIVAS</b><span>Tenha acesso a ferramentas que realmente funcionam</span></div>
+        <div><b>♚ COMUNIDADE PRO</b><span>Participe da nossa comunidade de vencedores</span></div>
+      </footer>
+    </section>
+  </main>
+
+  <nav class="mobileBottomNav" aria-label="Navegação mobile">
+    <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+    <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
+    <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+    <button type="button"><span>⚑</span><b>Escanteios</b></button>
+    <button type="button"><span>•••</span><b>Mais</b></button>
+  </nav>
+
+
+  <!-- DASHBOARD MOBILE NOVO — não interfere no desktop -->
+  <section class="cpMobileHome" id="cpMobileHome" aria-label="Dashboard mobile">
+    <header class="cpHomeHeader">
+      <button class="cpHomeMenu" type="button" aria-label="Menu">☰</button>
+      <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
+      <button class="cpHomeCalendar" type="button" aria-label="Calendário"><span class="cpHomeCalendarMonth">JUL</span><b class="cpHomeCalendarDay">28</b></button>
+      <div class="cpHomeHeaderAuth" id="cpHomeAuthArea">
+        <div class="cpHomeAuthText">
+          <strong id="cpHomeAuthName">Entrar</strong>
+          <small id="cpHomeAuthPlan">COM GOOGLE</small>
+        </div>
+        <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">
+          <img id="cpHomeAuthPhoto" src="" alt="" referrerpolicy="no-referrer" hidden>
+          <span class="cpHomeAuthFallback" aria-hidden="true">●</span>
+          <i></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="cpHomeScroll">
+
+      <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
+        <div class="cpHomeBestTop">
+          <b id="cpHomeBestTitle">🔥 MELHOR APOSTA • GOLS</b>
+          <span id="cpHomeBestMarket">ANALISANDO</span>
+        </div>
+
+        <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
+          <div class="cpRefLoadingDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="cpHomeBestStatusBar" id="cpHomeBestStatusBar" hidden>
+          <i aria-hidden="true"></i><b id="cpHomeBestStatusText">PRÉ-JOGO</b><span id="cpHomeBestStatusExtra"></span>
+        </div>
+
+        <div class="cpRefTimeRow">
+          <time id="cpHomeBestTime">--:--</time>
+          <span id="cpHomeBestDayLabel">HOJE</span>
+        </div>
+
+        <div class="cpRefMatchStage">
+          <div class="cpRefTeam cpRefTeamHome">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestHomeBadge" class="cpRefShield" alt="Escudo do time mandante" hidden>
+              <span id="cpHomeBestHomeFallback" class="cpRefShieldFallback">CA</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="home" aria-label="Favoritar mandante">☆</button>
+            </div>
+            <strong id="cpHomeBestHome">Aguardando</strong>
+            <div class="cpRefForm" id="cpHomeBestHomeForm"><i>V</i><i>V</i><i>E</i><i>D</i><i>V</i></div>
+          </div>
+
+          <div class="cpRefVersus">VS</div>
+
+          <div class="cpRefTeam cpRefTeamAway">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestAwayBadge" class="cpRefShield" alt="Escudo do time visitante" hidden>
+              <span id="cpHomeBestAwayFallback" class="cpRefShieldFallback">FO</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <strong id="cpHomeBestAway">partidas</strong>
+            <div class="cpRefForm" id="cpHomeBestAwayForm"><i>V</i><i>E</i><i>V</i><i>D</i><i>V</i></div>
           </div>
         </div>
 
-        <div class="userManageField">
-          <small>Cadastro</small>
-          <strong>${escapeHtml(created)}</strong>
+        <div class="cpRefStatsPanel">
+          <div class="cpRefStatsCol">
+            <small id="cpRefProjectionLabel">PROJEÇÃO</small>
+            <b id="cpRefProjection">—</b>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b id="cpRefCornersAvg">—</b>
+          </div>
+
+          <div class="cpRefConfidenceCol">
+            <small>CONFIANÇA</small>
+            <div class="cpRefGauge" id="cpRefGauge" style="--ref-confidence:0">
+              <strong id="cpHomeBestConfidence">—%</strong>
+            </div>
+            <span id="cpRefConfidenceLabel">ANALISANDO</span>
+          </div>
+
+          <div class="cpRefStatsCol cpRefStatsRight">
+            <small>TENDÊNCIA</small>
+            <b id="cpRefTrend">—</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b id="cpRefGoalsAvg">—</b>
+          </div>
         </div>
 
-        <div class="userManageField">
-          <small>Último acesso</small>
-          <strong>${escapeHtml(lastAccess)}</strong>
+        <div class="cpHomeBestLiveStats" id="cpHomeBestLiveStats" hidden>
+          <div><i>⚽</i><small>GOLS</small><b><span id="cpHomeBestHomeGoals">0</span> × <span id="cpHomeBestAwayGoals">0</span></b></div>
+          <div><i>⚑</i><small>ESCANTEIOS</small><b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b></div>
+          <div><i>▯</i><small>CARTÕES</small><b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b></div>
         </div>
 
-        <div class="userManageField">
-          <small>Status</small>
-          <span class="userStatusBadge ${online ? "online" : "offline"}">
-            <i></i>${online ? "ONLINE" : "OFFLINE"}
-          </span>
+        <button type="button" id="cpHomeBestOpen" disabled>
+          <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
+          <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
+          <i aria-hidden="true">›</i>
+        </button>
+
+        <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
+          <b id="cpHomeBestHomeScore">0</b><i>×</i><b id="cpHomeBestAwayScore">0</b>
+        </div>
+        <i class="cpHomeBestVersus" hidden>×</i>
+        <div class="cpHomeBestTeams" hidden></div>
+        <div class="cpHomeMarketDots" hidden></div>
+      </section>
+
+      <section class="cpHomeSection cpHomeMarketsSection">
+        <div class="cpHomeSectionHead">
+          <div>
+            <h2>Mercados em destaque</h2>
+            <small>Escolha o mercado e veja as melhores análises</small>
+          </div>
+          <button type="button">VER TODOS ›</button>
         </div>
 
-        <div class="userManageField">
-          <small>Plano</small>
-          <span class="planBadge ${user.premium ? "is-pro" : "is-free"}">${user.premium ? "PRO" : "FREE"}</span>
-        </div>
-
-        <div class="userManageAction">
-          <button class="planActionBtn ${user.premium ? "remove" : "activate"}" type="button"
-            data-user-plan="${user.premium ? "false" : "true"}"
-            data-user-uid="${escapeHtml(user.uid)}">
-            ${user.premium ? "TORNAR FREE" : "ATIVAR PRO"}
+        <div class="cpHomeMarkets">
+          <button type="button" data-home-market="corners">
+            <span>⚑</span><b>ESCANTEIOS</b><small>9.5 • 10.5 • 11.5</small>
+            <em>18 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="goals">
+            <span>⚽</span><b>GOLS</b><small>2.5 • 3.5 • 4.5</small>
+            <em>24 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="cards">
+            <span>▯</span><b>CARTÕES</b><small>2.5 • 3.5 • 4.5</small>
+            <em>31 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="handicap">
+            <span>⚖</span><b>HANDICAP</b><small>-1.0 • +1.0 • 0.0</small>
+            <em>16 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="btts">
+            <span>◎</span><b>AMBAS MARCAM</b><small>SIM • NÃO</small>
+            <em>22 jogos hoje</em>
           </button>
         </div>
-      </article>
-    `;
-  }).join("");
-}
 
-function updateUsersSummary(users) {
-  const pro = users.filter(user => user.premium).length;
-  const free = users.length - pro;
-  const online = users.filter(isUserOnline).length;
+        <div class="cpHomeCarouselDots" aria-hidden="true">
+          <i class="active"></i><i></i><i></i><i></i><i></i>
+        </div>
+      </section>
 
-  if ($("#adminTotalUsers")) $("#adminTotalUsers").textContent = users.length;
-  if ($("#adminOnlineUsers")) $("#adminOnlineUsers").textContent = online;
-  if ($("#adminProUsers")) $("#adminProUsers").textContent = pro;
-  if ($("#adminFreeUsers")) $("#adminFreeUsers").textContent = free;
-}
+      <section class="cpHomeSection cpHomeFeaturedGamesSection" id="cpHomeFeaturedGamesSection">
+        <div class="cpHomeSectionHead"><h2>Jogos em destaque</h2><button type="button">VER TODOS ›</button></div>
+        <div class="cpHomeOrderSwitch" aria-label="Ordenar jogos em destaque">
+          <button type="button" class="active" data-corner-order="strength" aria-pressed="true"><span>🔥</span> FORÇA DE CANTOS</button>
+          <button type="button" data-corner-order="time" aria-pressed="false"><span>🕒</span> HORÁRIO</button>
+        </div>
+        <small class="cpHomeOrderHint">Em força de cantos, o melhor jogo do dia fica sempre em primeiro.</small>
+        <div class="cpHomeGames" id="cpHomeGames"><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div></div>
+      </section>
 
-async function loadUsers() {
-  try {
-    showUsersMessage("Carregando usuários...", "info");
-    const data = await adminFetch("/admin/users?limit=500");
-    state.users = Array.isArray(data.users) ? data.users : [];
-    applyUsersFilter();
-    renderRecentUsers(state.users);
-    updateUsersSummary(state.users);
-    showUsersMessage("");
-  } catch (error) {
-    console.error("Erro ao carregar usuários:", error);
-    showUsersMessage(error.message, "error");
-  }
-}
+      <section class="cpHomeMatchMini" id="cpHomeMatchMini">
+        <div class="cpHomeSectionHead"><h2>Match Center</h2><span>TOQUE PARA ABRIR</span></div>
+        <button type="button" id="cpHomeMatchOpen"><div><small>PARTIDA EM DESTAQUE</small><strong id="cpHomeMatchTeams">Selecione um jogo</strong></div><b>›</b></button>
+      </section>
 
-async function updateUserPlan(uid, premium, button) {
-  const original = button.textContent;
-  button.disabled = true;
-  button.textContent = "SALVANDO...";
+      <section class="cpHomeSection cpHomeLast">
+        <div class="cpHomeSectionHead"><h2>Próximos jogos</h2><button type="button">VER TODOS ›</button></div>
+        <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
+      </section>
 
-  try {
-    const data = await adminFetch(`/admin/users/${encodeURIComponent(uid)}/plan`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ premium })
-    });
+    </main>
 
-    const index = state.users.findIndex(user => user.uid === uid);
-    if (index >= 0) state.users[index] = data.user;
-    applyUsersFilter();
-    renderRecentUsers(state.users);
-    updateUsersSummary(state.users);
-    loadAdminStats();
-    showUsersMessage(premium ? "Plano PRO ativado." : "Plano alterado para FREE.", "success");
-  } catch (error) {
-    showUsersMessage(error.message, "error");
-    button.disabled = false;
-    button.textContent = original;
-  }
-}
+    <!-- HOME VISUAL V31 — isolada dos estilos antigos -->
+    <main class="cprHome" id="cpReferenceHome" aria-label="Corner Pro Dashboard">
+      <section class="cprHero" id="cprHero">
+        <div class="cprHeroTop">
+          <strong id="cprTitle">🔥 MELHOR APOSTA • GOLS</strong>
+          <span id="cprMarket">ANALISANDO</span>
+        </div>
 
-function installUsersEvents() {
-  $("#adminUsersRefresh")?.addEventListener("click", async () => {
-    await loadUsers();
-    await loadAdminStats();
-  });
+        <div class="cprTime">
+          <b id="cprTime">--:--</b>
+          <span id="cprDay">HOJE</span>
+        </div>
 
-  $("#refreshOnlineUsers")?.addEventListener("click", () => {
-    loadOnlineUsers();
-    loadAdminStats();
-  });
+        <div class="cprMatch">
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprHomeBadge" alt="Escudo mandante" hidden>
+              <span id="cprHomeBadgeFallback">CA</span>
+              <button type="button" class="cprFav" data-cpr-fav="home" aria-label="Favoritar mandante">☆</button>
+            </div>
+            <h2 id="cprHomeName">Aguardando</h2>
+            <div class="cprForm" id="cprHomeForm">
+              <i>V</i><i>V</i><i>E</i><i>D</i><i>V</i>
+            </div>
+          </article>
 
-  let searchTimer;
-  $("#adminUserSearch")?.addEventListener("input", event => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      state.userSearch = event.target.value || "";
-      applyUsersFilter();
-    }, 140);
-  });
+          <div class="cprVs">VS</div>
 
-  $("#adminUsersFilters")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-user-filter]");
-    if (!button) return;
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprAwayBadge" alt="Escudo visitante" hidden>
+              <span id="cprAwayBadgeFallback">FO</span>
+              <button type="button" class="cprFav" data-cpr-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <h2 id="cprAwayName">partidas</h2>
+            <div class="cprForm" id="cprAwayForm">
+              <i>V</i><i>E</i><i>V</i><i>D</i><i>V</i>
+            </div>
+          </article>
+        </div>
 
-    state.userFilter = button.dataset.userFilter || "all";
+        <div class="cprStats">
+          <article>
+            <small id="cprProjectionLabel">PROJEÇÃO DE GOLS</small>
+            <b id="cprProjection">—</b>
+            <div class="cprMiniBars"><i></i><i></i><i></i><i></i></div>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b><span class="cprFlag">⚑</span> <span id="cprCornersAvg">—</span></b>
+          </article>
 
-    $$("#adminUsersFilters [data-user-filter]").forEach(btn => {
-      btn.classList.toggle("active", btn === button);
-    });
+          <article class="cprConfidence">
+            <small>CONFIANÇA</small>
+            <div class="cprGauge" id="cprGauge" style="--p:0">
+              <b id="cprConfidence">0%</b>
+            </div>
+            <span id="cprConfidenceLabel">ANALISANDO</span>
+          </article>
 
-    applyUsersFilter();
-  });
+          <article>
+            <small>TENDÊNCIA</small>
+            <b id="cprTrend">↗ —</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b><span>⚽</span> <span id="cprGoalsAvg">—</span></b>
+          </article>
+        </div>
 
-  $("#adminUsersTableBody")?.addEventListener("click", event => {
-    const button = event.target.closest("[data-user-plan]");
-    if (!button) return;
-    updateUserPlan(button.dataset.userUid, button.dataset.userPlan === "true", button);
-  });
-}
+        <button type="button" class="cprOpen" id="cprOpen">
+          <span>▥</span>
+          <b>VER ANÁLISE COMPLETA</b>
+          <i>›</i>
+        </button>
 
-function installLogout() {
-  $(".logoutBtn")?.addEventListener("click", async () => {
-    await sairDaConta();
-    location.href = "/";
-  });
-}
+        <div class="cprLoading" id="cprLoading">
+          <div><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </section>
 
+      <section class="cprSection cprMarketsSection">
+        <header>
+          <h2>◎ MERCADOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
 
-function showAdminLoginGate(message = "") {
-  let gate = document.getElementById("adminLoginGate");
+        <div class="cprMarkets">
+          <button type="button" class="is-hot" data-home-market="corners">
+            <em>HOT</em><span>⚑</span><b>ESCANTEIOS</b>
+            <small>9.5 • 10.5 • 11.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>18 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
 
-  if (!gate) {
-    gate = document.createElement("div");
-    gate.id = "adminLoginGate";
-    gate.style.cssText = `
-      position:fixed;
-      inset:0;
-      z-index:999999;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      background:rgba(2,7,15,.92);
-      backdrop-filter:blur(8px);
-      -webkit-backdrop-filter:blur(8px);
-    `;
+          <button type="button" data-home-market="goals">
+            <span>⚽</span><b>GOLS</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>24 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
 
-    gate.innerHTML = `
-      <div style="
-        width:min(420px,100%);
-        border:1px solid rgba(0,245,141,.28);
-        border-radius:18px;
-        background:#0b1523;
-        padding:28px;
-        box-shadow:0 28px 80px rgba(0,0,0,.55);
-        color:#fff;
-        text-align:center;
-      ">
-        <div style="
-          width:54px;
-          height:54px;
-          margin:0 auto 14px;
-          display:grid;
-          place-items:center;
-          border-radius:15px;
-          background:rgba(0,245,141,.1);
-          color:#00f58d;
-          font-size:24px;
-        ">🔐</div>
+          <button type="button" data-home-market="cards">
+            <span>▯</span><b>CARTÕES</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark is-yellow"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>31 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
 
-        <h2 style="margin:0 0 8px;font-size:22px;">Acesso administrativo</h2>
-        <p style="margin:0 0 18px;color:#8fa1b8;font-size:12px;line-height:1.5;">
-          Entre com a conta Google autorizada para abrir o painel.
-        </p>
+          <button type="button" data-home-market="handicap">
+            <span>⌁</span><b>HANDICAP</b>
+            <small>-1.0 • +1.0 • 0.0</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>16 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
 
-        <div id="adminLoginGateMessage" style="
-          display:${message ? "block" : "none"};
-          margin:0 0 14px;
-          padding:10px 12px;
-          border-radius:10px;
-          background:rgba(255,80,80,.08);
-          border:1px solid rgba(255,80,80,.2);
-          color:#ff9f9f;
-          font-size:11px;
-        ">${escapeHtml(message)}</div>
+          <button type="button" data-home-market="btts">
+            <span>◎</span><b>AMBAS MARCAM</b>
+            <small>SIM • NÃO</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>22 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+        </div>
 
-        <button id="adminLoginGateButton" type="button" style="
-          width:100%;
-          height:46px;
-          border:0;
-          border-radius:11px;
-          background:#00f58d;
-          color:#06110b;
-          font-weight:950;
-          cursor:pointer;
-        ">ENTRAR COM GOOGLE</button>
+        <div class="cprDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
+      </section>
 
-        <button id="adminLoginGateBack" type="button" style="
-          margin-top:10px;
-          width:100%;
-          height:40px;
-          border:1px solid #203047;
-          border-radius:10px;
-          background:#0a1320;
-          color:#8fa1b8;
-          font-weight:800;
-          cursor:pointer;
-        ">VOLTAR AO SITE</button>
+      <section class="cprSection cprFeatured">
+        <header>
+          <h2>☆ JOGOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
+        <div class="cprFeaturedGames" id="cprFeaturedGames">
+          <div class="cprEmpty">Carregando jogos...</div>
+        </div>
+      </section>
+    </main>
+</section>
+
+  <!-- CORNER PRO MOBILE APP SHELL — exclusivo para telas pequenas -->
+  <section class="cpMobileLayer" id="cpMobileMarketsLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="markets" aria-label="Voltar">‹</button>
+      <div>
+        <strong id="cpMobileMarketsTitle">MERCADOS</strong>
+        <small>Escolha uma linha para ver os melhores jogos</small>
       </div>
-    `;
+      <button class="cpMobileFavorite" type="button" aria-label="Favoritar">☆</button>
+    </header>
 
-    document.body.appendChild(gate);
+    <div class="cpMobileMarketKinds" id="cpMobileMarketKinds">
+      <button type="button" data-cp-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button" data-cp-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button" data-cp-market="goals"><span>◎</span><b>Gols</b></button>
+      <button type="button" data-cp-market="cards"><span>▯</span><b>Cartões</b></button>
+      <button type="button" data-cp-market="combined"><span>▦</span><b>Combinadas</b></button>
+      <button type="button" data-cp-market="props"><span>♞</span><b>Props</b></button>
+    </div>
 
-    gate.querySelector("#adminLoginGateButton")?.addEventListener("click", async () => {
-      const btn = gate.querySelector("#adminLoginGateButton");
-      const msg = gate.querySelector("#adminLoginGateMessage");
+    <div class="cpMobileSubTabs" id="cpMobileSubTabs">
+      <button type="button" class="active">Totais</button>
+      <button type="button">1º tempo</button>
+      <button type="button">2º tempo</button>
+      <button type="button">Por equipe</button>
+    </div>
 
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "ABRINDO GOOGLE...";
-      }
+    <main class="cpMobileMarketsBody">
+      <div class="cpMobileMarketHeading">
+        <div><span id="cpMobileMarketIcon">⚑</span><strong id="cpMobileMarketHeading">Totais de escanteios</strong></div>
+        <small>Toque em uma opção</small>
+      </div>
+      <div class="cpMobileOddsGrid" id="cpMobileOddsGrid"></div>
 
-      if (msg) {
-        msg.style.display = "none";
-        msg.textContent = "";
-      }
+      <section class="cpMobileRecommended" id="cpMobileRecommended" hidden>
+        <div class="cpMobileRecommendedHead">
+          <div><small>MELHORES JOGOS PARA</small><strong id="cpMobileSelectedLine">OVER 10.5</strong></div>
+          <span>POR CONFIANÇA</span>
+        </div>
+        <div class="cpMobileGameCarousel" id="cpMobileGameCarousel"></div>
+      </section>
+    </main>
+  </section>
 
-      try {
-        await entrarComGoogle();
-        // onAuthStateChanged continuará o fluxo automaticamente.
-      } catch (error) {
-        if (msg) {
-          msg.textContent = error?.message || "Não foi possível abrir o login.";
-          msg.style.display = "block";
-        }
+  <section class="cpMobileLayer cpMobileMatchLayer" id="cpMobileMatchLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="match" aria-label="Voltar">‹</button>
+      <div><strong id="cpMobileMatchTitle">ANÁLISE PRÉ-JOGO</strong><small id="cpMobileMatchSubtitle">Central de inteligência da partida</small></div>
+      <button class="cpMobileFavorite" type="button" aria-label="Compartilhar">↗</button>
+    </header>
+    <div class="cpMobileMatchContent" id="cpMobileMatchContent">
+      <div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>
+    </div>
+  </section>
 
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "ENTRAR COM GOOGLE";
-        }
-      }
-    });
 
-    gate.querySelector("#adminLoginGateBack")?.addEventListener("click", () => {
-      location.href = "/";
-    });
-  } else {
-    const msg = gate.querySelector("#adminLoginGateMessage");
-    if (msg && message) {
-      msg.textContent = message;
-      msg.style.display = "block";
-    }
+  <!-- CORNER PRO — AUTENTICAÇÃO / CADASTRO -->
+  <section class="cpAuthModal" id="cpAuthModal" hidden aria-hidden="true" aria-labelledby="cpAuthModalTitle">
+    <button class="cpAuthModalBackdrop" id="cpAuthModalBackdrop" type="button" aria-label="Fechar autenticação"></button>
+
+    <div class="cpAuthCard" role="dialog" aria-modal="true">
+      <button class="cpAuthClose" id="cpAuthModalClose" type="button" aria-label="Fechar">×</button>
+
+      <div class="cpAuthBrand">
+        <span class="cpAuthBrandMark">⚑</span>
+        <div>
+          <strong>CORNER<span>PRO</span></strong>
+          <small>SUA CONTA</small>
+        </div>
+      </div>
+
+      <div class="cpAuthHeading">
+        <h2 id="cpAuthModalTitle">Entre no CornerPro</h2>
+        <p id="cpAuthModalSubtitle">Entre para continuar. O acesso com Google é rápido e seguro.</p>
+      </div>
+
+      <div class="cpAuthTabs" role="tablist" aria-label="Entrar ou criar conta">
+        <button type="button" id="cpAuthTabLogin" class="active">ENTRAR</button>
+        <button type="button" id="cpAuthTabRegister">CRIAR CONTA</button>
+      </div>
+
+      <button type="button" class="cpAuthGoogle" id="cpAuthGoogle">
+        <span>G</span>
+        <b>CONTINUAR COM GOOGLE</b>
+      </button>
+
+      <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
+
+      <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
+        <label id="cpAuthNameWrap" hidden>
+          <span>Nome</span>
+          <input id="cpAuthName" name="name" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
+        </label>
+
+        <label>
+          <span>E-mail</span>
+          <input id="cpAuthEmail" name="email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="seu@email.com">
+        </label>
+
+        <label>
+          <span>Senha</span>
+          <input id="cpAuthPassword" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
+        </label>
+
+        <label id="cpAuthConfirmWrap" hidden>
+          <span>Confirmar senha</span>
+          <input id="cpAuthPasswordConfirm" name="password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
+        </label>
+
+        <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
+
+        <div class="cpAuthFormMessage" id="cpAuthFormMessage" hidden role="status" aria-live="polite"></div>
+
+        <button type="submit" class="cpAuthSubmit" id="cpAuthSubmit">
+          <span>ENTRAR</span>
+          <i>›</i>
+        </button>
+      </form>
+
+      <div class="cpAuthSwitch">
+        <span id="cpAuthSwitchText">Ainda não possui conta?</span>
+        <button type="button" id="cpAuthSwitchButton">Criar conta</button>
+      </div>
+
+      <small class="cpAuthPrivacy">
+        Ao continuar, você concorda com o uso da conta para autenticação e preferências do Corner Pro.
+      </small>
+    </div>
+  </section>
+
+  <!-- Login Firebase no navegador. O auth.js importa o firebase-client.js. -->
+  <script type="module" src="auth.js?v=20260821-auth-profissional-final"></script>
+
+  <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
+
+
+  <!-- Barra original global: Dashboard, mercados e Match Center -->
+<nav class="cpHomeBottom cpGlobalBottomNav">
+      <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+      <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+      <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button"><span>•••</span><b>Mais</b></button>
+    </nav>
+
+
+<script id="cpDesktopStableBoot">
+(function(){
+  "use strict";
+
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) {
+    document.documentElement.classList.remove("cpDesktopBoot");
+    return;
   }
 
-  gate.style.display = "flex";
-}
+  let released = false;
+  const started = performance.now();
 
-function hideAdminLoginGate() {
-  const gate = document.getElementById("adminLoginGate");
-  if (gate) gate.style.display = "none";
-}
+  function layoutLooksReady(){
+    const main = document.querySelector(".main");
+    const grid = document.querySelector(".dashboardGrid");
+    const experience = document.getElementById("cpDesktopExperienceV3");
+    const hero = document.getElementById("cpd3Hero");
 
-async function validateAdmin(user) {
-  const data = await adminFetch("/admin/me");
-  updateAdminProfile(user);
-  return data;
-}
+    if (!main || !grid || !experience || !hero) return false;
 
-function startDashboard() {
-  installClock();
-  installNavigation();
-  installUsersEvents();
-  installLogout();
+    const mr = main.getBoundingClientRect();
+    const gr = grid.getBoundingClientRect();
+    const er = experience.getBoundingClientRect();
 
-  loadAdminStats();
-  loadOnlineUsers();
-  loadRecentActivity();
-  loadUsers();
+    // O estado quebrado mostrado no carregamento fica estreito.
+    // Só libera quando o dashboard já ocupou a largura real do desktop.
+    if (mr.width < 700 || gr.width < 700 || er.width < 500) return false;
 
-  state.timerStats = setInterval(loadAdminStats, 15000);
-  state.timerOnline = setInterval(loadOnlineUsers, 15000);
-  state.timerActivity = setInterval(loadRecentActivity, 30000);
-}
+    const style = getComputedStyle(experience);
+    if (style.display === "none" || style.visibility === "hidden") return false;
 
-function startAuth() {
-  observarAutenticacao(async authState => {
-    const user = authState?.usuario || firebaseAuth.currentUser;
+    return true;
+  }
 
-    if (!user) {
-      // IMPORTANTE:
-      // não abre popup automaticamente, porque navegadores bloqueiam popups
-      // que não foram iniciados por um clique do usuário.
-      showAdminLoginGate();
+  function release(){
+    if (released) return;
+    released = true;
+    document.documentElement.classList.remove("cpDesktopBoot");
+    document.documentElement.classList.add("cpDesktopReady");
+  }
+
+  function check(){
+    if (released) return;
+
+    if (layoutLooksReady()) {
+      // Dois frames extras evitam mostrar o meio da reorganização do grid.
+      requestAnimationFrame(() => requestAnimationFrame(release));
       return;
     }
 
-    hideAdminLoginGate();
-    state.user = user;
-
-    try {
-      await validateAdmin(user);
-
-      if (!document.body.dataset.adminReady) {
-        document.body.dataset.adminReady = "1";
-        startDashboard();
-      }
-    } catch (error) {
-      console.error("Acesso admin negado:", error);
-
-      // Se existe login, mas não é uma conta administrativa,
-      // mostra o motivo no próprio painel em vez de redirecionar após um alert.
-      try {
-        await sairDaConta();
-      } catch (_) {}
-
-      document.body.dataset.adminReady = "";
-      showAdminLoginGate(
-        error?.message || "Esta conta não possui acesso administrativo."
-      );
+    // Segurança: nunca deixa a página presa caso alguma API falhe.
+    if (performance.now() - started > 2600) {
+      release();
+      return;
     }
-  });
-}
 
-startAuth();
+    requestAnimationFrame(check);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", check, {once:true});
+  } else {
+    check();
+  }
+
+  window.addEventListener("load", check, {once:true});
+  setTimeout(release, 2800);
+})();
+</script>
+
+</body>
+</html>
