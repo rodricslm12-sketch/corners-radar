@@ -26302,3 +26302,82 @@
       };
     }catch(e){ return {error:String(e)}; }
   };
+
+/* =========================================================
+   CORNER PRO — FIX DE RÓTULOS DO MENU DESKTOP
+   Corrige traduções indevidas no topo:
+   CARRINHO/CARRINHOS -> CARTÕES
+   DESVANTAGEM -> HANDICAP
+   Mantém os mercados e a lógica intactos.
+   ========================================================= */
+(function installCornerProDesktopMenuLabelFix(){
+  "use strict";
+
+  if (window.__cpDesktopMenuLabelFixInstalled) return;
+  window.__cpDesktopMenuLabelFixInstalled = true;
+
+  const normalize = value => String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+  function fixTextNode(el){
+    if (!el) return;
+
+    const txt = normalize(el.textContent);
+
+    if (txt === "CARRINHO" || txt === "CARRINHOS") {
+      el.textContent = "CARTÕES";
+      return;
+    }
+
+    if (txt === "DESVANTAGEM") {
+      el.textContent = "HANDICAP";
+    }
+  }
+
+  function applyFix(){
+    if (window.matchMedia && !window.matchMedia("(min-width:981px)").matches) return;
+
+    document.querySelectorAll(
+      ".topbar .nav a, .topbar .nav button, " +
+      ".cpd3MarketNav button, " +
+      "[data-cpd3-market='cards'], [data-cpd3-market='handicap']"
+    ).forEach(el => {
+      const market = String(el.dataset?.cpd3Market || "").toLowerCase();
+
+      if (market === "cards") {
+        el.textContent = "CARTÕES";
+        return;
+      }
+
+      if (market === "handicap") {
+        el.textContent = "HANDICAP";
+        return;
+      }
+
+      fixTextNode(el);
+    });
+  }
+
+  function start(){
+    applyFix();
+
+    const observer = new MutationObserver(() => applyFix());
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      characterData: true
+    });
+
+    window.addEventListener("pageshow", applyFix);
+    window.addEventListener("focus", applyFix);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once:true });
+  } else {
+    start();
+  }
+})();
