@@ -208,8 +208,85 @@ function removerInterfaceAntigaDuplicada() {
   if (barraAntiga) barraAntiga.remove();
 }
 
+
+function instalarVisualVisitanteBloqueado() {
+  if (document.getElementById("cpGuestMarketLockStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "cpGuestMarketLockStyle";
+  style.textContent = `
+    body.cp-auth-guest #cpd3LineNav [data-cpd3-line]{
+      position:relative;
+      padding-right:28px !important;
+    }
+
+    body.cp-auth-guest #cpd3LineNav [data-cpd3-line]:not([data-cpd3-line="IA"]):not([data-cpd3-line="TODOS"])::after{
+      content:"🔒";
+      position:absolute;
+      right:8px;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:10px;
+      line-height:1;
+      opacity:.9;
+      pointer-events:none;
+    }
+
+    body.cp-auth-guest #cpd3Rows{
+      position:relative;
+      min-height:220px;
+      overflow:hidden;
+    }
+
+    body.cp-auth-guest #cpd3Rows > *{
+      filter:blur(5px);
+      opacity:.32;
+      user-select:none;
+      pointer-events:none !important;
+    }
+
+    body.cp-auth-guest #cpd3Rows::after{
+      content:"🔒  Faça login para ver os jogos, projeções e análises deste mercado";
+      position:absolute;
+      z-index:20;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      width:min(520px,calc(100% - 40px));
+      min-height:94px;
+      padding:22px 26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      border:1px solid rgba(104,255,43,.36);
+      border-radius:16px;
+      background:rgba(5,16,14,.94);
+      color:#eaf7ec;
+      box-shadow:0 18px 48px rgba(0,0,0,.35),0 0 28px rgba(84,255,35,.08);
+      font-weight:900;
+      font-size:13px;
+      letter-spacing:.1px;
+      pointer-events:none;
+    }
+
+    body.cp-auth-guest [data-cpd3-open]{
+      position:relative;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function atualizarVisualVisitante() {
+  const visitante = !(estadoAuth.usuario || firebaseAuth.currentUser);
+  document.body.classList.toggle("cp-auth-guest", visitante);
+  instalarVisualVisitanteBloqueado();
+}
+
 function renderizarDeslogado() {
   sincronizarEstadoGlobal(null, null);
+  document.body.classList.add("cp-auth-guest");
+  instalarVisualVisitanteBloqueado();
   removerInterfaceAntigaDuplicada();
 
   if (elementos.loginDesktop) {
@@ -249,6 +326,7 @@ function renderizarDeslogado() {
 
 function renderizarLogado(usuario, perfil) {
   estadoAuth.obrigatorio = false;
+  document.body.classList.remove("cp-auth-guest");
   sincronizarEstadoGlobal(usuario, perfil);
   removerInterfaceAntigaDuplicada();
 
@@ -720,9 +798,17 @@ async function realizarLogout() {
 function mercadoProtegidoClicado(alvo) {
   if (!alvo?.closest) return null;
 
+  // Linhas reais do desktop (8.5, 9.5, 10.5, gols, cartões, handicap etc.)
+  const linha = alvo.closest("[data-cpd3-line]");
+  if (linha) {
+    const valor = String(linha.dataset?.cpd3Line || linha.textContent || "").trim().toUpperCase();
+    // IA/TODOS apenas mostram a existência do mercado; as linhas específicas ficam protegidas.
+    if (valor !== "IA" && valor !== "TODOS") return linha;
+  }
+
   return alvo.closest([
-    "[data-cpd3-line]",
     "[data-cpd3-open]",
+    ".cpd3Analyze",
     ".marketInlineItem",
     "[data-market-line]",
     "[data-premium-market]",
@@ -737,7 +823,6 @@ function bloquearMercadoParaVisitante(evento) {
   const protegido = mercadoProtegidoClicado(evento.target);
   if (!protegido) return;
 
-  // Impede que o JS do mercado troque/abra a análise antes do login.
   evento.preventDefault();
   evento.stopPropagation();
   evento.stopImmediatePropagation();
@@ -757,7 +842,7 @@ function acaoMobile() {
 function instalarEventos() {
   // Captura primeiro para bloquear somente o conteúdo protegido,
   // sem esconder o site do visitante.
-  document.addEventListener("click", bloquearMercadoParaVisitante, true);
+  window.addEventListener("click", bloquearMercadoParaVisitante, true);
 
   elementos.loginDesktop?.addEventListener("click", () => abrirModal("login"));
 
@@ -835,9 +920,18 @@ function observarBarraAntiga() {
 }
 
 function iniciarAutenticacao() {
+  instalarVisualVisitanteBloqueado();
   instalarEventos();
   observarBarraAntiga();
   renderizarDeslogado();
+
+  if (!window.__cpGuestMarketObserver) {
+    window.__cpGuestMarketObserver = new MutationObserver(() => atualizarVisualVisitante());
+    window.__cpGuestMarketObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
 
   observarAutenticacao(async estado => {
     const usuario = estado?.usuario || firebaseAuth.currentUser || null;
