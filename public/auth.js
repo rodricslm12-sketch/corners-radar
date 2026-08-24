@@ -78,6 +78,37 @@ function mostrarMensagem(texto = "", tipo = "info") {
   }, 5000);
 }
 
+function limparCamposAutenticacao({ manterEmailValido = false } = {}) {
+  const emailAtual = String(elementos.emailInput?.value || "").trim();
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAtual);
+
+  if (elementos.nameInput) elementos.nameInput.value = "";
+  if (elementos.confirmInput) elementos.confirmInput.value = "";
+
+  if (elementos.emailInput && !(manterEmailValido && emailValido)) {
+    elementos.emailInput.value = "";
+  }
+
+  if (elementos.passwordInput) {
+    elementos.passwordInput.value = "";
+  }
+
+  mostrarMensagemFormulario("");
+}
+
+function corrigirAutofillInvalido() {
+  const email = String(elementos.emailInput?.value || "").trim();
+
+  // Alguns gerenciadores de senha reaproveitam o antigo "usuário"
+  // (ex.: RodrigoMartins) no campo de e-mail. Se não parecer e-mail,
+  // limpamos automaticamente em vez de deixar o formulário acusar erro.
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    elementos.emailInput.value = "";
+    if (elementos.passwordInput) elementos.passwordInput.value = "";
+    mostrarMensagemFormulario("");
+  }
+}
+
 function mostrarMensagemFormulario(texto = "", tipo = "info") {
   const caixa = elementos.formMessage;
   if (!caixa) return;
@@ -393,6 +424,7 @@ function configurarModo(modo = "login") {
     elementos.emailInput.setAttribute("name", "email");
     elementos.emailInput.setAttribute("autocomplete", "email");
     elementos.emailInput.setAttribute("inputmode", "email");
+    elementos.emailInput.setAttribute("type", "email");
     elementos.emailInput.setAttribute("autocapitalize", "none");
     elementos.emailInput.setAttribute("spellcheck", "false");
   }
@@ -454,6 +486,9 @@ function abrirModal(modo = "login", opcoes = {}) {
 
   configurarModo(modo);
 
+  // Corrige credenciais antigas que o navegador possa tentar preencher.
+  corrigirAutofillInvalido();
+
   // O modo é definido antes de exibir o modal para evitar flash de campos do cadastro.
   elementos.modal.hidden = false;
   elementos.modal.setAttribute("aria-hidden", "false");
@@ -479,11 +514,17 @@ function abrirModal(modo = "login", opcoes = {}) {
   }
 
   window.setTimeout(() => {
+    corrigirAutofillInvalido();
+
     const alvo = estadoAuth.modo === "register"
       ? elementos.nameInput
       : elementos.emailInput;
     alvo?.focus();
   }, 80);
+
+  // Chrome/gerenciadores de senha podem preencher alguns ms depois de abrir.
+  window.setTimeout(corrigirAutofillInvalido, 250);
+  window.setTimeout(corrigirAutofillInvalido, 700);
 }
 
 function fecharModal(opcoes = {}) {
@@ -631,8 +672,10 @@ async function realizarLogout() {
   mostrarMensagem("");
 
   try {
+    limparCamposAutenticacao();
     await sairDaConta();
     renderizarDeslogado();
+    limparCamposAutenticacao();
     mostrarMensagem("Você saiu da conta.", "success");
     abrirModal("login", { obrigatorio: true });
   } catch (erro) {
@@ -710,6 +753,7 @@ function iniciarAutenticacao() {
 
     if (!usuario) {
       renderizarDeslogado();
+      limparCamposAutenticacao({ manterEmailValido: true });
       abrirModal("login", { obrigatorio: true });
       return;
     }
