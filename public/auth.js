@@ -661,6 +661,33 @@ async function recuperarSenha() {
   }
 }
 
+
+function fecharLoginAposLogout() {
+  estadoAuth.obrigatorio = false;
+
+  const fechar = () => {
+    try {
+      fecharModal({ forcar: true });
+    } catch (_) {}
+
+    document.body.classList.remove("cpAuthModalOpen");
+
+    if (elementos.modal) {
+      elementos.modal.hidden = true;
+      elementos.modal.setAttribute("aria-hidden", "true");
+      elementos.modal.classList.remove("is-required");
+    }
+  };
+
+  // Fecha agora e novamente depois para vencer qualquer listener legado
+  // que tente reabrir o login durante o onAuthStateChanged/signOut.
+  fechar();
+  window.setTimeout(fechar, 0);
+  window.setTimeout(fechar, 120);
+  window.setTimeout(fechar, 400);
+  window.setTimeout(fechar, 900);
+}
+
 async function realizarLogout() {
   if (estadoAuth.ocupado) return;
 
@@ -672,7 +699,7 @@ async function realizarLogout() {
     await sairDaConta();
     renderizarDeslogado();
     limparCamposAutenticacao();
-    fecharModal({ forcar: true });
+    fecharLoginAposLogout();
     mostrarMensagem("Você saiu da conta.", "success");
   } catch (erro) {
     console.error("Falha no logout Firebase:", erro);
@@ -733,9 +760,36 @@ function instalarEventos() {
   document.addEventListener("click", bloquearMercadoParaVisitante, true);
 
   elementos.loginDesktop?.addEventListener("click", () => abrirModal("login"));
-  elementos.logoutDesktop?.addEventListener("click", realizarLogout);
-  elementos.botaoMobile?.addEventListener("click", acaoMobile);
-  elementos.botaoHomeMobile?.addEventListener("click", acaoMobile);
+
+  // Logout exclusivo: impede listeners antigos de reabrirem o modal após sair.
+  elementos.logoutDesktop?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    realizarLogout();
+  }, true);
+
+  elementos.botaoMobile?.addEventListener("click", event => {
+    if (estadoAuth.usuario || firebaseAuth.currentUser) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      realizarLogout();
+      return;
+    }
+    acaoMobile();
+  }, true);
+
+  elementos.botaoHomeMobile?.addEventListener("click", event => {
+    if (estadoAuth.usuario || firebaseAuth.currentUser) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      realizarLogout();
+      return;
+    }
+    acaoMobile();
+  }, true);
 
   elementos.modalClose?.addEventListener("click", fecharModal);
   elementos.modalBackdrop?.addEventListener("click", fecharModal);
@@ -793,7 +847,7 @@ function iniciarAutenticacao() {
       // O login só será solicitado quando tentar abrir uma linha/análise.
       renderizarDeslogado();
       limparCamposAutenticacao({ manterEmailValido: true });
-      fecharModal({ forcar: true });
+      fecharLoginAposLogout();
       return;
     }
 
