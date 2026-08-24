@@ -269,24 +269,50 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
     function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
+    
+    function confidenceView(cf){
+      const n=Number(cf||0);
+      if(!n)return {label:"—",bars:""};
+      const label=n>=72?"ALTA":n>=62?"MÉDIA":"BAIXA";
+      const bars=`<span class="v120ConfBars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`;
+      return {label,bars};
+    }
+
     function gameCard(g,i){
-      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i);
-      return `<article class="v110Game theme-${theme}" data-v110-game="${i}">
-        <div class="v110GameTop">
+      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf);
+      const isScore=s.live||s.ht||s.finished;
+      return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}">
+        <div class="v110GameTop v120GameTop">
           <span>${esc(league(g))} • ${esc(time(g))}</span>
           <b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b>
         </div>
-        <div class="v110GameTeams">
-          <div class="v110TeamWithFav"><strong>${esc(home(g))}</strong>${favButton(home(g),"home")}</div>
-          <em>${esc(s.score)}</em>
-          <div class="v110TeamWithFav away"><strong>${esc(away(g))}</strong>${favButton(away(g),"away")}</div>
+
+        <div class="v120TeamsRow">
+          <div class="v120Side home">
+            ${logo(g,"home")}
+            <div class="v120TeamText"><strong>${esc(home(g))}</strong></div>
+            ${favButton(home(g),"card")}
+          </div>
+
+          <div class="v120Center ${isScore?"has-score":""}">
+            <em>${esc(s.score)}</em>
+            ${isScore?`<small>${s.finished?"FIM DE JOGO":s.ht?"INTERVALO":s.live?"EM ANDAMENTO":""}</small>`:""}
+          </div>
+
+          <div class="v120Side away">
+            ${logo(g,"away")}
+            <div class="v120TeamText"><strong>${esc(away(g))}</strong></div>
+            ${favButton(away(g),"card")}
+          </div>
         </div>
-        <div class="v110Bet">
+
+        <div class="v110Bet v120Bet">
           <div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div>
           <div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):"—"}</b></div>
-          <div><small>CONFIANÇA</small><b>${cf?cf+"%":"—"}</b></div>
+          <div><small>CONFIANÇA</small><b class="v120Confidence">${esc(cv.label)} ${cv.bars}</b></div>
         </div>
-        <button type="button">VER ANÁLISE ›</button>
+
+        <button class="v120AnalysisBtn" type="button">VER ANÁLISE ›</button>
       </article>`;
     }
     function renderGames(){const el=$("#cpV110Games");if(!el)return;const list=filtered();$("#cpV110Count").textContent=`${list.length} ${list.length===1?"jogo":"jogos"}`;el.innerHTML=list.length?list.map(gameCard).join(""):`<div class="v110Empty">${state.loading?"Consultando IA...":"Sem jogos nesta seleção."}</div>`}
