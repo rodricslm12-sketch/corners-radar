@@ -8,18 +8,18 @@
     "use strict";
     if (window.__cpDesktopFetchGuardInstalled) return;
     window.__cpDesktopFetchGuardInstalled = true;
-  
+
     const originalFetch = window.fetch.bind(window);
     const inflight = new Map();
     const DESKTOP_ENDPOINTS = [
       "/mercados", "/quentes", "/web_corners_ai",
       "/market_engines_fast", "/market_engines"
     ];
-  
+
     function desktop(){
       return !(window.matchMedia && window.matchMedia("(max-width:980px)").matches);
     }
-  
+
     function normalizeUrl(input){
       try{
         const raw = typeof input === "string" ? input : input?.url;
@@ -30,16 +30,16 @@
           .map(([k,v]) => encodeURIComponent(k)+"="+encodeURIComponent(v)).join("&");
       }catch(_){ return String(input); }
     }
-  
+
     window.fetch = function(input, init={}){
       const method = String(init?.method || "GET").toUpperCase();
       const raw = typeof input === "string" ? input : input?.url || "";
       const guarded = desktop() && method === "GET" && DESKTOP_ENDPOINTS.some(ep => raw.includes(ep));
       if (!guarded) return originalFetch(input, init);
-  
+
       const key = normalizeUrl(input);
       if (inflight.has(key)) return inflight.get(key).then(r => r.clone());
-  
+
       const request = originalFetch(input, init)
         .then(r => {
           setTimeout(() => inflight.delete(key), 250);
@@ -49,16 +49,16 @@
           inflight.delete(key);
           throw err;
         });
-  
+
       inflight.set(key, request);
       return request.then(r => r.clone());
     };
   })();
-  
+
   /* =========================================================
      CORNER PRO WEB V28 — CONTROLE PRIORITÁRIO
      SOMENTE CALENDÁRIO + MATCH CENTER DESKTOP
-  
+
      MOTIVO:
      O arquivo legado possui vários listeners e várias redefinições de
      updateDesktopMatchRail. Este bloco entra ANTES de todo o código
@@ -67,27 +67,27 @@
        #topCalPrev / #topCalNext / #topCalToday
        .topCalendarDay
        [data-cpd3-open]
-  
+
      Assim os módulos antigos não disputam estes cliques.
      ========================================================= */
      (() => {
       "use strict";
-    
+
       if (window.__CP_WEB_V28_PRIORITY__) return;
       window.__CP_WEB_V28_PRIORITY__ = true;
-    
+
       const desktop = () =>
         !!window.matchMedia && window.matchMedia("(min-width:981px)").matches;
-    
+
       const $ = (selector, root = document) => root.querySelector(selector);
-    
+
       const clean = (value, fallback = "") => {
         const text = String(value ?? "").trim();
         return text && !["undefined", "null", "NaN"].includes(text)
           ? text
           : fallback;
       };
-    
+
       const esc = value => String(value ?? "").replace(
         /[&<>"']/g,
         ch => ({
@@ -98,16 +98,16 @@
           "'": "&#039;"
         })[ch]
       );
-    
+
       const norm = value => String(value ?? "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, " ")
         .trim();
-    
+
       const raw = game => game?.raw || game || {};
-    
+
       function home(game) {
         const r = raw(game);
         return clean(
@@ -118,7 +118,7 @@
           "Casa"
         );
       }
-    
+
       function away(game) {
         const r = raw(game);
         return clean(
@@ -129,7 +129,7 @@
           "Fora"
         );
       }
-    
+
       function league(game) {
         const r = raw(game);
         return clean(
@@ -138,7 +138,7 @@
           "Liga"
         );
       }
-    
+
       function time(game) {
         const r = raw(game);
         return clean(
@@ -148,7 +148,7 @@
           "—"
         );
       }
-    
+
       function gameId(game) {
         const r = raw(game);
         return clean(
@@ -159,14 +159,14 @@
           ""
         );
       }
-    
+
       function localKey(game) {
         return `${norm(home(game))}|${norm(away(game))}|${time(game)}`;
       }
-    
+
       function collectGames() {
         const panel = $(".gamesPanel");
-    
+
         const pools = [
           window.__cornerProAllGames,
           window.__lastRawGames,
@@ -175,99 +175,99 @@
           panel?.__cornerProAllGames,
           panel?.__cornerProGames
         ];
-    
+
         const result = [];
         const seen = new Set();
-    
+
         for (const pool of pools) {
           if (!Array.isArray(pool)) continue;
-    
+
           for (const game of pool) {
             if (!game || typeof game !== "object") continue;
-    
+
             const id = gameId(game);
             const key = id || localKey(game);
             if (!key || seen.has(key)) continue;
-    
+
             seen.add(key);
             result.push(game);
           }
         }
-    
+
         return result;
       }
-    
+
       function resolveGame(button) {
         const requested = clean(button?.dataset?.cpd3Open, "");
         const row = button?.closest?.(".cpd3Row,[data-cpd3-game]");
         const games = collectGames();
-    
+
         let found = games.find(game => {
           const id = gameId(game);
           const key = localKey(game);
           return requested && (requested === id || requested === key);
         });
-    
+
         if (found) return found;
-    
+
         /* Tenta nomes da linha caso o data-cpd3-open tenha vindo de uma
            chave visual e não de match_id. */
         if (row) {
           const names = [...row.querySelectorAll(".cpd3Names b")]
             .map(el => clean(el.textContent, ""))
             .filter(Boolean);
-    
+
           const rowHome = names[0] || "";
           const rowAway = names[1] || "";
-    
+
           if (rowHome || rowAway) {
             found = games.find(game =>
               (!rowHome || norm(home(game)) === norm(rowHome)) &&
               (!rowAway || norm(away(game)) === norm(rowAway))
             );
           }
-    
+
           if (found) return found;
         }
-    
+
         return null;
       }
-    
+
       /* ================= CALENDÁRIO ================= */
       const MONTHS = [
         "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
         "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"
       ];
-    
+
       const pad = value => String(value).padStart(2, "0");
-    
+
       const toYMD = date =>
         `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-    
+
       const parseYMD = value => {
         const text = String(value || "");
         if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return new Date();
-    
+
         const [year, month, day] = text.split("-").map(Number);
         return new Date(year, month - 1, day, 12, 0, 0);
       };
-    
+
       const sameDay = (a, b) =>
         a.getFullYear() === b.getFullYear() &&
         a.getMonth() === b.getMonth() &&
         a.getDate() === b.getDate();
-    
+
       function currentDateYMD() {
         const input = $("#date");
         if (/^\d{4}-\d{2}-\d{2}$/.test(String(input?.value || ""))) {
           return input.value;
         }
-    
+
         const urlDate = new URLSearchParams(location.search).get("date");
         if (/^\d{4}-\d{2}-\d{2}$/.test(String(urlDate || ""))) {
           return urlDate;
         }
-    
+
         try {
           const parts = new Intl.DateTimeFormat("en-CA", {
             timeZone: "America/Manaus",
@@ -275,66 +275,66 @@
             month: "2-digit",
             day: "2-digit"
           }).formatToParts(new Date());
-    
+
           const obj = Object.fromEntries(parts.map(part => [part.type, part.value]));
           return `${obj.year}-${obj.month}-${obj.day}`;
         } catch (_) {
           return toYMD(new Date());
         }
       }
-    
+
       let calendarView = parseYMD(currentDateYMD());
-    
+
       function renderCalendar() {
         const days = $("#topCalendarDays");
         const title = $("#topCalTitle");
         if (!days || !title) return false;
-    
+
         days.innerHTML = "";
-    
+
         const selected = parseYMD(currentDateYMD());
         const today = new Date();
         const year = calendarView.getFullYear();
         const month = calendarView.getMonth();
-    
+
         title.textContent = `${MONTHS[month]} ${year}`;
-    
+
         const first = new Date(year, month, 1, 12, 0, 0);
         const start = new Date(first);
         start.setDate(first.getDate() - first.getDay());
-    
+
         for (let index = 0; index < 42; index++) {
           const date = new Date(start);
           date.setDate(start.getDate() + index);
-    
+
           const button = document.createElement("button");
           button.type = "button";
           button.className = "topCalendarDay";
           button.dataset.date = toYMD(date);
           button.textContent = String(date.getDate());
-    
+
           if (date.getMonth() !== month) button.classList.add("is-muted");
           if (sameDay(date, today)) button.classList.add("is-today");
           if (sameDay(date, selected)) button.classList.add("is-selected");
-    
+
           days.appendChild(button);
         }
-    
+
         return true;
       }
-    
+
       function positionCalendar() {
         const trigger = $("#btnCalendario");
         const drop = $("#topCalendarDropdown");
         if (!trigger || !drop) return;
-    
+
         const rect = trigger.getBoundingClientRect();
         const width = 320;
         const gap = 8;
-    
+
         let left = rect.left + rect.width / 2 - width / 2;
         left = Math.max(12, Math.min(left, window.innerWidth - width - 12));
-    
+
         /* Inline + important para vencer os vários patches CSS antigos
            que usam !important em left/top/right. */
         drop.style.setProperty("position", "fixed", "important");
@@ -344,47 +344,47 @@
         drop.style.setProperty("width", `${width}px`, "important");
         drop.style.setProperty("display", "block", "important");
       }
-    
+
       function openCalendar() {
         const trigger = $("#btnCalendario");
         const drop = $("#topCalendarDropdown");
         if (!trigger || !drop) return;
-    
+
         calendarView = parseYMD(currentDateYMD());
         renderCalendar();
         positionCalendar();
-    
+
         trigger.classList.add("is-open");
         drop.classList.add("is-open");
         drop.setAttribute("aria-hidden", "false");
-    
+
         drop.style.setProperty("visibility", "visible", "important");
         drop.style.setProperty("opacity", "1", "important");
         drop.style.setProperty("pointer-events", "auto", "important");
         drop.style.setProperty("z-index", "2147483646", "important");
       }
-    
+
       function closeCalendar() {
         const trigger = $("#btnCalendario");
         const drop = $("#topCalendarDropdown");
         if (!drop) return;
-    
+
         trigger?.classList.remove("is-open");
         drop.classList.remove("is-open");
         drop.setAttribute("aria-hidden", "true");
-    
+
         drop.style.removeProperty("display");
         drop.style.removeProperty("visibility");
         drop.style.removeProperty("opacity");
         drop.style.removeProperty("pointer-events");
       }
-    
+
       async function applyDate(ymd) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || ""))) return;
-    
+
         const input = $("#date");
         if (input) input.value = ymd;
-    
+
         try {
           const url = new URL(location.href);
           url.hash = "";
@@ -392,20 +392,20 @@
           url.searchParams.set("date", ymd);
           history.replaceState({}, "", `${url.pathname}${url.search}`);
         } catch (_) {}
-    
+
         closeCalendar();
-    
+
         try {
           if (typeof window.CornerProDesktopReloadDate === "function") {
             await window.CornerProDesktopReloadDate(ymd);
             return;
           }
-    
+
           if (typeof window.CornerProReloadRealGames === "function") {
             await window.CornerProReloadRealGames(ymd);
             return;
           }
-    
+
           /* Último fallback: atualiza a página já com a data correta.
              Evita depender de funções privadas dos módulos antigos. */
           location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
@@ -414,20 +414,20 @@
           location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
         }
       }
-    
+
       /* ================= MATCH CENTER ================= */
       function rail() {
         return $("#desktopMatchRail") || $(".dashboardRightRail");
       }
-    
+
       function renderMcLoading(game) {
         const target = rail();
         if (!target) return;
-    
+
         target.style.setProperty("display", "flex", "important");
         target.style.setProperty("visibility", "visible", "important");
         target.style.setProperty("opacity", "1", "important");
-    
+
         target.innerHTML = `
           <section class="railCard cpV28McHead">
             <div class="railTitle"><span>▣ MATCH CENTER</span><b>CARREGANDO</b></div>
@@ -440,28 +440,28 @@
           </section>
         `;
       }
-    
+
       function pickPair(data, name) {
         const source = data?.[name] || data?.statistics?.[name] || {};
-    
+
         let h =
           source?.home ??
           data?.statistics?.home?.[name] ??
           data?.[`home_${name}`] ??
           data?.[`${name}_home`];
-    
+
         let a =
           source?.away ??
           data?.statistics?.away?.[name] ??
           data?.[`away_${name}`] ??
           data?.[`${name}_away`];
-    
+
         return [
           clean(h, "—"),
           clean(a, "—")
         ];
       }
-    
+
       function metric(label, pair) {
         return `
           <div style="display:grid;grid-template-columns:42px 1fr 42px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #1b2b32">
@@ -471,32 +471,32 @@
           </div>
         `;
       }
-    
+
       function statusText(data) {
         const value = clean(
           data?.status ?? data?.status_raw ?? data?.match_status,
           "PRÉ-JOGO"
         ).toUpperCase();
-    
+
         if (/FT|FINISHED|ENCERR|FINAL/.test(value)) return "FIM";
         if (/HT|HALF|INTERVAL/.test(value)) return "INTERVALO";
-    
+
         const minute = clean(
           data?.minute ?? data?.match_minute ?? data?.elapsed,
           ""
         );
-    
+
         if (data?.live || /LIVE|AO VIVO|1ST|2ND/.test(value) || minute) {
           return minute ? `AO VIVO • ${esc(minute)}'` : "AO VIVO";
         }
-    
+
         return "PRÉ-JOGO";
       }
-    
+
       function renderMcData(game, data) {
         const target = rail();
         if (!target) return;
-    
+
         const corners = pickPair(data, "corners");
         const shots = pickPair(data, "shots");
         const shotsTarget = pickPair(data, "shots_on_target");
@@ -505,7 +505,7 @@
         const passes = pickPair(data, "passes");
         const fouls = pickPair(data, "fouls");
         const cards = pickPair(data, "yellow_cards");
-    
+
         const hs = clean(
           data?.goals?.home ?? data?.score?.home ?? data?.home_score,
           "0"
@@ -514,29 +514,29 @@
           data?.goals?.away ?? data?.score?.away ?? data?.away_score,
           "0"
         );
-    
+
         const events = Array.isArray(data?.events)
           ? data.events.slice(-8)
           : [];
-    
+
         target.innerHTML = `
           <section class="railCard cpV28McHead">
             <div class="railTitle">
               <span>▣ MATCH CENTER</span>
               <b>${statusText(data)}</b>
             </div>
-    
+
             <div style="text-align:center;color:#91a0a3;font-size:9px;margin:4px 0 10px">
               ${esc(clean(data?.league, league(game)))} • ${esc(clean(data?.time, time(game)))}
             </div>
-    
+
             <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:8px;align-items:center;text-align:center">
               <strong>${esc(clean(data?.home, home(game)))}</strong>
               <b style="font-size:24px;color:#63f127">${esc(hs)} - ${esc(as)}</b>
               <strong>${esc(clean(data?.away, away(game)))}</strong>
             </div>
           </section>
-    
+
           <section class="railCard cpV28McStats">
             <h3>ESTATÍSTICAS DA PARTIDA</h3>
             ${metric("Escanteios", corners)}
@@ -548,7 +548,7 @@
             ${metric("Faltas", fouls)}
             ${metric("Cartões", cards)}
           </section>
-    
+
           <section class="railCard cpV28McEvents">
             <h3>EVENTOS / LEITURA</h3>
             ${
@@ -564,11 +564,11 @@
           </section>
         `;
       }
-    
+
       function renderMcError(game, message) {
         const target = rail();
         if (!target) return;
-    
+
         target.innerHTML = `
           <section class="railCard">
             <div class="railTitle"><span>▣ MATCH CENTER</span><b>ERRO</b></div>
@@ -577,7 +577,7 @@
           </section>
         `;
       }
-    
+
       function renderMcEmpty() {
         const target = rail();
         if (!target) return;
@@ -700,26 +700,26 @@
          executa antes dos listeners antigos registrados no document. */
       window.addEventListener("click", event => {
         if (!desktop()) return;
-    
+
         const target = event.target;
         if (!(target instanceof Element)) return;
-    
+
         const calendarButton = target.closest("#btnCalendario");
         if (calendarButton) {
           event.preventDefault();
           event.stopImmediatePropagation();
-    
+
           const drop = $("#topCalendarDropdown");
           if (drop?.classList.contains("is-open")) closeCalendar();
           else openCalendar();
           return;
         }
-    
+
         const previous = target.closest("#topCalPrev");
         if (previous) {
           event.preventDefault();
           event.stopImmediatePropagation();
-    
+
           calendarView = new Date(
             calendarView.getFullYear(),
             calendarView.getMonth() - 1,
@@ -729,12 +729,12 @@
           positionCalendar();
           return;
         }
-    
+
         const next = target.closest("#topCalNext");
         if (next) {
           event.preventDefault();
           event.stopImmediatePropagation();
-    
+
           calendarView = new Date(
             calendarView.getFullYear(),
             calendarView.getMonth() + 1,
@@ -744,7 +744,7 @@
           positionCalendar();
           return;
         }
-    
+
         const today = target.closest("#topCalToday");
         if (today) {
           event.preventDefault();
@@ -752,7 +752,7 @@
           applyDate(currentDateYMD());
           return;
         }
-    
+
         const day = target.closest("#topCalendarDropdown .topCalendarDay");
         if (day) {
           event.preventDefault();
@@ -760,7 +760,7 @@
           applyDate(day.dataset.date);
           return;
         }
-    
+
         const analysis = target.closest("[data-cpd3-open]");
         if (analysis) {
           event.preventDefault();
@@ -820,14 +820,14 @@
           positionCalendar();
         }
       });
-    
+
       document.addEventListener("keydown", event => {
         if (event.key === "Escape") {
           closeCalendar();
           if (window.__selectedMatchCenterKey) clearMatchCenterSelection();
         }
       });
-    
+
       /* Exposição somente para diagnóstico no console. */
       window.CornerProV28 = {
         openCalendar,
@@ -837,7 +837,7 @@
         collectGames
       };
     })();
-    
+
     /* =========================================================
        CORNER PRO WEB V11 — DESKTOP + LIVE + MULTIMERCADOS
        IMPORTANTE:
@@ -849,16 +849,16 @@
        ========================================================= */
        (() => {
         "use strict";
-      
+
         if (window.__cpWebV11Installed) return;
         window.__cpWebV11Installed = true;
-      
+
         const mq = window.matchMedia("(min-width:981px)");
         if (!mq.matches) return;
-      
+
         const $ = (s, r=document) => r.querySelector(s);
         const $$ = (s, r=document) => [...r.querySelectorAll(s)];
-      
+
         const MARKET = {
           corners: {
             label:"ESCANTEIOS",
@@ -890,7 +890,7 @@
           teamgoals:{label:"GOLS DO TIME",lines:["TODOS","0.5","1.5","2.5"],subs:[["TOTAL DO TIME","all"],["CASA","home"],["FORA","away"]]},
           builder:{label:"APOSTA PRONTA",lines:["TODOS"],subs:[["MAIOR CONFIANÇA","all"]]}
         };
-      
+
         const state = {
           market:"corners",
           line:"IA",
@@ -902,17 +902,17 @@
           favorites:new Set(),
           loading:true
         };
-      
+
         try {
           const saved = JSON.parse(localStorage.getItem("cornerProFavorites") || "[]");
           if (Array.isArray(saved)) saved.forEach(x => state.favorites.add(norm(x)));
         } catch {}
-      
+
         function clean(v, fb=""){
           const s=String(v ?? "").trim();
           return s && !["undefined","null","NaN"].includes(s) ? s : fb;
         }
-      
+
         function esc(v){
           return String(v ?? "")
             .replaceAll("&","&amp;")
@@ -921,13 +921,13 @@
             .replaceAll('"',"&quot;")
             .replaceAll("'","&#039;");
         }
-      
+
         function norm(v){
           return String(v ?? "")
             .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
             .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
         }
-      
+
         function num(...vals){
           for(const v of vals){
             if(v===null || v===undefined || v==="") continue;
@@ -936,7 +936,7 @@
           }
           return null;
         }
-      
+
         function todayManaus(){
           const hidden=$("#date")?.value;
           if(/^\d{4}-\d{2}-\d{2}$/.test(hidden||"")) return hidden;
@@ -950,12 +950,12 @@
             return new Date(Date.now()-4*3600000).toISOString().slice(0,10);
           }
         }
-      
+
         function extract(payload, seen=new Set()){
           if(Array.isArray(payload)) return payload.filter(x=>x && typeof x==="object");
           if(!payload || typeof payload!=="object" || seen.has(payload)) return [];
           seen.add(payload);
-      
+
           for(const key of ["games","jogos","matches","data","items","list","results","top","top6","quentes","mercados","opportunities"]){
             const v=payload[key];
             if(Array.isArray(v) && v.length) return v.filter(x=>x && typeof x==="object");
@@ -966,26 +966,26 @@
           }
           return [];
         }
-      
+
         function raw(g){ return g?.raw || g || {}; }
-      
+
         function home(g){
           const r=raw(g);
           return clean(g?.home ?? g?.casa ?? r?.casa ?? r?.home ?? r?.match_hometeam_name ?? r?.event_home_team,"Casa");
         }
-      
+
         function away(g){
           const r=raw(g);
           return clean(g?.away ?? g?.fora ?? r?.fora ?? r?.away ?? r?.match_awayteam_name ?? r?.event_away_team,"Fora");
         }
-      
+
         function time(g){
           const r=raw(g);
           const s=clean(g?.time ?? g?.hora_manaus ?? g?.hora ?? r?.hora_manaus ?? r?.hora ?? r?.match_time ?? r?.event_time,"--:--");
           const m=s.match(/(\d{1,2}):(\d{2})/);
           return m ? `${m[1].padStart(2,"0")}:${m[2]}` : "--:--";
         }
-      
+
         function key(g){
           const r=raw(g);
           return clean(
@@ -994,7 +994,7 @@
             `${norm(home(g))}|${norm(away(g))}|${time(g)}`
           );
         }
-      
+
         const CP_LEAGUE_NAMES = new Map([
           [152,"Premier League"],[302,"La Liga"],[175,"Bundesliga"],
           [207,"Serie A"],[168,"Ligue 1"],[244,"Eredivisie"],
@@ -1042,7 +1042,7 @@
             ""
           );
         }
-      
+
         function badge(g, side){
           const r=raw(g);
           const arr=side==="home"
@@ -1050,13 +1050,13 @@
             : [r.away_badge,r.team_away_badge,r.away_team_badge,r.away_logo,r.away_team_logo,r.awayteam_logo,r.event_raw?.team_away_badge,r.event_raw?.away_badge];
           return clean(arr.find(x=>/^https?:\/\//i.test(String(x||""))),"");
         }
-      
+
         function decision(g, market=state.market){
           const r=raw(g);
           const field=market==="btts" ? "btts_ai" : `${market}_ai`;
           return r?.[field] || g?.[field] || {};
         }
-      
+
         function confidence(g, market=state.market){
           if(["result","doublechance","teamgoals"].includes(market)){
             const r=raw(g);
@@ -1068,7 +1068,7 @@
           if(x!==null && x>0 && x<=1) x*=100;
           return x===null ? 0 : Math.max(0,Math.min(95,Math.round(x)));
         }
-      
+
         function projection(g, market=state.market){
           const r=raw(g), d=decision(g,market);
           if(market==="corners") return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
@@ -1077,7 +1077,7 @@
           if(["result","doublechance","teamgoals"].includes(market)) return num(r?.goals_ai?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
           return num(d?.projection);
         }
-      
+
         function average(g, market=state.market){
           const r=raw(g);
           if(market==="corners") return num(r?.media_combinada,r?.corner_avg,r?.corners_avg,r?.total_corners_avg,projection(g,market));
@@ -1085,7 +1085,7 @@
           if(market==="cards") return num(r?.cards_avg,r?.total_cards_avg,projection(g,market));
           return projection(g,market);
         }
-      
+
         function lineText(g, market=state.market){
           return clean(decision(g,market)?.line,"").toUpperCase();
         }
@@ -1098,20 +1098,20 @@
           const finished=
             Boolean(g?.finished ?? r?.finished) ||
             /finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(s);
-    
+
           const halftime=
             !finished &&
             (
               Boolean(g?.halftime ?? r?.halftime) ||
               /half.?time|\bht\b|interval|break/.test(s)
             );
-    
+
           const minuteFromStatus=(()=>{
             const m=s.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
             if(!m) return null;
             return Number(m[1]) + (m[2] ? Number(m[2]) : 0);
           })();
-    
+
           const realMinute=minute!==null ? minute : minuteFromStatus;
           const live=
             !finished &&
@@ -1127,7 +1127,7 @@
           else if(live) label=realMinute?`AO VIVO • ${Math.round(realMinute)}'`:"AO VIVO";
           return {finished,halftime,live,label,minute:realMinute,hs,as};
         }
-    
+
         function startLabel(g){
           const st=gameStatus(g);
           if(st.live||st.finished){
@@ -1156,15 +1156,15 @@
           }
           return lineText(g,market);
         }
-      
-    
-    
+
+
+
         function desktopCornersAiRecommendation(g){
           const d=decision(g,"corners");
           const serverLine=clean(d?.line,"").toUpperCase();
           const p=projection(g,"corners");
           const c=confidence(g,"corners");
-    
+
           // Se o servidor já trouxe um OVER válido, respeita.
           if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(serverLine)){
             return {
@@ -1175,16 +1175,16 @@
               source:"server"
             };
           }
-    
+
           // Fallback visual alinhado ao motor WEB dedicado.
           if(p!==null && Number.isFinite(Number(p))){
             const proj=Number(p);
-    
+
             if(proj>=11.75) return {valid:true,line:"OVER 11.5",projection:proj,confidence:c,source:"projection"};
             if(proj>=10.75) return {valid:true,line:"OVER 10.5",projection:proj,confidence:c,source:"projection"};
             if(proj>=9.55)  return {valid:true,line:"OVER 9.5", projection:proj,confidence:c,source:"projection"};
           }
-    
+
           return {
             valid:false,
             line:"SEM ENTRADA",
@@ -1193,11 +1193,11 @@
             source:"none"
           };
         }
-    
+
         function aiRecommendationText(g, market=state.market){
           const d=decision(g,market);
           let line=clean(d?.line,"").toUpperCase();
-    
+
           if(market==="handicap"){
             const side=handicapSide(g);
             const teamName=clean(
@@ -1207,32 +1207,32 @@
             if(!line || line==="SEM APOSTA") return line || "—";
             return teamName ? `${teamName} ${line}` : line;
           }
-    
+
           if(market==="btts"){
             if(!line) return "—";
             if(/NÃO|NAO|\bNO\b/.test(line)) return "AMBAS NÃO";
             if(/SIM|YES/.test(line)) return "AMBAS SIM";
             return line;
           }
-    
+
           if(market==="corners"){
             return desktopCornersAiRecommendation(g).line;
           }
-    
+
           if(["goals","cards"].includes(market)){
             return line || "—";
           }
-    
+
           return marketPickText(g,market) || line || "—";
         }
-    
+
         function handicapSide(g){
           const s=norm(decision(g,"handicap")?.side_key ?? decision(g,"handicap")?.side ?? "");
           if(s.includes("away")||s.includes("fora")) return "away";
           if(s.includes("home")||s.includes("casa")) return "home";
           return "all";
         }
-      
+
         function unique(list){
           const seen=new Set();
           return (Array.isArray(list)?list:[]).filter(g=>{
@@ -1242,7 +1242,7 @@
             return true;
           });
         }
-      
+
         function mergeGame(base, extra){
           if(!base) return extra;
           if(!extra) return base;
@@ -1295,24 +1295,24 @@
           }
           return [...map.values()];
         }
-      
-    
+
+
         // WEB V14 — IA REAL DOS MERCADOS NO DESKTOP
         let __cpWebAiLoadToken = 0;
-    
+
         function webEngineArray(payload, market){
           if(!payload || typeof payload!=="object") return [];
           const arr=extract(payload?.[market]);
           return Array.isArray(arr)?arr:[];
         }
-    
+
         function applyWebEnginePayload(payload, sourceName="full", renderNow=true){
           if(!payload || typeof payload!=="object") return false;
           let changed=false;
           for(const market of ["corners","goals","cards","handicap","btts"]){
             const incoming=webEngineArray(payload,market);
             if(!incoming.length) continue;
-    
+
             // A rota /web_corners_ai é a autoridade de cantos no desktop.
             // O /market_engines completo não pode sobrescrever sua decisão depois.
             if(
@@ -1324,7 +1324,7 @@
             ){
               continue;
             }
-    
+
             state.engines[market]=mergeLists(state.engines[market]||[],incoming);
             changed=true;
           }
@@ -1338,7 +1338,7 @@
           });
           return changed;
         }
-    
+
         async function webGetJson(url,timeoutMs=20000){
           const controller=new AbortController();
           const timer=setTimeout(()=>controller.abort(),timeoutMs);
@@ -1352,11 +1352,11 @@
             return await response.json();
           }finally{ clearTimeout(timer); }
         }
-    
+
         function loadDesktopAiEngines(date=todayManaus()){
           const token=++__cpWebAiLoadToken;
           const stamp=Date.now();
-    
+
           // Escanteios WEB: motor dedicado com forma recente e linhas 8.5/9.5/10.5/11.5.
           webGetJson(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,30000)
             .then(payload=>{
@@ -1364,7 +1364,7 @@
               applyWebEnginePayload(payload,"corners-web");
             })
             .catch(err=>console.warn("[Corner Pro WEB IA corners]",err?.message||err));
-    
+
           // Primeira decisão rápida para Ambas + Handicap.
           webGetJson(`/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,22000)
             .then(payload=>{
@@ -1372,7 +1372,7 @@
               applyWebEnginePayload(payload,"fast");
             })
             .catch(err=>console.warn("[Corner Pro WEB IA fast]",err?.message||err));
-    
+
           // Motor completo para Escanteios, Gols, Cartões, Handicap e Ambas.
           webGetJson(`/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,45000)
             .then(payload=>{
@@ -1381,15 +1381,15 @@
             })
             .catch(err=>console.warn("[Corner Pro WEB IA full]",err?.message||err));
         }
-    
+
         // WEB V22: o carregamento visual é centralizado em load().
-    
+
         function source(){
           // SEMPRE parte de todos os jogos-base.
           // O engine só injeta a IA no jogo correspondente.
           return mergeLists(state.games,state.engines[state.market]);
         }
-      
+
         function matchesLine(g){
           // A linha manual não deve zerar a tela.
           // A seleção real será feita por pontuação/ranking em list().
@@ -1401,23 +1401,23 @@
               !line ||
               line==="DADOS EM ATUALIZAÇÃO" ||
               line==="ANALISANDO PARTIDA";
-  
+
             if(state.market==="corners"){
               return desktopCornersAiRecommendation(g).valid;
             }
-  
+
             return !pending && !Boolean(d?.skip) && line!=="SEM APOSTA";
           }
-  
+
           return true;
         }
-  
+
         function matchesSub(g){
           if(state.market==="handicap" && ["home","away"].includes(state.sub)){
             const s=handicapSide(g);
             return !s || s==="all" || s===state.sub;
           }
-  
+
           if(state.market==="cards" && ["home","away"].includes(state.sub)){
             const t=norm(lineText(g,"cards"));
             if(!t) return true;
@@ -1425,32 +1425,32 @@
               ? (t.includes("casa")||t.includes("home"))
               : (t.includes("fora")||t.includes("away")||t.includes("visit"));
           }
-  
+
           if(state.market==="btts" && state.sub==="yes"){
             const t=lineText(g,"btts");
             return !t || /(SIM|YES)/.test(t);
           }
-  
+
           if(state.market==="btts" && state.sub==="no"){
             const t=lineText(g,"btts");
             return !t || /(NAO|NÃO|NO)/.test(t);
           }
-  
+
           return true;
         }
-  
+
         function manualLineNumber(){
           if(["IA","TODOS","SIM","NÃO","CASA","EMPATE","FORA","1X","12","X2"].includes(state.line)) return null;
           const n=Number(String(state.line).replace("+","").replace(",","."));
           return Number.isFinite(n) ? n : null;
         }
-  
+
         function handicapLineNumber(g){
           const t=lineText(g,"handicap").replace(",",".");
           const m=t.match(/[+-]?\d+(?:\.\d+)?/);
           return m ? Number(m[0]) : null;
         }
-  
+
         /* =========================================================
            WEB PC — IA ESPECÍFICA POR LINHA
            Cada botão passa a ter uma leitura própria. Primeiro usa
@@ -1462,15 +1462,15 @@
           const n=Number(v);
           return Number.isFinite(n) ? Math.max(1,Math.min(95,n)) : null;
         }
-  
+
         function directLineProbability(g, market, target){
           const r=raw(g), d=decision(g,market);
           const compact=String(target).replace(".","").replace("-","m").replace("+","p");
           const plain=String(target).replace(".","");
-  
+
           const candidates=[];
           const push=(v)=>{ if(v!==undefined && v!==null && v!=="") candidates.push(v); };
-  
+
           if(market==="corners"){
             push(d?.[`over${plain}_prob`]);
             push(d?.[`over_${plain}_prob`]);
@@ -1503,7 +1503,7 @@
             push(r?.handicap_probabilities?.[target]);
             push(r?.[`handicap_${compact}_prob`]);
           }
-  
+
           for(const value of candidates){
             let n=num(value);
             if(n===null) continue;
@@ -1512,7 +1512,7 @@
           }
           return null;
         }
-  
+
         function poissonOverProbability(lambda,line){
           if(!Number.isFinite(lambda) || lambda<=0 || !Number.isFinite(line)) return null;
           const threshold=Math.floor(line)+1;
@@ -1524,31 +1524,31 @@
           }
           return clampPct((1-cdf)*100);
         }
-  
+
         function lineAnalysis(g, market=state.market, selectedLine=state.line){
           const baseConf=confidence(g,market) || 0;
-  
+
           if(["IA","TODOS"].includes(selectedLine)){
             return {valid:true,probability:baseConf,pick:aiRecommendationText(g,market),source:"engine"};
           }
-  
+
           if(["corners","goals","cards"].includes(market)){
             const target=Number(String(selectedLine).replace(",","."));
             const proj=projection(g,market);
             if(!Number.isFinite(target)) return {valid:false,probability:baseConf,pick:`OVER ${selectedLine}`,source:"none"};
-  
+
             let prob=directLineProbability(g,market,target);
             let source="server-line";
             if(prob===null){
               prob=poissonOverProbability(Number(proj),target);
               source="projection-line";
             }
-  
+
             // A confiança do motor atua como moderador, sem substituir a chance da linha.
             if(prob!==null && baseConf>0){
               prob=clampPct(prob*0.78 + baseConf*0.22);
             }
-  
+
             return {
               valid:prob!==null,
               probability:prob ?? Math.max(0,baseConf-25),
@@ -1558,7 +1558,7 @@
               source
             };
           }
-  
+
           if(market==="handicap"){
             const target=Number(String(selectedLine).replace("+","").replace(",","."));
             if(!Number.isFinite(target)){
@@ -1671,7 +1671,7 @@
               marketOdd:Number.isFinite(chosen.odd)?chosen.odd:null
             };
           }
-  
+
           if(market==="btts"){
             const d=lineText(g,"btts");
             const wantsYes=selectedLine==="SIM";
@@ -1681,17 +1681,17 @@
             const prob=clampPct(agrees ? baseConf : (baseConf ? 100-baseConf : 45));
             return {valid:true,probability:prob,pick:wantsYes?"AMBAS SIM":"AMBAS NÃO",source:"engine-side"};
           }
-  
+
           return {valid:true,probability:baseConf,pick:marketPickText(g,market),source:"engine"};
         }
-  
+
         function activeConfidence(g){
           if(state.line!=="IA" && state.line!=="TODOS" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
             return Math.round(lineAnalysis(g,state.market,state.line).probability || 0);
           }
           return confidence(g,state.market);
         }
-  
+
         function teamGoalsProjection(g){
           const r=raw(g);
           const hp=num(
@@ -1702,19 +1702,19 @@
             r?.away_goals_projection,r?.projected_away_goals,r?.expected_away_goals,
             r?.goals_ai?.away_projection,r?.goals_ai?.away
           );
-  
+
           if(state.sub==="home") return hp;
           if(state.sub==="away") return ap;
           if(Number.isFinite(hp) && Number.isFinite(ap)) return Math.max(hp,ap);
           return Number.isFinite(hp) ? hp : ap;
         }
-  
+
         function marketSuitability(g){
           const conf=confidence(g,state.market) || 0;
-  
+
           // IA mantém a lógica do próprio motor.
           if(state.line==="IA") return conf;
-  
+
           if(state.market==="corners" || state.market==="goals" || state.market==="cards"){
             const analysis=lineAnalysis(g,state.market,state.line);
             const p=projection(g,state.market);
@@ -1723,11 +1723,11 @@
             // projeção/margem apenas como desempate.
             return (analysis.probability||0)*2 + margin*6 + (Number.isFinite(p)?p:0);
           }
-  
+
           if(state.market==="handicap"){
             const side=handicapSide(g);
             let score=lineAnalysis(g,"handicap",state.line).probability || conf;
-  
+
             if(state.sub==="home"){
               if(side==="home") score+=18;
               else if(side==="away") score-=28;
@@ -1735,10 +1735,10 @@
               if(side==="away") score+=18;
               else if(side==="home") score-=28;
             }
-  
+
             return score;
           }
-  
+
           if(state.market==="btts"){
             const t=lineText(g,"btts");
             let score=conf;
@@ -1751,17 +1751,17 @@
             }
             return score;
           }
-  
+
           if(state.market==="result"){
             const pick=clean(marketPickText(g,"result"),"").toUpperCase();
             return conf + (state.line==="TODOS" ? 0 : pick===state.line ? 80 : -30);
           }
-  
+
           if(state.market==="doublechance"){
             const pick=clean(marketPickText(g,"doublechance"),"").toUpperCase();
             return conf + (state.line==="TODOS" ? 0 : pick===state.line ? 80 : -30);
           }
-  
+
           if(state.market==="teamgoals"){
             const target=manualLineNumber();
             const p=teamGoalsProjection(g);
@@ -1769,10 +1769,10 @@
             if(!Number.isFinite(p)) return conf-25;
             return conf + (p-target)*22 + p*3;
           }
-  
+
           return conf;
         }
-  
+
         function list(){
           // No Handicap manual, o lado (CASA/FORA) depende da linha clicada.
           // Portanto não aplicamos matchesSub usando o lado da IA automática antes
@@ -1781,14 +1781,14 @@
           const base=(state.market==="handicap" && !["IA","TODOS"].includes(state.line))
             ? rawBase
             : rawBase.filter(matchesSub);
-  
+
           // IA: mantém filtro específico existente.
           if(state.line==="IA"){
             return base
               .filter(matchesLine)
               .sort((a,b)=>marketSuitability(b)-marketSuitability(a) || time(a).localeCompare(time(b)));
           }
-  
+
           // TODOS: ordenação padrão do mercado.
           if(state.line==="TODOS"){
             return base.sort((a,b)=>
@@ -1797,7 +1797,7 @@
               time(a).localeCompare(time(b))
             );
           }
-  
+
           // HANDICAP MANUAL: cada linha forma uma lista própria.
           // Só entram partidas em que a linha existe/é válida e CASA/FORA é aplicado
           // ao lado escolhido especificamente para aquela linha.
@@ -1824,52 +1824,52 @@
             time(a).localeCompare(time(b))
           );
         }
-  
+
         function initials(name){
           return clean(name,"T").split(/\s+/).slice(0,2).map(p=>p[0]).join("").toUpperCase();
         }
-      
+
         function badgeHtml(g,side,mini=false){
           const url=badge(g,side);
           const name=side==="home"?home(g):away(g);
           const cls=mini?"cpd3MiniBadge":"cpd3HeroBadge";
-      
+
           if(url){
             return `<div class="${cls}"><img src="${esc(url)}" alt="${esc(name)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><i hidden>${esc(initials(name))}</i></div>`;
           }
           return `<div class="${cls}"><i>${esc(initials(name))}</i></div>`;
         }
-      
+
         function saveFav(){
           try{localStorage.setItem("cornerProFavorites",JSON.stringify([...state.favorites]));}catch{}
         }
-      
+
         function toggleFav(name){
           const k=norm(name);
           if(!k) return;
           state.favorites.has(k)?state.favorites.delete(k):state.favorites.add(k);
           saveFav();
         }
-      
+
         function renderControls(){
           const c=MARKET[state.market];
           if(!c) return;
-      
+
           const top=$("#cpd3TopTitle");
           const sub=$("#cpd3SubNav");
           const lines=$("#cpd3LineNav");
-      
+
           if(top) top.textContent=`MELHOR APOSTA • ${c.label}`;
           if(sub) sub.innerHTML=c.subs.map(([label,value])=>`<button type="button" data-cpd3-sub="${value}" class="${state.sub===value?"active":""}">${label}</button>`).join("");
           if(lines) lines.innerHTML=c.lines.map(line=>`<button type="button" data-cpd3-line="${esc(line)}" class="${state.line===line?"active":""}">${esc(line)}</button>`).join("");
-      
+
           $$("[data-cpd3-market]").forEach(btn=>{
             btn.hidden=false;
             btn.disabled=false;
             btn.classList.toggle("active",btn.dataset.cpd3Market===state.market);
           });
         }
-      
+
         function setHero(g){
           if(!g){
             const recommended=list()[0];
@@ -1881,12 +1881,12 @@
           }
           if(!g) return;
           state.hero=g;
-      
+
           const hn=$("#cpd3HomeName"), an=$("#cpd3AwayName"), kl=$("#cpd3KickLabel"), clock=$("#cpd3Clock");
           const st=gameStatus(g);
           if(hn) hn.textContent=home(g);
           if(an) an.textContent=away(g);
-    
+
           if(kl){
             if(st.finished){
               kl.textContent=(st.hs!==null&&st.as!==null) ? `PLACAR FINAL • ${st.hs} × ${st.as}` : "PARTIDA ENCERRADA";
@@ -1898,18 +1898,18 @@
               kl.textContent=`COMEÇA ÀS ${time(g)}`;
             }
           }
-    
+
           if(clock){
             if(st.finished) clock.textContent="FIM";
             else if(st.halftime) clock.textContent="INTERVALO";
             else if(st.live) clock.textContent=st.minute ? `${Math.round(st.minute)}' • AO VIVO` : "AO VIVO";
             else clock.textContent="PRÉ-JOGO";
           }
-    
+
           const hb=$("#cpd3HomeBadge"), ab=$("#cpd3AwayBadge");
           if(hb) hb.outerHTML=badgeHtml(g,"home").replace('class="cpd3HeroBadge"','class="cpd3HeroBadge" id="cpd3HomeBadge"');
           if(ab) ab.outerHTML=badgeHtml(g,"away").replace('class="cpd3HeroBadge"','class="cpd3HeroBadge" id="cpd3AwayBadge"');
-      
+
           $$("[data-cpd3-hero-fav]").forEach(btn=>{
             const name=btn.dataset.cpd3HeroFav==="home"?home(g):away(g);
             const active=state.favorites.has(norm(name));
@@ -1917,7 +1917,7 @@
             btn.classList.toggle("active",active);
           });
         }
-      
+
         function title(){
           const c=MARKET[state.market];
           if(state.market==="builder") return "⚡ APOSTA PRONTA • MAIOR CONFIANÇA DISPONÍVEL";
@@ -1941,14 +1941,14 @@
             return `✦ IA DA LINHA • OVER ${state.line} ${c.label} • RANKING ESPECÍFICO`;
           return `${state.line==="TODOS"?c.label:`OVER ${state.line} ${c.label}`} • TODOS OS JOGOS`;
         }
-    
+
         function row(g){
           const p=projection(g), a=average(g), c=activeConfidence(g), gid=key(g);
           const h=home(g), aw=away(g);
           const manualAnalysis=(state.line!=="IA" && state.line!=="TODOS" && ["corners","goals","cards","handicap","btts"].includes(state.market))
             ? lineAnalysis(g,state.market,state.line)
             : null;
-      
+
           return `<div class="cpd3Row" data-cpd3-game="${esc(gid)}">
             <div class="cpd3MatchCell">
               ${badgeHtml(g,"home",true)}
@@ -1991,17 +1991,17 @@
             <button type="button" class="cpd3Analyze" data-cpd3-open="${esc(gid)}">Ver análise</button>
           </div>`;
         }
-      
+
         function render(){
           if(!$("#cpDesktopExperienceV3")) return;
-      
+
           renderControls();
-      
+
           const rows=$("#cpd3Rows");
           const titleEl=$("#cpd3ResultsTitle");
           const more=$("#cpd3More");
           const games=list();
-    
+
           const tableHead=$("#cpd3TableHead");
           if(tableHead){
             const cols=$$("span",tableHead);
@@ -2012,7 +2012,7 @@
                   : "PROJEÇÃO";
             }
           }
-    
+
           if(state.market==="builder"){
             if(titleEl) titleEl.textContent=title();
             if(!rows) return;
@@ -2040,10 +2040,10 @@
             state.loading=false;
             return;
           }
-      
+
           if(titleEl) titleEl.textContent=`${title()} • ${games.length} JOGOS`;
           if(!rows) return;
-      
+
           if(games.length){
             rows.innerHTML=games.slice(0,state.limit).map(row).join("");
             if(more) more.hidden=games.length<=state.limit;
@@ -2051,7 +2051,7 @@
             state.loading=false;
             return;
           }
-      
+
           if(state.games.length){
             rows.innerHTML='<div class="cpd3Empty">Nenhum jogo disponível para esta seleção neste momento.</div>';
             if(more) more.hidden=true;
@@ -2059,21 +2059,21 @@
             state.loading=false;
             return;
           }
-      
+
           if(!state.loading){
             rows.innerHTML='<div class="cpd3Empty">Nenhum jogo disponível para hoje.</div>';
             if(more) more.hidden=true;
           }
         }
-      
+
         function findGame(gid){
           return source().find(g=>String(key(g))===String(gid));
         }
-      
+
         async function getJson(url,timeout=20000){
           const controller=new AbortController();
           const timer=setTimeout(()=>controller.abort(),timeout);
-      
+
           try{
             const r=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
             if(!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -2083,38 +2083,38 @@
             clearTimeout(timer);
           }
         }
-      
+
         function applyBase(payload, renderNow=true){
           const arr=extract(payload);
           if(!arr.length) return false;
-    
+
           state.games=mergeLists(state.games,arr);
           window.__cornerProAllGames=state.games.slice();
           if(renderNow) render();
           return true;
         }
-      
+
         function applyLiveStatus(payload){
           const liveRows=Array.isArray(payload?.games) ? payload.games : [];
           if(!liveRows.length) return false;
-    
+
           const byId=new Map(
             liveRows
               .map(item=>[String(item?.match_id ?? ""),item])
               .filter(([id])=>id)
           );
-    
+
           let changed=false;
-    
+
           state.games=state.games.map(game=>{
             const gid=String(key(game));
             const live=byId.get(gid);
             if(!live) return game;
-    
+
             const r=raw(game);
-    
+
             changed=true;
-    
+
             return {
               ...game,
               match_status: live.match_status ?? live.status ?? game?.match_status,
@@ -2150,49 +2150,49 @@
               }
             };
           });
-    
+
           if(changed){
             window.__cornerProAllGames=state.games.slice();
             render();
           }
-    
+
           return changed;
         }
-    
+
         function applyEngines(payload){
           if(!payload || typeof payload!=="object") return false;
           let changed=false;
-      
+
           for(const market of ["corners","goals","cards","handicap","btts"]){
             const arr=Array.isArray(payload[market])?payload[market]:extract(payload[market]);
             if(!arr.length) continue;
-      
+
             state.engines[market]=mergeLists(state.engines[market],arr);
             state.games=mergeLists(state.games,arr);
             changed=true;
           }
-      
+
           if(changed){
             window.__cornerProAllGames=state.games.slice();
             render();
           }
-      
+
           return changed;
         }
-      
+
         async function load(){
           renderControls();
-    
+
           const rows=$("#cpd3Rows");
           if(rows){
             rows.innerHTML='<div class="cpd3Loading">CARREGANDO JOGOS E ANÁLISE DA IA...</div>';
           }
-    
+
           // Semente de cache sem desenhar tabela antes da IA.
           if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
             state.games=mergeLists(state.games,window.__cornerProAllGames);
           }
-    
+
           const inputDate=$("#date")?.value;
           const urlDate=new URLSearchParams(window.location.search).get("date");
           const date=/^\d{4}-\d{2}-\d{2}$/.test(String(inputDate||""))
@@ -2200,10 +2200,10 @@
             : /^\d{4}-\d{2}-\d{2}$/.test(String(urlDate||""))
               ? String(urlDate)
               : todayManaus();
-    
+
           if($("#date")) $("#date").value=date;
           const stamp=Date.now();
-    
+
           // 1) Jogos-base, silencioso.
           try{
             const payload=await getJson(
@@ -2214,7 +2214,7 @@
           }catch(err){
             console.warn("[CP WEB V22 /mercados]",err?.message||err);
           }
-    
+
           if(!state.games.length){
             try{
               const payload=await getJson(
@@ -2226,7 +2226,7 @@
               console.warn("[CP WEB V22 /quentes]",err?.message||err);
             }
           }
-    
+
           // 2) IA de cantos: espera terminar antes de exibir a tabela.
           try{
             const cornersPayload=await webGetJson(
@@ -2237,12 +2237,12 @@
           }catch(err){
             console.warn("[CP WEB V22 corners IA]",err?.message||err);
           }
-    
+
           state.loading=false;
-    
+
           // ÚNICA renderização inicial: jogos + IA já prontos.
           render();
-    
+
           // 3) Outros motores são pré-carregados em memória, sem redesenhar a tela.
           Promise.allSettled([
             webGetJson(
@@ -2256,17 +2256,17 @@
           ]).then(()=>{
             console.info("[Corner Pro WEB V22] motores secundários prontos");
           });
-    
+
           // Removida a ponte antiga de 1 segundo que re-renderizava e
           // podia trocar a decisão exibida depois do primeiro carregamento.
         }
-    
+
         async function reloadDesktopDate(ymd){
           if(!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd||""))) return;
-    
+
           const input=$("#date");
           if(input) input.value=ymd;
-    
+
           // Limpa somente o estado desktop da data anterior.
           state.games=[];
           state.engines={
@@ -2282,7 +2282,7 @@
           state.hero=null;
           state.loading=true;
           state.limit=8;
-    
+
           // Atualiza a URL sem recarregar a página.
           try{
             const url=new URL(window.location.href);
@@ -2290,16 +2290,16 @@
             url.searchParams.set("date",ymd);
             history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
           }catch(_){}
-    
+
           await load();
         }
-    
+
         // Ponte pública usada pelo calendário do topo.
         window.CornerProDesktopReloadDate = reloadDesktopDate;
-    
+
         document.addEventListener("click",event=>{
           if(!mq.matches) return;
-      
+
           const market=event.target.closest?.("[data-cpd3-market]");
           if(market){
             event.preventDefault();
@@ -2312,7 +2312,7 @@
             render();
             return;
           }
-      
+
           const sub=event.target.closest?.("[data-cpd3-sub]");
           if(sub){
             event.preventDefault();
@@ -2321,7 +2321,7 @@
             render();
             return;
           }
-      
+
           const line=event.target.closest?.("[data-cpd3-line]");
           if(line){
             event.preventDefault();
@@ -2330,7 +2330,7 @@
             render();
             return;
           }
-      
+
           const fav=event.target.closest?.("[data-cpd3-fav]");
           if(fav){
             event.preventDefault();
@@ -2341,7 +2341,7 @@
             }
             return;
           }
-      
+
           const heroFav=event.target.closest?.("[data-cpd3-hero-fav]");
           if(heroFav){
             event.preventDefault();
@@ -2351,13 +2351,13 @@
             }
             return;
           }
-      
+
           const open=event.target.closest?.("[data-cpd3-open]");
           if(open){
             event.preventDefault();
             const g=findGame(open.dataset.cpd3Open);
             if(!g) return;
-    
+
             const r=raw(g);
             const matchPayload={
               ...r,
@@ -2374,10 +2374,10 @@
               match_status: clean(g?.match_status ?? g?.status ?? r?.match_status ?? r?.status,""),
               raw:r
             };
-    
+
             window.__selectedMatchCenterGame=matchPayload;
             window.__selectedMatchCenterKey=String(key(g));
-    
+
             try{
               if(typeof window.updateDesktopMatchRail==="function"){
                 Promise.resolve(
@@ -2389,7 +2389,7 @@
               }else if(typeof window.openMatchCenter==="function"){
                 window.openMatchCenter(matchPayload);
               }
-    
+
               const rail=document.getElementById("desktopMatchRail");
               if(rail) rail.classList.add("mc-selected");
             }catch(err){
@@ -2397,7 +2397,7 @@
             }
             return;
           }
-    
+
           if(event.target.closest?.("#cpd3TodayBtn")){
             event.preventDefault();
             const now=new Date();
@@ -2417,14 +2417,14 @@
             reloadDesktopDate(ymd);
             return;
           }
-    
+
           if(event.target.closest?.("#cpd3More")){
             event.preventDefault();
             state.limit+=8;
             render();
           }
         },true);
-      
+
         function boot(){
           if(!$("#cpDesktopExperienceV3")) return;
           renderControls();
@@ -2441,43 +2441,43 @@
               console.warn("[CP WEB V13 live status]",err?.message||err);
             }
           };
-    
+
           refreshLiveStatus();
           setInterval(refreshLiveStatus,20000);
         }
-      
+
         if(document.readyState==="loading"){
           document.addEventListener("DOMContentLoaded",boot,{once:true});
         }else{
           boot();
         }
       })();
-      
-      
-      
+
+
+
       /* =========================================================
          CORNER PRO MOBILE CONTROLLER V55 — INSTANT BTTS/HANDICAP
          Home mobile, carrossel automático, mercados e Match Center.
          ========================================================= */
          (() => {
           "use strict";
-        
+
           if (window.__cpMobileControllerV9) return;
           window.__cpMobileControllerV9 = true;
           window.__cornerProMobileLoaderV6 = true;
-      
+
           // V10 — autoridade única dos mercados mobile.
           // Bloqueia módulos antigos que reescreviam card e dados em paralelo.
           window.__cpMobileMarketCarouselV1 = true;
           window.__cpMobileDirectLoaderInstalled = true;
-        
+
           const $ = (selector, root = document) => root.querySelector(selector);
           const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
           const mobileMedia = window.matchMedia("(max-width: 980px)");
-        
+
           const MARKET_ORDER = ["corners"];
           const AUTO_SLIDE_MS = 9000;
-        
+
           const MARKET = {
             pregame: {
               label: "PRÉ-JOGO",
@@ -2528,7 +2528,7 @@
               lines: ["JOGADOR MARCA", "CHUTES NO GOL", "TOTAL DE CHUTES", "PASSES", "DESARMES", "ASSISTÊNCIA"]
             }
           };
-        
+
           const state = {
             date: "",
             all: [],
@@ -2553,12 +2553,12 @@
             officialCornerReason: "",
             officialCornerBest: null
           };
-        
+
           function clean(value, fallback = "") {
             const text = String(value ?? "").trim();
             return text && !["undefined", "null", "NaN"].includes(text) ? text : fallback;
           }
-        
+
           function numberFrom(...values) {
             for (const value of values) {
               const number = Number(String(value ?? "").replace("%", "").replace(",", "."));
@@ -2566,7 +2566,7 @@
             }
             return null;
           }
-        
+
           function escapeHtml(value) {
             return String(value ?? "")
               .replaceAll("&", "&amp;")
@@ -2575,7 +2575,7 @@
               .replaceAll('"', "&quot;")
               .replaceAll("'", "&#039;");
           }
-        
+
           function todayManaus() {
             try {
               const parts = new Intl.DateTimeFormat("en-CA", {
@@ -2590,50 +2590,50 @@
               return new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
             }
           }
-        
+
           function extract(payload, seen = new Set()) {
             if (Array.isArray(payload)) {
               return payload.filter(item => item && typeof item === "object");
             }
-      
+
             if (!payload || typeof payload !== "object") return [];
             if (seen.has(payload)) return [];
             seen.add(payload);
-      
+
             const preferredKeys = [
               "games", "jogos", "matches", "data", "items", "list",
               "results", "top", "top6", "quentes", "mercados",
               "recommendations", "opportunities"
             ];
-      
+
             for (const key of preferredKeys) {
               const value = payload[key];
-      
+
               if (Array.isArray(value) && value.length) {
                 return value.filter(item => item && typeof item === "object");
               }
-      
+
               if (value && typeof value === "object") {
                 const nested = extract(value, seen);
                 if (nested.length) return nested;
               }
             }
-      
+
             // Último fallback: percorre qualquer ramo do JSON.
             for (const value of Object.values(payload)) {
               if (!value || typeof value !== "object") continue;
-      
+
               if (Array.isArray(value) && value.some(item => item && typeof item === "object")) {
                 return value.filter(item => item && typeof item === "object");
               }
-      
+
               const nested = extract(value, seen);
               if (nested.length) return nested;
             }
-      
+
             return [];
           }
-        
+
           async function getJson(url, timeoutMs = 9000) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -2654,18 +2654,18 @@
               clearTimeout(timer);
             }
           }
-        
+
           function team(game, side) {
             if (side === "home") return clean(game?.casa ?? game?.home ?? game?.home_name ?? game?.mandante, "Casa");
             return clean(game?.fora ?? game?.away ?? game?.away_name ?? game?.visitante, "Fora");
           }
-        
+
           function gameTime(game) {
             const value = clean(game?.hora_manaus ?? game?.hora ?? game?.match_time ?? game?.time, "--:--");
             const match = value.match(/(\d{1,2}):(\d{2})/);
             return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "--:--";
           }
-        
+
           const ENGINE_DECISION_FIELD = Object.freeze({
             corners: "corners_ai",
             goals: "goals_ai",
@@ -2673,32 +2673,32 @@
             btts: "btts_ai",
             handicap: "handicap_ai"
           });
-      
+
           function ownMarketDecision(game, type) {
             const field = ENGINE_DECISION_FIELD[type];
             if (!field) return null;
             const decision = game?.[field];
             return decision && typeof decision === "object" ? decision : null;
           }
-      
+
           function confidence(game, type) {
             const decision = ownMarketDecision(game, type);
-      
+
             // IA: confiança vem apenas do próprio mercado.
             if (decision) {
               if (Boolean(decision.skip) || Boolean(decision.updating)) return 0;
-      
+
               let value = numberFrom(decision.confidence);
               if (value === null) return 0;
               if (value > 0 && value <= 1) value *= 100;
               while (value > 100) value /= 10;
-      
+
               return Math.max(0, Math.min(95, Math.round(value)));
             }
-      
+
             // Mercados genéricos fora dos cinco motores.
             let value = null;
-      
+
             if (type === "pregame") {
               value = numberFrom(
                 game?.pregame?.confidence,
@@ -2719,17 +2719,17 @@
                 game?.ai_score
               );
             }
-      
+
             if (value === null) return 0;
             if (value > 0 && value <= 1) value *= 100;
             while (value > 100) value /= 10;
-      
+
             return Math.max(0, Math.min(95, Math.round(value)));
           }
-      
+
           function line(game, type) {
             const decision = ownMarketDecision(game, type);
-      
+
             // A linha exibida vem exclusivamente do motor correspondente.
             if (decision) {
               return clean(
@@ -2737,36 +2737,36 @@
                 decision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
               ).toUpperCase();
             }
-      
+
             // Não fabrica linha de outro mercado quando o motor ainda não respondeu.
             if (ENGINE_DECISION_FIELD[type]) {
               return "DADOS EM ATUALIZAÇÃO";
             }
-      
+
             if (type === "pregame") {
               return clean(
                 game?.pregame?.line ?? game?.best_market ?? game?.winner_market,
                 "DUPLA CHANCE"
               ).toUpperCase();
             }
-      
+
             if (type === "combined") {
               return clean(
                 game?.combined?.line ?? game?.combo_line,
                 "CASA + OVER 1.5"
               ).toUpperCase();
             }
-      
+
             if (type === "props") {
               return clean(
                 game?.props?.line ?? game?.player_prop_line,
                 "CHUTES NO GOL"
               ).toUpperCase();
             }
-      
+
             return "SEM APOSTA";
           }
-      
+
           function normalize(game, type, index) {
             const home = team(game, "home");
             const away = team(game, "away");
@@ -2814,10 +2814,10 @@
               status: clean(game?.status ?? game?.match_status ?? game?.event_status, "Pré-jogo")
             };
           }
-        
+
           function buildMarket(raw, type) {
             const seen = new Set();
-        
+
             return raw
               .map((game, index) => normalize(game, type, index))
               .filter(game => {
@@ -2832,50 +2832,50 @@
                     a?.raw?.corners_ai?.score ??
                     0
                   );
-        
+
                   const eliteB = Number(
                     b?.raw?.corner_elite_score ??
                     b?.raw?.corners_ai?.score ??
                     0
                   );
-        
+
                   if (eliteB !== eliteA) return eliteB - eliteA;
-        
+
                   const projectionA = Number(
                     a?.raw?.corners_ai?.projection ??
                     a?.raw?.proj_cantos ??
                     0
                   );
-        
+
                   const projectionB = Number(
                     b?.raw?.corners_ai?.projection ??
                     b?.raw?.proj_cantos ??
                     0
                   );
-        
+
                   if (projectionB !== projectionA) {
                     return projectionB - projectionA;
                   }
                 }
-        
+
                 return (
                   b.confidence - a.confidence ||
                   a.time.localeCompare(b.time)
                 );
               });
           }
-        
+
           function activeList() {
             const direct = state[state.activeMarket];
             if (Array.isArray(direct) && direct.length) return direct;
-      
+
             // V32 — enquanto a IA específica ainda carrega,
             // a Home usa os jogos-base do dia em vez de ficar vazia.
             if (Array.isArray(state.pregame) && state.pregame.length) {
               return state.pregame.map((game, index) => {
                 const raw = game.raw || game;
                 const normalized = normalize(raw, state.activeMarket, index);
-      
+
                 // Top 1 de cantos não fabrica linha ou confiança enquanto a IA pesada
                 // ainda não aprovou uma oportunidade real.
                 if (state.activeMarket === "corners") {
@@ -2884,20 +2884,20 @@
                     : normalized.line;
                   normalized.confidence = Number(normalized.confidence || 0);
                 }
-      
+
                 return normalized;
               });
             }
-      
+
             return [];
           }
-        
+
           function cpBestTeamColor(teamName, fallback = "#5f7f91") {
             const name = String(teamName || "")
               .toLowerCase()
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
-        
+
             const known = [
               [["fredrikstad"], "#d8b323"],
               [["sandefjord"], "#2378d6"],
@@ -2921,63 +2921,63 @@
               [["flamengo"], "#cf2e37"],
               [["corinthians"], "#d8dbdd"]
             ];
-        
+
             for (const [keys, color] of known) {
               if (keys.some(key => name.includes(key))) return color;
             }
-        
+
             const palette = ["#3d7fbd", "#b3525e", "#3e8c72", "#a87838", "#6b5bb1", "#397c91"];
             let hash = 0;
             for (const char of name) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
             return name ? palette[Math.abs(hash) % palette.length] : fallback;
           }
-        
+
           function cpBestMarketLabel(marketType, game) {
             const type = String(marketType || "").toLowerCase();
-        
+
             if (type === "corners" || type === "escanteios") return "ESCANTEIOS";
             if (type === "goals" || type === "gols") return "GOLS";
             if (type === "cards" || type === "cartões" || type === "cartoes") return "CARTÕES";
             if (type === "btts") return "AMBAS MARCAM";
-        
+
             const raw = String(game?.market || game?.line || "").toUpperCase();
-        
+
             if (/CANTO|ESCANTEIO|CORNER/.test(raw)) return "ESCANTEIOS";
             if (/CART|YELLOW|RED/.test(raw)) return "CARTÕES";
             if (/GOL|GOAL|OVER|UNDER|AMBAS/.test(raw)) return "GOLS";
-        
+
             return "MELHOR APOSTA DO DIA";
           }
-        
+
           function cpUpdateBestMarketTitle(card, game, marketType) {
             if (!card) return;
-        
+
             const title =
               card.querySelector("#cpHomeBestLabel") ||
               card.querySelector(".cpHomeBestTop > b") ||
               card.querySelector("[data-clone-id='cpHomeBestLabel']");
-        
+
             if (!title) return;
-        
+
             const label = cpBestMarketLabel(marketType, game);
             title.textContent = `🔥 MELHOR APOSTA • ${label}`;
             title.setAttribute("data-market-label", label);
           }
-        
+
           function cpPaintBestTeamColors(card, game) {
             if (!card || !game) return;
-        
+
             const homeColor = cpBestTeamColor(game.home, "#d8b323");
             const awayColor = cpBestTeamColor(game.away, "#2378d6");
-        
+
             card.style.setProperty("--best-home", homeColor);
             card.style.setProperty("--best-away", awayColor);
             card.dataset.homeTeam = String(game.home || "");
             card.dataset.awayTeam = String(game.away || "");
-        
+
             const homeEl = card.querySelector("#cpHomeBestHome, [data-clone-id='cpHomeBestHome']");
             const awayEl = card.querySelector("#cpHomeBestAway, [data-clone-id='cpHomeBestAway']");
-        
+
             const initials = (name) => String(name || "")
               .split(/\s+/)
               .filter(Boolean)
@@ -2985,48 +2985,48 @@
               .map(part => part[0])
               .join("")
               .toUpperCase();
-        
+
             const teams = card.querySelector(".cpHomeBestTeams");
             if (teams) {
               teams.classList.add("cpBestTeamsProfessional");
-        
+
               let homeBadge = teams.querySelector(".cpBestTeamBadge.home");
               let awayBadge = teams.querySelector(".cpBestTeamBadge.away");
-        
+
               if (!homeBadge) {
                 homeBadge = document.createElement("span");
                 homeBadge.className = "cpBestTeamBadge home";
                 teams.insertBefore(homeBadge, homeEl || teams.firstChild);
               }
-        
+
               if (!awayBadge) {
                 awayBadge = document.createElement("span");
                 awayBadge.className = "cpBestTeamBadge away";
                 if (awayEl) teams.insertBefore(awayBadge, awayEl);
                 else teams.appendChild(awayBadge);
               }
-        
+
               homeBadge.textContent = initials(game.home);
               awayBadge.textContent = initials(game.away);
               homeBadge.style.setProperty("--team-accent", homeColor);
               awayBadge.style.setProperty("--team-accent", awayColor);
             }
-        
+
             if (homeEl) homeEl.style.setProperty("--team-accent", homeColor);
             if (awayEl) awayEl.style.setProperty("--team-accent", awayColor);
-        
+
             cpUpdateBestMarketTitle(card, game, state.activeMarket);
           }
-        
+
           window.__cpPaintBestTeamColors = cpPaintBestTeamColors;
-        
+
           // V38 — depois que o primeiro jogo apareceu, o loader visual da Home
           // nunca mais pode voltar por causa de refresh/retry em background.
           let cprHomeVisualReady = false;
-      
+
           function setLoading(active) {
             state.loading = active;
-      
+
             const card = $("#cpHomeBest");
             if (card) {
               card.classList.toggle("is-loading-initial", active && !cprHomeVisualReady);
@@ -3035,17 +3035,17 @@
                 active && !cprHomeVisualReady ? "true" : "false"
               );
             }
-      
+
             const loading = $("#cpHomeInitialLoading");
             if (loading) loading.hidden = !(active && !cprHomeVisualReady);
-      
+
             const refLoading = $("#cprLoading");
             if (refLoading) {
               // O loader da Home é one-shot: só existe antes do primeiro jogo.
               refLoading.hidden = !(active && !cprHomeVisualReady);
             }
           }
-      
+
           function showEmpty(title, subtitle) {
             setLoading(false);
             const games = $("#cpHomeGames");
@@ -3057,7 +3057,7 @@
             const open = $("#cpHomeBestOpen");
             if (open) open.disabled = true;
           }
-        
+
           function updateDots() {
             $$("[data-cp-home-dot]").forEach(button => {
               const active = button.dataset.cpHomeDot === state.activeMarket;
@@ -3065,7 +3065,7 @@
               button.setAttribute("aria-current", active ? "true" : "false");
             });
           }
-        
+
           function animateCard(direction = 1) {
             const card = $("#cpHomeBest");
             if (!card || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -3077,21 +3077,21 @@
               { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" }
             );
           }
-        
-      
+
+
           function cpRefNum(...values) {
             for (const value of values) {
               if (value === null || value === undefined) continue;
-      
+
               const text = String(value).trim();
               if (!text) continue;
-      
+
               const n = Number(text.replace(",", ".").replace("%", ""));
               if (Number.isFinite(n)) return n;
             }
             return null;
           }
-      
+
           function cpRefBadgeUrl(game, side) {
             const raw = game?.raw || game || {};
             const home = side === "home";
@@ -3110,12 +3110,12 @@
                 ];
             return clean(values.find(v => /^https?:\/\//i.test(String(v || ""))) || "", "");
           }
-      
+
           function cpRefInitials(name) {
             const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
             return (parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] || "--").slice(0,2)).toUpperCase();
           }
-      
+
           function cpRefSetShield(game, side) {
             const name = side === "home" ? game.home : game.away;
             const img = $(side === "home" ? "#cpHomeBestHomeBadge" : "#cpHomeBestAwayBadge");
@@ -3132,7 +3132,7 @@
             img.onerror = () => { img.hidden = true; if (fallback) fallback.hidden = false; };
             img.src = url;
           }
-      
+
           function cpRefProjection(game) {
             const raw = game?.raw || game || {};
             if (state.activeMarket === "goals") {
@@ -3164,7 +3164,7 @@
               raw.avg_total
             );
           }
-      
+
           function cpRefGoalsAverage(game) {
             const raw = game?.raw || game || {};
             return cpRefNum(
@@ -3174,7 +3174,7 @@
               raw.stats?.goals_avg, raw.event_raw?.goals_avg
             );
           }
-  
+
           function cpRefCornersAverage(game) {
             const raw = game?.raw || game || {};
             return cpRefNum(
@@ -3191,26 +3191,26 @@
               raw.projected_corners
             );
           }
-  
+
           function cprCornerTop1DecisionReady(game) {
             if (state.activeMarket !== "corners") return true;
-      
+
             const raw = game?.raw || game || {};
             const decision = raw?.corners_ai;
-      
+
             if (!decision || typeof decision !== "object") return false;
             if (decision.skip || decision.updating) return false;
-      
+
             const line = String(decision.line || "").toUpperCase().trim();
             if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return false;
-      
+
             const conf = cpRefNum(decision.confidence);
             const proj = cpRefNum(
               decision.projection,
               raw.proj_cantos,
               raw.projected_corners
             );
-      
+
             return (
               conf !== null &&
               conf > 0 &&
@@ -3218,11 +3218,11 @@
               proj > 0
             );
           }
-      
+
           function cpRefUpdateHero(game) {
             cpRefSetShield(game, "home");
             cpRefSetShield(game, "away");
-      
+
             const projection = cpRefProjection(game);
             const corners = cpRefCornersAverage(game);
             const goals = cpRefGoalsAverage(game);
@@ -3242,7 +3242,7 @@
                 )
               )
             );
-      
+
             const projectionLabel = $("#cpRefProjectionLabel");
             const projectionEl = $("#cpRefProjection");
             const cornersEl = $("#cpRefCornersAvg");
@@ -3251,7 +3251,7 @@
             const gauge = $("#cpRefGauge");
             const confidenceLabel = $("#cpRefConfidenceLabel");
             const dayLabel = $("#cpHomeBestDayLabel");
-      
+
             if (projectionLabel) {
               projectionLabel.textContent = state.activeMarket === "goals"
                 ? "PROJEÇÃO DE GOLS"
@@ -3262,12 +3262,12 @@
             if (projectionEl) projectionEl.textContent = projection === null ? "—" : projection.toFixed(2).replace(/\.00$/, "");
             if (cornersEl) cornersEl.textContent = corners === null ? "—" : corners.toFixed(1);
             if (goalsEl) goalsEl.textContent = goals === null ? "—" : goals.toFixed(1);
-      
+
             const cornerReady = cprCornerTop1DecisionReady(game);
             const waitingTop1 =
               state.activeMarket === "corners" &&
               (!cornerReady || state.officialCornerLoading);
-      
+
             const trend = waitingTop1
               ? "ANALISANDO"
               : confidenceValue >= 72
@@ -3275,7 +3275,7 @@
                 : confidenceValue >= 62
                   ? "MÉDIA"
                   : "CAUTELA";
-      
+
             // CARD FIX — mantém os números reais durante a confirmação do Top 1.
             if (waitingTop1) {
               if (projectionEl && projection !== null) {
@@ -3288,11 +3288,11 @@
                 goalsEl.textContent = goals.toFixed(1);
               }
             }
-      
+
             if (trendEl) {
               trendEl.textContent = waitingTop1 ? "💭 ANALISANDO" : `↗ ${trend}`;
             }
-      
+
             if (confidenceLabel) confidenceLabel.textContent = trend;
             if (gauge) {
               gauge.style.setProperty(
@@ -3300,17 +3300,17 @@
                 waitingTop1 ? 0 : confidenceValue
               );
             }
-      
+
             if (dayLabel) {
               const today = todayManaus();
               dayLabel.textContent = state.date === today ? "HOJE" : state.date.split("-").reverse().slice(0,2).join("/");
             }
           }
-      
-      
-      
+
+
+
           const CPR_FAVORITES_KEY = "cornerProFavoriteTeams:v2";
-      
+
           function cprNormalizeTeamKey(name) {
             return String(name || "")
               .toLowerCase()
@@ -3319,7 +3319,7 @@
               .replace(/[^a-z0-9]+/g, " ")
               .trim();
           }
-      
+
           function cprReadFavorites() {
             try {
               const parsed = JSON.parse(localStorage.getItem(CPR_FAVORITES_KEY) || "[]");
@@ -3328,47 +3328,47 @@
               return [];
             }
           }
-      
+
           function cprWriteFavorites(items) {
             try {
               localStorage.setItem(CPR_FAVORITES_KEY, JSON.stringify(items));
             } catch {}
           }
-      
+
           function cprIsFavorite(name) {
             const key = cprNormalizeTeamKey(name);
             if (!key) return false;
             return cprReadFavorites().some(item => cprNormalizeTeamKey(item) === key);
           }
-      
+
           function cprToggleFavorite(name) {
             const cleanName = String(name || "").trim();
             if (!cleanName) return false;
-      
+
             const key = cprNormalizeTeamKey(cleanName);
             const favorites = cprReadFavorites();
             const index = favorites.findIndex(item => cprNormalizeTeamKey(item) === key);
-      
+
             if (index >= 0) {
               favorites.splice(index, 1);
               cprWriteFavorites(favorites);
               return false;
             }
-      
+
             favorites.push(cleanName);
             cprWriteFavorites(favorites);
             return true;
           }
-      
+
           function cprMarketFavoriteStar(teamName) {
             const name = String(teamName || "").trim();
             if (!name || !cprIsFavorite(name)) return "";
             return `<span class="cpMarketFavoriteStar" title="Time favorito" aria-label="Time favorito">★</span>`;
           }
-      
+
           function cprEnsureMatchCenterFavoriteStyles() {
             if (document.getElementById("cprMatchCenterFavoriteStyles")) return;
-      
+
             const style = document.createElement("style");
             style.id = "cprMatchCenterFavoriteStyles";
             style.textContent = `
@@ -3379,17 +3379,17 @@
                 gap:8px;
                 min-width:0;
               }
-      
+
               .cpV8MatchHero .cpV8HomeTeam{ justify-content:flex-start; }
               .cpV8MatchHero .cpV8AwayTeam{ justify-content:flex-end; }
-      
+
               .cpV8MatchHero .cpMatchTeamName{
                 min-width:0;
                 overflow:hidden;
                 text-overflow:ellipsis;
                 white-space:nowrap;
               }
-      
+
               .cpV8MatchHero .cpMatchTeamFav{
                 appearance:none;
                 -webkit-appearance:none;
@@ -3410,20 +3410,20 @@
                 cursor:pointer;
                 transition:transform .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease;
               }
-      
+
               .cpV8MatchHero .cpMatchTeamFav:active{ transform:scale(.9); }
-      
+
               .cpV8MatchHero .cpMatchTeamFav.is-active{
                 color:#7dff22;
                 border-color:#7dff22;
                 box-shadow:0 0 14px rgba(125,255,34,.28);
                 background:rgba(20,55,15,.72);
               }
-      
+
               @media (max-width:520px){
                 .cpV8MatchHero .cpV8HomeTeam,
                 .cpV8MatchHero .cpV8AwayTeam{ gap:5px; }
-      
+
                 .cpV8MatchHero .cpMatchTeamFav{
                   width:30px;
                   height:30px;
@@ -3434,12 +3434,12 @@
             `;
             document.head.appendChild(style);
           }
-      
+
           function cprMatchFavoriteButton(teamName, side) {
             const name = String(teamName || "").trim();
             const active = cprIsFavorite(name);
             const safeName = escapeHtml(name);
-      
+
             return `
               <button
                 type="button"
@@ -3451,13 +3451,13 @@
                 title="${active ? `Remover ${safeName} dos favoritos` : `Favoritar ${safeName}`}"
               >${active ? "★" : "☆"}</button>`;
           }
-      
+
           function cprPaintFavoriteButtons(game) {
             if (!game) return;
-      
+
             const homeBtn = document.querySelector('[data-cpr-fav="home"]');
             const awayBtn = document.querySelector('[data-cpr-fav="away"]');
-      
+
             [
               [homeBtn, game.home],
               [awayBtn, game.away]
@@ -3472,27 +3472,27 @@
                 : `Favoritar ${name}`;
             });
           }
-      
+
           function cprText(selector, value) {
             const el = $(selector);
             if (el) el.textContent = value;
           }
-      
+
           function cprBadge(game, side) {
             const img = $(side === "home" ? "#cprHomeBadge" : "#cprAwayBadge");
             const fallback = $(side === "home" ? "#cprHomeBadgeFallback" : "#cprAwayBadgeFallback");
             const name = side === "home" ? game.home : game.away;
             const url = typeof cpRefBadgeUrl === "function" ? cpRefBadgeUrl(game, side) : "";
-      
+
             if (fallback) fallback.textContent = cpRefInitials(name);
-      
+
             if (!img) return;
             if (!url) {
               img.hidden = true;
               if (fallback) fallback.hidden = false;
               return;
             }
-      
+
             img.onload = () => {
               img.hidden = false;
               if (fallback) fallback.hidden = true;
@@ -3503,21 +3503,21 @@
             };
             img.src = url;
           }
-      
+
           function cprMetric(value, digits = 1) {
             const n = Number(value);
             return Number.isFinite(n) ? n.toFixed(digits).replace(/\.0$/, "") : "—";
           }
-      
+
           function cprSyncHero(game, list) {
             if (!game) return;
-      
+
             // V38 — a partir do primeiro jogo real, bloqueia qualquer retorno
             // do overlay de carregamento durante atualizações em background.
             cprHomeVisualReady = true;
             const permanentLoader = $("#cprLoading");
             if (permanentLoader) permanentLoader.hidden = true;
-      
+
             const meta = MARKET[state.activeMarket] || MARKET.goals;
             cprText("#cprTitle", `🔥 MELHOR APOSTA • ${meta.label}`);
             const heroLine =
@@ -3528,12 +3528,12 @@
                 : (game.line === "DADOS EM ATUALIZAÇÃO" || game.line === "SEM APOSTA"
                     ? "ANALISANDO"
                     : (game.line || "ANALISANDO"));
-      
+
             cprText("#cprMarket", heroLine);
             cprText("#cprTime", game.time || "--:--");
             cprText("#cprHomeName", game.home || "Mandante");
             cprText("#cprAwayName", game.away || "Visitante");
-      
+
             const today = todayManaus();
             const selected = String(state.date || "");
             cprText(
@@ -3542,11 +3542,11 @@
                 ? "HOJE"
                 : selected.split("-").reverse().slice(0, 2).join("/")
             );
-      
+
             cprBadge(game, "home");
             cprBadge(game, "away");
             cprPaintFavoriteButtons(game);
-      
+
             const projection = cpRefProjection(game);
             const cornerAvg = cpRefCornersAverage(game);
             const goalsAvg = cpRefGoalsAverage(game);
@@ -3565,14 +3565,14 @@
                 )
               )
             );
-      
+
             const projectionLabel =
               state.activeMarket === "goals"
                 ? "PROJEÇÃO DE GOLS"
                 : state.activeMarket === "cards"
                   ? "PROJEÇÃO DE CARTÕES"
                   : "PROJEÇÃO DE CANTOS";
-      
+
             const cornerReady = cprCornerTop1DecisionReady(game);
             const waitingTop1 =
               state.activeMarket === "corners" &&
@@ -3581,9 +3581,9 @@
                 state.officialCornerLoading ||
                 heroLine === "ANALISANDO TOP 1"
               );
-      
+
             cprText("#cprProjectionLabel", projectionLabel);
-  
+
             // V83 APP — waitingTop1 não apaga mais números reais.
             cprText(
               "#cprProjection",
@@ -3601,32 +3601,32 @@
               "#cprConfidence",
               confidence > 0 ? `${confidence}%` : "—"
             );
-  
+
             const trend =
               waitingTop1 ? "ANALISANDO" :
               confidence >= 72 ? "ALTA" :
               confidence >= 62 ? "MÉDIA" :
               "CAUTELA";
-  
+
             cprText(
               "#cprTrend",
               waitingTop1 ? "💭 ANALISANDO" : `↗ ${trend}`
             );
             cprText("#cprConfidenceLabel", trend);
-  
+
             const gauge = $("#cprGauge");
             if (gauge) gauge.style.setProperty("--p", confidence > 0 ? confidence : 0);
-      
+
             const loader = $("#cprLoading");
             if (loader) loader.hidden = true;
-      
+
             const games = $("#cprFeaturedGames");
             if (games) {
               const featuredSource =
                 (Array.isArray(list) && list.length)
                   ? list
                   : cprExistingGamesFromApp();
-      
+
               if (featuredSource.length) {
                 games.innerHTML = featuredSource.slice(0, 6).map((item, index) => `
                   <button type="button" class="cprFeaturedCard" data-v9-game="${index}">
@@ -3649,7 +3649,7 @@
               }
             }
           }
-      
+
           function cprShowEmpty() {
             const loader = $("#cprLoading");
             if (loader) loader.hidden = true;
@@ -3660,34 +3660,34 @@
             const games = $("#cprFeaturedGames");
             if (games) games.innerHTML = '<div class="cprEmpty">Nenhuma partida encontrada para esta data.</div>';
           }
-      
+
           function renderActive({ animate = false, direction = 1 } = {}) {
             if (state.activeMarket === "corners" && state.officialCornerNoOpportunity) {
               cprShowNoOfficialCornerOpportunity(state.officialCornerReason);
               return;
             }
-      
+
             const list = activeList();
             const meta = MARKET[state.activeMarket] || MARKET.corners;
             setLoading(false);
             updateDots();
-        
+
             if (!list.length) {
               showEmpty("SEM JOGOS", "Nenhuma partida encontrada para esta data.");
               cprShowEmpty();
               return;
             }
-        
+
             const best = list[0];
-      
+
             // Compatibilidade com consumidores antigos: sempre a lista ativa.
             window.__cpMobileDirectGames = list;
-      
+
             const setText = (selector, value) => {
               const element = $(selector);
               if (element) element.textContent = value;
             };
-        
+
             setText("#cpHomeBestTitle", meta.title);
             setText("#cpHomeBestMarket", best.line);
             setText("#cpHomeBestTime", best.time);
@@ -3695,31 +3695,31 @@
             setText("#cpHomeBestAway", best.away);
             setText("#cpHomeBestConfidence", `${best.confidence}%`);
             setText("#cpHomeMatchTeams", `${best.home} × ${best.away}`);
-        
+
             const card = $("#cpHomeBest");
             if (card) {
               card.dataset.market = state.activeMarket;
               cpPaintBestTeamColors(card, best);
               cpRefUpdateHero(best);
             }
-      
+
             // V31 — alimenta a Home visual isolada.
             cprSyncHero(best, list);
-        
+
             card.__cpCurrentRaw = best.raw || best;
             card.__cpCurrentNormalized = best;
-      
+
             if (typeof window.cpUpdateHomeBestLiveCard === "function") {
               window.cpUpdateHomeBestLiveCard(card.__cpCurrentRaw, card.__cpCurrentNormalized);
             }
-        
+
             const open = $("#cpHomeBestOpen");
             if (open) {
               open.disabled = false;
               const text = open.querySelector(".cpHomeBestOpenText");
               if (text) text.textContent = "VER ANÁLISE COMPLETA →";
             }
-        
+
             const games = $("#cpHomeGames");
             if (games) {
               games.innerHTML = list.slice(0, 6).map((game, index) => `
@@ -3730,7 +3730,7 @@
                   <strong><span>CONFIANÇA</span>${game.confidence}%</strong>
                 </button>`).join("");
             }
-        
+
             const last = $("#cpHomeLastGames");
             if (last) {
               last.innerHTML = list.slice(1, 5).map((game, index) => `
@@ -3740,10 +3740,10 @@
                   <strong>${game.confidence}%</strong><i>›</i>
                 </button>`).join("");
             }
-        
+
             if (animate) animateCard(direction);
           }
-        
+
           function chooseMarket(type, options = {}) {
             if (!MARKET[type]) return;
             const previousIndex = MARKET_ORDER.indexOf(state.activeMarket);
@@ -3753,30 +3753,30 @@
             renderActive({ animate: options.animate !== false, direction });
             restartAutoSlide();
           }
-        
+
           function cycleMarket(step = 1) {
             const current = Math.max(0, MARKET_ORDER.indexOf(state.activeMarket));
             const next = (current + step + MARKET_ORDER.length) % MARKET_ORDER.length;
             chooseMarket(MARKET_ORDER[next], { animate: true });
           }
-        
+
           function stopAutoSlide() {
             if (state.autoTimer) clearInterval(state.autoTimer);
             state.autoTimer = null;
           }
-        
+
           function startAutoSlide() {
             stopAutoSlide();
             if (!mobileMedia.matches || document.hidden) return;
             state.autoTimer = setInterval(() => cycleMarket(1), AUTO_SLIDE_MS);
           }
-        
+
           function restartAutoSlide() {
             stopAutoSlide();
             startAutoSlide();
           }
-        
-  
+
+
           // V80 — trava local da recomendação pré-jogo quando o jogo inicia.
           function cprMarketStatus(item) {
             const g = item?.raw || item || {};
@@ -3788,7 +3788,7 @@
               g?.event_raw?.status ??
               ""
             ).trim().toLowerCase();
-  
+
             const minuteRaw =
               g?.minute ??
               g?.match_minute ??
@@ -3796,15 +3796,15 @@
               g?.match_elapsed ??
               g?.event_raw?.match_minute ??
               "";
-  
+
             const minute = Number(String(minuteRaw).replace(/[^\d]/g, ""));
-  
+
             const finished = Boolean(
               g?.finished ||
               g?.event_raw?.finished ||
               /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status)
             );
-  
+
             const halftime =
               !finished &&
               Boolean(
@@ -3812,7 +3812,7 @@
                 g?.event_raw?.halftime ||
                 /half.?time|\bht\b|interval|break/.test(status)
               );
-  
+
             const live =
               !finished &&
               Boolean(
@@ -3822,10 +3822,10 @@
                 (Number.isFinite(minute) && minute > 0) ||
                 /live|ao vivo|1st|2nd|in play/.test(status)
               );
-  
+
             return { live, halftime, finished };
           }
-  
+
           function cprStableMarketDecision(decision) {
             if (!decision || typeof decision !== "object") return false;
             const text = clean(decision.line, "").toUpperCase();
@@ -3836,26 +3836,26 @@
               !["SEM APOSTA", "DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(text)
             );
           }
-  
+
           function cprPreservePregameMarketDecision(currentList, incomingRaw, type) {
             const incoming = buildMarket(incomingRaw, type);
             if (!Array.isArray(currentList) || !currentList.length) return incoming;
-  
+
             const currentById = new Map(
               currentList.map(item => [String(item.id), item])
             );
             const field = ENGINE_DECISION_FIELD[type];
-  
+
             return incoming.map(item => {
               const previous = currentById.get(String(item.id));
               if (!previous) return item;
-  
+
               const status = cprMarketStatus(item);
               if (!status.live && !status.finished) return item;
-  
+
               const previousDecision = previous?.raw?.[field];
               if (!cprStableMarketDecision(previousDecision)) return item;
-  
+
               const mergedRaw = {
                 ...(previous?.raw || {}),
                 ...(item?.raw || {}),
@@ -3866,7 +3866,7 @@
                   final_settlement_locked: status.finished
                 }
               };
-  
+
               return {
                 ...previous,
                 ...item,
@@ -3876,26 +3876,26 @@
               };
             });
           }
-  
-  
+
+
           function cprMergeEngineKeepingVisibleGames(currentList, incomingRaw, type) {
             const current = Array.isArray(currentList) ? currentList.slice() : [];
             const incoming = buildMarket(incomingRaw, type);
             if (!current.length) return incoming;
-  
+
             const incomingById = new Map(
               incoming.map(item => [String(item.id), item])
             );
-  
+
             return current.map(previous => {
               const next = incomingById.get(String(previous.id));
               if (!next) return previous;
-  
+
               const field = ENGINE_DECISION_FIELD[type];
               const previousDecision = previous?.raw?.[field];
               const nextDecision = next?.raw?.[field];
               const status = cprMarketStatus(next);
-  
+
               if (
                 (status.live || status.finished) &&
                 cprStableMarketDecision(previousDecision)
@@ -3906,7 +3906,7 @@
                   type
                 )[0] || previous;
               }
-  
+
               return {
                 ...previous,
                 ...next,
@@ -3918,19 +3918,19 @@
               };
             });
           }
-  
+
           function loadMarketEnginesInBackground(date, stamp) {
             const applyEnginePayload = (payload, source = "full") => {
               if (state.date !== date || !payload || typeof payload !== "object") return;
-      
+
               state.cornerLearning = payload?.corner_learning || state.cornerLearning || null;
-      
+
               const cornerGames = extract(payload?.corners);
               const goalGames = extract(payload?.goals);
               const cardGames = extract(payload?.cards);
               const bttsGames = extract(payload?.btts);
               const handicapGames = extract(payload?.handicap);
-      
+
               if (cornerGames.length) {
                 state.corners = cprMergeEngineKeepingVisibleGames(
                   state.corners,
@@ -3938,7 +3938,7 @@
                   "corners"
                 );
               }
-      
+
               if (goalGames.length) {
                 state.goals = cprMergeEngineKeepingVisibleGames(
                   state.goals,
@@ -3946,7 +3946,7 @@
                   "goals"
                 );
               }
-  
+
               if (cardGames.length) {
                 state.cards = cprMergeEngineKeepingVisibleGames(
                   state.cards,
@@ -3954,23 +3954,23 @@
                   "cards"
                 );
               }
-      
+
               const keepResolvedFastDecision = (currentList, incomingRaw, type) => {
                 const incoming = buildMarket(incomingRaw, type);
                 if (source !== "full" || !Array.isArray(currentList) || !currentList.length) {
                   return incoming;
                 }
-      
+
                 const currentById = new Map(currentList.map(item => [String(item.id), item]));
                 const field = ENGINE_DECISION_FIELD[type];
-      
+
                 return incoming.map(item => {
                   const previous = currentById.get(String(item.id));
                   if (!previous) return item;
-      
+
                   const prevDecision = previous?.raw?.[field];
                   const nextDecision = item?.raw?.[field];
-      
+
                   const prevResolved = Boolean(
                     prevDecision &&
                     !prevDecision.updating &&
@@ -3979,7 +3979,7 @@
                       clean(prevDecision.line, "").toUpperCase()
                     )
                   );
-      
+
                   const nextPending = Boolean(
                     !nextDecision ||
                     nextDecision.updating ||
@@ -3987,7 +3987,7 @@
                       clean(nextDecision?.line, "").toUpperCase()
                     )
                   );
-      
+
                   const incomingStatus = cprMarketStatus(item);
                   if (
                     prevResolved &&
@@ -3999,11 +3999,11 @@
                       type
                     )[0] || previous;
                   }
-  
+
                   return prevResolved && nextPending ? previous : item;
                 });
               };
-      
+
               if (bttsGames.length) {
                 state.btts = cprMergeEngineKeepingVisibleGames(
                   state.btts,
@@ -4015,7 +4015,7 @@
                 const hasHandicapV60 = Array.isArray(state.handicap) && state.handicap.some(
                   item => Boolean(item?.raw?.handicap_only_v60)
                 );
-      
+
                 if (!hasHandicapV60) {
                   state.handicap = cprMergeEngineKeepingVisibleGames(
                     state.handicap,
@@ -4024,10 +4024,10 @@
                   );
                 }
               }
-      
+
               window.__cpMobileDirectGames = activeList();
               renderActive({ animate: false });
-      
+
               // V54 — se o usuário já estiver dentro de Ambas/Handicap,
               // atualiza a tela aberta assim que a IA chega. Antes o state mudava,
               // mas o HTML do mercado permanecia congelado em "AGUARDANDO DADOS".
@@ -4039,7 +4039,7 @@
                   openMarketLayer.getAttribute("aria-hidden") === "false"
                 )
               );
-      
+
               if (marketLayerIsOpen) {
                 if (state.activeMarket === "btts" && bttsGames.length) {
                   renderBttsMarket(openMarketLayer);
@@ -4062,14 +4062,14 @@
                   );
                 }
               }
-      
+
               console.info(`[Corner Pro engines] ${source} aplicado`, {
                 btts: bttsGames.length,
                 handicap: handicapGames.length,
                 corners: cornerGames.length
               });
             };
-      
+
             // V53 — FAST PATH: BTTS + Handicap não podem depender do motor completo.
             // O motor completo faz muitas chamadas (ligas, standings, H2H, odds, recentes)
             // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
@@ -4082,7 +4082,7 @@
               .catch(error => {
                 console.warn("[Corner Pro fast engines]", error?.message || error);
               });
-      
+
             // Motor completo continua em paralelo, mas não bloqueia a tela nem o /mercados.
             getJson(
               `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=81`,
@@ -4092,14 +4092,14 @@
               .catch(error => {
                 console.warn("[Corner Pro full engines]", error?.message || error);
               });
-      
+
             // Retorna imediatamente para não prender Promise.allSettled de dados secundários.
             return Promise.resolve();
           }
-      
+
           function cprRenderBaseGamesImmediately(raw) {
             if (!Array.isArray(raw) || !raw.length) return false;
-      
+
             const baseList = raw
               .map((item, index) => {
                 // Se já veio normalizado pela parte antiga, preserva.
@@ -4118,7 +4118,7 @@
                     confidence: Number(item.confidence || 0) || 0
                   };
                 }
-      
+
                 return normalize(item, "corners", index);
               })
               .filter(item =>
@@ -4128,11 +4128,11 @@
                 !/^casa$/i.test(item.home) &&
                 !/^fora$/i.test(item.away)
               );
-      
+
             if (!baseList.length) return false;
-      
+
             const best = baseList[0];
-      
+
             if (
               !best.line ||
               best.line === "DADOS EM ATUALIZAÇÃO" ||
@@ -4140,11 +4140,11 @@
             ) {
               best.line = "ANALISANDO TOP 1";
             }
-      
+
             if (!Number(best.confidence)) {
               best.confidence = 0;
             }
-      
+
             // V51 — a lista-base pode atualizar "Jogos em destaque", mas NUNCA
             // pode substituir o Top 1 oficial depois que a IA aprovou uma partida.
             if (state.officialCornerNoOpportunity) {
@@ -4164,17 +4164,17 @@
               // primeiro jogo, mas métricas permanecem em "— / ANALISANDO".
               cprSyncHero(best, baseList);
             }
-      
+
             // Espelha também no estado da Home para favoritos/cliques.
             if (!Array.isArray(state.goals) || !state.goals.length) {
               state.goals = baseList;
             }
-      
+
             window.__cpMobileDirectGames = baseList;
-      
+
             return true;
           }
-      
+
           function cprExistingGamesFromApp() {
             const candidates = [
               window.__cpMobileDirectGames,
@@ -4186,14 +4186,14 @@
               state.handicap,
               state.btts
             ];
-      
+
             for (const candidate of candidates) {
               if (Array.isArray(candidate) && candidate.length) {
                 const real = candidate.filter(item => {
                   const source = item?.raw || item || {};
                   const home = item?.home || team(source, "home");
                   const away = item?.away || team(source, "away");
-      
+
                   return (
                     home &&
                     away &&
@@ -4203,21 +4203,21 @@
                     !/^time b$/i.test(away)
                   );
                 });
-      
+
                 if (real.length) return real;
               }
             }
-      
+
             return [];
           }
-      
+
           function cprBridgeExistingGames() {
             const games = cprExistingGamesFromApp();
             if (!games.length) return false;
             return cprRenderBaseGamesImmediately(games);
           }
-      
-      
+
+
           async function cprFirstBaseGames(date, stamp) {
             // V81 — UMA ÚNICA FONTE VISUAL.
             // /mercados é a fonte oficial; /quentes só é fallback.
@@ -4231,18 +4231,18 @@
             } catch (error) {
               console.warn("[CP V81 /mercados]", error?.message || error);
             }
-  
+
             const fallback = await getJson(
               `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=81`,
               14000
             );
             const games = extract(fallback);
             if (games.length) return games;
-  
+
             throw new Error("Nenhuma fonte retornou jogos.");
           }
-  
-  
+
+
           function cprFavoritesForTop1Query() {
             try {
               return encodeURIComponent(JSON.stringify(cprReadFavorites().slice(0, 40)));
@@ -4250,14 +4250,14 @@
               return encodeURIComponent('[]');
             }
           }
-      
+
           function cprShowNoOfficialCornerOpportunity(message = '') {
             state.officialCornerNoOpportunity = true;
             state.officialCornerLoading = false;
             state.officialCornerReason = String(message || '');
             state.officialCornerBest = null;
             state.activeMarket = 'corners';
-      
+
             cprText('#cprTitle', '🔥 MELHOR APOSTA • CANTOS');
             cprText('#cprMarket', 'SEM ENTRADA');
             cprText('#cprTime', '--:--');
@@ -4270,32 +4270,32 @@
             cprText('#cprConfidence', '—');
             cprText('#cprTrend', '↗ AGUARDAR');
             cprText('#cprConfidenceLabel', 'AGUARDAR');
-      
+
             const open = $('#cpHomeBestOpen');
             if (open) open.disabled = true;
           }
-      
+
           async function loadOfficialCornerTop1(date, stamp, { fresh = false } = {}) {
             if (!date) return;
             state.officialCornerLoading = true;
             state.officialCornerNoOpportunity = false;
-      
+
             // V83 APP — durante a confirmação do Top 1, preserva todas as
             // métricas reais que já chegaram com o jogo-base.
             // Só o selo/texto informa que a escolha oficial ainda está sendo analisada.
             cprText("#cprMarket", "ANALISANDO TOP 1");
             cprText("#cprTrend", "💭 ANALISANDO");
             cprText("#cprConfidenceLabel", "ANALISANDO");
-      
+
             try {
               const favorites = cprFavoritesForTop1Query();
               const payload = await getJson(
                 `/official_corner_pick?date=${encodeURIComponent(date)}&fresh=${fresh ? '1' : '0'}&favorites=${favorites}&_mobile=${stamp}`,
                 22000
               );
-      
+
               if (state.date !== date) return;
-      
+
               const rawGame = payload?.game;
               if (!rawGame) {
                 cprShowNoOfficialCornerOpportunity(
@@ -4303,9 +4303,9 @@
                 );
                 return;
               }
-      
+
               const best = normalize(rawGame, 'corners', 0);
-  
+
               // CARD APP FIX V84 — espelha no wrapper normalizado as métricas
               // do objeto rico retornado pela rota oficial.
               best.projection = cpRefNum(
@@ -4330,44 +4330,44 @@
                 rawGame?.over95_prob,
                 best.confidence
               ) || 0);
-  
+
               const line = String(best.line || '').toUpperCase();
-      
+
               // Segurança do front: mesmo que algum cache antigo devolva 8.5, não publica.
               if (line === 'OVER 8.5' || !['OVER 9.5','OVER 10.5','OVER 11.5'].includes(line)) {
                 cprShowNoOfficialCornerOpportunity('A linha retornada não passou pelo filtro do Top 1.');
                 return;
               }
-      
+
               state.officialCornerLoading = false;
               state.officialCornerNoOpportunity = false;
               state.officialCornerReason = String(payload?.top1_reason || '');
               state.officialCornerBest = best;
               state.activeMarket = 'corners';
-      
+
               const current = Array.isArray(state.corners) ? state.corners : [];
-  
+
               // CARD FIX — junta o Top 1 oficial com o jogo-base já carregado,
               // preservando projeção, médias e demais estatísticas do card.
               let existingIndex = current.findIndex(
                 item => String(item.id) === String(best.id)
               );
-  
+
               if (existingIndex < 0) {
                 const homeKey = cprNormalizeTeamKey(best.home);
                 const awayKey = cprNormalizeTeamKey(best.away);
-  
+
                 existingIndex = current.findIndex(item =>
                   cprNormalizeTeamKey(item?.home) === homeKey &&
                   cprNormalizeTeamKey(item?.away) === awayKey
                 );
               }
-  
+
               let heroBest = best;
-  
+
               if (existingIndex >= 0) {
                 const next = current.slice();
-  
+
                 heroBest = {
                   ...next[existingIndex],
                   ...best,
@@ -4376,7 +4376,7 @@
                     ...(best?.raw || {})
                   }
                 };
-  
+
                 next[existingIndex] = heroBest;
                 state.corners = next;
                 state.officialCornerBest = heroBest;
@@ -4385,9 +4385,9 @@
                   item => String(item.id) !== String(best.id)
                 )];
               }
-  
+
               window.__cpMobileDirectGames = state.corners;
-  
+
               // Atualiza somente o card principal com o objeto enriquecido.
               cprSyncHero(heroBest, state.corners);
             } catch (error) {
@@ -4398,7 +4398,7 @@
               );
             }
           }
-      
+
           async function loadSecondaryDataInBackground(date, stamp) {
             // V81 — sem segundo carregamento visual.
             // Só enriquece os mesmos jogos com IA.
@@ -4408,70 +4408,70 @@
               console.warn("[CP V81 background engines]", error?.message || error);
             }
           }
-  
-  
+
+
           async function loadData() {
             if (state.loading) return;
-      
+
             setLoading(true);
-      
+
             const stamp = Date.now();
             const date = state.date;
             state.officialCornerBest = null;
             state.officialCornerNoOpportunity = false;
             state.officialCornerReason = "";
-      
+
             try {
               // V36 — /quentes e /mercados correm em paralelo.
               // A PRIMEIRA fonte que trouxer jogos já libera o card principal.
               const raw = await cprFirstBaseGames(date, stamp);
-      
+
               if (state.date !== date) {
                 setLoading(false);
                 return;
               }
-      
+
               state.all = raw;
               state.engineDate = date;
-      
+
               state.pregame = buildMarket(raw, "pregame");
               state.combined = buildMarket(raw, "combined");
               state.props = buildMarket(raw, "props");
-      
+
               // Não usa mais Over 8.5 / 64% como preenchimento temporário.
               // O card principal só vira recomendação depois que /official_corner_pick aprovar.
               state.corners = buildMarket(raw, "corners");
-      
+
               // Mantém todos os mercados navegáveis enquanto a IA específica chega.
               state.goals = buildMarket(raw, "goals");
               state.cards = buildMarket(raw, "cards");
               state.btts = buildMarket(raw, "btts");
               state.handicap = buildMarket(raw, "handicap");
-      
+
               if (!state.btts.length) state.btts = buildMarket(raw, "pregame");
               if (!state.handicap.length) state.handicap = buildMarket(raw, "pregame");
-      
+
               window.__cornerProAllGames = raw;
-      
+
               // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
               cprRenderBaseGamesImmediately(raw);
-  
+
               // V81 — sem redraw imediato da mesma lista.
   setLoading(false);
-      
+
               // O card principal fica fixo em CANTOS. A lista rápida só preenche a tela;
               // a recomendação real vem da rota oficial e pode decidir por SEM ENTRADA.
               state.activeMarket = "corners";
               renderActive({ animate: false });
               stopAutoSlide();
-      
+
               loadOfficialCornerTop1(date, stamp).catch(() => {});
-      
+
               // Dados pesados continuam em background.
               loadSecondaryDataInBackground(date, stamp);
             } catch (error) {
               setLoading(false);
-      
+
               // V40 — se os jogos já apareceram na Home, uma falha tardia
               // de atualização não pode apagar "Jogos em destaque".
               if (!cprHomeVisualReady) {
@@ -4481,7 +4481,7 @@
                     '<div class="cprEmpty">Não foi possível carregar os jogos. Tentando novamente...</div>';
                 }
               }
-      
+
               // Retry curto, sem recarregar a página.
               if (!cprHomeVisualReady) {
                 setTimeout(() => {
@@ -4490,12 +4490,12 @@
                   }
                 }, 2200);
               }
-      
+
               throw error;
             }
           }
-        
-        
+
+
           function bttsSafeNumber(value) {
             if (value === null || value === undefined) return null;
             const text = String(value).trim();
@@ -4503,7 +4503,7 @@
             const n = Number(text.replace("%", "").replace(",", "."));
             return Number.isFinite(n) ? n : null;
           }
-      
+
           function bttsRealProbability(game) {
             const raw = game?.raw || game || {};
             const candidates = [
@@ -4518,7 +4518,7 @@
               raw?.goals?.btts_prob,
               raw?.markets?.btts_prob
             ];
-      
+
             for (const value of candidates) {
               let n = bttsSafeNumber(value);
               if (n === null) continue;
@@ -4528,7 +4528,7 @@
             }
             return null;
           }
-      
+
           function bttsRealOdd(game, choice) {
             const raw = game?.raw || game || {};
             const decision = raw?.btts_ai || {};
@@ -4544,14 +4544,14 @@
                   raw?.btts_no_odd, raw?.btts_nao_odd,
                   raw?.odds?.btts_no, raw?.markets?.odds?.btts_no
                 ];
-      
+
             for (const value of candidates) {
               const n = bttsSafeNumber(value);
               if (n !== null && n > 1 && n < 100) return n.toFixed(2);
             }
             return "—";
           }
-      
+
           function bttsGameState(game) {
             const raw = game?.raw || game || {};
             const status = clean(
@@ -4559,11 +4559,11 @@
               raw?.event_status ?? game?.status,
               ""
             ).toLowerCase();
-      
+
             const finished =
               Boolean(raw?.finished) ||
               /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
-      
+
             const live =
               !finished &&
               (
@@ -4571,12 +4571,12 @@
                 /live|ao vivo|1st|2nd|half|interval/.test(status) ||
                 Number(raw?.minute ?? raw?.match_minute ?? raw?.elapsed) > 0
               );
-      
+
             return { finished, live };
           }
-      
+
           const BTTS_HISTORY_KEY = "cornerPro:btts-history:v1";
-      
+
           function bttsMatchKey(game) {
             const raw = game?.raw || game || {};
             const id = clean(
@@ -4585,7 +4585,7 @@
               ""
             );
             if (id) return `id:${id}`;
-      
+
             return [
               clean(game?.date ?? raw?.date ?? raw?.match_date, ""),
               clean(game?.time ?? raw?.time ?? raw?.match_time, ""),
@@ -4593,7 +4593,7 @@
               clean(game?.away ?? raw?.away_name ?? raw?.match_awayteam_name, "")
             ].join("|").toLowerCase();
           }
-      
+
           function bttsHistoryRead() {
             try {
               const value = JSON.parse(localStorage.getItem(BTTS_HISTORY_KEY) || "{}");
@@ -4602,18 +4602,18 @@
               return {};
             }
           }
-      
+
           function bttsHistoryGet(game) {
             const key = bttsMatchKey(game);
             if (!key) return null;
             return bttsHistoryRead()[key] || null;
           }
-      
+
           function bttsHistorySave(game, choice, confidence = null, source = "") {
             if (!choice) return;
             const key = bttsMatchKey(game);
             if (!key) return;
-      
+
             const history = bttsHistoryRead();
             history[key] = {
               choice,
@@ -4621,18 +4621,18 @@
               source: String(source || ""),
               savedAt: Date.now()
             };
-      
+
             try {
               localStorage.setItem(BTTS_HISTORY_KEY, JSON.stringify(history));
             } catch (_) {}
           }
-      
+
           function bttsDecisionForGame(game) {
             const raw = game?.raw || game || {};
             const decision = raw?.btts_ai && typeof raw.btts_ai === "object"
               ? raw.btts_ai
               : {};
-      
+
             const stateInfo = bttsGameState(game);
             const explicitLine = clean(decision?.line, "").toUpperCase();
             const explicitSkip = Boolean(decision?.skip);
@@ -4640,13 +4640,13 @@
               Boolean(decision?.updating) ||
               explicitLine === "DADOS EM ATUALIZAÇÃO" ||
               explicitLine === "ANALISANDO PARTIDA";
-      
+
             const probability = bttsRealProbability(game);
-      
+
             let choice = "";
             let source = "";
             let reason = clean(decision?.reason, "");
-      
+
             if (!explicitSkip && !updating && explicitLine) {
               if (explicitLine.includes("NÃO") || explicitLine.includes("NAO")) {
                 choice = "NÃO";
@@ -4659,7 +4659,7 @@
                 source = "server";
               }
             }
-      
+
             if (!choice && probability !== null && !stateInfo.finished) {
               if (probability >= 60) {
                 choice = "SIM";
@@ -4671,16 +4671,16 @@
                 if (!reason) reason = `Probabilidade real de ambas marcarem: ${probability}%.`;
               }
             }
-      
+
             // Guarda a indicação enquanto a partida ainda não terminou.
             if (!stateInfo.finished && choice) {
               bttsHistorySave(game, choice, probability, source);
             }
-      
+
             if (stateInfo.finished) {
               const stored = bttsHistoryGet(game);
               const finalChoice = choice || stored?.choice || "";
-      
+
               return {
                 choice: finalChoice,
                 confidence:
@@ -4695,7 +4695,7 @@
                 source: finalChoice ? "history" : "final"
               };
             }
-      
+
             if (updating && !choice) {
               return {
                 choice: "",
@@ -4706,7 +4706,7 @@
                 source: "updating"
               };
             }
-      
+
             if (explicitSkip && !choice) {
               return {
                 choice: "",
@@ -4717,7 +4717,7 @@
                 source: "server"
               };
             }
-      
+
             if (!choice) {
               return {
                 choice: "",
@@ -4730,7 +4730,7 @@
                 source: probability === null ? "updating" : "probability"
               };
             }
-      
+
             let confidence = probability;
             if (confidence === null) {
               confidence = numberFrom(decision?.confidence);
@@ -4740,7 +4740,7 @@
                 confidence = Math.max(0, Math.min(100, Math.round(confidence)));
               }
             }
-      
+
             return {
               choice,
               confidence,
@@ -4754,17 +4754,17 @@
               source
             };
           }
-      
+
           function renderBttsMarket(layer) {
             const body = $(".cpMobileMarketsBody", layer);
             if (!body) return;
-      
+
             const allBttsGames = Array.isArray(state.btts) ? state.btts : [];
             const upcomingBttsGames = allBttsGames.filter(game => !handicapFinished(game));
             const games = (upcomingBttsGames.length ? upcomingBttsGames : allBttsGames).slice(0, 12);
             const settlementEntries = [];
             const liveEntries = [];
-      
+
             const rows = games.map((game, index) => {
               const rec = bttsDecisionForGame(game);
               const isPick = rec.state === "pick" || rec.state === "live";
@@ -4776,12 +4776,12 @@
                 Number.isFinite(Number(rec.confidence))
                   ? Math.max(0, Math.min(100, Math.round(Number(rec.confidence))))
                   : null;
-      
+
               const homeInitial = escapeHtml((game.home || "C").slice(0, 2).toUpperCase());
               const awayInitial = escapeHtml((game.away || "F").slice(0, 2).toUpperCase());
               const settlementKey = `btts-${index}`;
               const liveKey = `live-btts-${index}`;
-      
+
               if ((isPick || isFinished) && choice) {
                 settlementEntries.push({
                   key: settlementKey,
@@ -4790,7 +4790,7 @@
                   line: `AMBAS ${choice}`
                 });
               }
-      
+
               if (isPick && choice) {
                 liveEntries.push({
                   key: liveKey,
@@ -4800,7 +4800,7 @@
                   side: ""
                 });
               }
-      
+
               const title =
                 isFinished
                   ? (choice ? `AMBAS MARCAM – ${choice}` : "SEM ENTRADA")
@@ -4809,7 +4809,7 @@
                     : isNoBet
                       ? "SEM APOSTA"
                       : `AMBAS MARCAM – ${choice}`;
-      
+
               const gaugeText =
                 isFinished
                   ? (choice ? "RESULTADO" : "SEM ENTRADA")
@@ -4818,7 +4818,7 @@
                     : isNoBet
                       ? "SEM ENTRADA"
                       : "CONFIANÇA";
-      
+
               const engineLabel =
                 rec.source === "server"
                   ? "✦ IA DO SERVIDOR"
@@ -4829,7 +4829,7 @@
                       : rec.source === "final"
                         ? "✦ SEM ENTRADA"
                         : "✦ AGUARDANDO SERVIDOR";
-      
+
               return `
                 <button
                   type="button"
@@ -4858,7 +4858,7 @@
                       <span class="cpBttsBadge away">${awayInitial}</span>
                     </div>
                   </div>
-      
+
                   <div class="cpBttsPick">
                     <span class="cpBttsEngineBadge">${engineLabel}</span>
                     <strong>${escapeHtml(title)}</strong>
@@ -4866,7 +4866,7 @@
                     <b>${isFinished ? "—" : isPick ? rec.odd : "—"}</b>
                     <span class="cpSettlementSlot">${isFinished && choice ? "VERIFICANDO…" : ""}</span>
                   </div>
-      
+
                   <div
                     class="cpBttsGauge ${!isPick ? "is-disabled" : ""}"
                     style="--btts:${confidence ?? 0}"
@@ -4874,24 +4874,24 @@
                     <span>${isFinished ? "—" : isPick && confidence !== null ? `${confidence}%` : "—"}</span>
                     <small>${gaugeText}</small>
                   </div>
-      
+
                   <i class="cpBttsArrow">›</i>
                 </button>`;
             }).join("");
-      
+
             body.innerHTML = `
               <section class="cpBttsIntro">
                 <div class="cpBttsIntroIcon">◎</div>
                 <p>Escolha SIM ou NÃO para ver somente os jogos realmente classificados nessa opção.</p>
               </section>
-      
+
               <div class="cpBttsTabs">
                 <button type="button" class="active" data-btts-tab="ai">IA</button>
                 <button type="button" data-btts-tab="all">TODOS</button>
                 <button type="button" data-btts-tab="yes">SIM</button>
                 <button type="button" data-btts-tab="no">NÃO</button>
               </div>
-      
+
               <section class="cpBttsExplain">
                 <h3>COMO FUNCIONA AMBAS MARCAM? <span>ⓘ</span></h3>
                 <div>
@@ -4905,24 +4905,24 @@
                   </article>
                 </div>
               </section>
-      
+
               <div class="cpBttsTitle">
                 <h2>MELHORES OPORTUNIDADES</h2>
                 <button type="button">VER TODOS ›</button>
               </div>
-      
+
               <div class="cpBttsList">
                 ${rows || '<div class="cpBttsEmpty">Nenhum jogo disponível para esta data.</div>'}
               </div>
-      
+
               <div class="cpBttsFilterEmpty" hidden>
                 Nenhuma oportunidade disponível nesta opção.
               </div>
-      
+
               <button type="button" class="cpBttsAllGames">
                 <span>☷</span><b>VER TODOS OS JOGOS DE AMBAS MARCAM</b><i>›</i>
               </button>
-      
+
               <section class="cpBttsBottomExplain">
                 <h3>EXPLICAÇÃO DAS OPÇÕES</h3>
                 <div>
@@ -4930,19 +4930,19 @@
                   <article><i>×</i><p><b>AMBAS MARCAM – NÃO</b><br>Pelo menos uma das equipes termina a partida sem marcar.</p></article>
                 </div>
               </section>`;
-      
+
             settlementRefreshCards(body, settlementEntries);
             marketStartLiveRefresh(body, liveEntries);
-      
+
             const cards = $$(".cpBttsOpportunity", body);
             cards.forEach(card => {
               card.hidden = card.dataset.bttsAi !== "1";
             });
-      
+
             const empty = $(".cpBttsFilterEmpty", body);
             if (empty) empty.hidden = cards.some(card => !card.hidden);
           }
-      
+
           function handicapScore(game) {
             const raw = game?.raw || {};
             const home = numberFrom(
@@ -4955,61 +4955,61 @@
             );
             return { home, away };
           }
-        
+
           function handicapFinished(game) {
             const raw = game?.raw || {};
             const status = clean(
               raw.status ?? raw.match_status ?? raw.event_status ?? game?.status,
               ""
             ).toLowerCase();
-        
+
             return Boolean(raw.finished) ||
               /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
           }
-        
+
           function handicapSingleSettlement(goalDifference, line) {
             const adjusted = goalDifference + Number(line);
-        
+
             if (adjusted > 0) return "win";
             if (adjusted < 0) return "loss";
             return "push";
           }
-        
+
           function handicapSplitLines(line) {
             const value = Number(line);
-        
+
             if (value === -0.75) return [-0.5, -1.0];
             if (value === -0.25) return [0.0, -0.5];
             if (value === 0.25) return [0.0, 0.5];
             if (value === 0.75) return [0.5, 1.0];
-        
+
             return [value];
           }
-        
+
           function handicapSettlement(game, side, line) {
             if (!handicapFinished(game)) return null;
-        
+
             const score = handicapScore(game);
             if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
-        
+
             const difference = side === "home"
               ? score.home - score.away
               : score.away - score.home;
-        
+
             const results = handicapSplitLines(line)
               .map(part => handicapSingleSettlement(difference, part));
-        
+
             if (results.length === 1) return results[0];
-        
+
             if (results.every(result => result === "win")) return "win";
             if (results.every(result => result === "loss")) return "loss";
             if (results.every(result => result === "push")) return "push";
             if (results.includes("win") && results.includes("push")) return "half_win";
             if (results.includes("loss") && results.includes("push")) return "half_loss";
-        
+
             return results.includes("win") ? "half_win" : "half_loss";
           }
-        
+
           function handicapSettlementBadge(result) {
             const badges = {
               win: '<span class="cpHandicapResult green">✓ GREEN</span>',
@@ -5018,10 +5018,10 @@
               half_win: '<span class="cpHandicapResult half-win">½ GREEN</span>',
               half_loss: '<span class="cpHandicapResult half-loss">½ RED</span>'
             };
-        
+
             return badges[result] || "";
           }
-        
+
           function handicapLineRule(line, sideLabel = "TIME") {
             const rules = {
               "-1.0": {
@@ -5097,36 +5097,36 @@
                 ]
               }
             };
-        
+
             return rules[line] || rules["-0.5"];
           }
-        
+
           function handicapRawNumber(raw, keys, fallback = null) {
             for (const key of keys) {
               const value = key.split(".").reduce((obj, part) => obj?.[part], raw);
-        
+
               if (value === null || value === undefined || value === "") {
                 continue;
               }
-        
+
               const normalized = String(value)
                 .trim()
                 .replace("%", "")
                 .replace(",", ".");
-        
+
               if (!normalized) continue;
-        
+
               const number = Number(normalized);
-        
+
               if (Number.isFinite(number)) return number;
             }
-        
+
             return fallback;
           }
-        
+
           function handicapGameFactor(game, salt = "") {
             const raw = game?.raw || {};
-        
+
             const source = [
               game?.home,
               game?.away,
@@ -5137,48 +5137,48 @@
               raw.match_date,
               salt
             ].filter(Boolean).join("|");
-        
+
             let hash = 2166136261;
-        
+
             for (const char of source) {
               hash ^= char.charCodeAt(0);
               hash = Math.imul(hash, 16777619);
             }
-        
+
             return (Math.abs(hash >>> 0) % 10000) / 9999;
           }
-        
+
           function handicapAutoRecommendation(game) {
             const raw = game?.raw || {};
             const serverDecision = raw?.handicap_ai;
-        
+
             if (serverDecision && typeof serverDecision === "object") {
               const sideKey = String(
                 serverDecision.side_key ??
                 serverDecision.side ??
                 ""
               ).toLowerCase();
-        
+
               const side =
                 sideKey === "away" || sideKey === "fora"
                   ? "away"
                   : "home";
-        
+
               const serverLine =
                 clean(serverDecision.line, "SEM APOSTA");
-      
+
               const validServerLines = new Set([
                 "-2.0", "-1.5", "-1.0", "-0.75", "-0.5", "-0.25",
                 "0.0",
                 "+0.25", "+0.5", "+0.75", "+1.0", "+1.5", "+2.0",
                 "SEM APOSTA"
               ]);
-      
+
               const serverStillUpdating =
                 Boolean(serverDecision.updating) ||
                 serverLine === "DADOS EM ATUALIZAÇÃO" ||
                 serverLine === "ANALISANDO PARTIDA";
-      
+
               // IMPORTANTE: "DADOS EM ATUALIZAÇÃO" não é uma decisão de SEM APOSTA.
               // Nessa situação deixamos o fallback do próprio Handicap, logo abaixo,
               // analisar odds/tabela/médias que já existirem no jogo.
@@ -5212,55 +5212,55 @@
               "match_hometeam_odd", "odds.1", "odd1",
               "handicap_ai.odds.home"
             ]);
-        
+
             const awayOdds = handicapRawNumber(raw, [
               "away_od", "odds.away", "away_odd", "odd_away",
               "match_awayteam_odd", "odds.2", "odd2",
               "handicap_ai.odds.away"
             ]);
-        
+
             const homePos = handicapRawNumber(raw, [
               "pos_home", "home_position", "table.home.position",
               "standings.home.position", "posHome"
             ]);
-        
+
             const awayPos = handicapRawNumber(raw, [
               "pos_away", "away_position", "table.away.position",
               "standings.away.position", "posAway"
             ]);
-        
+
             const homeGoals = handicapRawNumber(raw, [
               "home_goals_avg", "home.avg_goals",
               "stats.home.goals_for_avg", "home_scored_avg",
               "homeGoalsAvg", "engine_profiles.home.goalsForAvg"
             ]);
-        
+
             const awayGoals = handicapRawNumber(raw, [
               "away_goals_avg", "away.avg_goals",
               "stats.away.goals_for_avg", "away_scored_avg",
               "awayGoalsAvg", "engine_profiles.away.goalsForAvg"
             ]);
-        
+
             const homeConcedes = handicapRawNumber(raw, [
               "home_concedes_avg", "stats.home.goals_against_avg",
               "homeConcedesAvg", "engine_profiles.home.goalsAgainstAvg"
             ]);
-        
+
             const awayConcedes = handicapRawNumber(raw, [
               "away_concedes_avg", "stats.away.goals_against_avg",
               "awayConcedesAvg", "engine_profiles.away.goalsAgainstAvg"
             ]);
-        
+
             const hasOdds = Number.isFinite(homeOdds) && Number.isFinite(awayOdds);
             const hasTable = Number.isFinite(homePos) && Number.isFinite(awayPos);
             const hasGoals = [homeGoals, awayGoals, homeConcedes, awayConcedes]
               .filter(Number.isFinite).length >= 3;
-        
+
             const dataQuality =
               (hasOdds ? 2 : 0) +
               (hasTable ? 1 : 0) +
               (hasGoals ? 2 : 0);
-        
+
             if (dataQuality < 3) {
               // Não converte um servidor ainda atualizando em "SEM APOSTA" falso.
               // Sem dados mínimos, mantém o estado de atualização para o próximo poll.
@@ -5275,69 +5275,69 @@
                 reason: "Aguardando a base estatística do Handicap Asiático."
               };
             }
-        
+
             let homeScore = 0;
             let awayScore = 0;
             const reasons = [];
-        
+
             if (hasOdds) {
               const homeProbability = 1 / Math.max(1.01, homeOdds);
               const awayProbability = 1 / Math.max(1.01, awayOdds);
               const oddsEdge = (homeProbability - awayProbability) * 100;
-        
+
               homeScore += oddsEdge;
               awayScore -= oddsEdge;
               reasons.push("odds");
             }
-        
+
             if (hasTable) {
               const tableEdge = (awayPos - homePos) * 1.5;
               homeScore += tableEdge;
               awayScore -= tableEdge;
               reasons.push("classificação");
             }
-        
+
             if (hasGoals) {
               const homeExpected =
                 ((homeGoals ?? 1.2) + (awayConcedes ?? 1.2)) / 2;
               const awayExpected =
                 ((awayGoals ?? 1.1) + (homeConcedes ?? 1.1)) / 2;
-        
+
               homeScore += (homeExpected - awayExpected) * 14;
               awayScore += (awayExpected - homeExpected) * 14;
               reasons.push("médias de gols");
             }
-        
+
             homeScore += 2;
-        
+
             const side = homeScore >= awayScore ? "home" : "away";
             const edge = Math.abs(homeScore - awayScore);
             const teamName = side === "home" ? game.home : game.away;
-        
+
             let line = "";
             let confidence = 0;
-      
+
             const favoriteOdd =
               side === "home" ? homeOdds : awayOdds;
-      
+
             const underdogOdd =
               side === "home" ? awayOdds : homeOdds;
-      
+
             const oddsGap =
               hasOdds
                 ? Math.abs((underdogOdd ?? 0) - (favoriteOdd ?? 0))
                 : 0;
-      
+
             const tableGap =
               hasTable
                 ? Math.abs(awayPos - homePos)
                 : 0;
-      
+
             const strongEvidence =
               Number(hasOdds) +
               Number(hasTable) +
               Number(hasGoals);
-      
+
             if (
               edge >= 34 &&
               strongEvidence >= 2 &&
@@ -5391,12 +5391,12 @@
                 reason: "Confronto equilibrado: não há vantagem suficiente."
               };
             }
-      
+
             confidence = Math.min(
               82,
               Math.round(confidence + Math.min(4, dataQuality - 3))
             );
-        
+
             if (confidence < 62) {
               return {
                 skip: true,
@@ -5408,7 +5408,7 @@
                 reason: "A vantagem calculada ficou abaixo do limite de segurança."
               };
             }
-        
+
             return {
               skip: false,
               side,
@@ -5419,30 +5419,30 @@
               reason: `${teamName} ${line}: vantagem baseada em ${reasons.join(", ")}.`
             };
           }
-        
+
           function handicapOdd(confidence) {
             return (1.53 + Math.max(0, 82 - confidence) / 100).toFixed(2);
           }
-        
+
           function renderHandicapMarket(layer, selectedLine = "IA") {
             const body = $(".cpMobileMarketsBody", layer);
             if (!body) return;
-      
+
             // V41 — IA restaurada; handicap_ai do servidor é a autoridade.
             const requestedLine = MARKET.handicap.lines.includes(selectedLine)
               ? selectedLine
               : "IA";
-      
+
             const originalSourceGames =
               (Array.isArray(state.handicap) && state.handicap.length)
                 ? state.handicap
                 : (Array.isArray(state.pregame) ? state.pregame : []);
-      
+
             const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
             const sourceGames = upcomingHandicapGames.length
               ? upcomingHandicapGames
               : originalSourceGames;
-      
+
             const realAvailableLines = [...new Set(
               sourceGames.flatMap(game => {
                 const raw = game?.raw || {};
@@ -5450,40 +5450,40 @@
                 return Array.isArray(lines) ? lines : [];
               })
             )];
-      
+
             const handicapUiLines = realAvailableLines.length
               ? ["IA", ...MARKET.handicap.lines.filter(line =>
                   line !== "IA" && realAvailableLines.includes(line)
                 )]
               : MARKET.handicap.lines;
-      
+
             const safeRequestedLine = handicapUiLines.includes(requestedLine)
               ? requestedLine
               : "IA";
-      
+
             let preparedGames = sourceGames
               .map((game, originalIndex) => ({
                 game,
                 originalIndex,
                 recommendation: handicapAutoRecommendation(game)
               }));
-      
+
             // V41 — decisão válida do servidor não é descartada apenas
             // porque outros jogos receberam a mesma linha/confiança.
-      
+
             preparedGames = preparedGames
               .sort((a, b) => {
                 if (a.recommendation.skip !== b.recommendation.skip) {
                   return a.recommendation.skip ? 1 : -1;
                 }
-        
+
                 return b.recommendation.score - a.recommendation.score;
               })
               .slice(0, 7);
-        
+
             const settlementEntries = [];
             const liveEntries = [];
-        
+
             const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
               const line = safeRequestedLine === "IA" ? recommendation.line : safeRequestedLine;
               const side = recommendation.side;
@@ -5498,12 +5498,12 @@
                 : safeRequestedLine === "IA"
                   ? recommendation.confidence
                   : Math.max(57, Math.min(88, recommendation.confidence - 2));
-      
+
               const handicapRealOdd = Number(
                 recommendation.market_odd ??
                 game?.raw?.handicap_ai?.market_odd
               );
-        
+
               const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
               const rule = recommendation.skip
                 ? {
@@ -5515,7 +5515,7 @@
                     ]
                   }
                 : handicapLineRule(line, sideLabel);
-        
+
               if (!recommendation.skip) {
                 settlementEntries.push({
                   key: settlementKey,
@@ -5525,7 +5525,7 @@
                   side
                 });
               }
-        
+
               const liveKey = `live-handicap-${originalIndex}-${rowIndex}`;
               liveEntries.push({
                 key: liveKey,
@@ -5534,11 +5534,11 @@
                 line: recommendation.skip ? "" : line,
                 side
               });
-        
+
               const recommendationBadge = safeRequestedLine === "IA"
                 ? `<span class="cpHandicapAutoBadge">✦ SUGESTÃO AUTOMÁTICA</span>`
                 : "";
-        
+
               return `
                 <button
                   type="button"
@@ -5561,23 +5561,19 @@
                       <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
                     </div>
                   </div>
-        
+
                   <div class="cpHandicapPick">
                     ${recommendationBadge}
                     <strong>${recommendation.updating ? "AGUARDANDO DADOS" : recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
                     <p>${recommendation.updating ? "A IA está concluindo a leitura deste confronto." : escapeHtml(rule.headline)}</p>
                     <small>${escapeHtml(
-                      isManualDesktopParity
-                        ? (
-                            manualAnalysis?.source === "server-line"
-                              ? "Probabilidade específica desta linha fornecida pelo mesmo motor usado no site."
-                              : "Linha calculada pela mesma projeção estatística usada no site."
-                          )
+                      safeRequestedLine !== "IA"
+                        ? "Linha manual analisada com a mesma base estatística do mercado."
                         : recommendation.reason
                     )}</small>
                     <span class="cpSettlementSlot"></span>
                   </div>
-        
+
                   <div class="cpHandicapOdd">
                     <small>${recommendation.skip ? "Decisão" : "Odd estimada"}</small>
                     <b>${
@@ -5588,16 +5584,16 @@
                           : handicapOdd(confidence)
                     }</b>
                   </div>
-        
+
                   <div class="cpHandicapGauge ${recommendation.skip ? "is-disabled" : ""}" style="--handicap:${confidence}">
                     <span>${recommendation.skip ? "—" : `${confidence}%`}</span>
                     <small>${recommendation.skip ? "SEM ENTRADA" : "CONFIANÇA"}</small>
                   </div>
-        
+
                   <i class="cpHandicapArrow">›</i>
                 </button>`;
             }).join("");
-        
+
             const explanationLine =
               safeRequestedLine === "IA"
                 ? (
@@ -5606,19 +5602,19 @@
                   )
                 : safeRequestedLine;
             const explainRule = handicapLineRule(explanationLine, "TIME");
-        
+
             body.innerHTML = `
               <section class="cpHandicapIntro">
                 <div class="cpHandicapIntroIcon">⚖</div>
                 <p>${safeRequestedLine === "IA" ? "A IA seleciona automaticamente o lado e a linha com melhor sustentação nos dados reais." : "Escolha a linha de handicap asiático que deseja analisar."}</p>
               </section>
-        
+
               <div class="cpHandicapLines">
                 ${handicapUiLines.map(item => `
                   <button type="button" class="${item === safeRequestedLine ? "active" : ""}" data-handicap-line="${escapeHtml(item)}">${escapeHtml(item)}</button>
                 `).join("")}
               </div>
-        
+
               <section class="cpHandicapExplain">
                 <h3>${`COMO FUNCIONA ${escapeHtml(safeRequestedLine)}?`}</h3>
                 <div class="cpHandicapExplainGrid">
@@ -5650,28 +5646,28 @@
                   </article>
                 </div>
               </section>
-        
+
               <div class="cpHandicapTabs">
                 <button type="button" class="active" data-handicap-side="all">TODOS</button>
                 <button type="button" data-handicap-side="home">CASA</button>
                 <button type="button" data-handicap-side="away">FORA</button>
               </div>
-        
+
               <div class="cpHandicapTitle">
                 <h2>MELHORES OPORTUNIDADES</h2>
                 <button type="button">VER TODOS ›</button>
               </div>
-        
+
               <div class="cpHandicapNotice">
                 <b>Leitura do app:</b> as sugestões são análises estatísticas pré-jogo, não garantia de resultado.
               </div>
-        
+
               <div class="cpHandicapList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
-        
+
               <button type="button" class="cpHandicapAllGames">
                 <span>☷</span><b>${`VER TODOS OS JOGOS NESTA LINHA (${escapeHtml(safeRequestedLine)})`}</b><i>›</i>
               </button>
-        
+
               <section class="cpHandicapBottomExplain">
                 <h3>GUIA COMPLETO DAS LINHAS</h3>
                 <div class="cpHandicapRulesTable">
@@ -5685,43 +5681,43 @@
                   }).join("")}
                 </div>
               </section>`;
-        
+
             settlementRefreshCards(body, settlementEntries);
             marketStartLiveRefresh(body, liveEntries);
           }
-        
-        
+
+
           function analysisNumber(raw, paths, fallback = null) {
             for (const path of paths) {
               const value = path.split(".").reduce((obj, part) => obj?.[part], raw);
-        
+
               if (value === null || value === undefined || value === "") {
                 continue;
               }
-        
+
               const normalized = String(value)
                 .trim()
                 .replace("%", "")
                 .replace(",", ".");
-        
+
               if (!normalized) continue;
-        
+
               const number = Number(normalized);
-        
+
               if (Number.isFinite(number)) return number;
             }
-        
+
             return fallback;
           }
-        
+
           function analysisLineNumber(line) {
             const match = String(line || "").match(/\d+(?:\.\d+)?/);
             return match ? Number(match[0]) : null;
           }
-        
+
           function analysisMarketTotal(game, marketType) {
             const raw = game?.raw || {};
-        
+
             if (marketType === "goals") {
               const score = handicapScore(game);
               if (Number.isFinite(score.home) && Number.isFinite(score.away)) {
@@ -5729,7 +5725,7 @@
               }
               return null;
             }
-        
+
             if (marketType === "corners") {
               const home = analysisNumber(raw, [
                 "home_corners", "corners_home", "corners.home",
@@ -5741,7 +5737,7 @@
               ]);
               return Number.isFinite(home) && Number.isFinite(away) ? home + away : null;
             }
-        
+
             if (marketType === "cards") {
               const home = analysisNumber(raw, [
                 "home_cards", "cards_home", "cards.home",
@@ -5753,14 +5749,14 @@
               ]);
               return Number.isFinite(home) && Number.isFinite(away) ? home + away : null;
             }
-        
+
             return null;
           }
-        
-        
-        
+
+
+
           let marketLiveTimer = null;
-        
+
           function marketLiveStatus(stats = {}, game = {}) {
             const raw = stats?.raw || stats || {};
             const status = clean(
@@ -5768,20 +5764,20 @@
               raw.event_status ?? game?.status ?? "",
               ""
             ).toLowerCase();
-        
+
             const minuteValue =
               raw.minute ?? raw.match_minute ?? raw.match_live ??
               raw.elapsed ?? raw.timer ?? "";
-        
+
             const minuteRaw = clean(minuteValue, "").toLowerCase();
             const minute = Number(
               String(minuteValue).replace(/[^\d]/g, "")
             );
-        
+
             const finished =
               Boolean(raw.finished) ||
               /finished|full.?time|\bft\b|encerr|finaliz|ended/.test(status);
-        
+
             const halftime =
               !finished && (
                 Boolean(raw.halftime) ||
@@ -5790,7 +5786,7 @@
                 /(^|\s)(ht|half.?time|halftime|intervalo|interval|break)(\s|$)/.test(status) ||
                 /^(ht|half.?time|halftime|intervalo|interval|break)$/.test(minuteRaw)
               );
-        
+
             const live =
               !finished && (
                 halftime ||
@@ -5798,7 +5794,7 @@
                 Number.isFinite(minute) && minute > 0 ||
                 /live|ao vivo|andamento|1st|2nd/.test(status)
               );
-        
+
             return {
               live,
               finished,
@@ -5814,17 +5810,17 @@
                   : ""
             };
           }
-        
+
           function marketLiveBadgeHtml(game, marketType = "") {
             const info = marketLiveStatus(game?.raw || {}, game);
-        
+
             if (info.live) {
               const minuteText =
                 marketType === "handicap" &&
                 info.minute === "AO VIVO"
                   ? ""
                   : info.minute;
-        
+
               return `
                 <span class="cpMarketLiveSlot is-live">
                   <i></i>
@@ -5834,52 +5830,52 @@
                     : ""}
                 </span>`;
             }
-        
+
             if (info.finished) {
               return `
                 <span class="cpMarketLiveSlot is-finished">
                   <b>ENCERRADO</b>
                 </span>`;
             }
-        
+
             return `
               <span class="cpMarketLiveSlot is-scheduled">
                 <i>◷</i>
                 <b>${escapeHtml(game?.time || "—")}</b>
               </span>`;
           }
-        
+
           async function marketRefreshLiveCard(card, game, marketType = "") {
             if (!card || !game) return;
-        
+
             const slot = card.querySelector(".cpMarketLiveSlot");
             if (!slot) return;
-        
+
             const matchId = settlementMatchId(game);
             if (!matchId) return;
-        
+
             try {
               const response = await getJson(
                 `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
                 12000
               );
-        
+
               const stats = settlementResponseData(response);
               const info = marketLiveStatus(stats, game);
-        
+
               slot.classList.toggle("is-live", info.live);
               slot.classList.toggle("is-finished", info.finished);
-        
+
               if (info.live) {
                 slot.classList.remove("is-scheduled", "is-finished");
                 slot.classList.add("is-live");
-        
+
                 const minuteText =
                   marketType === "handicap" &&
                   info.minute === "AO VIVO"
                     ? ""
                     : info.minute;
-        
+
                 slot.innerHTML =
                   `<i></i><b>AO VIVO</b>` +
                   (
@@ -5900,20 +5896,20 @@
               console.warn("[Corner Pro Live Market]", error);
             }
           }
-        
+
           function marketStartLiveRefresh(container, entries) {
             if (marketLiveTimer) clearInterval(marketLiveTimer);
-        
+
             const refresh = () => {
               for (const entry of entries || []) {
                 const card = container?.querySelector(`[data-live-key="${entry.key}"]`);
-        
+
                 marketRefreshLiveCard(
                   card,
                   entry.game,
                   entry.marketType || ""
                 );
-        
+
                 if (entry.marketType && entry.line) {
                   settlementRefreshCard(
                     card,
@@ -5925,14 +5921,14 @@
                 }
               }
             };
-        
+
             refresh();
             marketLiveTimer = setInterval(refresh, 30000);
           }
-        
+
           function settlementMatchId(game) {
             const raw = game?.raw || {};
-        
+
             return clean(
               raw.match_id ??
               raw.fixture_id ??
@@ -5943,11 +5939,11 @@
               ""
             );
           }
-        
+
           function settlementResponseData(response) {
             return response?.data ?? response?.result ?? response?.match ?? response?.game ?? response ?? {};
           }
-        
+
           function settlementMergeGame(game, stats) {
             const raw = game?.raw || {};
             const score = stats?.score || {};
@@ -5956,7 +5952,7 @@
             const cards = stats?.cards || {};
             const yellowCards = stats?.yellow_cards || {};
             const statistics = stats?.statistics || {};
-        
+
             return {
               ...game,
               raw: {
@@ -5965,39 +5961,39 @@
                 status: stats?.status ?? stats?.status_raw ?? stats?.match_status ?? raw.status ?? raw.match_status,
                 match_status: stats?.match_status ?? stats?.status ?? stats?.status_raw ?? raw.match_status,
                 finished: Boolean(stats?.finished) || Boolean(raw.finished),
-        
+
                 home_score: stats?.home_score ?? stats?.score_home ?? goals?.home ?? score?.home ?? raw.home_score ?? raw.score_home,
                 away_score: stats?.away_score ?? stats?.score_away ?? goals?.away ?? score?.away ?? raw.away_score ?? raw.score_away,
-        
+
                 home_corners: stats?.home_corners ?? stats?.corners_home ?? corners?.home ?? statistics?.home?.corners ?? raw.home_corners ?? raw.corners_home,
                 away_corners: stats?.away_corners ?? stats?.corners_away ?? corners?.away ?? statistics?.away?.corners ?? raw.away_corners ?? raw.corners_away,
-        
+
                 home_cards: stats?.home_cards ?? stats?.cards_home ?? cards?.home ?? yellowCards?.home ?? statistics?.home?.cards ?? raw.home_cards ?? raw.cards_home,
                 away_cards: stats?.away_cards ?? stats?.cards_away ?? cards?.away ?? yellowCards?.away ?? statistics?.away?.cards ?? raw.away_cards ?? raw.cards_away
               }
             };
           }
-        
+
           async function settlementFreshGame(game) {
             const matchId = settlementMatchId(game);
             if (!matchId) return game;
-        
+
             try {
               const response = await getJson(
                 `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
                 16000
               );
-        
+
               const stats = settlementResponseData(response);
               if (!stats || typeof stats !== "object" || stats.error) return game;
-        
+
               return settlementMergeGame(game, stats);
             } catch (error) {
               console.warn("[Corner Pro Settlement]", error);
               return game;
             }
           }
-        
+
           function settlementBadgeHtml(result) {
             const map = {
               win: ["green", "✓ GREEN"],
@@ -6006,18 +6002,18 @@
               half_win: ["half-win", "½ GREEN"],
               half_loss: ["half-loss", "½ RED"]
             };
-        
+
             const item = map[result];
             if (!item) return "";
-        
+
             return `<span class="cpSettlementBadge ${item[0]}">${item[1]}</span>`;
           }
-        
+
           function settlementCalculate(game, marketType, line, side = "") {
             if (marketType === "handicap") {
               return handicapSettlement(game, side || "home", line);
             }
-        
+
             if (marketType === "btts") {
               const normalized = String(line || "").toUpperCase();
               return analysisSettlement(
@@ -6026,21 +6022,21 @@
                 normalized.includes("NÃO") ? "AMBAS NÃO" : "AMBAS SIM"
               );
             }
-        
+
             return analysisSettlement(game, marketType, line);
           }
-        
+
           async function settlementRefreshCard(card, game, marketType, line, side = "") {
             if (!card || !game) return;
-        
+
             const slot = card.querySelector(".cpSettlementSlot");
             if (!slot) return;
-        
+
             const freshGame = await settlementFreshGame(game);
             const result = settlementCalculate(freshGame, marketType, line, side);
-        
+
             slot.innerHTML = settlementBadgeHtml(result);
-      
+
             if (result && marketType === "btts") {
               const residual = card.querySelector(".cpBttsPick > b");
               if (residual) {
@@ -6048,52 +6044,52 @@
                 residual.hidden = true;
               }
             }
-        
+
             card.classList.toggle("is-settlement-green", result === "win" || result === "half_win");
             card.classList.toggle("is-settlement-red", result === "loss" || result === "half_loss");
             card.classList.toggle("is-settlement-push", result === "push");
           }
-        
+
           function settlementRefreshCards(container, entries) {
             if (!container || !Array.isArray(entries)) return;
-        
+
             for (const entry of entries) {
               const card = container.querySelector(`[data-settlement-key="${entry.key}"]`);
               settlementRefreshCard(card, entry.game, entry.marketType, entry.line, entry.side || "");
             }
           }
-        
+
           function analysisSettlement(game, marketType, line) {
             if (!handicapFinished(game)) return null;
-        
+
             const normalized = String(line || "").toUpperCase();
             const total = analysisMarketTotal(game, marketType);
             const threshold = analysisLineNumber(normalized);
-        
+
             if (normalized.includes("AMBAS SIM")) {
               const score = handicapScore(game);
               if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
               return score.home > 0 && score.away > 0 ? "win" : "loss";
             }
-        
+
             if (normalized.includes("AMBAS NÃO")) {
               const score = handicapScore(game);
               if (!Number.isFinite(score.home) || !Number.isFinite(score.away)) return null;
               return score.home === 0 || score.away === 0 ? "win" : "loss";
             }
-        
+
             if (!Number.isFinite(total) || !Number.isFinite(threshold)) return null;
-        
+
             if (normalized.includes("OVER")) return total > threshold ? "win" : "loss";
             if (normalized.includes("UNDER")) return total < threshold ? "win" : "loss";
-        
+
             return null;
           }
-        
+
           function analysisRule(marketType, line) {
             const normalized = String(line || "").toUpperCase();
             const threshold = analysisLineNumber(normalized);
-        
+
             if (marketType === "goals") {
               if (normalized.includes("AMBAS SIM")) {
                 return {
@@ -6103,7 +6099,7 @@
                   reading: "Boa opção quando os dois ataques produzem e as defesas cedem oportunidades."
                 };
               }
-        
+
               if (normalized.includes("AMBAS NÃO")) {
                 return {
                   headline: "Pelo menos uma equipe precisa terminar sem marcar.",
@@ -6112,7 +6108,7 @@
                   reading: "Boa opção quando existe defesa forte ou ataque pouco produtivo."
                 };
               }
-        
+
               const isOver = normalized.includes("OVER");
               return {
                 headline: isOver
@@ -6129,11 +6125,11 @@
                   : "O app procura jogos controlados, ataques modestos e defesas consistentes."
               };
             }
-        
+
             if (marketType === "corners") {
               const firstHalf = normalized.includes("1ºT");
               const isOver = normalized.includes("OVER");
-        
+
               return {
                 headline: firstHalf
                   ? `O primeiro tempo precisa ter ${Math.floor(threshold) + 1} ou mais escanteios.`
@@ -6149,7 +6145,7 @@
                 reading: "O app analisa pressão pelas laterais, cruzamentos, finalizações bloqueadas e médias recentes de cantos."
               };
             }
-        
+
             const isOver = normalized.includes("OVER");
             return {
               headline: isOver
@@ -6164,21 +6160,21 @@
               reading: "O app considera rivalidade, faltas, intensidade, importância da partida e média disciplinar."
             };
           }
-        
+
           function analysisStableHash(value) {
             let hash = 2166136261;
-        
+
             for (const char of String(value || "")) {
               hash ^= char.charCodeAt(0);
               hash = Math.imul(hash, 16777619);
             }
-        
+
             return Math.abs(hash >>> 0);
           }
-        
+
           function analysisIdentity(game, marketType, salt = "") {
             const raw = game?.raw || {};
-        
+
             const source = [
               game?.home,
               game?.away,
@@ -6190,17 +6186,17 @@
               marketType,
               salt
             ].filter(Boolean).join("|");
-        
+
             return analysisStableHash(source);
           }
-        
+
           function analysisFactor(game, marketType, salt = "") {
             return (analysisIdentity(game, marketType, salt) % 10000) / 9999;
           }
-        
+
           function analysisHasStarted(game) {
             const raw = game?.raw || {};
-        
+
             const status = clean(
               raw.status ??
               raw.match_status ??
@@ -6209,40 +6205,40 @@
               game?.status,
               ""
             ).toLowerCase();
-        
+
             const minute = Number(
               raw.match_minute ??
               raw.match_live ??
               raw.minute ??
               raw.elapsed
             );
-        
+
             return Boolean(raw.live || raw.finished) ||
               Number.isFinite(minute) && minute > 0 ||
               /live|ao vivo|andamento|1st|2nd|half|interval|finished|full.?time|\bft\b|encerr|finaliz/.test(status);
           }
-        
+
           function analysisExplicitNumber(raw, paths) {
             for (const path of paths) {
               const value = path.split(".").reduce((obj, part) => obj?.[part], raw);
-        
+
               if (value === null || value === undefined || value === "") continue;
-        
+
               const number = Number(String(value).replace("%", "").replace(",", "."));
-        
+
               if (Number.isFinite(number)) return number;
             }
-        
+
             return null;
           }
-        
+
           function analysisCurrentStats(game, marketType) {
             const raw = game?.raw || {};
-        
+
             if (!analysisHasStarted(game)) {
               return { total: null, home: null, away: null };
             }
-        
+
             if (marketType === "goals") {
               const home = analysisExplicitNumber(raw, [
                 "home_score",
@@ -6251,7 +6247,7 @@
                 "goals.home",
                 "score.home"
               ]);
-        
+
               const away = analysisExplicitNumber(raw, [
                 "away_score",
                 "score_away",
@@ -6259,14 +6255,14 @@
                 "goals.away",
                 "score.away"
               ]);
-        
+
               return {
                 total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
                 home,
                 away
               };
             }
-        
+
             if (marketType === "corners") {
               const home = analysisExplicitNumber(raw, [
                 "home_corners",
@@ -6275,7 +6271,7 @@
                 "statistics.home.corners",
                 "stats.home.corners"
               ]);
-        
+
               const away = analysisExplicitNumber(raw, [
                 "away_corners",
                 "corners_away",
@@ -6283,14 +6279,14 @@
                 "statistics.away.corners",
                 "stats.away.corners"
               ]);
-        
+
               return {
                 total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
                 home,
                 away
               };
             }
-        
+
             if (marketType === "cards") {
               const home = analysisExplicitNumber(raw, [
                 "home_cards",
@@ -6300,7 +6296,7 @@
                 "statistics.home.cards",
                 "home_yellow_cards"
               ]);
-        
+
               const away = analysisExplicitNumber(raw, [
                 "away_cards",
                 "cards_away",
@@ -6309,20 +6305,20 @@
                 "statistics.away.cards",
                 "away_yellow_cards"
               ]);
-        
+
               return {
                 total: Number.isFinite(home) && Number.isFinite(away) ? home + away : null,
                 home,
                 away
               };
             }
-        
+
             return { total: null, home: null, away: null };
           }
-        
+
           function analysisLineFromTotal(marketType, total, projection, game) {
             const effective = Number.isFinite(total) ? total : projection;
-        
+
             if (marketType === "corners") {
               if (effective >= 12.2) return "OVER 11.5";
               if (effective >= 11.1) return "OVER 10.5";
@@ -6330,7 +6326,7 @@
               if (effective >= 8.9) return "OVER 8.5";
               return "UNDER 9.5";
             }
-        
+
             if (marketType === "goals") {
               // V46 — "Ambas Marcam" é um mercado separado.
               // Esta tela trabalha apenas com linhas de gols OVER/UNDER.
@@ -6339,7 +6335,7 @@
               if (effective >= 1.75) return "OVER 1.5";
               return "UNDER 2.5";
             }
-        
+
             if (marketType === "cards") {
               if (effective >= 5.6) return "OVER 5.5";
               if (effective >= 4.6) return "OVER 4.5";
@@ -6347,15 +6343,15 @@
               if (effective >= 2.6) return "OVER 2.5";
               return "UNDER 4.5";
             }
-        
+
             return "";
           }
-        
-        
-        
+
+
+
           function selectedMarketDateIsFuture() {
             let today;
-        
+
             try {
               today =
                 typeof todayAM_YMD === "function"
@@ -6364,27 +6360,27 @@
             } catch (_) {
               today = new Date().toISOString().slice(0, 10);
             }
-        
+
             try {
               return mobileMarketDate() > today;
             } catch (_) {
               return false;
             }
           }
-        
+
           function cornerLocalLineLockKey(game) {
             const raw = game?.raw || {};
-        
+
             const id =
               raw?.match_id ??
               raw?.event_key ??
               raw?.event_raw?.match_id ??
               game?.id ??
               `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
-        
+
             return `cornerProPregameLine:v4-server-authority:${String(id)}`;
           }
-        
+
           function readCornerLocalLineLock(game) {
             try {
               return JSON.parse(
@@ -6396,7 +6392,7 @@
               return null;
             }
           }
-        
+
           function writeCornerLocalLineLock(game, decision) {
             try {
               localStorage.setItem(
@@ -6411,13 +6407,13 @@
               );
             } catch (_) {}
           }
-        
+
           function applyCornerLocalLineLock(game, decision) {
             if (!decision) return decision;
-        
+
             const status = marketLiveStatus(game);
             const futureDate = selectedMarketDateIsFuture();
-        
+
             if (
               futureDate &&
               (
@@ -6432,32 +6428,32 @@
                   cornerLocalLineLockKey(game)
                 );
               } catch (_) {}
-        
+
               return {
                 ...decision,
                 skip: true,
                 line: "ANALISANDO PARTIDA"
               };
             }
-        
+
             const existing = readCornerLocalLineLock(game);
-        
+
             const validLine =
               /^(OVER|UNDER)\s+(8\.5|9\.5|10\.5|11\.5)$/.test(
                 String(decision.line || "").toUpperCase()
               );
-        
+
             if (!status.live && !status.finished && validLine && !decision.skip) {
               if (!existing?.line) {
                 writeCornerLocalLineLock(game, decision);
-        
+
                 return {
                   ...decision,
                   pregame_locked: true,
                   local_pregame_locked: true
                 };
               }
-        
+
               return {
                 ...decision,
                 line: existing.line,
@@ -6470,7 +6466,7 @@
                 local_pregame_locked: true
               };
             }
-        
+
             if ((status.live || status.finished) && existing?.line) {
               return {
                 ...decision,
@@ -6484,10 +6480,10 @@
                 local_pregame_locked: true
               };
             }
-        
+
             return decision;
           }
-        
+
 
           /* =========================================================
              MOBILE APP — GOLS: TRAVA DA DECISÃO PRÉ-JOGO
@@ -6642,20 +6638,20 @@
           function analysisProjection(game, marketType) {
             const raw = game?.raw || {};
             const serverDecision = raw?.[`${marketType}_ai`];
-        
+
             if (serverDecision && typeof serverDecision === "object") {
               let serverLine = clean(
                 serverDecision.line,
                 "SEM APOSTA"
               ).toUpperCase();
-        
+
               if (
                 marketType === "goals" &&
                 serverLine.includes("AMBAS")
               ) {
                 serverLine = "SEM APOSTA";
               }
-        
+
               if (
                 marketType !== "goals" &&
                 marketType !== "btts" &&
@@ -6663,7 +6659,7 @@
               ) {
                 serverLine = "SEM APOSTA";
               }
-        
+
               if (
                 marketType === "corners" &&
                 serverLine !== "DADOS EM ATUALIZAÇÃO" &&
@@ -6672,7 +6668,7 @@
               ) {
                 serverLine = "SEM APOSTA";
               }
-        
+
               const serverRecommendation = {
                 line: serverLine,
                 projection: Number(
@@ -6720,7 +6716,7 @@
                 future_data_ready:
                   Boolean(serverDecision.future_data_ready)
               };
-        
+
               // V11: decisões vindas do servidor NÃO passam por uma segunda
               // trava em localStorage. O server é a única autoridade do lock
               // pré-jogo de Escanteios.
@@ -6731,11 +6727,11 @@
             }
             const originalConfidence = Number(game?.confidence || 68);
             const current = analysisCurrentStats(game, marketType);
-        
+
             const factorA = analysisFactor(game, marketType, "A");
             const factorB = analysisFactor(game, marketType, "B");
             const factorC = analysisFactor(game, marketType, "C");
-        
+
             if (marketType === "goals") {
               const homeFor = analysisNumber(raw, [
                 "home_goals_avg",
@@ -6744,7 +6740,7 @@
                 "home_scored_avg",
                 "homeGoalsAvg"
               ]);
-        
+
               const awayFor = analysisNumber(raw, [
                 "away_goals_avg",
                 "away.avg_goals",
@@ -6752,54 +6748,54 @@
                 "away_scored_avg",
                 "awayGoalsAvg"
               ]);
-        
+
               const homeAgainst = analysisNumber(raw, [
                 "home_concedes_avg",
                 "stats.home.goals_against_avg",
                 "homeConcedesAvg"
               ]);
-        
+
               const awayAgainst = analysisNumber(raw, [
                 "away_concedes_avg",
                 "stats.away.goals_against_avg",
                 "awayConcedesAvg"
               ]);
-        
+
               const available = [homeFor, awayFor, homeAgainst, awayAgainst]
                 .filter(Number.isFinite);
-        
+
               const statisticalBase = available.length
                 ? available.reduce((sum, value) => sum + value, 0) / Math.max(2, available.length / 2)
                 : 1.45 + factorA * 2.65;
-        
+
               const identityAdjustment =
                 (factorB - .5) * 1.05 +
                 (factorC - .5) * .55;
-        
+
               let projection = statisticalBase + identityAdjustment;
-        
+
               if (Number.isFinite(current.total)) {
                 projection = Math.max(current.total, projection);
               }
-        
+
               projection = Math.max(1.1, Math.min(4.8, projection));
-        
+
               const line = analysisLineFromTotal(
                 marketType,
                 current.total,
                 projection,
                 game
               );
-        
+
               const distance =
                 line.includes("3.5") ? Math.abs(projection - 3.5) :
                 line.includes("2.5") ? Math.abs(projection - 2.5) :
                 Math.abs(projection - 1.5);
-        
+
               const confidence = Math.round(Math.max(58, Math.min(89,
                 62 + distance * 9 + (originalConfidence - 68) * .18 + factorC * 4
               )));
-        
+
               const calculatedGoalsDecision = {
                 line,
                 projection: projection.toFixed(1),
@@ -6813,63 +6809,63 @@
 
               return applyGoalsLocalLineLock(game, calculatedGoalsDecision);
             }
-        
+
             if (marketType === "corners") {
               const homeCreates = analysisNumber(raw, [
                 "home_corners_avg",
                 "stats.home.corners_for_avg",
                 "homeCornersAvg"
               ]);
-        
+
               const awayCreates = analysisNumber(raw, [
                 "away_corners_avg",
                 "stats.away.corners_for_avg",
                 "awayCornersAvg"
               ]);
-        
+
               const homeAllows = analysisNumber(raw, [
                 "home_corners_against_avg",
                 "stats.home.corners_against_avg"
               ]);
-        
+
               const awayAllows = analysisNumber(raw, [
                 "away_corners_against_avg",
                 "stats.away.corners_against_avg"
               ]);
-        
+
               const available = [homeCreates, awayCreates, homeAllows, awayAllows]
                 .filter(Number.isFinite);
-        
+
               const statisticalBase = available.length
                 ? available.reduce((sum, value) => sum + value, 0) / 2
                 : 8.4 + factorA * 4.4;
-        
+
               const identityAdjustment =
                 (factorB - .5) * 1.8 +
                 (factorC - .5) * 1.1;
-        
+
               let projection = statisticalBase + identityAdjustment;
-        
+
               if (Number.isFinite(current.total)) {
                 projection = Math.max(current.total, projection);
               }
-        
+
               projection = Math.max(7.0, Math.min(14.8, projection));
-        
+
               const line = analysisLineFromTotal(
                 marketType,
                 current.total,
                 projection,
                 game
               );
-        
+
               const lineValue = analysisLineNumber(line) || 9.5;
               const confidence = Math.round(Math.max(59, Math.min(90,
                 63 + Math.abs(projection - lineValue) * 7 +
                 (originalConfidence - 68) * .18 +
                 factorC * 4
               )));
-        
+
               const calculatedCornerDecision = {
                 line,
                 projection: projection.toFixed(1),
@@ -6880,13 +6876,13 @@
                 skip: false,
                 source: "calculated"
               };
-        
+
               const lockedCornerDecision =
                 applyCornerLocalLineLock(
                   game,
                   calculatedCornerDecision
                 );
-        
+
               if (
                 marketLiveStatus(game).live &&
                 !lockedCornerDecision?.pregame_locked
@@ -6900,62 +6896,62 @@
                     "O jogo já começou e nenhuma linha pré-jogo foi registrada. O app não criará uma nova entrada ao vivo."
                 };
               }
-        
+
               return lockedCornerDecision;
             }
-        
+
             const homeCards = analysisNumber(raw, [
               "home_cards_avg",
               "stats.home.cards_avg",
               "homeCardsAvg"
             ]);
-        
+
             const awayCards = analysisNumber(raw, [
               "away_cards_avg",
               "stats.away.cards_avg",
               "awayCardsAvg"
             ]);
-        
+
             const refereeCards = analysisNumber(raw, [
               "referee_cards_avg",
               "referee.cards_avg",
               "cardsRefAvg"
             ]);
-        
+
             const available = [homeCards, awayCards, refereeCards]
               .filter(Number.isFinite);
-        
+
             const statisticalBase = available.length
               ? available.reduce((sum, value) => sum + value, 0) /
                 (available.length === 3 ? 1.5 : 1)
               : 2.35 + factorA * 4.15;
-        
+
             const identityAdjustment =
               (factorB - .5) * 1.15 +
               (factorC - .5) * .75;
-        
+
             let projection = statisticalBase + identityAdjustment;
-        
+
             if (Number.isFinite(current.total)) {
               projection = Math.max(current.total, projection);
             }
-        
+
             projection = Math.max(2.0, Math.min(7.2, projection));
-        
+
             const line = analysisLineFromTotal(
               marketType,
               current.total,
               projection,
               game
             );
-        
+
             const lineValue = analysisLineNumber(line) || 3.5;
             const confidence = Math.round(Math.max(58, Math.min(89,
               61 + Math.abs(projection - lineValue) * 8 +
               (originalConfidence - 68) * .17 +
               factorC * 4
             )));
-        
+
             return {
               line,
               projection: projection.toFixed(1),
@@ -6965,19 +6961,19 @@
                 : `Projeção própria de ${projection.toFixed(1)} cartões, considerando intensidade, disciplina e contexto.`
             };
           }
-        
+
           function analysisMarketName(marketType) {
             if (marketType === "goals") return "GOLS";
             if (marketType === "corners") return "ESCANTEIOS";
             return "CARTÕES";
           }
-        
+
           function analysisMarketIcon(marketType) {
             if (marketType === "goals") return "⚽";
             if (marketType === "corners") return "⚑";
             return "▯";
           }
-        
+
 
           /* =========================================================
              MOBILE = DESKTOP — PARIDADE DAS LINHAS MANUAIS
@@ -7190,23 +7186,23 @@
             const variation = game
               ? analysisFactor(game, marketType, "ODD") * .12
               : 0;
-        
+
             return (
               1.48 +
               Math.max(0, 86 - confidence) / 100 +
               variation
             ).toFixed(2);
           }
-        
+
           function renderDetailedMarket(layer, marketType, selectedLine = "IA") {
             const body = $(".cpMobileMarketsBody", layer);
             if (!body) return;
-        
+
             const marketName = analysisMarketName(marketType);
             const icon = analysisMarketIcon(marketType);
             const requestedLine = clean(selectedLine, "IA");
             const sourceGames = state[marketType] || [];
-        
+
             let prepared = sourceGames
               .map((game, originalIndex) => {
                 const recommendation = analysisProjection(game, marketType);
@@ -7262,35 +7258,39 @@
 
             const settlementEntries = [];
             const liveEntries = [];
-        
+
             const rows = prepared.map(({ game, originalIndex, recommendation, manualAnalysis }, rowIndex) => {
               const line = requestedLine === "IA"
                 ? recommendation.line
                 : requestedLine;
-        
+
               const isUpdating =
                 requestedLine === "IA" &&
                 (
                   line === "DADOS EM ATUALIZAÇÃO" ||
                   line === "ANALISANDO PARTIDA"
                 );
-        
+
               const isNoBet =
                 requestedLine === "IA" &&
                 (
                   recommendation.skip ||
                   line === "SEM APOSTA"
                 );
-        
+
               const confidence = isNoBet
                 ? 0
                 : requestedLine === "IA"
                   ? recommendation.confidence
-                  : Math.max(56, recommendation.confidence - 3);
-        
+                  : (
+                      manualAnalysis?.valid
+                        ? Math.max(0, Math.min(100, Math.round(Number(manualAnalysis.probability) || 0)))
+                        : Math.max(0, Math.min(100, Math.round(Number(recommendation.confidence) || 0)))
+                    );
+
               const rule = analysisRule(marketType, line);
               const settlementKey = `analysis-${marketType}-${originalIndex}-${rowIndex}`;
-        
+
               if (!isNoBet) {
                 settlementEntries.push({
                   key: settlementKey,
@@ -7300,7 +7300,7 @@
                   side: ""
                 });
               }
-        
+
               const liveKey = `live-${marketType}-${originalIndex}-${rowIndex}`;
               liveEntries.push({
                 key: liveKey,
@@ -7309,7 +7309,7 @@
                 line,
                 side: ""
               });
-        
+
               return `
                 <button
                   type="button"
@@ -7331,7 +7331,7 @@
                       <span>${escapeHtml((game.away || "F").slice(0,2).toUpperCase())}</span>
                     </div>
                   </div>
-        
+
                   <div class="cpAnalysisPick">
                     ${requestedLine === "IA"
                       ? `<span class="cpAnalysisAutoBadge">${
@@ -7373,27 +7373,27 @@
                     <small>${escapeHtml(recommendation.reason)}</small>
                     <span class="cpSettlementSlot"></span>
                   </div>
-        
+
                   <div class="cpAnalysisOdd">
                     <small>${(isNoBet || isUpdating) ? "Status" : "Odd estimada"}</small>
                     <b>${(isNoBet || isUpdating) ? "—" : analysisOdd(confidence, game, marketType)}</b>
                   </div>
-        
+
                   <div class="cpAnalysisGauge ${(isNoBet || isUpdating) ? "is-disabled" : ""}" style="--analysis:${confidence}">
                     <span>${(isNoBet || isUpdating) ? "—" : `${confidence}%`}</span>
                     <small>${isUpdating ? "AGUARDANDO DADOS" : isNoBet ? "SEM ENTRADA" : "CONFIANÇA"}</small>
                   </div>
-        
+
                   <i class="cpAnalysisArrow">›</i>
                 </button>`;
             }).join("");
-        
+
             const explanationLine = requestedLine === "IA"
               ? (prepared[0]?.recommendation.line || MARKET[marketType].lines[1])
               : requestedLine;
-        
+
             const explainRule = analysisRule(marketType, explanationLine);
-        
+
             body.innerHTML = `
               <section class="cpAnalysisIntro">
                 <div class="cpAnalysisIntroIcon">${icon}</div>
@@ -7402,7 +7402,7 @@
                   : `Escolha uma linha ou use <b>IA</b> para o app selecionar automaticamente a melhor leitura pré-jogo de ${marketName.toLowerCase()}.`
                 }</p>
               </section>
-        
+
               <div class="cpAnalysisLines">
                 ${MARKET[marketType].lines.map(item => `
                   <button type="button" class="${item === requestedLine ? "active" : ""}"
@@ -7412,53 +7412,53 @@
                   </button>
                 `).join("")}
               </div>
-        
+
               <section class="cpAnalysisExplain">
                 <h3>${requestedLine === "IA"
                   ? `COMO FUNCIONA A IA DE ${marketName}?`
                   : `COMO FUNCIONA ${escapeHtml(requestedLine)}?`
                 }</h3>
-        
+
                 <div class="cpAnalysisExplainGrid">
                   <p>${requestedLine === "IA"
                     ? escapeHtml(explainRule.reading)
                     : escapeHtml(explainRule.headline)
                   }</p>
-        
+
                   <article>
                     <i>✓</i>
                     <section><b>APOSTA GANHA</b><span>${escapeHtml(explainRule.win)}</span></section>
                   </article>
-        
+
                   <article>
                     <i>×</i>
                     <section><b>APOSTA PERDIDA</b><span>${escapeHtml(explainRule.lose)}</span></section>
                   </article>
-        
+
                   <article>
                     <i>✦</i>
                     <section><b>LEITURA DO APP</b><span>${escapeHtml(explainRule.reading)}</span></section>
                   </article>
                 </div>
               </section>
-        
+
               <div class="cpAnalysisTabs">
                 <button type="button" class="active">TODOS</button>
                 <button type="button">${marketType === "goals" ? "OVERS" : "LINHAS ALTAS"}</button>
                 <button type="button">${marketType === "goals" ? "UNDERS" : "LINHAS SEGURAS"}</button>
               </div>
-        
+
               <div class="cpAnalysisTitle">
                 <h2>${requestedLine === "IA" ? "SUGESTÕES PRÉ-JOGO" : "MELHORES OPORTUNIDADES"}</h2>
                 <button type="button">VER TODOS ›</button>
               </div>
-        
+
               <div class="cpAnalysisNotice">
                 <b>Análise estatística:</b> o app cruza médias recentes, contexto e força das equipes. Não representa garantia de resultado.
               </div>
-        
+
               <div class="cpAnalysisList">${rows || '<div class="cpBttsEmpty">Nenhuma oportunidade disponível nesta linha.</div>'}</div>
-        
+
               <button type="button" class="cpAnalysisAllGames">
                 <span>☷</span>
                 <b>${requestedLine === "IA"
@@ -7467,7 +7467,7 @@
                 }</b>
                 <i>›</i>
               </button>
-        
+
               <section class="cpAnalysisBottomExplain">
                 <h3>GUIA DAS LINHAS DE ${marketName}</h3>
                 <div>
@@ -7481,25 +7481,25 @@
                   }).join("")}
                 </div>
               </section>`;
-        
+
             settlementRefreshCards(body, settlementEntries);
             marketStartLiveRefresh(body, liveEntries);
           }
-        
-      
+
+
           let instantMarketRetryTimer = null;
           let instantMarketRetryCount = 0;
-      
+
           function marketStillWaiting(type) {
             const list = Array.isArray(state[type]) ? state[type] : [];
             if (!list.length) return true;
-      
+
             const field = ENGINE_DECISION_FIELD[type];
             return list.some(item => {
               const raw = item?.raw || item || {};
               const decision = raw?.[field];
               if (!decision || typeof decision !== "object") return true;
-      
+
               const line = clean(decision.line, "").toUpperCase();
               return Boolean(decision.updating) ||
                 !line ||
@@ -7507,7 +7507,7 @@
                 line === "ANALISANDO PARTIDA";
             });
           }
-      
+
           function stopInstantMarketRetry() {
             if (instantMarketRetryTimer) {
               clearTimeout(instantMarketRetryTimer);
@@ -7515,10 +7515,10 @@
             }
             instantMarketRetryCount = 0;
           }
-      
+
           async function refreshInstantMarket(type, immediate = false) {
             if (!["btts", "handicap"].includes(type)) return;
-      
+
             const date = state.date || todayManaus();
             const layer = $("#cpMobileMarketsLayer");
             const isOpen = Boolean(
@@ -7526,23 +7526,23 @@
               (layer.classList.contains("is-open") ||
                layer.getAttribute("aria-hidden") === "false")
             );
-      
+
             if (!isOpen && !immediate) return;
-      
+
             const stamp = Date.now();
-      
+
             try {
               const payload = await getJson(
                 `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=58`,
                 18000
               );
-      
+
               if (state.date !== date || !payload || typeof payload !== "object") return;
-      
+
               const rawGames = extract(payload?.[type]);
               if (rawGames.length) {
                 state[type] = buildMarket(rawGames, type);
-      
+
                 if (type === "btts") {
                   renderBttsMarket(layer);
                 } else {
@@ -7555,7 +7555,7 @@
             } catch (error) {
               console.warn(`[Corner Pro ${type} instant retry]`, error?.message || error);
             }
-      
+
             if (
               state.activeMarket === type &&
               marketStillWaiting(type) &&
@@ -7570,23 +7570,23 @@
               stopInstantMarketRetry();
             }
           }
-      
-      
+
+
           let handicapOnlyV61RequestId = 0;
-      
+
           async function refreshHandicapOnlyV61() {
             const layer = $("#cpMobileMarketsLayer");
             if (!layer) return;
-      
+
             const date = state.date || todayManaus();
             const requestId = ++handicapOnlyV61RequestId;
-      
+
             try {
               const payload = await getJson(
                 `/handicap_engine_v61?date=${encodeURIComponent(date)}&_=${Date.now()}`,
                 24000
               );
-      
+
               if (
                 requestId !== handicapOnlyV61RequestId ||
                 state.activeMarket !== "handicap" ||
@@ -7594,20 +7594,20 @@
               ) {
                 return;
               }
-      
+
               const rawGames = extract(payload?.handicap);
-      
+
               if (rawGames.length) {
                 state.handicap = buildMarket(rawGames, "handicap");
-      
+
                 const activeLine =
                   $(".cpHandicapLines button.active", layer)?.dataset?.handicapLine ||
                   "IA";
-      
+
                 renderHandicapMarket(layer, activeLine);
                 return;
               }
-      
+
               // V61 — nunca apaga os cards do Handicap apenas porque a API
               // não publicou linha AH direta naquele instante.
               // O servidor agora devolve fallback conservador por 1X2 quando possível.
@@ -7626,31 +7626,31 @@
               console.warn("[Corner Pro Handicap V61]", error?.message || error);
             }
           }
-      
+
           function openMarkets(type = state.activeMarket) {
             if (marketLiveTimer) {
               clearInterval(marketLiveTimer);
               marketLiveTimer = null;
             }
-        
+
             const marketType = MARKET[type] ? type : "pregame";
             state.activeMarket = marketType;
             const layer = $("#cpMobileMarketsLayer");
             const meta = MARKET[marketType];
             if (!layer) return;
-        
+
             const setText = (selector, value) => {
               const element = $(selector);
               if (element) element.textContent = value;
             };
-        
+
             setText("#cpMobileMarketsTitle", meta.label);
             setText("#cpMobileMarketIcon", meta.icon);
             setText("#cpMobileMarketHeading", `Mercados de ${meta.label.toLowerCase()}`);
-        
+
             const body = $(".cpMobileMarketsBody", layer);
             if (body && !body.dataset.defaultHtml) body.dataset.defaultHtml = body.innerHTML;
-        
+
             try {
               if (marketType === "btts") {
                 renderBttsMarket(layer);
@@ -7677,7 +7677,7 @@
               }
             } catch (error) {
               console.error("[Corner Pro Markets]", error);
-        
+
               if (body) {
                 body.innerHTML = `
                   <section class="cpMarketOpenError">
@@ -7686,11 +7686,11 @@
                   </section>`;
               }
             }
-        
+
             $$("[data-cp-market]").forEach(button => {
               button.classList.toggle("active", button.dataset.cpMarket === marketType);
             });
-        
+
             const recommended = $("#cpMobileRecommended");
             if (recommended) recommended.hidden = true;
             layer.classList.add("is-open");
@@ -7698,15 +7698,15 @@
             document.body.classList.add("cpMobileLayerOpen");
             stopAutoSlide();
           }
-        
+
           function showRecommended(lineValue) {
             const lineLabel = clean(lineValue, "MERCADO");
             const title = $("#cpMobileSelectedLine");
             if (title) title.textContent = lineLabel;
-        
+
             const recommended = $("#cpMobileRecommended");
             if (recommended) recommended.hidden = false;
-        
+
             const carousel = $("#cpMobileGameCarousel");
             if (carousel) {
               carousel.innerHTML = activeList().slice(0, 6).map((game, index) => `
@@ -7718,32 +7718,32 @@
             }
             recommended?.scrollIntoView({ behavior: "smooth", block: "nearest" });
           }
-        
+
           async function openMatch(game) {
             cprEnsureMatchCenterFavoriteStyles();
             if (!game) return;
-        
+
             state.selected = game;
-        
+
             const layer = $("#cpMobileMatchLayer");
             const content = $("#cpMobileMatchContent");
             const title = $("#cpMobileMatchTitle");
             const subtitle = $("#cpMobileMatchSubtitle");
-        
+
             if (!layer || !content) return;
-        
+
             if (state.matchPollTimer) {
               clearInterval(state.matchPollTimer);
               state.matchPollTimer = null;
             }
-        
+
             layer.classList.add("is-open");
             layer.setAttribute("aria-hidden", "false");
             document.body.classList.add("cpMobileLayerOpen");
             stopAutoSlide();
-        
+
             const raw = game.raw || {};
-        
+
             const value = (...items) => {
               for (const item of items) {
                 if (item === null || item === undefined || item === "") continue;
@@ -7752,7 +7752,7 @@
               }
               return "—";
             };
-        
+
             const resolvePhase = (stats = {}) => {
               const statusText = clean(
                 stats.status ??
@@ -7763,7 +7763,7 @@
                 game.status,
                 ""
               );
-        
+
               const normalized = statusText.toLowerCase();
               const minute = value(
                 stats.minute,
@@ -7772,7 +7772,7 @@
                 raw.match_live,
                 raw.match_minute
               );
-        
+
               const rawStatusBundle = [
                 stats.status,
                 stats.status_raw,
@@ -7784,23 +7784,23 @@
                 raw.match_minute,
                 game.status
               ].filter(Boolean).join(" ").toLowerCase();
-        
+
               const has90Plus = /(^|\D)90\+?(\D|$)/.test(rawStatusBundle);
-        
+
               const gameDate = clean(
                 raw.match_date ??
                 raw.date ??
                 raw.event_date,
                 ""
               );
-        
+
               const gameTime = clean(
                 raw.match_time ??
                 raw.time ??
                 game.time,
                 ""
               );
-        
+
               let elapsedFromKickoff = null;
               if (gameDate && /^\d{1,2}:\d{2}/.test(gameTime)) {
                 const kickoff = new Date(`${gameDate}T${gameTime.slice(0,5)}:00-04:00`);
@@ -7808,24 +7808,24 @@
                   elapsedFromKickoff = Math.floor((Date.now() - kickoff.getTime()) / 60000);
                 }
               }
-        
+
               const finishedByClock =
                 Number.isFinite(elapsedFromKickoff) &&
                 (
                   (has90Plus && elapsedFromKickoff >= 110) ||
                   elapsedFromKickoff >= 195
                 );
-        
+
               const finished = Boolean(stats.finished) ||
                 finishedByClock ||
                 /finished|match finished|full.?time|\bft\b|encerr|finaliz|after pen|after extra|aet|ended/.test(normalized);
-        
+
               const live = !finished && (
                 Boolean(stats.live) ||
                 /live|ao vivo|andamento|1st half|2nd half|half.?time|interval|in play|playing/.test(normalized) ||
                 (minute !== "—" && Number(minute) > 0)
               );
-        
+
               return {
                 statusText: statusText || (finished ? "Finished" : live ? "Live" : "Not Started"),
                 finished,
@@ -7833,12 +7833,12 @@
                 minute
               };
             };
-        
+
             const teamColor = (teamName, side = "home") => {
               const name = String(teamName || "").toLowerCase()
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "");
-        
+
               const known = [
                 { keys: ["hacken", "bk hacken"], colors: ["#d5a928", "#111318"] },
                 { keys: ["kalmar"], colors: ["#1769d2", "#de3340"] },
@@ -7862,10 +7862,10 @@
                 { keys: ["flamengo"], colors: ["#d42832", "#111318"] },
                 { keys: ["corinthians"], colors: ["#e8e8e8", "#16191d"] }
               ];
-        
+
               const found = known.find(item => item.keys.some(key => name.includes(key)));
               if (found) return found.colors[side === "home" ? 0 : 1];
-        
+
               const palettes = [
                 ["#2e75c7", "#d8424d"],
                 ["#15876f", "#bd8538"],
@@ -7874,16 +7874,16 @@
                 ["#4065a8", "#b17b32"],
                 ["#28775d", "#a94455"]
               ];
-        
+
               let hash = 0;
               for (const char of name) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
               const palette = palettes[Math.abs(hash) % palettes.length];
               return palette[side === "home" ? 0 : 1];
             };
-        
+
             const render = (stats = {}) => {
               const phase = resolvePhase(stats);
-        
+
               if (title) {
                 title.textContent = phase.finished
                   ? "ESTATÍSTICAS FINAIS"
@@ -7891,7 +7891,7 @@
                     ? "MATCH CENTER AO VIVO"
                     : "ANÁLISE PRÉ-JOGO";
               }
-        
+
               if (subtitle) {
                 subtitle.textContent = phase.finished
                   ? "Resultado, cartões, escanteios, chutes e números completos"
@@ -7899,7 +7899,7 @@
                     ? "Placar, eventos e estatísticas atualizadas"
                     : "Projeções, histórico e dados antes da partida";
               }
-        
+
               const homeScore = value(
                 stats.home_score,
                 stats.score_home,
@@ -7908,7 +7908,7 @@
                 raw.home_score,
                 raw.score_home
               );
-        
+
               const awayScore = value(
                 stats.away_score,
                 stats.score_away,
@@ -7917,7 +7917,7 @@
                 raw.away_score,
                 raw.score_away
               );
-        
+
               const homeCorners = value(
                 stats.home_corners,
                 stats.corners_home,
@@ -7926,7 +7926,7 @@
                 raw.home_corners,
                 raw.corners_home
               );
-        
+
               const awayCorners = value(
                 stats.away_corners,
                 stats.corners_away,
@@ -7935,7 +7935,7 @@
                 raw.away_corners,
                 raw.corners_away
               );
-        
+
               const homeCards = value(
                 stats.home_cards,
                 stats.cards_home,
@@ -7945,7 +7945,7 @@
                 raw.home_cards,
                 raw.cards_home
               );
-        
+
               const awayCards = value(
                 stats.away_cards,
                 stats.cards_away,
@@ -7955,7 +7955,7 @@
                 raw.away_cards,
                 raw.cards_away
               );
-        
+
               const homeShots = value(
                 stats.home_shots,
                 stats.shots_home,
@@ -7964,7 +7964,7 @@
                 raw.home_shots,
                 raw.shots_home
               );
-        
+
               const awayShots = value(
                 stats.away_shots,
                 stats.shots_away,
@@ -7973,7 +7973,7 @@
                 raw.away_shots,
                 raw.shots_away
               );
-        
+
               const homeShotsTarget = value(
                 stats.home_shots_on_target,
                 stats.shots_on_target_home,
@@ -7981,7 +7981,7 @@
                 stats.statistics?.home?.shots_on_target,
                 raw.home_shots_on_target
               );
-        
+
               const awayShotsTarget = value(
                 stats.away_shots_on_target,
                 stats.shots_on_target_away,
@@ -7989,7 +7989,7 @@
                 stats.statistics?.away?.shots_on_target,
                 raw.away_shots_on_target
               );
-        
+
               const homePossession = value(
                 stats.home_possession,
                 stats.possession_home,
@@ -7997,7 +7997,7 @@
                 stats.statistics?.home?.possession,
                 raw.home_possession
               );
-        
+
               const awayPossession = value(
                 stats.away_possession,
                 stats.possession_away,
@@ -8005,21 +8005,21 @@
                 stats.statistics?.away?.possession,
                 raw.away_possession
               );
-        
+
               const homeAttacks = value(
                 stats.home_dangerous_attacks,
                 stats.dangerous_attacks?.home,
                 stats.home_attacks,
                 stats.attacks?.home
               );
-        
+
               const awayAttacks = value(
                 stats.away_dangerous_attacks,
                 stats.dangerous_attacks?.away,
                 stats.away_attacks,
                 stats.attacks?.away
               );
-        
+
               const phaseStatus = clean(
                 stats.status ??
                 stats.status_raw ??
@@ -8029,7 +8029,7 @@
                 "",
                 ""
               ).toLowerCase();
-        
+
               const phaseMinuteRaw = clean(
                 stats.minute ??
                 stats.match_minute ??
@@ -8040,7 +8040,7 @@
                 "",
                 ""
               ).toLowerCase();
-        
+
               const isHalftime =
                 /(^|\s)(ht|half.?time|halftime|intervalo|interval|break)(\s|$)/.test(
                   phaseStatus
@@ -8048,7 +8048,7 @@
                 /^(ht|half.?time|halftime|intervalo|interval|break)$/.test(
                   phaseMinuteRaw
                 );
-        
+
               const minuteLabel = phase.finished
                 ? "ENCERRADO"
                 : isHalftime
@@ -8056,12 +8056,12 @@
                   : phase.live
                     ? `${phase.minute !== "—" ? phase.minute + "'" : "AO VIVO"}`
                     : escapeHtml(game.time);
-        
+
               const settlementGame = settlementMergeGame(game, stats);
               const selectedMarket = game.selectedMarket || "";
               const selectedLine = game.selectedLine || game.line || "";
               const selectedSide = game.selectedSide || "";
-        
+
               const settlementResult =
                 phase.finished && selectedMarket
                   ? settlementCalculate(
@@ -8071,18 +8071,18 @@
                       selectedSide
                     )
                   : null;
-        
+
               const settlementHeroBadge = settlementBadgeHtml(settlementResult);
-        
+
               const homeName = stats.home || game.home;
               const awayName = stats.away || game.away;
               const homeColor = teamColor(homeName, "home");
               const awayColor = teamColor(awayName, "away");
-        
+
               content.style.setProperty("--mc-home", homeColor);
               content.style.setProperty("--mc-away", awayColor);
               content.dataset.phase = phase.finished ? "finished" : phase.live ? "live" : "pregame";
-        
+
               content.innerHTML = `
                 <section class="cpV8MatchHero">
                   <time>${minuteLabel}</time>
@@ -8101,13 +8101,13 @@
                   <b>${escapeHtml(phase.statusText.toUpperCase())}</b>
                   ${settlementHeroBadge ? `<div class="cpMatchSettlement">${settlementHeroBadge}</div>` : ""}
                 </section>
-        
+
                 <section class="cpV8MatchTabs">
                   <button class="${!phase.live && !phase.finished ? "active" : ""}" type="button">ANTES</button>
                   <button class="${phase.live ? "active" : ""}" type="button">AO VIVO</button>
                   <button class="${phase.finished ? "active" : ""}" type="button">DEPOIS</button>
                 </section>
-        
+
                 <section class="cpV8MatchStats">
                   <div data-stat="corners">
                     <span class="cpV8StatIcon">⚑</span><small>ESCANTEIOS</small>
@@ -8140,7 +8140,7 @@
                     <em><span>${escapeHtml(homeName)}</span><span>${escapeHtml(awayName)}</span></em>
                   </div>
                 </section>
-        
+
                 <section class="cpV8MatchRead">
                   <h3>${phase.finished ? "RESUMO DA PARTIDA" : phase.live ? "LEITURA AO VIVO" : "LEITURA PRÉ-JOGO"}</h3>
                   <p>${
@@ -8151,12 +8151,12 @@
                         : "A partida ainda não começou. Assim que iniciar, o Match Center mudará para AO VIVO."
                   }</p>
                 </section>`;
-        
+
               return phase;
             };
-        
+
             render(raw);
-        
+
             const matchId = clean(
               raw.match_id ??
               raw.fixture_id ??
@@ -8166,41 +8166,41 @@
               game.id,
               ""
             );
-        
+
             if (!matchId) return;
-        
+
             const fetchMatchCenter = async () => {
               try {
                 const response = await getJson(
                   `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&_=${Date.now()}`,
                   16000
                 );
-        
+
                 const stats =
                   response?.data ??
                   response?.result ??
                   response?.match ??
                   response?.game ??
                   response;
-        
+
                 if (!stats || typeof stats !== "object" || stats.error) return null;
-        
+
                 const phase = render(stats);
-        
+
                 if (phase.finished && state.matchPollTimer) {
                   clearInterval(state.matchPollTimer);
                   state.matchPollTimer = null;
                 }
-        
+
                 return phase;
               } catch (error) {
                 console.warn("[Corner Pro Match Center] Falha ao atualizar:", error);
                 return null;
               }
             };
-        
+
             const firstPhase = await fetchMatchCenter();
-        
+
             if (!firstPhase?.finished) {
               state.matchPollTimer = setInterval(async () => {
                 if (!layer.classList.contains("is-open")) {
@@ -8212,7 +8212,7 @@
               }, 25000);
             }
           }
-        
+
           function closeLayer(layer) {
             if (layer?.id === "cpMobileMatchLayer" && state.matchPollTimer) {
               clearInterval(state.matchPollTimer);
@@ -8226,7 +8226,7 @@
               restartAutoSlide();
             }
           }
-        
+
           function paintDate() {
             const [, month, day] = state.date.split("-");
             const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -8235,45 +8235,45 @@
             if (monthEl) monthEl.textContent = months[Number(month) - 1] || "DATA";
             if (dayEl) dayEl.textContent = day || "--";
           }
-        
+
           function setupDate() {
             const button = $(".cpHomeCalendar");
             if (!button) return;
-        
+
             const months = [
               "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
               "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
             ];
-        
+
             const week = ["D", "S", "T", "Q", "Q", "S", "S"];
-        
+
             const pad = value => String(value).padStart(2, "0");
-        
+
             const toYMD = date =>
               `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-        
+
             const parseYMD = value => {
               if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
                 return new Date();
               }
-        
+
               const [year, month, day] = value.split("-").map(Number);
               return new Date(year, month - 1, day, 12, 0, 0);
             };
-        
+
             const sameDay = (first, second) =>
               first.getFullYear() === second.getFullYear() &&
               first.getMonth() === second.getMonth() &&
               first.getDate() === second.getDate();
-        
+
             let overlay = $("#cpAppCalendarOverlay");
-        
+
             if (!overlay) {
               overlay = document.createElement("div");
               overlay.id = "cpAppCalendarOverlay";
               overlay.className = "cpAppCalendarOverlay";
               overlay.setAttribute("aria-hidden", "true");
-        
+
               overlay.innerHTML = `
                 <section class="cpAppCalendarPanel" role="dialog" aria-modal="true" aria-label="Escolher data">
                   <header class="cpAppCalendarHeader">
@@ -8284,67 +8284,67 @@
                     </div>
                     <button type="button" data-app-cal-today>HOJE</button>
                   </header>
-        
+
                   <div class="cpAppCalendarNavigation">
                     <button type="button" data-app-cal-prev aria-label="Mês anterior">‹</button>
                     <strong data-app-cal-month></strong>
                     <button type="button" data-app-cal-next aria-label="Próximo mês">›</button>
                   </div>
-        
+
                   <div class="cpAppCalendarWeek">
                     ${week.map(day => `<span>${day}</span>`).join("")}
                   </div>
-        
+
                   <div class="cpAppCalendarGrid" data-app-cal-grid></div>
-        
+
                   <footer class="cpAppCalendarFooter">
                     <span>Você pode consultar jogos passados e futuros.</span>
                     <button type="button" data-app-cal-cancel>FECHAR</button>
                   </footer>
                 </section>
               `;
-        
+
               document.body.appendChild(overlay);
             }
-        
+
             let viewDate = parseYMD(state.date);
-        
+
             const title = $("[data-app-cal-title]", overlay);
             const monthTitle = $("[data-app-cal-month]", overlay);
             const grid = $("[data-app-cal-grid]", overlay);
-        
+
             const render = () => {
               const selected = parseYMD(state.date);
               const today = new Date();
-        
+
               const year = viewDate.getFullYear();
               const month = viewDate.getMonth();
-        
+
               if (title) {
                 title.textContent = `${pad(selected.getDate())} DE ${months[selected.getMonth()]}`;
               }
-        
+
               if (monthTitle) {
                 monthTitle.textContent = `${months[month]} ${year}`;
               }
-        
+
               const firstDay = new Date(year, month, 1, 12, 0, 0);
               const start = new Date(firstDay);
               start.setDate(firstDay.getDate() - firstDay.getDay());
-        
+
               if (grid) {
                 grid.innerHTML = Array.from({ length: 42 }, (_, index) => {
                   const current = new Date(start);
                   current.setDate(start.getDate() + index);
-        
+
                   const classes = ["cpAppCalendarDay"];
-        
+
                   if (current.getMonth() !== month) classes.push("is-muted");
                   if (sameDay(current, today)) classes.push("is-today");
                   if (sameDay(current, selected)) classes.push("is-selected");
-        
+
                   const ymd = toYMD(current);
-        
+
                   return `
                     <button
                       type="button"
@@ -8358,7 +8358,7 @@
                 }).join("");
               }
             };
-        
+
             const open = () => {
               viewDate = parseYMD(state.date);
               render();
@@ -8366,28 +8366,28 @@
               overlay.setAttribute("aria-hidden", "false");
               document.body.classList.add("cpAppCalendarOpen");
             };
-        
+
             const close = () => {
               overlay.classList.remove("is-open");
               overlay.setAttribute("aria-hidden", "true");
               document.body.classList.remove("cpAppCalendarOpen");
             };
-        
+
             const selectDate = async ymd => {
               if (!ymd || ymd === state.date) {
                 close();
                 return;
               }
-        
+
               state.date = ymd;
-        
+
               const hidden = $("#date");
               if (hidden) hidden.value = state.date;
-        
+
               paintDate();
               close();
               stopAutoSlide();
-        
+
               try {
                 await loadData();
               } catch (error) {
@@ -8398,39 +8398,39 @@
                 );
               }
             };
-        
+
             paintDate();
-        
+
             button.setAttribute("type", "button");
             button.setAttribute("aria-label", "Abrir calendário de jogos");
-        
+
             button.addEventListener("click", event => {
               event.preventDefault();
               event.stopPropagation();
               open();
             });
-        
+
             overlay.addEventListener("click", event => {
               const closeButton = event.target.closest(
                 "[data-app-cal-close], [data-app-cal-cancel]"
               );
-        
+
               if (closeButton) {
                 event.preventDefault();
                 close();
                 return;
               }
-        
+
               const todayButton = event.target.closest("[data-app-cal-today]");
-        
+
               if (todayButton) {
                 event.preventDefault();
                 selectDate(todayManaus());
                 return;
               }
-        
+
               const previousButton = event.target.closest("[data-app-cal-prev]");
-        
+
               if (previousButton) {
                 event.preventDefault();
                 viewDate = new Date(
@@ -8444,9 +8444,9 @@
                 render();
                 return;
               }
-        
+
               const nextButton = event.target.closest("[data-app-cal-next]");
-        
+
               if (nextButton) {
                 event.preventDefault();
                 viewDate = new Date(
@@ -8460,27 +8460,27 @@
                 render();
                 return;
               }
-        
+
               const dayButton = event.target.closest("[data-app-cal-day]");
-        
+
               if (dayButton) {
                 event.preventDefault();
                 selectDate(dayButton.dataset.appCalDay);
                 return;
               }
-        
+
               if (event.target === overlay) {
                 close();
               }
             });
-        
+
             document.addEventListener("keydown", event => {
               if (event.key === "Escape" && overlay.classList.contains("is-open")) {
                 close();
               }
             });
           }
-        
+
           function bind() {
             document.addEventListener("click", event => {
               const dot = event.target.closest("[data-cp-home-dot]");
@@ -8495,23 +8495,23 @@
                 }
                 return;
               }
-        
+
               const matchFavorite = event.target.closest("[data-cpr-match-fav]");
               if (matchFavorite) {
                 event.preventDefault();
                 event.stopPropagation();
-      
+
                 const teamName = String(matchFavorite.dataset.cprMatchTeam || "").trim();
                 if (!teamName) return;
-      
+
                 const active = cprToggleFavorite(teamName);
-      
+
                 document.querySelectorAll("[data-cpr-match-fav]").forEach(button => {
                   if (
                     cprNormalizeTeamKey(button.dataset.cprMatchTeam) !==
                     cprNormalizeTeamKey(teamName)
                   ) return;
-      
+
                   button.classList.toggle("is-active", active);
                   button.textContent = active ? "★" : "☆";
                   button.setAttribute("aria-pressed", active ? "true" : "false");
@@ -8525,60 +8525,60 @@
                     ? `Remover ${teamName} dos favoritos`
                     : `Favoritar ${teamName}`;
                 });
-      
+
                 loadOfficialCornerTop1(state.date, Date.now(), { fresh: true }).catch(() => {});
                 return;
               }
-      
+
               const cprFavorite = event.target.closest("[data-cpr-fav]");
               if (cprFavorite) {
                 event.preventDefault();
                 event.stopPropagation();
-      
+
                 const best = activeList()[0];
                 if (!best) return;
-      
+
                 const side = cprFavorite.dataset.cprFav;
                 const teamName = side === "away" ? best.away : best.home;
                 const active = cprToggleFavorite(teamName);
-      
+
                 cprFavorite.classList.toggle("is-active", active);
                 cprFavorite.textContent = active ? "★" : "☆";
                 cprFavorite.setAttribute("aria-pressed", active ? "true" : "false");
                 cprFavorite.title = active
                   ? `Remover ${teamName} dos favoritos`
                   : `Favoritar ${teamName}`;
-      
+
                 loadOfficialCornerTop1(state.date, Date.now(), { fresh: true }).catch(() => {});
                 return;
               }
-      
+
               const homeMarket = event.target.closest("[data-home-market]");
               if (homeMarket) {
                 event.preventDefault();
-        
+
                 const marketType = homeMarket.dataset.homeMarket;
-        
+
                 if (["handicap","btts","goals","corners","cards"].includes(marketType)) {
                   openMarkets(marketType);
                 }
                 return;
               }
-        
+
               const marketKind = event.target.closest("[data-cp-market]");
               if (marketKind) {
                 event.preventDefault();
                 openMarkets(marketKind.dataset.cpMarket);
                 return;
               }
-        
+
               const lineButton = event.target.closest("[data-v9-line], [data-v8-line]");
               if (lineButton) {
                 event.preventDefault();
                 showRecommended(lineButton.dataset.v9Line || lineButton.dataset.v8Line);
                 return;
               }
-        
+
               const analysisLine = event.target.closest("[data-analysis-line]");
               if (analysisLine) {
                 event.preventDefault();
@@ -8589,14 +8589,14 @@
                 );
                 return;
               }
-        
+
               const handicapLine = event.target.closest("[data-handicap-line]");
               if (handicapLine) {
                 event.preventDefault();
                 renderHandicapMarket($("#cpMobileMarketsLayer"), handicapLine.dataset.handicapLine);
                 return;
               }
-        
+
               const handicapSide = event.target.closest("[data-handicap-side]");
               if (handicapSide) {
                 event.preventDefault();
@@ -8608,23 +8608,23 @@
                 });
                 return;
               }
-        
+
               const bttsTab = event.target.closest("[data-btts-tab]");
               if (bttsTab) {
                 event.preventDefault();
-      
+
                 const marketBody = bttsTab.closest(".cpMobileMarketsBody") || document;
                 $$(".cpBttsTabs button", marketBody).forEach(button =>
                   button.classList.toggle("active", button === bttsTab)
                 );
-      
+
                 const mode = bttsTab.dataset.bttsTab;
                 const cards = $$(".cpBttsOpportunity", marketBody);
-      
+
                 cards.forEach(card => {
                   const choice = card.dataset.bttsChoice;
                   const hasAiPick = card.dataset.bttsAi === "1";
-      
+
                   card.hidden =
                     mode === "ai"
                       ? !hasAiPick
@@ -8634,43 +8634,43 @@
                           ? choice !== "não"
                           : false;
                 });
-      
+
                 const empty = $(".cpBttsFilterEmpty", marketBody);
                 if (empty) empty.hidden = cards.some(card => !card.hidden);
-      
+
                 return;
               }
-      
+
               const gameButton = event.target.closest("[data-v9-game], [data-v8-game]");
               if (gameButton) {
                 event.preventDefault();
-        
+
                 const index = Number(
                   gameButton.dataset.v9Game ??
                   gameButton.dataset.v8Game
                 );
-        
+
                 const selectedMarket =
                   gameButton.dataset.settlementMarket ||
                   state.activeMarket;
-        
+
                 const selectedLine =
                   gameButton.dataset.settlementLine ||
                   "";
-        
+
                 const selectedSide =
                   gameButton.dataset.settlementSide ||
                   "";
-        
+
                 const source =
                   state[selectedMarket] ||
                   (selectedMarket === "btts" ? state.btts : null) ||
                   activeList();
-        
+
                 const selectedGame =
                   source?.[index] ||
                   activeList()[index];
-        
+
                 if (selectedGame) {
                   openMatch({
                     ...selectedGame,
@@ -8680,23 +8680,23 @@
                     selectedSide
                   });
                 }
-        
+
                 return;
               }
-        
+
               if (event.target.closest("#cpHomeBestOpen") || event.target.closest("#cpHomeMatchOpen")) {
                 event.preventDefault();
                 openMatch(activeList()[0]);
                 return;
               }
-        
+
               const closeButton = event.target.closest("[data-cp-close]");
               if (closeButton) {
                 event.preventDefault();
                 closeLayer(closeButton.closest(".cpMobileLayer"));
               }
             }, true);
-        
+
             const card = $("#cpHomeBest");
             card?.addEventListener("touchstart", event => {
               const touch = event.touches[0];
@@ -8704,7 +8704,7 @@
               state.touchStartY = touch.clientY;
               stopAutoSlide();
             }, { passive: true });
-        
+
             card?.addEventListener("touchend", event => {
               const touch = event.changedTouches[0];
               const dx = touch.clientX - state.touchStartX;
@@ -8712,27 +8712,27 @@
               if (Math.abs(dx) >= 42 && Math.abs(dx) > Math.abs(dy)) cycleMarket(dx < 0 ? 1 : -1);
               else restartAutoSlide();
             }, { passive: true });
-        
+
             card?.addEventListener("mouseenter", stopAutoSlide);
             card?.addEventListener("mouseleave", startAutoSlide);
             document.addEventListener("visibilitychange", () => document.hidden ? stopAutoSlide() : startAutoSlide());
             mobileMedia.addEventListener?.("change", event => event.matches ? startAutoSlide() : stopAutoSlide());
           }
-        
+
           async function start() {
             if (!mobileMedia.matches || !$("#cpMobileHome")) return;
-      
+
             // V37 — ponte entre a lógica antiga (que já possui os jogos)
             // e a Home visual nova.
             let cprBridgeAttempts = 0;
             const cprBridgeTimer = setInterval(() => {
               cprBridgeAttempts += 1;
-      
+
               if (cprHomeVisualReady || cprBridgeExistingGames() || cprBridgeAttempts >= 40) {
                 clearInterval(cprBridgeTimer);
               }
             }, 250);
-      
+
             const cprOpen = $("#cprOpen");
             if (cprOpen && !cprOpen.dataset.bound) {
               cprOpen.dataset.bound = "1";
@@ -8754,15 +8754,15 @@
               showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
             }
           }
-        
+
           if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", start, { once: true });
           } else {
             start();
           }
         })();
-        
-        
+
+
             // script.js (PRO / COMPLETO) — PRÉ-JOGO + H2H ESCANTEIOS
               // ✅ Horário AMAZONAS (America/Manaus)
               // ✅ DEDUPE forte
@@ -8778,94 +8778,94 @@
               // ✅ H2H de escanteios no card principal
               // ✅ Aba FILTROS: Ambas marcam, +1.5, +2.5, +3.5 gols e linhas de escanteios
               // ✅ Filtros separados do motor principal: não altera a tela de 2 jogos do dia em cantos
-        
+
               // ---------------- DOM ----------------
               const dateInput = document.getElementById("date");
-        
+
             // Calendário premium personalizado — Corners Radar
             (function setupCustomDatePicker(){
               if (!dateInput) return;
-        
+
               const wrap = document.getElementById("datePickerWrap");
               const picker = document.getElementById("customDatePicker");
               const icon = document.getElementById("datePickerIcon");
-        
+
               if (!wrap || !picker) return;
-        
+
               const MONTHS = [
                 "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
                 "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
               ];
-        
+
               const WEEK = ["D", "S", "T", "Q", "Q", "S", "S"];
               let closeTimer = null;
-        
+
               function pad(n){
                 return String(n).padStart(2, "0");
               }
-        
+
               function toYMD(date){
                 return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
               }
-        
+
               function parseYMD(value){
                 if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
                 const [y, m, d] = value.split("-").map(Number);
                 return new Date(y, m - 1, d, 12, 0, 0);
               }
-        
+
               function sameDay(a, b){
                 return a.getFullYear() === b.getFullYear()
                   && a.getMonth() === b.getMonth()
                   && a.getDate() === b.getDate();
               }
-        
+
               function clearCloseTimer(){
                 if (closeTimer){
                   clearTimeout(closeTimer);
                   closeTimer = null;
                 }
               }
-        
+
               let viewDate = parseYMD(dateInput.value || toYMD(new Date()));
-        
+
               function renderCalendar(){
                 const selected = parseYMD(dateInput.value || toYMD(new Date()));
                 const today = new Date();
-        
+
                 const year = viewDate.getFullYear();
                 const month = viewDate.getMonth();
-        
+
                 const first = new Date(year, month, 1, 12, 0, 0);
                 const start = new Date(first);
                 start.setDate(first.getDate() - first.getDay());
-        
+
                 let html = `
                   <div class="customDateHeader">
                     <button class="customDateNav" type="button" data-cal-prev aria-label="Mês anterior">‹</button>
                     <div class="customDateTitle">${MONTHS[month]} ${year}</div>
                     <button class="customDateNav" type="button" data-cal-next aria-label="Próximo mês">›</button>
                   </div>
-        
+
                   <div class="customDateWeek">
                     ${WEEK.map(d => `<span>${d}</span>`).join("")}
                   </div>
-        
+
                   <div class="customDateGrid">
                 `;
-        
+
                 for (let i = 0; i < 42; i++){
                   const day = new Date(start);
                   day.setDate(start.getDate() + i);
-        
+
                   const classes = ["customDateDay"];
                   if (day.getMonth() !== month) classes.push("is-muted");
                   if (sameDay(day, today)) classes.push("is-today");
                   if (sameDay(day, selected)) classes.push("is-selected");
-        
+
                   html += `<button class="${classes.join(" ")}" type="button" data-cal-day="${toYMD(day)}">${day.getDate()}</button>`;
                 }
-        
+
                 html += `
                   </div>
                   <div class="customDateFooter">
@@ -8873,66 +8873,66 @@
                     <button type="button" data-cal-close>FECHAR</button>
                   </div>
                 `;
-        
+
                 picker.innerHTML = html;
                 picker.setAttribute("aria-hidden", "false");
               }
-        
+
               function openCalendar(syncWithSelectedDate = false){
                 clearCloseTimer();
-        
+
                 const alreadyOpen = wrap.classList.contains("is-open");
-        
+
                 if (syncWithSelectedDate || !alreadyOpen){
                   viewDate = parseYMD(dateInput.value || toYMD(new Date()));
                 }
-        
+
                 renderCalendar();
                 wrap.classList.add("is-open");
                 picker.setAttribute("aria-hidden", "false");
               }
-        
+
               function closeCalendar(){
                 clearCloseTimer();
                 wrap.classList.remove("is-open");
                 picker.setAttribute("aria-hidden", "true");
               }
-        
+
               function scheduleCloseCalendar(){
                 clearCloseTimer();
                 closeTimer = setTimeout(() => {
                   closeCalendar();
                 }, 180);
               }
-        
+
               function toggleCalendar(){
                 if (wrap.classList.contains("is-open")) closeCalendar();
                 else openCalendar(true);
               }
-        
+
               function chooseDate(ymd){
                 dateInput.value = ymd;
                 dateInput.dispatchEvent(new Event("input", { bubbles:true }));
                 dateInput.dispatchEvent(new Event("change", { bubbles:true }));
                 closeCalendar();
               }
-        
+
               wrap.addEventListener("mouseenter", () => {
                 openCalendar(false);
               });
-        
+
               wrap.addEventListener("mouseleave", () => {
                 scheduleCloseCalendar();
               });
-        
+
               picker.addEventListener("mouseenter", clearCloseTimer);
-        
+
               dateInput.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 openCalendar(true);
               });
-        
+
               if (icon){
                 icon.addEventListener("click", (event) => {
                   event.preventDefault();
@@ -8940,48 +8940,48 @@
                   toggleCalendar();
                 });
               }
-        
+
               picker.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-        
+
                 const prev = event.target.closest("[data-cal-prev]");
                 const next = event.target.closest("[data-cal-next]");
                 const day = event.target.closest("[data-cal-day]");
                 const todayBtn = event.target.closest("[data-cal-today]");
                 const closeBtn = event.target.closest("[data-cal-close]");
-        
+
                 if (prev){
                   viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
                   renderCalendar();
                   return;
                 }
-        
+
                 if (next){
                   viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
                   renderCalendar();
                   return;
                 }
-        
+
                 if (day){
                   chooseDate(day.dataset.calDay);
                   return;
                 }
-        
+
                 if (todayBtn){
                   chooseDate(toYMD(new Date()));
                   return;
                 }
-        
+
                 if (closeBtn){
                   closeCalendar();
                 }
               });
-        
+
               document.addEventListener("click", (event) => {
                 if (!wrap.contains(event.target)) closeCalendar();
               });
-        
+
               document.addEventListener("keydown", (event) => {
                 if (event.key === "Escape") closeCalendar();
               });
@@ -8989,24 +8989,24 @@
               const btn = document.getElementById("btn");
               const top1El = document.getElementById("top1");
               const countTop = document.getElementById("countTop");
-        
+
               // Templates
               const tplTop = document.getElementById("tplTopCard");
               const tplOther = document.getElementById("tplOtherCard");
-        
+
               // ---- FILTROS / MERCADOS (NÃO ALTERA O MOTOR DOS 2 JOGOS DO DIA) ----
               let currentView = "filters"; // pregame | filters
               let lastRawGames = [];
               let lastDateYMD = "";
               let activeMarketFilter = "all";
               let filterSortMode = "market";
-        
+
               // Cache separado para a aba FILTROS.
               // Assim os mercados de gols não dependem da lista já filtrada pelo motor de escanteios.
               let lastMarketGames = [];
               let lastMarketDateYMD = "";
               let loadingMarkets = false;
-        
+
               // ---- IA Box (LEFTBAR) ----
               const iaBox = document.getElementById("iaBox");
               const iaStatus = document.getElementById("iaStatus");
@@ -9016,21 +9016,21 @@
               const iaConf = document.getElementById("iaConf");
               const iaWhy = document.getElementById("iaWhy");
               const iaRisk = document.getElementById("iaRisk");
-        
+
               // ---- TOP Loading Bar ----
               const panelTitle = document.querySelector(".panel-title");
-        
+
               // ---------------- CONFIG (PRÉ-JOGO) ----------------
               // ✅ CONTROLE DE CARDS NO TOPO
               // Segunda a sexta: 2 cards em horários distintos
               // Sábado e domingo: 3 cards com os melhores jogos, em ordem de horário
               const TOP_WEEKDAY_COUNT = 2;
               const TOP_WEEKEND_COUNT = 3;
-        
+
               // ✅ distância mínima entre os dois jogos de segunda a sexta
               // 120 = evita jogos muito colados, tipo 15:00 e 15:30
               const WEEKDAY_MIN_TIME_GAP_MINUTES = 120;
-        
+
               // =========================================================
               // ORDENACAO DOS DESTAQUES
               // "strength" = maior forca de cantos primeiro, sem considerar horario.
@@ -9041,11 +9041,11 @@
               let cornerGamesOrderMode = localStorage.getItem(CORNER_ORDER_STORAGE_KEY) === "time"
                 ? "time"
                 : "strength";
-        
+
               function getCornerOrderMode(){
                 return cornerGamesOrderMode;
               }
-        
+
               function setCornerOrderMode(mode){
                 cornerGamesOrderMode = mode === "time" ? "time" : "strength";
                 localStorage.setItem(CORNER_ORDER_STORAGE_KEY, cornerGamesOrderMode);
@@ -9055,11 +9055,11 @@
                   button.setAttribute("aria-pressed", active ? "true" : "false");
                 });
               }
-        
+
               function dailyLockKey(dateYMD){
                 return `${DAILY_LOCK_STORAGE_PREFIX}${dateYMD || todayAM_YMD()}`;
               }
-        
+
               function readLockedGames(dateYMD){
                 try {
                   const raw = localStorage.getItem(dailyLockKey(dateYMD));
@@ -9069,7 +9069,7 @@
                   return [];
                 }
               }
-        
+
               function writeLockedGames(dateYMD, games){
                 try {
                   localStorage.setItem(dailyLockKey(dateYMD), JSON.stringify({
@@ -9081,14 +9081,14 @@
                   console.warn("Nao foi possivel congelar os destaques do dia.", error);
                 }
               }
-        
+
               function orderGamesForSelectedFilter(list, dateYMD){
                 const safe = dedupeList(Array.isArray(list) ? list : []);
                 return getCornerOrderMode() === "time"
                   ? sortGamesByAmazonasTime(safe, dateYMD)
                   : sortByTop1AI(safe);
               }
-        
+
               function isWeekendDateYMD(dateYMD){
                 if (!dateYMD || !/^\d{4}-\d{2}-\d{2}$/.test(dateYMD)) return false;
                 const [y, m, d] = dateYMD.split("-").map(Number);
@@ -9096,35 +9096,35 @@
                 const day = dt.getDay(); // 0 = domingo, 6 = sábado
                 return day === 0 || day === 6;
               }
-        
+
               function getTopTargetCount(dateYMD){
                 return isWeekendDateYMD(dateYMD) ? TOP_WEEKEND_COUNT : TOP_WEEKDAY_COUNT;
               }
-        
+
               const TOP6_MIN_PROB_FULL = 66;
               const TOP6_MIN_PROB_SEMI = 68;
               const TOP6_MIN_PROJ_SEMI = 10.6;
-        
+
               const REQUIRE_GOOD_ODDS_ON_SEMI = false;
               const ODDS_MIN = 1.40;
               const ODDS_MAX = 1.85;
               const HIDE_NON_FULL_FROM_OTHERS = false;
-        
+
               const TOP_GROUP_MAX_POSITION = 5;
               const BLOCK_TOP5_DIRECT_CLASH = true;
-        
+
               // Top 5 só entra quando o jogo realmente apresenta qualidade para a linha de 10.5 escanteios.
               const TOP5_MIN_CORNER_PROJECTION = 10.5;
               const TOP5_MIN_CORNER_PROBABILITY = 70;
               const TOP5_BLOCK_CENTRAL_PROFILE = true;
-        
+
               const SIDE_MAX_CARDS = 3;
               const LOADING_MIN_MS = 900;
-        
+
               // ---------------- FAVORITOS (VISUAL) ----------------
               const FAVORITOS = []; // Brasil desativado: server focado em clubes europeus
               const FAVORITOS_CASA_APENAS = ["LASK", "Hoffenheim", "TSG Hoffenheim"];
-        
+
               function normTeamName(s){
                 return String(s || "")
                   .toLowerCase()
@@ -9134,7 +9134,7 @@
                   .replace(/\s+/g, " ")
                   .trim();
               }
-        
+
               // ---------------- CORES POR TIME (SEM ESCUDO) ----------------
               // Aplica identidade visual automática no nome do clube.
               // Para adicionar mais clubes, basta incluir novas palavras-chave em TEAM_COLOR_RULES.
@@ -9146,16 +9146,16 @@
                   .replaceAll('"', "&quot;")
                   .replaceAll("'", "&#039;");
               }
-        
+
               function escapeAttrLite(value){
                 return escapeHtmlLite(value);
               }
-        
+
               const TEAM_COLOR_RULES = [
                 // =========================
                 // EUROPA — TOP 5 / PRINCIPAIS
                 // =========================
-        
+
                 // ESPANHA / LA LIGA
                 { cls:"team-brand-barcelona", keys:["barcelona", "fc barcelona"] },
                 { cls:"team-brand-real-madrid", keys:["real madrid", "real madrio"] },
@@ -9173,7 +9173,7 @@
                 { cls:"team-brand-getafe", keys:["getafe"] },
                 { cls:"team-brand-mallorca", keys:["mallorca"] },
                 { cls:"team-brand-rayo", keys:["rayo", "rayo vallecano"] },
-        
+
                 // INGLATERRA / PREMIER LEAGUE + CHAMPIONSHIP
                 { cls:"team-brand-man-city", keys:["manchester city", "man city"] },
                 { cls:"team-brand-man-united", keys:["manchester united", "man united", "man utd"] },
@@ -9196,7 +9196,7 @@
                 { cls:"team-brand-sunderland", keys:["sunderland"] },
                 { cls:"team-brand-middlesbrough", keys:["middlesbrough"] },
                 { cls:"team-brand-sheffield", keys:["sheffield united", "sheffield wed", "sheffield wednesday"] },
-        
+
                 // ALEMANHA / BUNDESLIGA
                 { cls:"team-brand-bayern", keys:["bayern", "bayern munich", "bayern munchen", "bayern münchen"] },
                 { cls:"team-brand-dortmund", keys:["dortmund", "borussia dortmund"] },
@@ -9213,7 +9213,7 @@
                 { cls:"team-brand-werder", keys:["werder", "werder bremen"] },
                 { cls:"team-brand-koln", keys:["koln", "köln", "fc koln", "fc köln"] },
                 { cls:"team-brand-hamburg", keys:["hamburg", "hamburger sv", "hsv"] },
-        
+
                 // ITÁLIA / SERIE A
                 { cls:"team-brand-juventus", keys:["juventus", "juve"] },
                 { cls:"team-brand-milan", keys:["ac milan", "milan"] },
@@ -9231,7 +9231,7 @@
                 { cls:"team-brand-sassuolo", keys:["sassuolo"] },
                 { cls:"team-brand-verona", keys:["verona", "hellas verona"] },
                 { cls:"team-brand-cagliari", keys:["cagliari"] },
-        
+
                 // FRANÇA / LIGUE 1
                 { cls:"team-brand-psg", keys:["psg", "paris saint germain", "paris sg"] },
                 { cls:"team-brand-marseille", keys:["marseille", "olympique marseille"] },
@@ -9245,7 +9245,7 @@
                 { cls:"team-brand-strasbourg", keys:["strasbourg"] },
                 { cls:"team-brand-toulouse", keys:["toulouse"] },
                 { cls:"team-brand-montpellier", keys:["montpellier"] },
-        
+
                 // PORTUGAL
                 { cls:"team-brand-benfica", keys:["benfica"] },
                 { cls:"team-brand-porto", keys:["porto", "fc porto"] },
@@ -9257,7 +9257,7 @@
                 { cls:"team-brand-rio-ave", keys:["rio ave"] },
                 { cls:"team-brand-casa-pia", keys:["casa pia"] },
                 { cls:"team-brand-estoril", keys:["estoril"] },
-        
+
                 // HOLANDA / PAÍSES BAIXOS
                 { cls:"team-brand-ajax", keys:["ajax"] },
                 { cls:"team-brand-psv", keys:["psv"] },
@@ -9271,7 +9271,7 @@
                 { cls:"team-brand-sparta-rotterdam", keys:["sparta rotterdam"] },
                 { cls:"team-brand-nec", keys:["nec", "nec nijmegen"] },
                 { cls:"team-brand-go-ahead", keys:["go ahead eagles", "go ahead"] },
-        
+
                 // BÉLGICA
                 { cls:"team-brand-brugge", keys:["club brugge", "brugge"] },
                 { cls:"team-brand-anderlecht", keys:["anderlecht"] },
@@ -9283,7 +9283,7 @@
                 { cls:"team-brand-mechelen", keys:["mechelen"] },
                 { cls:"team-brand-charleroi", keys:["charleroi"] },
                 { cls:"team-brand-cercle", keys:["cercle brugge"] },
-        
+
                 // ESCÓCIA
                 { cls:"team-brand-celtic", keys:["celtic"] },
                 { cls:"team-brand-rangers", keys:["rangers"] },
@@ -9292,14 +9292,14 @@
                 { cls:"team-brand-hibernian", keys:["hibernian", "hibs"] },
                 { cls:"team-brand-dundee", keys:["dundee", "dundee united"] },
                 { cls:"team-brand-motherwell", keys:["motherwell"] },
-        
+
                 // TURQUIA
                 { cls:"team-brand-galatasaray", keys:["galatasaray"] },
                 { cls:"team-brand-fenerbahce", keys:["fenerbahce", "fenerbahçe"] },
                 { cls:"team-brand-besiktas", keys:["besiktas", "beşiktaş"] },
                 { cls:"team-brand-trabzonspor", keys:["trabzonspor"] },
                 { cls:"team-brand-basaksehir", keys:["basaksehir", "başakşehir", "istanbul basaksehir"] },
-        
+
                 // NORUEGA
                 { cls:"team-brand-bodo", keys:["bodo/glimt", "bodø/glimt", "bodo glimt", "bodø glimt"] },
                 { cls:"team-brand-molde", keys:["molde"] },
@@ -9313,7 +9313,7 @@
                 { cls:"team-brand-hamkam", keys:["hamkam", "ham kam"] },
                 { cls:"team-brand-lillestrom", keys:["lillestrom", "lillestrøm"] },
                 { cls:"team-brand-odd", keys:["odd", "odds bk"] },
-        
+
                 // SUÉCIA
                 { cls:"team-brand-malmo", keys:["malmo", "malmö", "malmo ff", "malmö ff"] },
                 { cls:"team-brand-aik", keys:["aik"] },
@@ -9325,7 +9325,7 @@
                 { cls:"team-brand-norrkoping", keys:["norrkoping", "norrköping"] },
                 { cls:"team-brand-sirius", keys:["sirius"] },
                 { cls:"team-brand-kalmar", keys:["kalmar"] },
-        
+
                 // DINAMARCA
                 { cls:"team-brand-copenhagen", keys:["copenhagen", "fc copenhagen", "kobenhavn", "københavn"] },
                 { cls:"team-brand-midtjylland", keys:["midtjylland"] },
@@ -9335,7 +9335,7 @@
                 { cls:"team-brand-randers", keys:["randers"] },
                 { cls:"team-brand-aalborg", keys:["aalborg", "aab"] },
                 { cls:"team-brand-viborg", keys:["viborg"] },
-        
+
                 // FINLÂNDIA / ISLÂNDIA
                 { cls:"team-brand-hjk", keys:["hjk", "hjk helsinki"] },
                 { cls:"team-brand-kups", keys:["kups", "kuopion"] },
@@ -9346,7 +9346,7 @@
                 { cls:"team-brand-breidablik", keys:["breidablik", "breiðablik"] },
                 { cls:"team-brand-valur", keys:["valur"] },
                 { cls:"team-brand-kr", keys:["kr reykjavik", "kr"] },
-        
+
                 // ÁUSTRIA / SUÍÇA
                 { cls:"team-brand-salzburg", keys:["salzburg", "red bull salzburg", "rb salzburg"] },
                 { cls:"team-brand-rapid-wien", keys:["rapid wien", "rapid vienna"] },
@@ -9359,11 +9359,11 @@
                 { cls:"team-brand-servette", keys:["servette"] },
                 { cls:"team-brand-lugano", keys:["lugano"] }
               ];
-        
+
               function getTeamColorClass(name){
                 const n = normTeamName(name);
                 if (!n) return "team-brand-neutral";
-        
+
                 for (const rule of TEAM_COLOR_RULES){
                   if (rule.keys.some(key => {
                     const k = normTeamName(key);
@@ -9374,19 +9374,19 @@
                 }
                 return "team-brand-neutral";
               }
-        
+
               function applyTeamColor(el, name){
                 if (!el) return;
                 el.classList.add("team-colored", getTeamColorClass(name));
                 el.dataset.teamName = String(name || "");
               }
-        
+
               function teamNameHTML(name, extraClass = ""){
                 const raw = safe(name, "Time");
                 const cls = ["teamName", "team-colored", getTeamColorClass(raw), extraClass].filter(Boolean).join(" ");
                 return `<span class="${cls}" title="${escapeAttrLite(raw)}">${escapeHtmlLite(raw)}</span>`;
               }
-        
+
               function isFavoriteTeam(name){
                 const n = normTeamName(name);
                 return FAVORITOS.some(f => {
@@ -9394,7 +9394,7 @@
                   return n === ff || n.includes(ff) || ff.includes(n);
                 });
               }
-        
+
               function isHomeOnlyFavoriteTeam(name){
                 const n = normTeamName(name);
                 return FAVORITOS_CASA_APENAS.some(f => {
@@ -9402,7 +9402,7 @@
                   return n === ff || n.includes(ff) || ff.includes(n);
                 });
               }
-        
+
               function getFavoriteTeamsInMatch(j){
                 const out = [];
                 const casa = safe(j?.casa, "");
@@ -9412,129 +9412,129 @@
                 if (isHomeOnlyFavoriteTeam(casa) && !out.includes(casa)) out.push(casa);
                 return out;
               }
-        
+
               // ---------------- Utils ----------------
               function safe(v, fallback = "—"){
                 return (v === undefined || v === null || v === "") ? fallback : v;
               }
-        
+
               function clamp(n, a, b){
                 return Math.max(a, Math.min(b, n));
               }
-        
+
               function fmt(n, d = 1){
                 const x = Number(n);
                 if (!Number.isFinite(x)) return "—";
                 const p = Math.pow(10, d);
                 return (Math.round(x * p) / p).toString();
               }
-        
+
               function pct(n){
                 const x = Number(n);
                 if (!Number.isFinite(x)) return "—%";
                 return `${Math.round(x)}%`;
               }
-        
+
               function stableKey(j){
                 const mid = safe(j?.match_id, "");
                 if (mid) return `M:${mid}`;
                 return `L:${safe(j?.league_id,"")}|${safe(j?.casa,"")}|${safe(j?.fora,"")}`;
               }
-        
+
               function teamsKey(j){
                 const liga = safe(j?.league_id,"");
                 const casa = safe(j?.casa,"").toLowerCase().trim();
                 const fora = safe(j?.fora,"").toLowerCase().trim();
                 return `${liga}|${casa}|${fora}`;
               }
-        
+
               function getProb(j){
                 return Number(j?.over95_prob_adj ?? j?.over95_prob ?? 0);
               }
-        
+
               function getProj(j){
                 return Number(j?.proj_cantos ?? 0);
               }
-        
+
               function getBarPercent(j){
                 return clamp(getProb(j), 5, 95);
               }
-        
+
               function modeRank(mode){
                 if (mode === "full") return 3;
                 if (mode === "semi") return 2;
                 return 1;
               }
-        
+
               function pickPerfilLabel(perfil){
                 const p = String(perfil || "");
                 if (p === "LATERAIS_FORTES") return "LATERAIS MUITO FORTES";
                 if (p === "EQUILIBRADO") return "PERFIL EQUILIBRADO";
                 return "TENDÊNCIA POR DENTRO";
               }
-        
+
               function makeChip(text, extraClass = ""){
                 const span = document.createElement("span");
                 span.className = `chip ${extraClass}`.trim();
                 span.textContent = text;
                 const t = String(text || "").toUpperCase();
-        
+
                 if (t.includes("CUIDADO")) span.classList.add("is-cuidado");
                 if (t.includes("OK")) span.classList.add("is-ok");
                 if (t.includes("LATERAIS MUITO FORTES")) span.classList.add("is-fortes");
                 if (t.includes("PERFIL EQUILIBRADO")) span.classList.add("is-equilibrado");
                 if (t.includes("FAVORITO")) span.classList.add("is-fav");
-        
+
                 if (t.includes("RITMO ALTO") || t.includes("RITMO MÉDIO") || t.includes("RITMO MEDIO") || t.includes("RITMO BAIXO")){
                   span.classList.add("is-ritmo");
                 }
-        
+
                 if (t.includes("ATENÇÃO IA") || t.includes("ATENCAO IA") || t.includes("RISCO IA") || t.includes("ARMADILHA")){
                   span.classList.add("is-atencao");
                 }
-        
+
                 return span;
               }
-        
+
               function hasFullBase(j){
                 const src = j?.sources || {};
                 return String(j?.mode) === "full" && !!src.h2h && !!src.stats;
               }
-        
+
               function isSemi(j){
                 return String(j?.mode) === "semi";
               }
-        
+
               function hasOddsInRange(j){
                 const odd = Number(j?.odds?.fav?.odd ?? NaN);
                 if (!Number.isFinite(odd)) return false;
                 return odd >= ODDS_MIN && odd <= ODDS_MAX;
               }
-        
+
               function isCentral(j){
                 return String(j?.perfil_laterais ?? "") === "TENDENCIA_CENTRAL";
               }
-        
+
               // ---------------- ALINHAMENTO DE POSIÇÃO COM O SERVIDOR ----------------
               function getPosHome(j){
                 const n = Number(j?.pos_home);
                 return Number.isFinite(n) ? n : null;
               }
-        
+
               function getPosAway(j){
                 const n = Number(j?.pos_away);
                 return Number.isFinite(n) ? n : null;
               }
-        
+
               function isTopGroupPosition(pos){
                 return Number.isFinite(pos) && pos >= 1 && pos <= TOP_GROUP_MAX_POSITION;
               }
-        
+
               function isBlockedTop5DirectClash(j){
                 if (!BLOCK_TOP5_DIRECT_CLASH) return false;
                 return isTopGroupPosition(getPosHome(j)) && isTopGroupPosition(getPosAway(j));
               }
-        
+
               function isServerCompatibleGame(j){
                 if (!j || typeof j !== "object") return false;
                 if (j?.blocked === true || j?.is_blocked === true || j?.server_blocked === true) return false;
@@ -9542,34 +9542,34 @@
                 if (isBlockedTop5DirectClash(j)) return false;
                 return true;
               }
-        
+
               function filterServerCompatibleGames(list){
                 return (Array.isArray(list) ? list : []).filter(isServerCompatibleGame);
               }
-        
+
               function hasTop5Team(j){
                 return isTopGroupPosition(getPosHome(j)) || isTopGroupPosition(getPosAway(j));
               }
-        
+
               function top5HasEnoughCorners(j){
                 if (!hasTop5Team(j)) return true;
-        
+
                 const proj = getProj(j);
                 const prob = getProb(j);
                 const perfil = String(j?.perfil_laterais || "");
-        
+
                 if (!Number.isFinite(proj) || proj < TOP5_MIN_CORNER_PROJECTION) return false;
                 if (!Number.isFinite(prob) || prob < TOP5_MIN_CORNER_PROBABILITY) return false;
                 if (TOP5_BLOCK_CENTRAL_PROFILE && perfil === "TENDENCIA_CENTRAL") return false;
                 if (getAlertInfo(j).level === "red") return false;
-        
+
                 return true;
               }
-        
+
               function filterTop5CornerQuality(list){
                 return (Array.isArray(list) ? list : []).filter(top5HasEnoughCorners);
               }
-        
+
               // Filtro IA local: compara todos os candidatos aprovados e escolhe o melhor para o Top 1.
               // Não inventa dados; usa somente os indicadores já enviados pelo servidor.
               function top1AiScore(j){
@@ -9578,29 +9578,29 @@
                 const serverScore = Number(j?.ai_score ?? j?.local_score ?? j?.score_adj ?? j?.score ?? 0);
                 const perfil = String(j?.perfil_laterais || "");
                 const alert = getAlertInfo(j).level;
-        
+
                 let score = 0;
                 score += Number.isFinite(prob) ? prob * 1.35 : 0;
                 score += Number.isFinite(proj) ? proj * 7.5 : 0;
                 score += Number.isFinite(serverScore) ? serverScore * 0.35 : 0;
-        
+
                 if (hasFullBase(j)) score += 10;
                 else if (isSemi(j)) score -= 4;
-        
+
                 if (perfil === "LATERAIS_FORTES") score += 8;
                 if (perfil === "TENDENCIA_CENTRAL") score -= 14;
                 if (alert === "green") score += 6;
                 if (alert === "yellow") score -= 5;
                 if (alert === "red") score -= 40;
-        
+
                 if (hasTop5Team(j)) {
                   // Top 5 recebe bônus apenas depois de passar pelo filtro de alto volume.
                   score += top5HasEnoughCorners(j) ? 4 : -100;
                 }
-        
+
                 return score;
               }
-        
+
               function sortByTop1AI(list){
                 return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
                   const diff = top1AiScore(b) - top1AiScore(a);
@@ -9610,17 +9610,17 @@
                   return getProb(b) - getProb(a);
                 });
               }
-        
+
               function placeBestAiGameFirst(list, dateYMD){
                 const safeList = filterTop5CornerQuality(filterServerCompatibleGames(dedupeList(list)));
                 if (!safeList.length) return [];
-        
+
                 // No modo FORCA, todos os cards seguem a forca de cantos.
                 // O horario nao interfere nem no primeiro nem nos demais lugares.
                 // No modo HORARIO, os mesmos jogos ficam apenas em ordem cronologica.
                 return orderGamesForSelectedFilter(safeList, dateYMD);
               }
-        
+
               // ---------------- IA AUX ----------------
               function ritmoInfo(j){
                 const p = getProb(j);
@@ -9629,7 +9629,7 @@
                 if (p >= 68 || proj >= 10.8) return { text: "↗ RITMO MÉDIO", cls: "is-ritmo", level: "med" };
                 return { text: "↗ RITMO BAIXO", cls: "is-ritmo", level: "low" };
               }
-        
+
               function getAlertInfo(j){
                 const p = getProb(j);
                 const proj = getProj(j);
@@ -9637,12 +9637,12 @@
                 const full = hasFullBase(j);
                 const semi = isSemi(j);
                 const urgency = j?.knockout_second_leg_exception === true && j?.home_urgency?.active === true;
-        
+
                 // Exceção validada no servidor: volta de mata-mata com mandante obrigado a buscar resultado.
                 if (urgency && full && p >= 70 && proj >= 10.8 && perfil === "LATERAIS_FORTES"){
                   return { text: "URGÊNCIA CASA", cls: "chip-ia-safe chip-home-urgency", level: "green" };
                 }
-        
+
                 if (perfil === "TENDENCIA_CENTRAL" || (p < 67 && proj < 10.8) || (!full && !semi)){
                   return { text: "RISCO IA", cls: "is-atencao chip-ia-danger", level: "red" };
                 }
@@ -9651,7 +9651,7 @@
                 }
                 return { text: "SEGURO IA", cls: "chip-ia-safe", level: "green" };
               }
-        
+
               function isPregameStrongFull(j){
                 if (!hasFullBase(j)) return false;
                 if (!isServerCompatibleGame(j)) return false;
@@ -9660,7 +9660,7 @@
                 if (isCentral(j) && p < 74) return false;
                 return true;
               }
-        
+
               function isPregameStrongSemi(j){
                 if (!isSemi(j)) return false;
                 if (!isServerCompatibleGame(j)) return false;
@@ -9672,13 +9672,13 @@
                 if (REQUIRE_GOOD_ODDS_ON_SEMI && !hasOddsInRange(j)) return false;
                 return true;
               }
-        
+
               // ---------------- Horário AMAZONAS ----------------
               // A API já entrega o horário local da partida.
               // Portanto, não convertemos mais como UTC para evitar erro tipo 19:00 virar diferente do horário real.
               function toAmazonasParts(dateYMD, hhmm){
                 const cleanTime = String(hhmm || "").trim();
-        
+
                 if (!dateYMD || !cleanTime || !/^\d{2}:\d{2}$/.test(cleanTime)){
                   return {
                     hhmm: cleanTime || "--:--",
@@ -9687,7 +9687,7 @@
                     delta: 0
                   };
                 }
-        
+
                 return {
                   hhmm: cleanTime,
                   dateBR: String(dateYMD || "").split("-").reverse().join("/"),
@@ -9695,19 +9695,19 @@
                   delta: 0
                 };
               }
-        
+
               function timeLabelAM(dateYMD, hhmm){
                 const cleanTime = String(hhmm || "").trim();
                 if (!/^\d{2}:\d{2}$/.test(cleanTime)) return cleanTime || "--:--";
                 return cleanTime;
               }
-        
+
               function timeOnlyAM(dateYMD, hhmm){
                 const cleanTime = String(hhmm || "").trim();
                 if (!/^\d{2}:\d{2}$/.test(cleanTime)) return cleanTime || "--:--";
                 return cleanTime;
               }
-        
+
               function getMatchMinutesAM(j, dateYMD){
                 const h = timeOnlyAM(dateYMD, safe(j?.hora, ""));
                 if (!/^\d{2}:\d{2}$/.test(h)) return null;
@@ -9715,41 +9715,41 @@
                 if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
                 return hh * 60 + mm;
               }
-        
+
               function isWeekdayDateYMD(dateYMD){
                 return !isWeekendDateYMD(dateYMD);
               }
-        
+
               function sortGamesByAmazonasTime(list, dateYMD){
                 return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
                   const ma = getMatchMinutesAM(a, dateYMD);
                   const mb = getMatchMinutesAM(b, dateYMD);
-        
+
                   if (ma !== null && mb !== null && ma !== mb) return ma - mb;
                   if (ma !== null && mb === null) return -1;
                   if (ma === null && mb !== null) return 1;
-        
+
                   const s = Number(b?.ai_score ?? b?.local_score ?? b?.score_adj ?? b?.score ?? 0) -
                             Number(a?.ai_score ?? a?.local_score ?? a?.score_adj ?? a?.score ?? 0);
                   if (s !== 0) return s;
                   return getProb(b) - getProb(a);
                 });
               }
-        
+
               function canAddByTimeGap(candidate, selected, dateYMD, minGapMinutes){
                 if (!minGapMinutes || minGapMinutes <= 0) return true;
                 const m = getMatchMinutesAM(candidate, dateYMD);
                 if (m === null) return true;
-        
+
                 for (const j of selected){
                   const mj = getMatchMinutesAM(j, dateYMD);
                   if (mj === null) continue;
                   if (Math.abs(m - mj) < minGapMinutes) return false;
                 }
-        
+
                 return true;
               }
-        
+
               function addDistinctTimeCandidates({ selected, used, candidates, targetCount, dateYMD, minGapMinutes }){
                 for (const j of (Array.isArray(candidates) ? candidates : [])){
                   if (selected.length >= targetCount) break;
@@ -9760,7 +9760,7 @@
                   selected.push(j);
                 }
               }
-        
+
               function fillIfNotEnoughIgnoringGap({ selected, used, candidates, targetCount }){
                 for (const j of (Array.isArray(candidates) ? candidates : [])){
                   if (selected.length >= targetCount) break;
@@ -9770,7 +9770,7 @@
                   selected.push(j);
                 }
               }
-        
+
               // ---------------- FILTROS / MERCADOS ----------------
               const MARKET_FILTERS = [
                 { key: "all", label: "TODOS", short: "Todos" },
@@ -9782,7 +9782,7 @@
                 { key: "corners105", label: "ESCANTEIOS +10.5", short: "+10.5 C" },
                 { key: "corners115", label: "ESCANTEIOS +11.5", short: "+11.5 C" },
               ];
-        
+
               function firstFinite(...values){
                 for (const v of values){
                   const n = Number(v);
@@ -9790,24 +9790,24 @@
                 }
                 return null;
               }
-        
+
               function pctValue(v){
                 // IMPORTANTE:
                 // true/false não pode virar 100%/0%.
                 // Booleano serve só para dizer se passou no filtro.
                 // A porcentagem real deve vir de markets.prob.* ou dos campos *_prob.
                 if (typeof v === "boolean") return null;
-        
+
                 const n = Number(v);
                 if (!Number.isFinite(n)) return null;
-        
+
                 // Se vier em decimal real, tipo 0.64, converte para 64%.
                 // Se vier booleano true, já foi barrado acima.
                 if (n > 0 && n <= 1) return n * 100;
-        
+
                 return n;
               }
-        
+
               function getNested(obj, paths){
                 for (const path of paths){
                   const parts = String(path).split(".");
@@ -9820,11 +9820,11 @@
                 }
                 return null;
               }
-        
+
               function getTeamStat(j, side, names){
                 const rootNames = side === "home" ? ["home", "casa", "mandante", "team_home", "home_team"] : ["away", "fora", "visitante", "team_away", "away_team"];
                 const paths = [];
-        
+
                 rootNames.forEach(root => {
                   names.forEach(name => {
                     paths.push(`${root}.${name}`);
@@ -9833,15 +9833,15 @@
                     paths.push(`stats_${root}.${name}`);
                   });
                 });
-        
+
                 names.forEach(name => {
                   paths.push(`${side}_${name}`);
                   paths.push(`${side}${name.charAt(0).toUpperCase()}${name.slice(1)}`);
                 });
-        
+
                 return firstFinite(getNested(j, paths));
               }
-        
+
               function getMarketProbRaw(j, key){
                 const aliases = {
                   // Primeiro lê a porcentagem REAL vinda do backend: markets.prob.*
@@ -9851,7 +9851,7 @@
                   over15: ["markets.prob.over15", "over15_prob", "over_15_prob", "prob_over15", "prob_over_15", "goals.over15_prob", "markets.over15_prob", "markets.over15"],
                   over25: ["markets.prob.over25", "over25_prob", "over_25_prob", "prob_over25", "prob_over_25", "goals.over25_prob", "markets.over25_prob", "markets.over25"],
                   over35: ["markets.prob.over35", "over35_prob", "over_35_prob", "prob_over35", "prob_over_35", "goals.over35_prob", "markets.over35_prob", "markets.over35"],
-        
+
                   // Filtros de escanteios separados do pré-jogo:
                   // não usa over95_prob_adj/over95_prob do motor principal.
                   // A porcentagem de cantos dos filtros será calculada em buildCornerMarkets().
@@ -9859,66 +9859,66 @@
                   corners105: ["markets.filterProb.corners105", "markets.corners105_filter_prob", "corners105_filter_prob", "corners_105_filter_prob"],
                   corners115: ["markets.filterProb.corners115", "markets.corners115_filter_prob", "corners115_filter_prob", "corners_115_filter_prob"],
                 };
-        
+
                 const raw = getNested(j, aliases[key] || []);
                 return pctValue(raw);
               }
-        
+
               function estimateGoalMarkets(j){
                 const homeScored = getTeamStat(j, "home", ["avgGoalsScored", "avg_goals_scored", "goals_for_avg", "media_gols_marcados", "gols_marcados_media", "gf_avg"]);
                 const awayScored = getTeamStat(j, "away", ["avgGoalsScored", "avg_goals_scored", "goals_for_avg", "media_gols_marcados", "gols_marcados_media", "gf_avg"]);
                 const homeConceded = getTeamStat(j, "home", ["avgGoalsConceded", "avg_goals_conceded", "goals_against_avg", "media_gols_sofridos", "gols_sofridos_media", "ga_avg"]);
                 const awayConceded = getTeamStat(j, "away", ["avgGoalsConceded", "avg_goals_conceded", "goals_against_avg", "media_gols_sofridos", "gols_sofridos_media", "ga_avg"]);
-        
+
                 const directTotal = firstFinite(
                   j?.expected_goals_total,
                   j?.xg_total,
                   j?.total_goals_avg,
                   j?.media_gols_total
                 );
-        
+
                 const byScored =
                   (Number.isFinite(homeScored) && Number.isFinite(awayScored))
                     ? homeScored + awayScored
                     : null;
-        
+
                 const byAttackDefense =
                   (Number.isFinite(homeScored) && Number.isFinite(awayConceded) && Number.isFinite(awayScored) && Number.isFinite(homeConceded))
                     ? ((homeScored + awayConceded) / 2) + ((awayScored + homeConceded) / 2)
                     : null;
-        
+
                 // Fallback inteligente:
                 // se a API não trouxer dados de gols, estima por contexto do jogo,
                 // sem mexer na lógica principal de cantos.
                 const fallback = fallbackGoalExpectedFromCorners(j);
-        
+
                 const totalExpected = firstFinite(
                   directTotal,
                   byAttackDefense,
                   byScored,
                   fallback.totalExpected
                 );
-        
+
                 const homeExpected = firstFinite(
                   j?.home_expected_goals,
                   j?.home_xg,
                   (Number.isFinite(homeScored) && Number.isFinite(awayConceded)) ? (homeScored + awayConceded) / 2 : null,
                   fallback.homeExpected
                 );
-        
+
                 const awayExpected = firstFinite(
                   j?.away_expected_goals,
                   j?.away_xg,
                   (Number.isFinite(awayScored) && Number.isFinite(homeConceded)) ? (awayScored + homeConceded) / 2 : null,
                   fallback.awayExpected
                 );
-        
+
                 const bttsBase =
                   Number.isFinite(homeExpected) &&
                   Number.isFinite(awayExpected) &&
                   homeExpected >= 0.95 &&
                   awayExpected >= 0.85;
-        
+
                 return {
                   btts: bttsBase,
                   over15: Number.isFinite(totalExpected) ? totalExpected >= 1.85 : false,
@@ -9929,28 +9929,28 @@
                   awayExpected: Number.isFinite(awayExpected) ? awayExpected : null
                 };
               }
-        
+
               function fallbackGoalExpectedFromCorners(j){
                 const proj = getProj(j);
                 const pCorners = getProb(j);
                 const score = Number(j?.ai_score ?? j?.local_score ?? j?.score_adj ?? j?.score ?? 0);
                 const league = String(j?.liga || j?.league?.name || "").toLowerCase();
-        
+
                 let total = 2.25;
-        
+
                 // Cantos altos costumam indicar pressão/ofensividade, mas sem exagerar.
                 if (Number.isFinite(proj)){
                   total += (proj - 9.5) * 0.22;
                 }
-        
+
                 if (Number.isFinite(pCorners)){
                   total += (pCorners - 60) * 0.012;
                 }
-        
+
                 if (Number.isFinite(score)){
                   total += (score - 80) * 0.004;
                 }
-        
+
                 // Ajuste por ligas com perfil mais aberto.
                 if (
                   league.includes("eredivisie") ||
@@ -9965,7 +9965,7 @@
                 ){
                   total += 0.18;
                 }
-        
+
                 // Ligas/competições que podem ser mais travadas.
                 if (
                   league.includes("serie a") ||
@@ -9976,52 +9976,52 @@
                 ){
                   total -= 0.10;
                 }
-        
+
                 total = clamp(total, 1.4, 4.1);
-        
+
                 // Distribui expectativa de gols de forma simples.
                 const homeExpected = clamp(total * 0.53, 0.45, 2.35);
                 const awayExpected = clamp(total * 0.47, 0.35, 2.10);
-        
+
                 return {
                   totalExpected: Math.round(total * 100) / 100,
                   homeExpected: Math.round(homeExpected * 100) / 100,
                   awayExpected: Math.round(awayExpected * 100) / 100
                 };
               }
-        
+
               function probFromExpectedGoals(totalExpected, line){
                 if (!Number.isFinite(totalExpected)) return 0;
-        
+
                 // Aproximação suave, boa para filtro visual:
                 // quanto mais distante da linha, maior a probabilidade.
                 const diff = totalExpected - line;
                 const p = 50 + diff * 22;
-        
+
                 return clamp(Math.round(p), 8, 88);
               }
-        
+
               function bttsProbFromExpected(homeExpected, awayExpected){
                 if (!Number.isFinite(homeExpected) || !Number.isFinite(awayExpected)) return 0;
-        
+
                 const weaker = Math.min(homeExpected, awayExpected);
                 const stronger = Math.max(homeExpected, awayExpected);
-        
+
                 let p = 42;
                 p += (weaker - 0.75) * 30;
                 p += (stronger - 1.15) * 8;
-        
+
                 return clamp(Math.round(p), 10, 78);
               }
-        
+
               function buildGoalMarkets(j){
                 const est = estimateGoalMarkets(j);
-        
+
                 const pBttsRaw = getMarketProbRaw(j, "btts");
                 const p15Raw = getMarketProbRaw(j, "over15");
                 const p25Raw = getMarketProbRaw(j, "over25");
                 const p35Raw = getMarketProbRaw(j, "over35");
-        
+
                 // Correção:
                 // Quando o backend manda 0, false ou booleano, isso não significa leitura real.
                 // Então só aceitamos probabilidade pronta quando ela vier acima de 5%.
@@ -10029,12 +10029,12 @@
                 const fallback15 = probFromExpectedGoals(est.totalExpected, 1.5);
                 const fallback25 = probFromExpectedGoals(est.totalExpected, 2.5);
                 const fallback35 = probFromExpectedGoals(est.totalExpected, 3.5);
-        
+
                 const pBtts = Number.isFinite(pBttsRaw) && pBttsRaw > 5 ? pBttsRaw : fallbackBtts;
                 const p15 = Number.isFinite(p15Raw) && p15Raw > 5 ? p15Raw : fallback15;
                 const p25 = Number.isFinite(p25Raw) && p25Raw > 5 ? p25Raw : fallback25;
                 const p35 = Number.isFinite(p35Raw) && p35Raw > 5 ? p35Raw : fallback35;
-        
+
                 return {
                   btts: pBtts >= 48,
                   over15: p15 >= 52,
@@ -10051,7 +10051,7 @@
                   awayExpected: est.awayExpected
                 };
               }
-        
+
               function buildCornerMarkets(j){
                 // IMPORTANTE:
                 // Esta função é exclusiva da aba FILTROS.
@@ -10067,14 +10067,14 @@
                 // Assim um jogo como Levante x Osasuna pode aparecer acima de Dortmund
                 // no filtro +9.5, mesmo que Dortmund tenha projeção mais alta e seja melhor
                 // para +10.5/+11.5.
-        
+
                 const proj = getProj(j);
                 const liga = String(j?.liga || j?.league?.name || "").toLowerCase();
-        
+
                 const p95Raw = getMarketProbRaw(j, "corners95");
                 const p105Raw = getMarketProbRaw(j, "corners105");
                 const p115Raw = getMarketProbRaw(j, "corners115");
-        
+
                 const leagueBonus = (() => {
                   if (
                     liga.includes("la liga") ||
@@ -10088,7 +10088,7 @@
                     liga.includes("primeira") ||
                     liga.includes("liga portugal")
                   ) return 4;
-        
+
                   if (
                     liga.includes("cup") ||
                     liga.includes("copa") ||
@@ -10096,44 +10096,44 @@
                     liga.includes("play-off") ||
                     liga.includes("serie a")
                   ) return -3;
-        
+
                   return 0;
                 })();
-        
+
                 const scoreLineFit = (target, tolerance, baseLine) => {
                   if (!Number.isFinite(proj)) return 0;
-        
+
                   // força básica da linha
                   let score = 50 + (proj - baseLine) * 10;
-        
+
                   // bônus de encaixe na faixa ideal
                   const dist = Math.abs(proj - target);
                   score += Math.max(0, tolerance - dist) * 12;
-        
+
                   // penaliza quando o jogo está alto demais para a linha +9.5:
                   // ele pode ser melhor para +10.5/+11.5, não necessariamente para +9.5.
                   if (baseLine === 9.5 && proj > 11.2) score -= (proj - 11.2) * 22;
-        
+
                   // penaliza quando +10.5 está baixo demais ou alto demais
                   if (baseLine === 10.5 && proj < 10.7) score -= (10.7 - proj) * 18;
                   if (baseLine === 10.5 && proj > 12.0) score -= (proj - 12.0) * 10;
-        
+
                   // +11.5 precisa realmente de projeção alta
                   if (baseLine === 11.5 && proj < 11.4) score -= (11.4 - proj) * 24;
-        
+
                   score += leagueBonus;
-        
+
                   return clamp(Math.round(score), 5, 90);
                 };
-        
+
                 const calc95 = scoreLineFit(10.6, 0.8, 9.5);
                 const calc105 = scoreLineFit(11.3, 0.7, 10.5);
                 const calc115 = scoreLineFit(12.0, 0.6, 11.5);
-        
+
                 const p95 = Number.isFinite(p95Raw) && p95Raw > 5 ? p95Raw : calc95;
                 const p105 = Number.isFinite(p105Raw) && p105Raw > 5 ? p105Raw : calc105;
                 const p115 = Number.isFinite(p115Raw) && p115Raw > 5 ? p115Raw : calc115;
-        
+
                 return {
                   corners95: p95 >= 50,
                   corners105: p105 >= 50,
@@ -10145,12 +10145,12 @@
                   }
                 };
               }
-        
+
               function enrichMarkets(game){
                 const goals = buildGoalMarkets(game);
                 const corners = buildCornerMarkets(game);
                 const existing = game?.markets && typeof game.markets === "object" ? game.markets : {};
-        
+
                 return {
                   ...game,
                   markets: {
@@ -10179,11 +10179,11 @@
                   }
                 };
               }
-        
+
               function enrichMarketsList(list){
                 return (Array.isArray(list) ? list : []).map(enrichMarkets);
               }
-        
+
               // =========================================================
               // FIX — MERCADOS ESPECIAIS DE CARTÕES NA ABA FILTROS
               // Antes: os botões +2.5/+3.5 Cartões existiam, mas marketPass()
@@ -10196,27 +10196,27 @@
                 const cornerProb = Number(typeof getProb === "function" ? getProb(j) : (j?.over95_prob_adj ?? j?.over95_prob)) || 64;
                 const seedText = `${j?.casa || j?.home || ""}${j?.fora || j?.away || ""}${j?.hora || j?.time || ""}`;
                 const seed = Math.abs(String(seedText).split("").reduce((a,c)=>a+c.charCodeAt(0),0));
-        
+
                 const cardBase = clamp(
                   Math.round(52 + (proj - 9.6) * 5 + (cornerProb - 62) * 0.18 + (seed % 9)),
                   42,
                   84
                 );
-        
+
                 if (key === "cards25") return cardBase;
                 if (key === "cards35") return clamp(cardBase - 14, 25, 72);
                 if (key === "cardsTeam") return clamp(cardBase - 4, 35, 78);
                 if (key === "noCard28") return clamp(109 - cardBase, 38, 76);
                 return 0;
               }
-        
+
               function isCardMarketKey(key){
                 return ["cards25", "cards35", "cardsTeam", "noCard28"].includes(String(key || ""));
               }
-        
+
               function marketPass(j, key){
                 if (!key || key === "all") return true;
-        
+
                 if (isCardMarketKey(key)){
                   const p = cardMarketPercent(j, key);
                   if (key === "cards25") return p >= 52;
@@ -10225,12 +10225,12 @@
                   if (key === "noCard28") return p >= 55;
                   return p > 0;
                 }
-        
+
                 if (key === "last5") return true;
-        
+
                 return !!j?.markets?.[key];
               }
-        
+
               function marketPercent(j, key){
                 if (!key || key === "all"){
                   const vals = MARKET_FILTERS
@@ -10239,21 +10239,21 @@
                     .filter(Number.isFinite);
                   return vals.length ? Math.max(...vals) : 0;
                 }
-        
+
                 if (isCardMarketKey(key)) return cardMarketPercent(j, key);
                 if (key === "last5") return Number(typeof getProb === "function" ? getProb(j) : (j?.over95_prob_adj ?? j?.over95_prob ?? 65)) || 65;
-        
+
                 return Number(j?.markets?.prob?.[key] ?? 0);
               }
-        
+
               function marketIcon(value){
                 return value ? "✓" : "–";
               }
-        
+
               function marketClass(value){
                 return value ? "mkYes" : "mkNo";
               }
-        
+
               function installFilterStyles(){
                 return;
                 if (document.getElementById("marketFilterStyles")) return;
@@ -10301,19 +10301,19 @@
                   .statsModalSub{margin-top:6px;color:#94a3b8;font-size:13px;}
                   .statsError{padding:50px 20px;text-align:center;color:#fecaca;}
                   @media(max-width:900px){.matchStatsGrid,.marketResultGrid{grid-template-columns:1fr 1fr;}.btnStats{width:32px;height:32px;}}
-        
+
                   .marketEmpty{padding:22px;text-align:center;color:#cbd5e1;border:1px dashed rgba(148,163,184,.20);border-radius:16px;background:rgba(15,23,42,.35);}
                   @media (max-width:900px){.marketFiltersWrap{width:calc(100vw - 28px)}.marketTable{font-size:12px}.marketTable th:nth-child(n+5),.marketTable td:nth-child(n+5){display:none}.marketChip{padding:10px 12px}}
                 `;
                 document.head.appendChild(style);
               }
-        
-        
+
+
               function installMarketScrollFix(){
                 return;
                 const old = document.getElementById("marketScrollFixStyles");
                 if (old) old.remove();
-        
+
                 const style = document.createElement("style");
                 style.id = "marketScrollFixStyles";
                 style.textContent = `
@@ -10324,20 +10324,20 @@
                     height:100% !important;
                     overflow:hidden !important;
                   }
-        
+
                   .main{
                     height:100vh !important;
                     min-height:0 !important;
                     overflow:hidden !important;
                   }
-        
+
                   .content{
                     height:calc(100vh - var(--topbar-h, 72px)) !important;
                     min-height:0 !important;
                     overflow:hidden !important;
                     padding-bottom:10px !important;
                   }
-        
+
                   #prePanel.is-market-scroll-panel,
                   .panel.is-market-scroll-panel,
                   .panel:has(.marketFiltersWrap){
@@ -10348,7 +10348,7 @@
                     overflow:hidden !important;
                     padding:8px 12px 10px !important;
                   }
-        
+
                   #top1:has(.marketFiltersWrap),
                   .is-market-scroll-panel #top1{
                     flex:1 1 auto !important;
@@ -10360,7 +10360,7 @@
                     max-width:100% !important;
                     margin:0 auto !important;
                   }
-        
+
                   .marketFiltersWrap{
                     flex:1 1 auto !important;
                     min-height:0 !important;
@@ -10374,7 +10374,7 @@
                     width:100% !important;
                     max-width:100% !important;
                   }
-        
+
                   .marketFilterPanel{
                     flex:0 0 auto !important;
                     overflow:hidden !important;
@@ -10382,7 +10382,7 @@
                     margin:0 !important;
                     padding:10px !important;
                   }
-        
+
                   .marketTablePanel{
                     min-height:0 !important;
                     height:auto !important;
@@ -10395,7 +10395,7 @@
                     scrollbar-color:rgba(30,215,96,.70) rgba(15,23,42,.72) !important;
                     overscroll-behavior:contain !important;
                   }
-        
+
                   .marketTableTop{
                     position:sticky !important;
                     top:0 !important;
@@ -10404,63 +10404,63 @@
                     padding:4px 0 10px !important;
                     margin-bottom:8px !important;
                   }
-        
+
                   .marketTable{
                     width:100% !important;
                     table-layout:fixed !important;
                     border-collapse:separate !important;
                     border-spacing:0 8px !important;
                   }
-        
+
                   .marketTable thead th{
                     position:sticky !important;
                     top:48px !important;
                     z-index:15 !important;
                   }
-        
+
                   .marketTable tbody tr{
                     background:rgba(15,23,42,.38) !important;
                     outline:1px solid rgba(148,163,184,.10) !important;
                     border-radius:14px !important;
                   }
-        
+
                   .marketTable th,
                   .marketTable td{
                     padding:9px 8px !important;
                     line-height:1.15 !important;
                   }
-        
+
                   .marketTablePanel::-webkit-scrollbar{
                     width:9px !important;
                   }
-        
+
                   .marketTablePanel::-webkit-scrollbar-track{
                     background:rgba(15,23,42,.72) !important;
                     border-radius:999px !important;
                   }
-        
+
                   .marketTablePanel::-webkit-scrollbar-thumb{
                     background:rgba(30,215,96,.70) !important;
                     border-radius:999px !important;
                     border:2px solid rgba(15,23,42,.72) !important;
                   }
-        
+
                   .marketTablePanel::-webkit-scrollbar-thumb:hover{
                     background:rgba(30,215,96,.92) !important;
                   }
                 `;
                 document.head.appendChild(style);
               }
-        
+
               async function loadMarketGames({ date, fresh = false } = {}){
                 const dateYMD = date || dateInput?.value || todayAM_YMD();
-        
+
                 // Se já carregou a data e não é refresh, reaproveita.
                 if (!fresh && lastMarketDateYMD === dateYMD && Array.isArray(lastMarketGames) && lastMarketGames.length){
                   return lastMarketGames;
                 }
-        
-        
+
+
                 // FIX: se os jogos do dia já estão carregados na tela principal,
                 // usa esse cache imediatamente e NÃO chama /mercados nem /quentes de novo.
                 const gamesPanelCacheEl = document.querySelector(".gamesPanel");
@@ -10471,56 +10471,56 @@
                   lastMarketDateYMD = dateYMD;
                   return lastMarketGames;
                 }
-        
+
                 if (!fresh && lastDateYMD === dateYMD && Array.isArray(lastRawGames) && lastRawGames.length){
                   lastMarketGames = enrichMarketsList(filterServerCompatibleGames(lastRawGames));
                   lastMarketDateYMD = dateYMD;
                   return lastMarketGames;
                 }
-        
+
                 if (loadingMarkets) return lastMarketGames;
-        
+
                 loadingMarkets = true;
-        
+
                 try{
                   // Endpoint novo: deve trazer os jogos reais do dia sem os bloqueios pesados de escanteios.
                   // Se /mercados não existir ou vier vazio, tenta /quentes automaticamente.
                   const list = await fetchGamesFromApi(["/mercados", "/quentes"], dateYMD, fresh);
-        
+
                   lastMarketGames = enrichMarketsList(filterServerCompatibleGames(Array.isArray(list) ? list : []));
                   lastMarketDateYMD = dateYMD;
-        
+
                   return lastMarketGames;
                 } catch (err){
                   console.warn("Falha ao carregar /mercados. Usando fallback de /quentes.", err);
-        
+
                   // Fallback seguro: mantém a tela funcionando se o backend ainda não tiver /mercados.
                   lastMarketGames = enrichMarketsList(filterServerCompatibleGames(Array.isArray(lastRawGames) ? lastRawGames : []));
                   lastMarketDateYMD = dateYMD;
-        
+
                   return lastMarketGames;
                 } finally {
                   loadingMarkets = false;
                 }
               }
-        
+
               function renderMarketFilters(){
                 installFilterStyles();
                 installMarketScrollFix();
                 if (!top1El) return;
                 top1El.closest(".panel")?.classList.add("is-market-scroll-panel");
-        
+
                 const dateYMD = lastMarketDateYMD || lastDateYMD || dateInput?.value || todayAM_YMD();
-        
+
                 // A aba FILTROS usa /mercados quando disponível.
                 // Se /mercados ainda não carregou, usa fallback temporário da lista atual.
                 const baseMarketList = Array.isArray(lastMarketGames) && lastMarketGames.length
                   ? lastMarketGames
                   : lastRawGames;
-        
+
                 const games = enrichMarketsList(filterServerCompatibleGames(dedupeList(baseMarketList)));
                 let filtered = games.filter(j => marketPass(j, activeMarketFilter));
-        
+
                 filtered = filtered.sort((a, b) => {
                   if (filterSortMode === "time"){
                     const ma = getMatchMinutesAM(a, dateYMD);
@@ -10532,7 +10532,7 @@
                   if (filterSortMode === "corners") return getProj(b) - getProj(a);
                   return marketPercent(b, activeMarketFilter) - marketPercent(a, activeMarketFilter);
                 });
-        
+
                 const rows = filtered.slice(0, 40).map(j => {
                   const casa = safe(j?.casa, "Time A");
                   const fora = safe(j?.fora, "Time B");
@@ -10540,7 +10540,7 @@
                   const hora = timeOnlyAM(dateYMD, safe(j?.hora, "—"));
                   const mp = Math.round(marketPercent(j, activeMarketFilter));
                   const m = j.markets || {};
-        
+
                   return `
                     <tr>
                       <td>
@@ -10573,7 +10573,7 @@
                     </tr>
                   `;
                 }).join("");
-        
+
                 top1El.innerHTML = `
                   <div class="marketFiltersWrap">
                     <section class="marketFilterPanel">
@@ -10586,7 +10586,7 @@
                       </div>
                       <div class="marketInfo">Use os filtros para encontrar jogos por mercado. A tela principal de <b>2 jogos do dia em cantos</b> continua separada e preservada.</div>
                     </section>
-        
+
                     <section class="marketTablePanel">
                       <div class="marketTableTop">
                         <div class="marketTableTitle">JOGOS ENCONTRADOS (${filtered.length})</div>
@@ -10598,7 +10598,7 @@
                           </select>
                         </label>
                       </div>
-        
+
                       ${filtered.length ? `
                         <table class="marketTable">
                           <thead>
@@ -10623,14 +10623,14 @@
                     </section>
                   </div>
                 `;
-        
+
                 top1El.querySelectorAll("[data-market-filter]").forEach(btn => {
                   btn.addEventListener("click", () => {
                     activeMarketFilter = btn.getAttribute("data-market-filter") || "all";
                     renderMarketFilters();
                   });
                 });
-        
+
                 const clear = top1El.querySelector("[data-market-clear]");
                 if (clear){
                   clear.addEventListener("click", () => {
@@ -10638,7 +10638,7 @@
                     renderMarketFilters();
                   });
                 }
-        
+
                 const sort = top1El.querySelector("#marketSortSelect");
                 if (sort){
                   sort.addEventListener("change", () => {
@@ -10646,7 +10646,7 @@
                     renderMarketFilters();
                   });
                 }
-        
+
                 top1El.querySelectorAll(".btnStats").forEach(btn => {
                   btn.addEventListener("click", () => {
                     openMatchStats({
@@ -10656,17 +10656,17 @@
                     });
                   });
                 });
-        
+
                 if (countTop) countTop.textContent = String(filtered.length);
                 updateIaBoxFromTop([]);
               }
-        
+
               function toggleFiltersHeader(hide = false){
                 const centerTitle = document.querySelector(".center-title");
                 if (!centerTitle) return;
                 centerTitle.style.display = hide ? "none" : "";
               }
-        
+
               // ---------------- MODAL ESTATÍSTICAS DO JOGO ----------------
               function getStatsModalEls(){
                 return {
@@ -10675,17 +10675,17 @@
                   close: document.getElementById("closeStatsModal")
                 };
               }
-        
+
               function openStatsModal(){
                 const { modal } = getStatsModalEls();
                 if (modal) modal.classList.add("active");
               }
-        
+
               function closeStatsModal(){
                 const { modal } = getStatsModalEls();
                 if (modal) modal.classList.remove("active");
               }
-        
+
               function statNumber(...values){
                 for (const v of values){
                   if (v === undefined || v === null || v === "") continue;
@@ -10700,12 +10700,12 @@
                 }
                 return null;
               }
-        
+
               function statByAliases(obj, aliases = [], side = null){
                 const wanted = aliases.map(a => String(a || "").toLowerCase());
                 const sideWanted = side ? String(side).toLowerCase() : null;
                 const seen = new Set();
-        
+
                 function sideValue(item){
                   if (!sideWanted || !item || typeof item !== "object") return null;
                   const v = sideWanted === "home"
@@ -10713,12 +10713,12 @@
                     : (item.away ?? item.away_value ?? item.awayteam ?? item.match_awayteam ?? item.awayTeam);
                   return statNumber(v);
                 }
-        
+
                 function walk(node){
                   if (!node || typeof node !== "object") return null;
                   if (seen.has(node)) return null;
                   seen.add(node);
-        
+
                   if (Array.isArray(node)){
                     for (const item of node){
                       if (item && typeof item === "object"){
@@ -10735,67 +10735,67 @@
                     }
                     return null;
                   }
-        
+
                   for (const [key, value] of Object.entries(node)){
                     const k = String(key).toLowerCase();
                     const keyMatches = wanted.some(a => k.includes(a));
                     const sideMatches = !sideWanted || k.includes(sideWanted) || k.includes(sideWanted === "home" ? "casa" : "fora") || k.includes(sideWanted === "home" ? "mandante" : "visitante");
-        
+
                     if (keyMatches && sideMatches){
                       const n = statNumber(value);
                       if (Number.isFinite(n)) return n;
                     }
-        
+
                     const r = walk(value);
                     if (Number.isFinite(r)) return r;
                   }
-        
+
                   return null;
                 }
-        
+
                 return walk(obj);
               }
-        
+
               function statText(v, fallback = "—"){
                 return (v === undefined || v === null || v === "") ? fallback : v;
               }
-        
+
               function yesNo(value){
                 return value ? "BATEU" : "NÃO BATEU";
               }
-        
+
               function resultClass(value){
                 return value ? "is-ok" : "is-red";
               }
-        
+
               function calcRate(value, total){
                 const v = Number(value);
                 const t = Number(total);
                 if (!Number.isFinite(v) || !Number.isFinite(t) || t <= 0) return 50;
                 return clamp(Math.round((v / t) * 100), 5, 95);
               }
-        
+
               function calcConfidenceFromStats({ cornersTotal, goalsTotal, markets }){
                 let conf = 58;
-        
+
                 if (Number.isFinite(cornersTotal)){
                   if (cornersTotal >= 12) conf += 20;
                   else if (cornersTotal >= 10) conf += 14;
                   else if (cornersTotal >= 8) conf += 5;
                   else conf -= 10;
                 }
-        
+
                 if (Number.isFinite(goalsTotal)){
                   if (goalsTotal >= 3) conf += 8;
                   else if (goalsTotal >= 2) conf += 4;
                 }
-        
+
                 const okMarkets = Object.values(markets || {}).filter(Boolean).length;
                 conf += okMarkets * 3;
-        
+
                 return clamp(conf, 12, 96);
               }
-        
+
               function statBar(label, value, total, note = ""){
                 const width = calcRate(value, total);
                 return `
@@ -10811,7 +10811,7 @@
                   </div>
                 `;
               }
-        
+
               function renderPremiumMarket(label, value, detail = ""){
                 return `
                   <div class="premiumMarket ${resultClass(value)}">
@@ -10823,19 +10823,19 @@
                   </div>
                 `;
               }
-        
+
               function renderPremiumBadge(text, type = "green"){
                 return `<span class="premiumBadge ${type}">${text}</span>`;
               }
-        
+
               function renderMatchStats(data, fallback = {}){
                 const home = statText(data?.home || fallback.home, "Time A");
                 const away = statText(data?.away || fallback.away, "Time B");
-        
+
                 const goalsHome = statNumber(data?.goals?.home, data?.home_goals, data?.score?.home);
                 const goalsAway = statNumber(data?.goals?.away, data?.away_goals, data?.score?.away);
                 const goalsTotal = statNumber(data?.goals?.total, goalsHome !== null && goalsAway !== null ? goalsHome + goalsAway : null);
-        
+
                 const cornersHome = statNumber(data?.corners?.home, data?.home_corners, data?.stats?.corners?.home);
                 const cornersAway = statNumber(data?.corners?.away, data?.away_corners, data?.stats?.corners?.away);
                 const cornersTotal = statNumber(data?.corners?.total, cornersHome !== null && cornersAway !== null ? cornersHome + cornersAway : null);
@@ -10844,7 +10844,7 @@
                 const cornersAwayPct = cornersChartTotal > 0 ? 100 - cornersHomePct : 50;
                 const homeName = safe(data?.home || data?.casa || data?.home_name || data?.team_home || data?.teams?.home?.name || "Casa");
                 const awayName = safe(data?.away || data?.fora || data?.away_name || data?.team_away || data?.teams?.away?.name || "Fora");
-        
+
                 const attacksHome = statNumber(
                   data?.pressure?.home, data?.attacks?.home, data?.dangerous_attacks?.home,
                   data?.stats?.attacks?.home, data?.stats?.dangerous_attacks?.home,
@@ -10856,7 +10856,7 @@
                   statByAliases(data, ["dangerous", "ataques perigosos", "pressure", "pressão"], "away")
                 );
                 const attacksTotal = statNumber(data?.pressure?.total, data?.attacks?.total, attacksHome !== null && attacksAway !== null ? attacksHome + attacksAway : null);
-        
+
                 const shotsHome = statNumber(
                   data?.shots?.home, data?.finalizations?.home, data?.finalizacoes?.home,
                   data?.stats?.shots?.home, data?.stats?.finalizations?.home,
@@ -10868,11 +10868,11 @@
                   statByAliases(data, ["total shots", "shots", "shot", "finaliza", "finalizações", "finalizacoes", "chutes"], "away")
                 );
                 const shotsTotal = statNumber(data?.shots?.total, data?.finalizations?.total, data?.finalizacoes?.total, shotsHome !== null && shotsAway !== null ? shotsHome + shotsAway : null);
-        
+
                 const shotsOnHome = statNumber(data?.shots?.on_target_home, data?.shots_on_target?.home, statByAliases(data, ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizações no gol", "finalizacoes no gol"], "home"));
                 const shotsOnAway = statNumber(data?.shots?.on_target_away, data?.shots_on_target?.away, statByAliases(data, ["shots on goal", "shots on target", "on target", "chutes no gol", "finalizações no gol", "finalizacoes no gol"], "away"));
                 const shotsOnTotal = statNumber(data?.shots?.on_target_total, data?.shots_on_target?.total, shotsOnHome !== null && shotsOnAway !== null ? shotsOnHome + shotsOnAway : null);
-        
+
                 const m = data?.markets || {};
                 const btts = !!m.btts;
                 const over15 = !!m.over15;
@@ -10881,36 +10881,36 @@
                 const corners95 = !!m.corners95;
                 const corners105 = !!m.corners105;
                 const corners115 = !!m.corners115;
-        
+
                 const confidence = calcConfidenceFromStats({
                   cornersTotal,
                   goalsTotal,
                   markets: { btts, over15, over25, over35, corners95, corners105, corners115 }
                 });
-        
+
                 const rhythmLabel = Number.isFinite(cornersTotal) && cornersTotal >= 10
                   ? "RITMO ALTO"
                   : Number.isFinite(cornersTotal) && cornersTotal >= 8
                     ? "RITMO MÉDIO"
                     : "RITMO CONTROLADO";
-        
+
                 const trendLabel = corners95 ? "TENDÊNCIA OVER" : "TENDÊNCIA BAIXA";
                 const marketLabel = corners95 || over25 ? "MERCADO FAVORÁVEL" : "MERCADO SELETIVO";
-        
+
                 const scoreLine = `${statText(goalsHome)} - ${statText(goalsAway)}`;
                 const cornerLine = `${statText(cornersHome)} x ${statText(cornersAway)}`;
                 const finishedText = data?.finished ? "FINALIZADO" : statText(data?.status, "EM ANÁLISE");
-        
+
                 return `
                   <section class="premiumStatsDashboard">
-        
+
                     <div class="premiumHero">
                       <div class="premiumTeamBlock">
                         <div class="teamCrest">${String(home).slice(0, 1).toUpperCase()}</div>
                         <strong>${home}</strong>
                         <small>Mandante</small>
                       </div>
-        
+
                       <div class="premiumScoreBlock">
                         <div class="premiumStatus">${finishedText}</div>
                         <div class="premiumScore">${scoreLine}</div>
@@ -10918,26 +10918,26 @@
                           ${statText(data?.league, "Liga não informada")} • ${statText(data?.date, "")} ${statText(data?.time, "")}
                         </div>
                       </div>
-        
+
                       <div class="premiumTeamBlock">
                         <div class="teamCrest">${String(away).slice(0, 1).toUpperCase()}</div>
                         <strong>${away}</strong>
                         <small>Visitante</small>
                       </div>
                     </div>
-        
+
                     <div class="premiumBadgeRow">
                       ${renderPremiumBadge(marketLabel, corners95 || over25 ? "green" : "yellow")}
                       ${renderPremiumBadge(rhythmLabel, rhythmLabel.includes("ALTO") ? "green" : "blue")}
                       ${renderPremiumBadge(trendLabel, trendLabel.includes("OVER") ? "green" : "red")}
                     </div>
-        
+
                     <div class="premiumMainGrid">
                       <div class="premiumLeftColumn">
-        
+
                         <div class="premiumCard premiumSummaryCard">
                           <div class="premiumCardTitle">Resumo da partida</div>
-        
+
                           <div class="premiumMiniGrid">
                             <div class="premiumMiniStat">
                               <span>Gols</span>
@@ -10961,7 +10961,7 @@
                             </div>
                           </div>
                         </div>
-        
+
                         <div class="premiumCard">
                           <div class="premiumCardTitle">Força da partida</div>
                           ${statBar(home, cornersHome, cornersTotal, "Participação nos escanteios")}
@@ -10969,7 +10969,7 @@
                           ${statBar("Finalizações totais", shotsTotal, Math.max(Number(shotsTotal || 0), 18), "Volume ofensivo estimado")}
                           ${statBar("No alvo", shotsOnTotal, Math.max(Number(shotsTotal || 0), 10), "Finalizações certas")}
                         </div>
-        
+
                         <div class="premiumCard">
                           <div class="premiumCardTitle">Mercados do jogo</div>
                           <div class="premiumMarketsGrid">
@@ -10982,9 +10982,9 @@
                             ${renderPremiumMarket("+11.5 cantos", corners115, `${statText(cornersTotal)} cantos`)}
                           </div>
                         </div>
-        
+
                       </div>
-        
+
                       <aside class="premiumRightColumn">
                         <div class="premiumCard premiumConfidenceCard">
                           <div class="premiumCardTitle">Confiança geral</div>
@@ -10997,13 +10997,13 @@
                               : "O jogo ficou abaixo da linha principal de cantos e pede revisão da leitura pré-jogo."}
                           </p>
                         </div>
-        
+
                         <div class="premiumCard premiumPressureCard">
                           <div class="premiumCardTitle">Pressão da partida</div>
                           ${statBar(home, attacksHome, attacksTotal, "Pressão / ataques perigosos")}
                           ${statBar(away, attacksAway, attacksTotal, "Pressão / ataques perigosos")}
                         </div>
-        
+
                         <div class="premiumCard premiumFinalRead">
                           <div class="premiumCardTitle">Leitura final</div>
                           <p>
@@ -11015,25 +11015,25 @@
                         </div>
                       </aside>
                     </div>
-        
+
                   </section>
                 `;
               }
-        
+
               async function openMatchStats({ matchId, home, away } = {}){
                 const { body } = getStatsModalEls();
-        
+
                 if (!body) return;
-        
+
                 openStatsModal();
-        
+
                 body.innerHTML = `
                   <div class="loadingStats premiumLoading">
                     <div class="loaderBall"></div>
                     <span>Carregando estatísticas de ${safe(home, "Time A")} x ${safe(away, "Time B")}...</span>
                   </div>
                 `;
-        
+
                 if (!matchId || matchId === "—"){
                   body.innerHTML = `
                     <div class="statsError premiumStatsError">
@@ -11042,7 +11042,7 @@
                   `;
                   return;
                 }
-        
+
                 try{
                   const data = await fetchJson(`/match_result?match_id=${encodeURIComponent(matchId)}`);
                   body.innerHTML = renderMatchStats(data, { home, away });
@@ -11055,31 +11055,31 @@
                   `;
                 }
               }
-        
+
               function setupStatsModal(){
                 const { modal, close } = getStatsModalEls();
-        
+
                 if (close){
                   close.addEventListener("click", closeStatsModal);
                 }
-        
+
                 if (modal){
                   modal.addEventListener("click", (ev) => {
                     if (ev.target === modal) closeStatsModal();
                   });
                 }
-        
+
                 document.addEventListener("keydown", (ev) => {
                   if (ev.key === "Escape") closeStatsModal();
                 });
               }
-        
+
               function setupViewNavigation(){
                 const links = Array.from(document.querySelectorAll("a, button, .nav-item, .tab, [data-tab], [data-view]") || []);
                 links.forEach(el => {
                   const txt = String(el.textContent || "").trim().toUpperCase();
                   const data = String(el.getAttribute("data-tab") || el.getAttribute("data-view") || "").trim().toLowerCase();
-        
+
                   if (txt === "FILTROS" || data === "filtros" || data === "filters"){
                     el.addEventListener("click", (ev) => {
                       ev.preventDefault();
@@ -11087,16 +11087,16 @@
                       toggleFiltersHeader(true);
                       links.forEach(x => x.classList?.remove("active", "is-active"));
                       el.classList?.add("active", "is-active");
-        
+
                       showDashboardLoading("Carregando mercados do dia...");
-        
+
                       loadMarketGames({
                         date: dateInput?.value || todayAM_YMD(),
                         fresh: false
                       }).then(() => renderMarketFilters());
                     });
                   }
-        
+
                   if (txt.includes("ANÁLISE PRÉ JOGO") || txt.includes("ANALISE PRÉ JOGO") || txt.includes("ANALISE PRE JOGO") || data === "pregame"){
                     el.addEventListener("click", (ev) => {
                       ev.preventDefault();
@@ -11110,14 +11110,14 @@
                   }
                 });
               }
-        
+
               // ---------------- Fetch ----------------
               async function fetchJson(url){
                 const r = await fetch(url, { cache: "no-store" });
                 if (!r.ok) throw new Error(`HTTP ${r.status} em ${url}`);
                 return await r.json();
               }
-        
+
               // =========================================================
               // LIGAÇÃO REAL COM A API DO SERVIDOR
               // Normaliza respostas em formatos diferentes:
@@ -11128,12 +11128,12 @@
               function extractGamesFromApiPayload(payload){
                 if (Array.isArray(payload)) return payload;
                 if (!payload || typeof payload !== "object") return [];
-        
+
                 const keys = [
                   "games", "jogos", "matches", "fixtures", "events",
                   "data", "items", "results", "response", "quentes", "list"
                 ];
-        
+
                 for (const key of keys){
                   const value = payload[key];
                   if (Array.isArray(value)) return value;
@@ -11142,37 +11142,37 @@
                     if (nested.length) return nested;
                   }
                 }
-        
+
                 return [];
               }
-        
+
               async function fetchGamesFromApi(endpointList, dateYMD, fresh = false){
                 const endpoints = Array.isArray(endpointList) ? endpointList : [endpointList];
                 let lastError = null;
-        
+
                 for (const endpoint of endpoints){
                   try{
                     const sep = String(endpoint).includes("?") ? "&" : "?";
                     const url = `${endpoint}${sep}date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}&_=${Date.now()}`;
                     const payload = await fetchJson(url);
                     const games = extractGamesFromApiPayload(payload);
-        
+
                     if (games.length){
                       console.info(`[Corners Radar] Jogos reais carregados de ${endpoint}:`, games.length);
                       return games;
                     }
-        
+
                     console.warn(`[Corners Radar] ${endpoint} respondeu sem lista de jogos reconhecida.`, payload);
                   } catch (err){
                     lastError = err;
                     console.warn(`[Corners Radar] Falha no endpoint ${endpoint}.`, err);
                   }
                 }
-        
+
                 if (lastError) throw lastError;
                 return [];
               }
-        
+
               async function fetchSideGames(dateYMD, fresh = false){
                 const payload = await fetchJson(`/side?date=${encodeURIComponent(dateYMD)}&fresh=${fresh ? "1" : "0"}&_=${Date.now()}`);
                 const games = extractGamesFromApiPayload(payload);
@@ -11181,14 +11181,14 @@
                 }
                 return payload;
               }
-        
+
               function pickStatusChip(j){
                 const p = getProb(j);
                 if (hasFullBase(j) && p >= TOP6_MIN_PROB_FULL) return { text: "OK", icon: "▲" };
                 if (p >= 60) return { text: "CUIDADO", icon: "▲" };
                 return { text: "CUIDADO", icon: "▲" };
               }
-        
+
               // ---------------- H2H ESCANTEIOS ----------------
               function getH2HCornersList(j){
                 const raw =
@@ -11200,55 +11200,55 @@
                   j?.h2h?.corners ||
                   j?.h2h?.cantos ||
                   [];
-        
+
                 return Array.isArray(raw) ? raw.slice(0, 5) : [];
               }
-        
+
               function getH2HTeamHome(item){
                 return safe(item?.home || item?.casa || item?.home_team || item?.team_home || item?.mandante, "Casa");
               }
-        
+
               function getH2HTeamAway(item){
                 return safe(item?.away || item?.fora || item?.away_team || item?.team_away || item?.visitante, "Fora");
               }
-        
+
               function getH2HHomeCorners(item){
                 const n = Number(item?.home_corners ?? item?.casa_cantos ?? item?.corners_home ?? item?.cornersCasa ?? item?.cantos_casa);
                 return Number.isFinite(n) ? n : null;
               }
-        
+
               function getH2HAwayCorners(item){
                 const n = Number(item?.away_corners ?? item?.fora_cantos ?? item?.corners_away ?? item?.cornersFora ?? item?.cantos_fora);
                 return Number.isFinite(n) ? n : null;
               }
-        
+
               function getH2HTotal(item){
                 const total = Number(item?.total_corners ?? item?.total_cantos ?? item?.corners_total ?? item?.total);
                 if (Number.isFinite(total)) return total;
-        
+
                 const home = getH2HHomeCorners(item);
                 const away = getH2HAwayCorners(item);
                 if (Number.isFinite(home) && Number.isFinite(away)) return home + away;
                 return null;
               }
-        
+
               function renderH2HCorners(node, j){
                 const listEl = node.querySelector(".js-h2h");
                 const avgEl = node.querySelector(".js-h2h-avg");
                 if (!listEl) return;
-        
+
                 const list = getH2HCornersList(j);
                 listEl.innerHTML = "";
-        
+
                 if (!list.length){
                   listEl.innerHTML = `<div class="h2hEmpty">Sem confrontos recentes de escanteios disponíveis.</div>`;
                   if (avgEl) avgEl.textContent = "—";
                   return;
                 }
-        
+
                 let sum = 0;
                 let count = 0;
-        
+
                 list.forEach((item) => {
                   const home = getH2HTeamHome(item);
                   const away = getH2HTeamAway(item);
@@ -11256,41 +11256,41 @@
                   const ac = getH2HAwayCorners(item);
                   const total = getH2HTotal(item);
                   const date = safe(item?.date || item?.data || item?.fixture_date || item?.dia, "");
-        
+
                   if (Number.isFinite(total)){
                     sum += total;
                     count += 1;
                   }
-        
+
                   const row = document.createElement("div");
                   row.className = "h2hRow";
-        
+
                   const scoreTxt = (Number.isFinite(hc) && Number.isFinite(ac))
                     ? `${home} ${hc} x ${ac} ${away}`
                     : `${home} x ${away}`;
-        
+
                   row.innerHTML = `
                     <div class="h2hTeams">${date ? `${date} • ` : ""}${scoreTxt}</div>
                     <div class="h2hTotal">Total: ${Number.isFinite(total) ? total : "—"}</div>
                   `;
-        
+
                   listEl.appendChild(row);
                 });
-        
+
                 if (avgEl){
                   avgEl.textContent = count ? `${fmt(sum / count, 1)} cantos por jogo` : "—";
                 }
               }
-        
+
               // ---------------- NOTE INTELIGENTE ----------------
               function normalizeCommentText(text){
                 return String(text || "").replace(/\s+/g, " ").replace(/\s+\./g, ".").trim();
               }
-        
+
               function cleanComentarioForNote(raw){
                 let txt = normalizeCommentText(raw);
                 if (!txt || txt === "—") return "";
-        
+
                 const patterns = [
                   /ritmo\s*:\s*ritmo\s+(alto|m[eé]dio|baixo)\.?/gi,
                   /jogo\s+considerado\s+seguro\s+pela\s+ia\.?/gi,
@@ -11305,42 +11305,42 @@
                   /perfil\s+equilibrado\.?/gi,
                   /tend[eê]ncia\s+por\s+dentro\.?/gi
                 ];
-        
+
                 patterns.forEach(rx => { txt = txt.replace(rx, " "); });
                 return txt.replace(/\s{2,}/g, " ").replace(/\.\s*\./g, ".").replace(/^\s*[•\-–—]\s*/g, "").trim();
               }
-        
+
               function buildContextPhrase(j){
                 const perfil = String(j?.perfil_laterais || "");
                 const ritmo = ritmoInfo(j);
                 const alerta = getAlertInfo(j);
                 const proj = getProj(j);
                 const p = getProb(j);
-        
+
                 if (alerta.level === "red"){
                   if (perfil === "TENDENCIA_CENTRAL") return "Jogo pede leitura mais seletiva, com volume menos confiável pelos lados.";
                   return "Cenário mais traiçoeiro, exigindo entrada com bastante critério.";
                 }
-        
+
                 if (alerta.level === "yellow"){
                   if (ritmo.level === "med") return "Bom cenário, mas ainda depende de confirmação de intensidade.";
                   if (proj >= 11) return "Tem base para cantos, embora não seja o quadro mais limpo do dia.";
                   return "Jogo interessante, mas sem margem tão folgada quanto o topo.";
                 }
-        
+
                 if (perfil === "LATERAIS_FORTES" && (ritmo.level === "high" || p >= 72)) return "Boa sustentação pelos lados e tendência de pressão constante.";
                 if (ritmo.level === "high") return "Tende a manter volume forte e acelerar bem ao longo do jogo.";
                 if (ritmo.level === "med") return "Tem boa base pré-jogo e costuma ganhar força com o andamento.";
                 return "Cenário estável para acompanhar, com sinais positivos no pré-jogo.";
               }
-        
+
               function buildFavoritePhrase(j){
                 const favorites = getFavoriteTeamsInMatch(j);
                 if (!favorites.length) return "";
                 if (favorites.length === 1) return `${favorites[0]} aparece como time de atenção especial neste confronto.`;
                 return "Confronto com presença de equipes de atenção especial.";
               }
-        
+
               function truncateSmart(text, max = 118){
                 const t = normalizeCommentText(text);
                 if (!t) return "";
@@ -11350,23 +11350,23 @@
                 const out = (lastBreak > 70 ? cut.slice(0, lastBreak) : cut).trim();
                 return `${out}…`;
               }
-        
+
               function buildSmartNote(j){
                 const pieces = [];
                 const favPhrase = buildFavoritePhrase(j);
                 const contextPhrase = buildContextPhrase(j);
                 const comentario = cleanComentarioForNote(j?.comentario);
-        
+
                 if (favPhrase) pieces.push(favPhrase);
                 if (contextPhrase) pieces.push(contextPhrase);
                 if (comentario) pieces.push(comentario);
-        
+
                 let finalText = pieces.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
                 if (!finalText) finalText = "Leitura pré-jogo favorável para monitorar cantos com atenção ao início.";
                 if (!/[.!?…]$/.test(finalText)) finalText += ".";
                 return truncateSmart(finalText, 120);
               }
-        
+
               // ---------------- Render Cards ----------------
               function clearTopBadges(node){
                 const oldRank = node.querySelector(".rankBadge");
@@ -11374,17 +11374,17 @@
                 if (oldRank) oldRank.remove();
                 if (oldBest) oldBest.remove();
               }
-        
+
               function injectTopBadges(node, rank){
                 clearTopBadges(node);
                 const rankEl = document.createElement("div");
                 rankEl.className = "rankBadge";
                 rankEl.textContent = `#${rank}`;
                 node.appendChild(rankEl);
-        
+
                 const bestEl = document.createElement("div");
                 bestEl.className = "bestLabel";
-        
+
                 if (rank === 1){
                   node.classList.add("bestMatch");
                   bestEl.textContent = "🔥 JOGO 1 • MAIS CEDO";
@@ -11395,7 +11395,7 @@
                   node.appendChild(bestEl);
                 }
               }
-        
+
               function injectPromotedSecondBadge(node){
                 clearTopBadges(node);
                 node.classList.remove("bestMatch");
@@ -11403,17 +11403,17 @@
                 rankEl.className = "rankBadge";
                 rankEl.textContent = "#2";
                 node.appendChild(rankEl);
-        
+
                 const labelEl = document.createElement("div");
                 labelEl.className = "bestLabel";
                 labelEl.textContent = "📋 JOGO 2";
                 node.appendChild(labelEl);
                 node.classList.add("promoted-second");
               }
-        
+
               function applyCardVisualClasses(node, j, ritmo, alerta, isFav){
                 node.classList.remove("is-strong", "is-top", "has-strong-edge", "is-risk", "is-favorite-card", "is-ritmo-alto", "is-ritmo-medio", "is-ritmo-baixo");
-        
+
                 if (hasFullBase(j) && getProb(j) >= 72) node.classList.add("is-strong", "is-top", "has-strong-edge");
                 if (String(j?.perfil_laterais || "") === "LATERAIS_FORTES" && getProb(j) >= 70) node.classList.add("has-strong-edge");
                 if (alerta.level === "red") node.classList.add("is-risk");
@@ -11425,7 +11425,7 @@
                 if (ritmo.level === "med") node.classList.add("is-ritmo-medio");
                 if (ritmo.level === "low") node.classList.add("is-ritmo-baixo");
               }
-        
+
               function renderTopCard(j, rank = 1){
                 if (!tplTop || !tplTop.content?.firstElementChild){
                   const div = document.createElement("div");
@@ -11433,20 +11433,20 @@
                   div.textContent = "⚠️ Falta o template #tplTopCard no HTML.";
                   return div;
                 }
-        
+
                 const node = tplTop.content.firstElementChild.cloneNode(true);
                 const dateYMD = dateInput?.value;
                 injectTopBadges(node, rank);
-        
+
                 const casa = safe(j?.casa, "Time A");
                 const fora = safe(j?.fora, "Time B");
                 const favoriteTeams = getFavoriteTeamsInMatch(j);
                 const isFav = favoriteTeams.length > 0;
                 const ritmo = ritmoInfo(j);
                 const alerta = getAlertInfo(j);
-        
+
                 applyCardVisualClasses(node, j, ritmo, alerta, isFav);
-        
+
                 const homeEl = node.querySelector(".js-home");
                 const awayEl = node.querySelector(".js-away");
                 if (homeEl){
@@ -11457,7 +11457,7 @@
                   awayEl.textContent = fora;
                   applyTeamColor(awayEl, fora);
                 }
-        
+
                 const metaEl = node.querySelector(".js-meta");
                 if (metaEl){
                   metaEl.textContent = [
@@ -11466,7 +11466,7 @@
                     `• score: ${safe(j?.score_adj ?? j?.score, "—")}`,
                   ].join(" ");
                 }
-        
+
                 const chips = node.querySelector(".js-chips");
                 if (chips){
                   chips.innerHTML = "";
@@ -11477,45 +11477,45 @@
                   chips.appendChild(makeChip(alerta.text, alerta.cls));
                   if (isFav) chips.appendChild(makeChip("★ FAVORITO"));
                 }
-        
+
                 const teamsTextEl = node.querySelector(".teamsText");
                 if (teamsTextEl && isFav){
                   teamsTextEl.classList.add("is-fav-teams");
                   teamsTextEl.title = `Favorito detectado: ${favoriteTeams.join(" / ")}`;
                   teamsTextEl.insertAdjacentText("afterbegin", "★ ");
                 }
-        
+
                 const horaEl = node.querySelector(".js-hora");
                 const posEl = node.querySelector(".js-pos");
                 const projEl = node.querySelector(".js-proj");
                 const t2El = node.querySelector(".js-2t");
-        
+
                 if (horaEl) horaEl.textContent = timeOnlyAM(dateYMD, safe(j?.hora, "—"));
                 if (posEl) posEl.textContent = safe(j?.posicao, "—");
                 if (projEl) projEl.textContent = fmt(j?.proj_cantos, 1);
                 if (t2El) t2El.textContent = pct(j?.chance_2t);
-        
+
                 renderH2HCorners(node, j);
-        
+
                 const p = getProb(j);
                 const pill = node.querySelector(".js-pill");
                 if (pill) pill.textContent = `🔥 Over 9.5 cantos — ${pct(p)}`;
-        
+
                 const fill = node.querySelector(".barFill");
                 if (fill) fill.style.width = `${getBarPercent(j)}%`;
-        
+
                 const note = node.querySelector(".js-note");
                 if (note) note.textContent = buildSmartNote(j);
-        
+
                 return node;
               }
-        
+
               function renderPromotedSecondAsMain(j){
                 const node = renderTopCard(j, 2);
                 injectPromotedSecondBadge(node);
                 return node;
               }
-        
+
               function renderOtherCard(j){
                 if (!tplOther || !tplOther.content?.firstElementChild){
                   const div = document.createElement("div");
@@ -11523,7 +11523,7 @@
                   div.textContent = "⚠️ Falta o template #tplOtherCard no HTML.";
                   return div;
                 }
-        
+
                 const node = tplOther.content.firstElementChild.cloneNode(true);
                 const dateYMD = dateInput?.value;
                 const casa = safe(j?.casa, "Time A");
@@ -11532,21 +11532,21 @@
                 const isFav = favoriteTeams.length > 0;
                 const ritmo = ritmoInfo(j);
                 const alerta = getAlertInfo(j);
-        
+
                 applyCardVisualClasses(node, j, ritmo, alerta, isFav);
-        
+
                 const teamsEl = node.querySelector(".js-teams");
                 const metaEl = node.querySelector(".js-meta");
-        
+
                 if (teamsEl){
                   teamsEl.innerHTML = `${isFav ? "★ " : ""}${teamNameHTML(casa, "smallTeamName")} <span class="teamVsMini">x</span> ${teamNameHTML(fora, "smallTeamName")}`;
                   if (isFav) teamsEl.title = `Favorito detectado: ${favoriteTeams.join(" / ")}`;
                 }
-        
+
                 if (metaEl){
                   metaEl.textContent = `${safe(j?.liga, "—")} • ${timeLabelAM(dateYMD, safe(j?.hora, "—"))} • score: ${safe(j?.score_adj ?? j?.score, "—")}`;
                 }
-        
+
                 const chips = node.querySelector(".js-chips");
                 if (chips){
                   chips.innerHTML = "";
@@ -11557,22 +11557,22 @@
                   chips.appendChild(makeChip(alerta.text, alerta.cls));
                   if (isFav) chips.appendChild(makeChip("★ FAVORITO"));
                 }
-        
+
                 const fill = node.querySelector(".miniBarFill");
                 if (fill) fill.style.width = `${getBarPercent(j)}%`;
-        
+
                 const note = node.querySelector(".js-note");
                 if (note) note.textContent = buildSmartNote(j);
-        
+
                 return node;
               }
-        
+
               // ---------------- DEDUPE ----------------
               function dedupeList(list){
                 const out = [];
                 const seenStable = new Set();
                 const seenTeams = new Set();
-        
+
                 for (const j of (list || [])){
                   const k1 = stableKey(j);
                   const k2 = teamsKey(j);
@@ -11584,27 +11584,27 @@
                 }
                 return out;
               }
-        
+
               // ---------------- Top logic ----------------
               function splitTopAndRest(list, dateYMD){
                 const targetCount = getTopTargetCount(dateYMD);
                 const isWeekday = isWeekdayDateYMD(dateYMD);
                 const minGap = isWeekday ? WEEKDAY_MIN_TIME_GAP_MINUTES : 0;
-        
+
                 const raw = dedupeList(Array.isArray(list) ? list.slice() : []);
                 const arr = filterTop5CornerQuality(filterServerCompatibleGames(raw));
-        
+
                 // 🔒 NUNCA envia card vermelho para o Top do Dia.
                 // Se não houver jogos seguros suficientes, mostra menos cards em vez de completar com RED.
                 const safeForTop = arr.filter(j => getAlertInfo(j).level !== "red");
-        
+
                 const pool = sortByTop1AI(safeForTop);
-        
+
                 const fullStrong = pool.filter(isPregameStrongFull);
                 const semiStrong = pool.filter(isPregameStrongSemi);
                 const top = [];
                 const used = new Set();
-        
+
                 if (getCornerOrderMode() === "strength") {
                   // FORCA DE CANTOS: seleciona os melhores do dia sem qualquer trava de horario.
                   fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: fullStrong, targetCount });
@@ -11613,20 +11613,20 @@
                   // HORARIO: preserva a antiga distribuicao temporal.
                   addDistinctTimeCandidates({ selected: top, used, candidates: fullStrong, targetCount, dateYMD, minGapMinutes: minGap });
                   addDistinctTimeCandidates({ selected: top, used, candidates: semiStrong, targetCount, dateYMD, minGapMinutes: minGap });
-        
+
                   if (top.length < targetCount){
                     fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: fullStrong, targetCount });
                     fillIfNotEnoughIgnoringGap({ selected: top, used, candidates: semiStrong, targetCount });
                   }
                 }
-        
+
                 // O primeiro card é sempre o melhor jogo segundo o filtro IA.
                 // Os demais continuam organizados por horário para manter a leitura do painel.
                 const orderedTop = placeBestAiGameFirst(top, dateYMD);
                 const topKeys = new Set(orderedTop.map(stableKey));
                 let rest = pool.filter(j => !topKeys.has(stableKey(j)));
                 if (HIDE_NON_FULL_FROM_OTHERS) rest = rest.filter(hasFullBase);
-        
+
                 return {
                   main: orderedTop.slice(0, targetCount),
                   support: orderedTop.slice(targetCount),
@@ -11634,7 +11634,7 @@
                   rest
                 };
               }
-        
+
               // ---------------- FIX: data AMAZONAS ----------------
               function todayAM_YMD(){
                 const now = new Date();
@@ -11645,23 +11645,23 @@
                   day: "2-digit"
                 }).format(now);
               }
-        
+
               function ensureDateVisible(){
                 if (!dateInput) return;
                 dateInput.style.minWidth = "140px";
                 dateInput.style.width = "140px";
                 if (!dateInput.value) dateInput.value = todayAM_YMD();
               }
-        
+
               // ---------------- IA LEFTBOX ----------------
               let lastTopGames = [];
-        
+
               function setIaLoading(msg = "Analisando…"){
                 if (!iaBox) return;
                 if (iaStatus) iaStatus.textContent = msg;
                 if (iaWhy && iaWhy.textContent.trim() === "") iaWhy.textContent = "Aguardando análise da IA…";
               }
-        
+
               function confidenceFrom(j){
                 const p = getProb(j);
                 const full = hasFullBase(j);
@@ -11671,7 +11671,7 @@
                 if (semi && p >= TOP6_MIN_PROB_SEMI) return "Média";
                 return "Baixa";
               }
-        
+
               function riskLabel(j){
                 const p = getProb(j);
                 if (hasFullBase(j) && p >= 74) return "🟢 OK (base completa)";
@@ -11679,7 +11679,7 @@
                 if (isSemi(j) && p >= TOP6_MIN_PROB_SEMI) return "🟡 SEMI forte (confirmar ritmo 10–15')";
                 return "⚠️ Cuidado (pré-jogo)";
               }
-        
+
               function buildWhyText(best, topGames){
                 const liga = safe(best?.liga, "—");
                 const mode = String(best?.mode || "—").toUpperCase();
@@ -11693,7 +11693,7 @@
                 const avgProb = others.length ? (others.reduce((s, x) => s + getProb(x), 0) / others.length) : null;
                 const avgProj = others.length ? (others.reduce((s, x) => s + getProj(x), 0) / others.length) : null;
                 const deltaTxtParts = [];
-        
+
                 if (avgProb !== null && Number.isFinite(p - avgProb)){
                   const sign = (p - avgProb) >= 0 ? "+" : "";
                   deltaTxtParts.push(`Prob vs topo: ${sign}${Math.round(p - avgProb)} pts`);
@@ -11702,17 +11702,17 @@
                   const sign = (proj - avgProj) >= 0 ? "+" : "";
                   deltaTxtParts.push(`Proj vs topo: ${sign}${fmt(proj - avgProj, 1)}`);
                 }
-        
+
                 const deltaTxt = deltaTxtParts.length ? ` • ${deltaTxtParts.join(" • ")}` : "";
                 const cautela = isCentral(best) ? "Tendência por dentro: precisa volume/ritmo." : "Perfil favorável para cantos.";
-        
+
                 return `${liga} • ${mode} • Base: ${base}. Over 9.5: ${pct(p)} • Proj: ${fmt(proj,1)} • ${perfil}. ${oddsTxt}.${deltaTxt} ${cautela}`;
               }
-        
+
               function updateIaBoxFromTop(topGames){
                 if (!iaBox) return;
                 lastTopGames = Array.isArray(topGames) ? topGames.slice() : [];
-        
+
                 if (!topGames || topGames.length === 0){
                   if (iaStatus) iaStatus.textContent = "Sem jogos";
                   if (iaGame) iaGame.textContent = "—";
@@ -11722,12 +11722,12 @@
                   if (iaRisk) iaRisk.textContent = "—";
                   return;
                 }
-        
+
                 const best = topGames[0];
                 const casa = safe(best?.casa, "Time A");
                 const fora = safe(best?.fora, "Time B");
                 const conf = confidenceFrom(best);
-        
+
                 if (iaStatus) iaStatus.textContent = "Pronto";
                 if (iaGame) iaGame.textContent = `${casa} x ${fora}`;
                 if (iaSug) iaSug.textContent = "Over 9.5 (pré-jogo) / ou Live 10–15'";
@@ -11735,24 +11735,24 @@
                 if (iaWhy) iaWhy.textContent = buildWhyText(best, topGames);
                 if (iaRisk) iaRisk.textContent = riskLabel(best);
               }
-        
+
               function onIaReloadClick(){
                 setIaLoading("Atualizando…");
                 updateIaBoxFromTop(lastTopGames);
                 if (iaStatus) iaStatus.textContent = "Pronto";
               }
             /* função duplicada removida: ensureDashboardLoadingStyles */
-        
+
             /* função duplicada removida: showDashboardLoading */
-        
-        
+
+
               // ---------------- TOP Loading ----------------
               let loadingFxStartedAt = 0;
               let loadingFxToken = 0;
-        
+
               function setTopLoading(on = true){
                 if (!panelTitle) return;
-        
+
                 if (on){
                   loadingFxStartedAt = Date.now();
                   loadingFxToken += 1;
@@ -11760,79 +11760,79 @@
                   panelTitle.setAttribute("data-loading", "1");
                   return;
                 }
-        
+
                 const currentToken = loadingFxToken;
                 const elapsed = Date.now() - loadingFxStartedAt;
                 const wait = Math.max(0, LOADING_MIN_MS - elapsed);
-        
+
                 window.setTimeout(() => {
                   if (currentToken !== loadingFxToken) return;
                   panelTitle.classList.remove("loading");
                   panelTitle.removeAttribute("data-loading");
                 }, wait);
               }
-        
+
               // ---------------- Controle Forca x Horario ----------------
               function setupCornerOrderControls(){
                 setCornerOrderMode(getCornerOrderMode());
-        
+
                 document.addEventListener("click", event => {
                   const button = event.target.closest("[data-corner-order]");
                   if (!button) return;
                   event.preventDefault();
-        
+
                   const nextMode = button.dataset.cornerOrder === "time" ? "time" : "strength";
                   if (nextMode === getCornerOrderMode()) return;
-        
+
                   setCornerOrderMode(nextMode);
                   loadAll({ date: dateInput?.value || todayAM_YMD(), fresh: false });
                 });
               }
-        
+
               setupCornerOrderControls();
-        
+
               // ---------------- Main Load ----------------
               async function loadAll({ date, fresh = false } = {}){
                 ensureDateVisible();
                 setTopLoading(true);
-        
+
                 const dateFromUrl = new URLSearchParams(window.location.search).get("date")
                   || new URLSearchParams(window.location.search).get("data")
                   || "";
                 const requestedDate = date || dateInput?.value || dateFromUrl || todayAM_YMD();
-        
+
                 if (dateInput) dateInput.value = requestedDate;
-        
+
                 if (btn){
                   btn.disabled = true;
                   btn.textContent = "Atualizando...";
                   btn.classList.add("is-loading");
                 }
-        
+
                 showDashboardLoading(currentView === "filters" ? "Carregando mercados do dia..." : "Carregando jogos do dia...");
                 if (currentView !== "filters") top1El?.closest(".panel")?.classList.remove("is-market-scroll-panel");
                 if (countTop) countTop.textContent = "0";
-        
+
                 try{
                   setIaLoading("Analisando…");
                   const dateYMD = requestedDate;
                   const list = enrichMarketsList(filterTop5CornerQuality(filterServerCompatibleGames(await fetchGamesFromApi(["/quentes", "/mercados"], dateYMD, fresh))));
                   lastRawGames = list.slice();
                   lastDateYMD = dateYMD;
-        
+
                   if (currentView === "filters"){
                     await loadMarketGames({ date: dateYMD, fresh });
                     renderMarketFilters();
                     return;
                   }
-        
+
                   const targetCount = getTopTargetCount(dateYMD);
                   const split = splitTopAndRest(list, dateYMD);
                   const { main, support, top, rest } = split;
-        
+
                   let sideGames = [];
                   let sideMessage = "";
-        
+
                   try{
                     const sideResp = await fetchSideGames(dateYMD, fresh);
                     sideGames = Array.isArray(sideResp?.games)
@@ -11842,7 +11842,7 @@
                   } catch (err){
                     console.warn("Falha ao buscar /side.", err);
                   }
-        
+
                   // ✅ Exibição final:
                   // - Dia normal: 1 card
                   // - Sábado/Domingo: até 3 cards
@@ -11856,7 +11856,7 @@
                   );
                   const isWeekday = isWeekdayDateYMD(dateYMD);
                   const minGap = isWeekday ? WEEKDAY_MIN_TIME_GAP_MINUTES : 0;
-        
+
                   if (getCornerOrderMode() === "strength") {
                     // FORCA DE CANTOS: completa estritamente pelo ranking, independente do horario.
                     fillIfNotEnoughIgnoringGap({ selected: displayGames, used: usedDisplay, candidates: promotedCandidates, targetCount });
@@ -11870,12 +11870,12 @@
                       dateYMD,
                       minGapMinutes: minGap
                     });
-        
+
                     if (displayGames.length < targetCount){
                       fillIfNotEnoughIgnoringGap({ selected: displayGames, used: usedDisplay, candidates: promotedCandidates, targetCount });
                     }
                   }
-        
+
                   // Congela a selecao original do dia. Partida encerrada continua no card
                   // e nunca e substituida por um jogo que apareceu somente depois.
                   const lockedGames = readLockedGames(dateYMD);
@@ -11885,16 +11885,16 @@
                     displayGames = sortByTop1AI(displayGames).slice(0, targetCount);
                     writeLockedGames(dateYMD, displayGames);
                   }
-        
+
                   displayGames = orderGamesForSelectedFilter(displayGames, dateYMD);
-        
+
                   updateIaBoxFromTop(displayGames);
-        
+
                   if (top1El){
                     top1El.innerHTML = "";
                     top1El.classList.toggle("is-weekend-top3", targetCount === TOP_WEEKEND_COUNT);
                     top1El.classList.toggle("is-weekday-top2", targetCount === TOP_WEEKDAY_COUNT);
-        
+
                     if (displayGames.length){
                       displayGames.forEach((game, index) => {
                         top1El.appendChild(renderTopCard(game, index + 1));
@@ -11906,9 +11906,9 @@
                       top1El.appendChild(div);
                     }
                   }
-        
+
                   if (countTop) countTop.textContent = String(displayGames.length);
-        
+
                 } catch (e){
                   console.error("Erro ao carregar jogos:", e);
                   if (top1El){
@@ -11927,78 +11927,78 @@
                   setTopLoading(false);
                 }
               }
-        
+
               // ---------------- Init ----------------
               function init(){
                 if (!dateInput){
                   console.error("❌ Falta #date no HTML");
                   return;
                 }
-        
+
                 // O layout novo não possui mais o botão legado #btn.
                 // Ele agora é opcional e não pode impedir o carregamento do app.
                 if (!btn){
                   console.warn("ℹ️ #btn não existe no layout novo; carregamento automático mantido.");
                 }
-        
+
                 // Ao atualizar ou abrir a página, sempre volta para o dia atual.
                 const todayOnRefresh = todayAM_YMD();
                 dateInput.value = todayOnRefresh;
-        
+
                 try{
                   const url = new URL(window.location.href);
                   url.searchParams.delete("date");
                   url.searchParams.delete("data");
                   window.history.replaceState({}, "", url.toString());
                 }catch(e){}
-        
+
                 ensureDateVisible();
-        
+
                 btn.addEventListener("click", () => {
                   ensureDateVisible();
                   loadAll({ date: dateInput.value, fresh: false });
                 });
-        
+
                 dateInput.addEventListener("change", () => {
                   ensureDateVisible();
-        
+
                   // Ao trocar a data, mostra imediatamente o estado específico
                   // até os novos jogos terminarem de carregar.
                   if (typeof window.CornerProMobileHomeLoading === "function"){
                     window.CornerProMobileHomeLoading("selected");
                   }
-        
+
                   loadAll({ date: dateInput.value, fresh: false });
                 });
-        
+
                 if (iaReload){
                   iaReload.addEventListener("click", (ev) => {
                     ev.preventDefault();
                     onIaReloadClick();
                   });
                 }
-        
+
                 setupViewNavigation();
                 setupStatsModal();
-        
+
                 // ✅ PADRÃO DO SITE: sempre abrir direto na aba FILTROS ao carregar/atualizar a página
                 // Mantém o layout original e só força a visão inicial para filtros.
                 currentView = "filters";
                 activeMarketFilter = activeMarketFilter || "all";
                 toggleFiltersHeader(true);
-        
+
                 document.querySelectorAll(".nav-link, .side-item").forEach(el => {
                   el.classList.remove("active", "is-active");
                 });
-        
+
                 document.querySelector('.nav-link[data-tab="filters"]')?.classList.add("active", "is-active");
                 document.querySelector('.side-item[data-tab="filters"]')?.classList.add("active", "is-active");
-        
+
                 loadAll({ date: dateInput.value, fresh: false });
               }
-        
+
               init();
-        
+
               /* =========================================================
                  COPA 2026 — WIDGET COMPACTO (SEM CALENDÁRIO DO MÊS)
                  ========================================================= */
@@ -12007,11 +12007,11 @@
                 const COPA_START_ISO_LOCAL = "2026-06-11T00:00:00";
                 const COPA_START_LABEL = "11/06/2026";
                 const pad2 = (n) => String(n).padStart(2, "0");
-        
+
                 function getCopaStart(){
                   return new Date(COPA_START_ISO_LOCAL);
                 }
-        
+
                 function diffParts(toDate){
                   const now = new Date();
                   let ms = toDate.getTime() - now.getTime();
@@ -12025,7 +12025,7 @@
                     finished: toDate.getTime() <= now.getTime()
                   };
                 }
-        
+
                 function killMonthCalendar(){
                   const candidates = [".copaCal", ".calendar", ".monthCalendar", "[aria-label*='Calendário']", "[data-widget='calendar']"];
                   candidates.forEach((sel) => {
@@ -12036,17 +12036,17 @@
                     });
                   });
                 }
-        
+
                 function ensureCopaWidget(){
                   const panelTitleLocal =
                     document.querySelector(".panel .panel-title") ||
                     document.querySelector(".panel-title") ||
                     document.querySelector("#top1")?.closest(".panel")?.querySelector(".panel-title");
-        
+
                   if (!panelTitleLocal) return null;
                   let widget = panelTitleLocal.querySelector(".copaWidget");
                   if (widget) return widget;
-        
+
                   widget = document.createElement("div");
                   widget.className = "copaWidget";
                   widget.innerHTML = `
@@ -12066,28 +12066,28 @@
                       </div>
                     </div>
                   `;
-        
+
                   panelTitleLocal.style.gap = panelTitleLocal.style.gap || "10px";
                   panelTitleLocal.style.flexWrap = panelTitleLocal.style.flexWrap || "wrap";
                   panelTitleLocal.appendChild(widget);
                   return widget;
                 }
-        
+
                 function startTicker(){
                   const copaStart = getCopaStart();
                   const widget = ensureCopaWidget();
                   if (!widget) return;
-        
+
                   const elDays = widget.querySelector("#copaDays");
                   const elHours = widget.querySelector("#copaHours");
                   const elMins = widget.querySelector("#copaMins");
                   const elSecs = widget.querySelector("#copaSecs");
                   const elBadge = widget.querySelector("#copaDaysBadge");
-        
+
                   function render(){
                     killMonthCalendar();
                     const d = diffParts(copaStart);
-        
+
                     if (d.finished){
                       elDays.textContent = "0";
                       elHours.textContent = "00";
@@ -12096,18 +12096,18 @@
                       elBadge.textContent = "É HOJE";
                       return;
                     }
-        
+
                     elDays.textContent = String(d.days);
                     elHours.textContent = pad2(d.hours);
                     elMins.textContent = pad2(d.mins);
                     elSecs.textContent = pad2(d.secs);
                     elBadge.textContent = `${d.days} dias`;
                   }
-        
+
                   render();
                   setInterval(render, 1000);
                 }
-        
+
                 if (document.readyState === "loading"){
                   document.addEventListener("DOMContentLoaded", () => {
                     killMonthCalendar();
@@ -12118,84 +12118,84 @@
                   startTicker();
                 }
               })();
-        
+
               /* =========================================
                  PATCH — IA ORIGINAL (símbolo refinado)
                  ========================================= */
               (function(){
                 const oldGetAlertInfo = getAlertInfo;
-        
+
                 getAlertInfo = function(j){
                   const base = oldGetAlertInfo(j);
                   if (j?.knockout_second_leg_exception === true && j?.home_urgency?.active === true){
                     return { ...base, text: "▲ URGÊNCIA CASA", cls: "chip-ia-safe chip-home-urgency", level: "green" };
                   }
-        
+
                   let text = "● SEGURO IA";
                   let cls = "chip-ia-safe";
-        
+
                   if (base.level === "yellow"){
                     text = "◔ ATENÇÃO IA";
                     cls = "is-atencao chip-ia-warn";
                   }
-        
+
                   if (base.level === "red"){
                     text = "● RISCO IA";
                     cls = "is-atencao chip-ia-danger";
                   }
-        
+
                   return { ...base, text, cls };
                 };
               })();
-        
+
               // =========================================================
               // TRACK ONLINE USERS
               // =========================================================
-        
+
               function trackOnlineUser(){
-        
+
                 fetch("/track").catch(() => {});
-        
+
               }
-        
+
               trackOnlineUser();
-        
+
               setInterval(trackOnlineUser, 30000);
-        
+
               // =========================================================
               // ADMIN DASHBOARD PREMIUM V3 — CORNERS RADAR
               // Bloco seguro: só executa quando a página tiver layout admin.
               // Pode ficar no mesmo script.js sem quebrar a tela principal.
               // =========================================================
-        
+
               (function initCornersAdminPremium(){
-        
+
                 const isAdminPage =
                   document.querySelector(".adminLayout") ||
                   document.querySelector(".topbar")?.textContent?.toLowerCase()?.includes("painel administrativo") ||
                   document.body?.classList?.contains("admin-page");
-        
+
                 if (!isAdminPage) return;
-        
+
                 const $ = (sel, root = document) => root.querySelector(sel);
                 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-        
+
                 function setText(selector, value){
                   const el = $(selector);
                   if (el) el.textContent = value;
                 }
-        
+
                 function num(v, fallback = 0){
                   const n = Number(v);
                   return Number.isFinite(n) ? n : fallback;
                 }
-        
+
                 function formatBR(value){
                   const n = Number(value);
                   if (!Number.isFinite(n)) return String(value ?? "—");
                   return n.toLocaleString("pt-BR");
                 }
-        
+
                 function escapeHtml(value){
                   return String(value ?? "")
                     .replaceAll("&", "&amp;")
@@ -12204,7 +12204,7 @@
                     .replaceAll('"', "&quot;")
                     .replaceAll("'", "&#039;");
                 }
-        
+
                 async function getJson(url, fallback){
                   try{
                     const res = await fetch(url, { cache: "no-store" });
@@ -12215,13 +12215,13 @@
                     return fallback;
                   }
                 }
-        
+
                 // =========================================================
                 // TOPBAR PREMIUM + RELÓGIO
                 // =========================================================
-        
+
                 const topbar = $(".topbar");
-        
+
                 if (topbar && !$(".adminTopTools")){
                   const tools = document.createElement("div");
                   tools.className = "adminTopTools";
@@ -12230,27 +12230,27 @@
                       <input type="text" placeholder="Buscar..." aria-label="Buscar no painel admin">
                       <span>⌕</span>
                     </div>
-        
+
                     <button class="adminIconBtn" type="button" title="Notificações">
                       🔔
                       <em>8</em>
                     </button>
-        
+
                     <button class="adminIconBtn" type="button" title="Calendário">
                       🗓
                     </button>
-        
+
                     <div class="adminClock">--:--:--</div>
                   `;
                   topbar.appendChild(tools);
                 }
-        
+
                 function updateAdminClock(){
                   const clock = $(".adminClock");
                   if (!clock) return;
-        
+
                   const now = new Date();
-        
+
                   clock.innerHTML = `
                     <small>${now.toLocaleDateString("pt-BR", {
                       day: "2-digit",
@@ -12264,43 +12264,43 @@
                     })}</strong>
                   `;
                 }
-        
+
                 updateAdminClock();
                 setInterval(updateAdminClock, 1000);
-        
+
                 // =========================================================
                 // EFEITO DOS BOTÕES
                 // =========================================================
-        
+
                 document.addEventListener("click", (ev) => {
                   const btn = ev.target.closest(".actionBtn, .adminIconBtn, .menuItem");
                   if (!btn) return;
-        
+
                   btn.classList.add("clicked");
-        
+
                   setTimeout(() => {
                     btn.classList.remove("clicked");
                   }, 260);
                 });
-        
+
                 // =========================================================
                 // MINI SPARKLINES NOS CARDS
                 // =========================================================
-        
+
                 function sparkline(values = [], className = ""){
                   const clean = values.map(Number).filter(Number.isFinite);
                   if (!clean.length) return "";
-        
+
                   const min = Math.min(...clean);
                   const max = Math.max(...clean);
                   const range = Math.max(max - min, 1);
-        
+
                   const points = clean.map((v, i) => {
                     const x = (i / Math.max(clean.length - 1, 1)) * 100;
                     const y = 34 - ((v - min) / range) * 28;
                     return `${x.toFixed(2)},${y.toFixed(2)}`;
                   }).join(" ");
-        
+
                   return `
                     <svg class="adminSpark ${className}" viewBox="0 0 100 38" preserveAspectRatio="none">
                       <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
@@ -12308,7 +12308,7 @@
                     </svg>
                   `;
                 }
-        
+
                 function installCardSparks(){
                   const cards = $$(".statCard");
                   const data = [
@@ -12317,7 +12317,7 @@
                     [60,62,61,64,63,66,68,67,70,72,71,74],
                     [98,98,99,99,100,100,99,100,100,100,100,100]
                   ];
-        
+
                   cards.forEach((card, index) => {
                     if ($(".adminSpark", card)) return;
                     const wrap = document.createElement("div");
@@ -12326,15 +12326,15 @@
                     card.appendChild(wrap);
                   });
                 }
-        
+
                 installCardSparks();
-        
+
                 // =========================================================
                 // STATS PRINCIPAIS
                 // =========================================================
-        
+
                 async function loadAdminStats(){
-        
+
                   const data = await getJson("/admin/stats", {
                     onlineUsers: 1,
                     matchesToday: 86,
@@ -12343,38 +12343,38 @@
                     revenueToday: 0,
                     activeGames: 0
                   });
-        
+
                   const usersCard = $(".green strong");
                   const gamesCard = $(".blue strong");
                   const iaCard = $(".orange strong");
                   const apiCard = $(".red strong");
-        
+
                   if (usersCard) usersCard.textContent = formatBR(data.onlineUsers ?? data.usersOnline ?? 1);
                   if (gamesCard) gamesCard.textContent = formatBR(data.matchesToday ?? data.gamesToday ?? data.activeGames ?? 86);
                   if (iaCard) iaCard.textContent = `${num(data.aiAccuracy ?? data.accuracy, 74)}%`;
                   if (apiCard) apiCard.textContent = String(data.apiStatus ?? data.statusApi ?? "ATIVA").toUpperCase();
-        
+
                   setText("[data-admin-stat='users']", formatBR(data.onlineUsers ?? data.usersOnline ?? 1));
                   setText("[data-admin-stat='games']", formatBR(data.matchesToday ?? data.gamesToday ?? 86));
                   setText("[data-admin-stat='accuracy']", `${num(data.aiAccuracy ?? data.accuracy, 74)}%`);
                   setText("[data-admin-stat='api']", String(data.apiStatus ?? "ATIVA").toUpperCase());
-        
+
                   updateIaMonitor(data);
                 }
-        
+
                 // =========================================================
                 // USUÁRIOS ONLINE
                 // =========================================================
-        
+
                 async function loadOnlineUsers(){
-        
+
                   const users = await getJson("/admin/users", [
                     { device: "Linux", browser: "Chrome", location: "Manaus - BR" }
                   ]);
-        
+
                   const list = $("#onlineUsersList");
                   if (!list) return;
-        
+
                   if (!Array.isArray(users) || users.length === 0){
                     list.innerHTML = `
                       <div class="onlineUser premiumEmpty">
@@ -12387,12 +12387,12 @@
                     `;
                     return;
                   }
-        
+
                   list.innerHTML = users.map(user => {
                     const device = escapeHtml(user.device || user.name || "Usuário");
                     const browser = escapeHtml(user.browser || user.platform || "Online");
                     const location = escapeHtml(user.location || user.city || "");
-        
+
                     return `
                       <div class="onlineUser">
                         <div class="onlineUserLeft">
@@ -12402,19 +12402,19 @@
                             ${location ? `<p>${location}</p>` : ""}
                           </div>
                         </div>
-        
+
                         <small>${browser}</small>
                       </div>
                     `;
                   }).join("");
                 }
-        
+
                 // =========================================================
                 // JOGOS DE HOJE
                 // =========================================================
-        
+
                 async function loadLiveGames(){
-        
+
                   const data = await getJson("/admin/live-games", {
                     games: [
                       {
@@ -12435,12 +12435,12 @@
                       }
                     ]
                   });
-        
+
                   const games = Array.isArray(data) ? data : (Array.isArray(data.games) ? data.games : []);
                   const list = $("#liveGamesList");
-        
+
                   if (!list) return;
-        
+
                   if (!games.length){
                     list.innerHTML = `
                       <div class="liveGameEmpty">
@@ -12449,7 +12449,7 @@
                     `;
                     return;
                   }
-        
+
                   list.innerHTML = games.slice(0, 8).map(game => {
                     const homeRaw = game.home || game.casa || "Time A";
                     const awayRaw = game.away || game.fora || "Time B";
@@ -12459,14 +12459,14 @@
                     const time = escapeHtml(displayKickoffTimeFromGame(game));
                     const prob = game.probability ?? game.prob ?? game.over95_prob_adj ?? "-";
                     const corners = game.projectedCorners ?? game.proj_cantos ?? game.corners ?? "-";
-        
+
                     return `
                       <div class="liveGameRow">
                         <div class="liveGameInfo">
                           <strong>${home} x ${away}</strong>
                           <small>${league} • ${time}</small>
                         </div>
-        
+
                         <div class="liveGameRight">
                           <div class="liveGameBadges">
                             <span class="liveProb">${prob}%</span>
@@ -12477,25 +12477,25 @@
                       </div>
                     `;
                   }).join("");
-        
+
                   renderMostAccessed(games);
                 }
-        
+
                 // =========================================================
                 // JOGOS MAIS ACESSADOS
                 // =========================================================
-        
+
                 function renderMostAccessed(games = []){
-        
+
                   const card = $$(".panelCard").find(el =>
                     el.textContent.toLowerCase().includes("jogos mais acessados")
                   );
-        
+
                   if (!card) return;
-        
+
                   const title = $(".cardTitle", card);
                   const sorted = games.slice(0, 5);
-        
+
                   const html = sorted.map((game, index) => {
                     const homeRaw = game.home || game.casa || "Time A";
                     const awayRaw = game.away || game.fora || "Time B";
@@ -12503,7 +12503,7 @@
                     const away = teamNameHTML(awayRaw, "accessTeamName");
                     const league = escapeHtml(game.league || game.liga || "Liga");
                     const views = game.views || game.access || `${(1.8 - index * .2).toFixed(1)}k`;
-        
+
                     return `
                       <div class="matchRow premiumAccessRow">
                         <div>
@@ -12517,51 +12517,51 @@
                       </div>
                     `;
                   }).join("");
-        
+
                   card.innerHTML = `${title ? title.outerHTML : `<div class="cardTitle">Jogos Mais Acessados</div>`}${html}`;
                 }
-        
+
                 // =========================================================
                 // MONITOR DA IA
                 // =========================================================
-        
+
                 function updateIaMonitor(data = {}){
-        
+
                   const card = $$(".panelCard").find(el =>
                     el.textContent.toLowerCase().includes("monitor da ia")
                   );
-        
+
                   if (!card) return;
-        
+
                   const processed = data.marketsProcessed ?? data.processedMarkets ?? 1284;
                   const filtered = data.filteredGames ?? data.gamesFiltered ?? 312;
                   const alerts = data.alertsGenerated ?? data.alerts ?? 74;
                   const accuracy = data.aiAccuracy ?? data.accuracy ?? 74;
-        
+
                   card.innerHTML = `
                     <div class="cardTitle">Monitor da IA</div>
-        
+
                     <div class="aiPremiumPanel">
                       <div class="aiRadar">
                         <div class="aiRadarCore"></div>
                       </div>
-        
+
                       <div class="aiStatus">
                         <div class="aiLine">
                           <span>Mercados processados</span>
                           <strong>${formatBR(processed)}</strong>
                         </div>
-        
+
                         <div class="aiLine">
                           <span>Jogos filtrados</span>
                           <strong>${formatBR(filtered)}</strong>
                         </div>
-        
+
                         <div class="aiLine">
                           <span>Alertas gerados</span>
                           <strong>${formatBR(alerts)}</strong>
                         </div>
-        
+
                         <div class="aiLine">
                           <span>Precisão atual</span>
                           <strong class="greenText">${accuracy}%</strong>
@@ -12570,83 +12570,83 @@
                     </div>
                   `;
                 }
-        
+
                 // =========================================================
                 // STATUS DO SISTEMA
                 // =========================================================
-        
+
                 function pulseSystemStatus(){
                   $$(".serverOk").forEach((dot, i) => {
                     dot.style.animationDelay = `${i * 160}ms`;
                   });
                 }
-        
+
                 pulseSystemStatus();
-        
+
                 // =========================================================
                 // AÇÕES RÁPIDAS
                 // =========================================================
-        
+
                 async function runAdminAction(action, btn){
-        
+
                   const oldText = btn.textContent;
                   btn.disabled = true;
                   btn.textContent = "Processando...";
-        
+
                   const endpoint = {
                     updateGames: "/admin/update-games",
                     clearCache: "/admin/clear-cache",
                     restartAi: "/admin/restart-ai",
                     restartServer: "/admin/restart-server"
                   }[action];
-        
+
                   if (!endpoint){
                     btn.disabled = false;
                     btn.textContent = oldText;
                     return;
                   }
-        
+
                   await getJson(endpoint, { ok: true });
-        
+
                   btn.textContent = "Concluído ✓";
-        
+
                   setTimeout(() => {
                     btn.disabled = false;
                     btn.textContent = oldText;
                   }, 1100);
                 }
-        
+
                 $$(".actionBtn").forEach((btn) => {
                   const text = btn.textContent.toLowerCase();
-        
+
                   let action = "";
                   if (text.includes("atualizar")) action = "updateGames";
                   if (text.includes("cache")) action = "clearCache";
                   if (text.includes("ia")) action = "restartAi";
                   if (text.includes("servidor")) action = "restartServer";
-        
+
                   if (!action) return;
-        
+
                   btn.addEventListener("click", () => runAdminAction(action, btn));
                 });
-        
+
                 // =========================================================
                 // CARDS EXTRAS OPCIONAIS
                 // Se o HTML avançado tiver esses containers, o JS alimenta.
                 // =========================================================
-        
+
                 function renderResourceMeters(){
-        
+
                   const el = $("#resourceMeters");
                   if (!el) return;
-        
+
                   const items = [
                     { label: "CPU", value: 34, detail: "2.1 GHz" },
                     { label: "Memória", value: 68, detail: "10.8 / 16 GB" },
                     { label: "Disco", value: 45, detail: "215 / 512 GB" },
                     { label: "Rede", value: 33, detail: "1.2 Gbps" }
                   ];
-        
+
                   el.innerHTML = items.map(item => `
                     <div class="resourceRing" style="--value:${item.value}">
                       <strong>${item.value}%</strong>
@@ -12655,19 +12655,19 @@
                     </div>
                   `).join("");
                 }
-        
+
                 function renderActivityFeed(){
-        
+
                   const el = $("#activityFeed");
                   if (!el) return;
-        
+
                   const items = [
                     ["👤", "Novo usuário registrado", "User: johndoe123", "17:59:21"],
                     ["🔐", "Login realizado", "User: admin", "17:58:45"],
                     ["⚽", "Jogo iniciado", "Counter Strike 2", "17:58:33"],
                     ["✅", "Cache atualizado", "Render Cloud", "17:57:59"]
                   ];
-        
+
                   el.innerHTML = items.map(item => `
                     <div class="activityItem">
                       <span>${item[0]}</span>
@@ -12679,22 +12679,22 @@
                     </div>
                   `).join("");
                 }
-        
+
                 renderResourceMeters();
                 renderActivityFeed();
-        
+
                 // =========================================================
                 // AUTO UPDATE
                 // =========================================================
-        
+
                 loadAdminStats();
                 loadOnlineUsers();
                 loadLiveGames();
-        
+
                 setInterval(loadAdminStats, 15000);
                 setInterval(loadOnlineUsers, 10000);
                 setInterval(loadLiveGames, 20000);
-        
+
               })();
               /* =========================================================
                  PREMIUM PATCH — LOGIN + MERCADOS + DETALHE DO JOGO
@@ -12706,7 +12706,7 @@
                 const $fmt = (n,d=1) => Number.isFinite(Number(n)) ? Number(n).toFixed(d).replace(".0","") : "—";
                 const AUTH_KEY = "cornersPremiumLogged";
                 const LAST_MARKET_KEY = "cornersPremiumLastMarket";
-        
+
                 const PREMIUM_MARKETS = [
                   { key:"overview", label:"Visão Geral", icon:"⚽", short:"Geral" },
                   { key:"over15", label:"+1.5 Gols", icon:"⚽", short:"+1.5" },
@@ -12722,11 +12722,11 @@
                   { key:"btts", label:"Ambas Marcam", icon:"👥", short:"Ambas" },
                   { key:"last5", label:"Últimos 5 Jogos", icon:"📊", short:"Últimos" }
                 ];
-        
+
                 function isLogged(){ return localStorage.getItem(AUTH_KEY) === "1"; }
                 function getActiveMarket(){ return localStorage.getItem(LAST_MARKET_KEY) || activeMarketFilter || "all"; }
                 function setActiveMarket(key){ localStorage.setItem(LAST_MARKET_KEY, key); activeMarketFilter = key; }
-        
+
                 function ensureLoginUI(){
                   if (!document.getElementById("premiumLoginOverlay")){
                     document.body.insertAdjacentHTML("beforeend", `
@@ -12747,7 +12747,7 @@
                     document.getElementById("premiumLoginOverlay")?.addEventListener("click", ev => { if (ev.target.id === "premiumLoginOverlay") closeLogin(); });
                     document.getElementById("premiumSubmitLogin")?.addEventListener("click", doLogin);
                   }
-        
+
                   if (!document.getElementById("premiumAuthBar")){
                     const topRight = document.querySelector(".top-right");
                     if (topRight){
@@ -12756,7 +12756,7 @@
                   }
                   renderAuthBar();
                 }
-        
+
                 function renderAuthBar(){
                   const bar = document.getElementById("premiumAuthBar");
                   if (!bar) return;
@@ -12772,7 +12772,7 @@
                     document.getElementById("premiumTopLogin")?.addEventListener("click", openLogin);
                   }
                 }
-        
+
                 function openLogin(){ ensureLoginUI(); document.getElementById("premiumLoginOverlay")?.classList.add("active"); }
                 function closeLogin(){ document.getElementById("premiumLoginOverlay")?.classList.remove("active"); }
                 async function doLogin(){
@@ -12784,7 +12784,7 @@
                   renderAuthBar();
                   if (currentView === "filters") renderMarketFilters();
                 }
-        
+
                 function baseMarkets(j){
                   const m = j?.markets || {};
                   const prob = m.prob || {};
@@ -12809,28 +12809,28 @@
                     overview:{prob:Math.max(p("over15")||0, Math.round(cornerProb), cardBase), pass:true}
                   };
                 }
-        
+
                 function marketObj(j,key){ return baseMarkets(j)[key] || baseMarkets(j).overview; }
                 function premiumMarketPass(j,key){ if (!key || key === "all") return true; return !!marketObj(j,key).pass; }
                 function premiumMarketPercent(j,key){ if (!key || key === "all") return Math.max(...Object.values(baseMarkets(j)).map(x=>x.prob||0)); return marketObj(j,key).prob || 0; }
                 function marketLabel(key){ return (PREMIUM_MARKETS.find(x=>x.key===key) || {label:"Todos"}).label; }
                 function marketIcon(key){ return (PREMIUM_MARKETS.find(x=>x.key===key) || {icon:"⌯"}).icon; }
-        
+
                 function gameHome(j){ return $safe(j?.casa || j?.home || j?.home_team, "Time A"); }
                 function gameAway(j){ return $safe(j?.fora || j?.away || j?.away_team, "Time B"); }
                 function gameLeague(j){ return $safe(j?.liga || j?.league_name || j?.league?.name, "Liga"); }
                 function gameTime(j){ const d = lastMarketDateYMD || lastDateYMD || dateInput?.value || ""; try{return timeOnlyAM(d, $safe(j?.hora || j?.time, "—"));}catch(e){return $safe(j?.hora || j?.time, "—");} }
                 function gameDateLabel(){ const d = lastMarketDateYMD || lastDateYMD || dateInput?.value || ""; if(!d) return ""; const [y,m,day]=d.split("-"); return `${day}/${m}`; }
-        
+
                 function renderMarketHero(){
                   return ``;
                 }
-        
-        
+
+
                 function installPremiumSortSelectStyles(){
                   return;
                   if (document.getElementById("premiumSortSelectStyles")) return;
-        
+
                   const style = document.createElement("style");
                   style.id = "premiumSortSelectStyles";
                   style.textContent = `
@@ -12843,7 +12843,7 @@
                       font-weight:800;
                       white-space:nowrap;
                     }
-        
+
                     .premiumSortSelect{
                       min-width:185px;
                       height:34px;
@@ -12858,13 +12858,13 @@
                       cursor:pointer;
                       box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
                     }
-        
+
                     .premiumSortSelect:hover,
                     .premiumSortSelect:focus{
                       border-color:rgba(34,230,109,.78);
                       box-shadow:0 0 0 3px rgba(34,197,94,.10);
                     }
-        
+
                     @media(max-width:900px){
                       .premiumGamesTop{align-items:flex-start;gap:10px;}
                       .premiumSortSelectWrap{width:100%;justify-content:space-between;}
@@ -12873,7 +12873,7 @@
                   `;
                   document.head.appendChild(style);
                 }
-        
+
                 const oldRenderMarketFilters = window.renderMarketFilters || renderMarketFilters;
                 window.renderMarketFilters = renderMarketFilters = function(){
                   ensureLoginUI();
@@ -12881,17 +12881,17 @@
                   localStorage.setItem(AUTH_KEY,"1");
                   renderAuthBar();
                   if (!top1El) return;
-        
+
                   const selected = getActiveMarket() === "overview" ? "cards25" : getActiveMarket();
                   const list = Array.isArray(lastMarketGames) && lastMarketGames.length ? lastMarketGames : lastRawGames;
                   const games = (typeof dedupeList === "function" ? dedupeList(list) : list)
                     .map(x => (typeof enrichMarketsList === "function" ? enrichMarketsList([x])[0] : x));
-        
+
                   let filtered = games.filter(j => premiumMarketPass(j, selected));
-        
+
                   filtered = filtered.sort((a,b)=>{
                     const da = lastMarketDateYMD || lastDateYMD || dateInput?.value || "";
-        
+
                     // Seletor de ordenação da lista dos jogos
                     if (filterSortMode === "time"){
                       try{
@@ -12901,22 +12901,22 @@
                         if (ma !== null && mb === null) return -1;
                         if (ma === null && mb !== null) return 1;
                       }catch(e){}
-        
+
                       return premiumMarketPercent(b, selected) - premiumMarketPercent(a, selected);
                     }
-        
+
                     if (filterSortMode === "corners"){
                       const ca = Number(typeof getProj === "function" ? getProj(a) : a?.proj_cantos) || 0;
                       const cb = Number(typeof getProj === "function" ? getProj(b) : b?.proj_cantos) || 0;
                       if (cb !== ca) return cb - ca;
                       return premiumMarketPercent(b, selected) - premiumMarketPercent(a, selected);
                     }
-        
+
                     // Padrão: maior força do filtro
                     const pa = premiumMarketPercent(a, selected);
                     const pb = premiumMarketPercent(b, selected);
                     if (pb !== pa) return pb - pa;
-        
+
                     try{
                       const ma = typeof getMatchMinutesAM === "function" ? getMatchMinutesAM(a, da) : null;
                       const mb = typeof getMatchMinutesAM === "function" ? getMatchMinutesAM(b, da) : null;
@@ -12924,7 +12924,7 @@
                     }catch(e){}
                     return 0;
                   }).slice(0, 50);
-        
+
                   const rows = filtered.map((j,idx)=>{
                     const pct = premiumMarketPercent(j, selected);
                     const pctRounded = Math.round(pct || 0);
@@ -12933,42 +12933,42 @@
                     const mercado = marketLabel(selected);
                     const icon = marketIcon(selected);
                     const matchId = String(j?.match_id || j?.id || j?.event_key || "");
-        
+
                     const rowKey = matchId || `${gameHome(j)}|${gameAway(j)}|${gameLeague(j)}|${gameTime(j)}`;
                     const isMcSelected = window.__selectedMatchCenterKey && window.__selectedMatchCenterKey === rowKey;
-        
+
                     return `<div class="premiumGameRow cleanDashRow ${isMcSelected ? "match-center-selected" : ""}" data-premium-game="${idx}" data-match-center-row="1" data-match-key="${escapeAttrLite(rowKey)}" data-match-id="${matchId}">
                       <div class="premiumGameTime">${gameTime(j)}<span>${gameDateLabel()}</span></div>
-        
+
                       <div class="premiumGameTeams cleanTeams">
                         ${typeof teamNameHTML === "function" ? teamNameHTML(gameHome(j)) : gameHome(j)}<br>
                         ${typeof teamNameHTML === "function" ? teamNameHTML(gameAway(j)) : gameAway(j)}
                         <small>${gameLeague(j)}</small>
                       </div>
-        
+
                       <div class="cleanLeagueBox">
                         <span>${gameLeague(j)}</span>
                         <small>Mercado: ${mercado}</small>
                       </div>
-        
+
                       <div class="cleanMetricsBox">
                         <div class="cleanDonut" style="--p:${Math.max(0, Math.min(100, pctRounded))}"><b>${pctRounded}%</b></div>
                         <div><strong>Força do filtro</strong><span>${mercado}</span></div>
                       </div>
-        
+
                       <div class="cleanStatsBox">
                         <strong>Médias reais</strong>
                         <div><span>Proj. cantos</span><b>${Number.isFinite(proj) ? $fmt(proj,1) : "—"}</b></div>
                         <div><span>+2.5 cartões</span><b>${Math.round(m.cards25?.prob || 0)}%</b></div>
                         <div><span>+3.5 cartões</span><b>${Math.round(m.cards35?.prob || 0)}%</b></div>
                       </div>
-        
+
                       <div class="cleanTrendBox">
                         <strong>Tendência</strong>
                         <div class="cleanBars"><i></i><i></i><i></i><i></i><i></i></div>
                         <span>IA + dados reais</span>
                       </div>
-        
+
                       <div class="premiumUnlockedBox cleanActionBox">
                         <div><strong>${icon} ${mercado}</strong><span class="premiumPercent">${pctRounded}%</span></div>
                         <div class="premiumActionBtns">
@@ -12977,7 +12977,7 @@
                       </div>
                     </div>`;
                   }).join("");
-        
+
                   top1El.innerHTML = `<div class="premiumMarketShell cleanDashShell">
                     <section class="premiumFilterBand cleanFilterBand">
                       <div class="premiumFilterHeader"><strong>◆ Filtros</strong><span>Escolha o mercado primeiro. Depois o site mostra os jogos daquele mercado.</span></div>
@@ -12986,13 +12986,13 @@
                         ${PREMIUM_MARKETS.filter(m=>m.key!=="overview").map(m=>`<button class="premiumMarketChip ${selected===m.key?"is-active":""}" data-premium-market="${m.key}">${m.icon} ${m.label}${m.novo?` <span class="tagNovo">NOVO</span>`:""}</button>`).join("")}
                       </div>
                     </section>
-        
+
                     ${renderMarketHero()}
-        
+
                     <section class="premiumGamesPanel cleanGamesPanel">
                       <div class="premiumGamesTop">
                         <h3>⚽ Próximos Jogos (${filtered.length})</h3>
-        
+
                         <label class="premiumSortMini premiumSortSelectWrap">
                           <span>Ordenar por:</span>
                           <select id="premiumSortSelect" class="premiumSortSelect" aria-label="Ordenar jogos">
@@ -13004,10 +13004,10 @@
                       </div>
                       <div class="premiumGameRows">${rows || `<div class="marketEmpty">Nenhum jogo encontrado para esse mercado nesta data.</div>`}</div>
                     </section>
-        
+
                     <div class="cleanFooterNote"></div>
                   </div>`;
-        
+
                   window.__premiumFilteredGames = filtered;
                   window.__lastRenderedTopGames = filtered;
                   try{ if (window.__selectedMatchCenterGame) window.updateDesktopMatchRail && window.updateDesktopMatchRail(window.__selectedMatchCenterGame, filtered); }catch(e){}
@@ -13015,7 +13015,7 @@
                   bindPremiumEvents();
                   if (typeof updateIaBoxFromTop === "function") updateIaBoxFromTop([]);
                 };
-        
+
                 function bindPremiumEvents(){
                   const sortSelect = top1El?.querySelector("#premiumSortSelect");
                   if (sortSelect){
@@ -13024,20 +13024,20 @@
                       renderMarketFilters();
                     });
                   }
-        
+
                   top1El?.querySelectorAll("[data-premium-market]").forEach(btn=>btn.addEventListener("click",()=>{ setActiveMarket(btn.dataset.premiumMarket || "all"); renderMarketFilters(); }));
                   top1El?.querySelectorAll("[data-open-login]").forEach(btn=>btn.addEventListener("click",ev=>{ ev.stopPropagation(); openLogin(); }));
                   top1El?.querySelectorAll("[data-open-detail]").forEach(btn=>btn.addEventListener("click",ev=>{ ev.preventDefault(); ev.stopPropagation(); if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation(); const i=Number(btn.dataset.openDetail); openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); }));
                   top1El?.querySelectorAll("[data-premium-game]").forEach(row=>row.addEventListener("click",(ev)=>{ if (ev.target.closest("button,a,select,[data-open-detail],[data-open-match-center],[data-open-match-center-table]")) return; const i=Number(row.dataset.premiumGame); if (isLogged()) openPremiumDetail(window.__premiumFilteredGames?.[i], getActiveMarket()); else openLogin(); }));
                 }
-        
-        
+
+
                 function last5Num(v, d=1){
                   const n = Number(v);
                   if (!Number.isFinite(n)) return "—";
                   return n.toFixed(d).replace(".0", "");
                 }
-        
+
                 function last5DateLabel(value){
                   const s = String(value || "");
                   if (/^\d{4}-\d{2}-\d{2}/.test(s)){
@@ -13046,7 +13046,7 @@
                   }
                   return "—";
                 }
-        
+
                 function last5MatchName(m){
                   const home = $safe(m?.home, "Mandante");
                   const away = $safe(m?.away, "Visitante");
@@ -13055,7 +13055,7 @@
                   const score = (sh !== null && sh !== undefined && sa !== null && sa !== undefined) ? ` ${sh} x ${sa} ` : " x ";
                   return `${home}${score}${away}`;
                 }
-        
+
                 function last5SideData(j){
                   const data = j?.last5 || {};
                   const home = Array.isArray(data.home) ? data.home : [];
@@ -13070,13 +13070,13 @@
                   const combined = Number(sum.combinedAvg ?? ((homeAvg + awayAvg) / 2));
                   return { home, away, homeAvg, awayAvg, homeOver95, awayOver95, homeOver105, awayOver105, combined };
                 }
-        
+
                 function avgFromLast5(list, key){
                   const nums = (Array.isArray(list) ? list : []).map(x => Number(x?.[key])).filter(Number.isFinite);
                   if (!nums.length) return null;
                   return nums.reduce((a,b)=>a+b,0) / nums.length;
                 }
-        
+
                 function renderLast5Rows(list){
                   if (!Array.isArray(list) || !list.length){
                     return `<tr><td colspan="5" class="last5Empty">Sem dados completos disponíveis.</td></tr>`;
@@ -13091,7 +13091,7 @@
                     </tr>
                   `).join("");
                 }
-        
+
                 function renderLast5PremiumDetail(j){
                   const home = gameHome(j), away = gameAway(j);
                   const data = last5SideData(j);
@@ -13100,7 +13100,7 @@
                   const awayCount = data.away.length || 5;
                   const over95Txt = `${data.homeOver95}/${homeCount} + ${data.awayOver95}/${awayCount}`;
                   const over105Txt = `${data.homeOver105}/${homeCount} + ${data.awayOver105}/${awayCount}`;
-        
+
                   return `
                     <div class="last5PremiumBox">
                       <div class="last5Head">
@@ -13110,7 +13110,7 @@
                         </div>
                         <div class="last5Confidence"><span>Confiança IA</span><strong>${conf || "—"}%</strong></div>
                       </div>
-        
+
                       <div class="last5Grid">
                         <section class="last5TeamCard">
                           <h3>${teamNameHTML(home)} <small>(MANDANTE)</small></h3>
@@ -13120,7 +13120,7 @@
                           </table>
                           <div class="last5Average">Média de cantos gerados <b>${last5Num(data.homeAvg,1)}</b></div>
                         </section>
-        
+
                         <aside class="last5CompareCard">
                           <h3>Comparativo IA</h3>
                           <div class="last5CompareLine"><span>Média ${escapeHtmlLite(home)}</span><b>${last5Num(data.homeAvg,1)}</b></div>
@@ -13130,7 +13130,7 @@
                           <div class="last5CompareLine"><span>Over 10.5</span><b>${over105Txt}</b></div>
                           <div class="last5Strength">${conf >= 75 ? "MUITO FORTE" : conf >= 65 ? "FORTE" : "ATENÇÃO"}</div>
                         </aside>
-        
+
                         <section class="last5TeamCard">
                           <h3>${teamNameHTML(away)} <small>(VISITANTE)</small></h3>
                           <table class="last5Table">
@@ -13140,14 +13140,14 @@
                           <div class="last5Average">Média de cantos gerados <b>${last5Num(data.awayAvg,1)}</b></div>
                         </section>
                       </div>
-        
+
                       <div class="last5IaSummary">
                         <b>Resumo da análise IA</b>
                         <p>A leitura considera a produção recente de escanteios dos dois times, cantos cedidos, estabilidade do mercado e força do filtro. Esses dados ajudam a confirmar se a projeção está sustentada por forma recente.</p>
                       </div>
                     </div>`;
                 }
-        
+
                 function ensureLast5PremiumStyles(){
                   if (document.getElementById("last5PremiumStyles")) return;
                   const style = document.createElement("style");
@@ -13188,7 +13188,7 @@
                   `;
                   document.head.appendChild(style);
                 }
-        
+
                 function analysisText(key){
                   if (key === "cards25") return "Jogo com tendência para 3 ou mais cartões";
                   if (key === "cards35") return "Jogo com tendência para 4 ou mais cartões";
@@ -13199,7 +13199,7 @@
                   if (key === "last5") return "Base estatística dos últimos 5 jogos oficiais de cada equipe";
                   return "Resumo geral dos melhores mercados do jogo";
                 }
-        
+
                 function openPremiumDetail(j, marketKey="overview"){
                   ensureLoginUI();
                   ensureLast5PremiumStyles();
@@ -13213,7 +13213,7 @@
                   const cardsAvg = $clamp(((all.cards25.prob - 42) / 10) + 2.7, 2.4, 5.8);
                   const homeCards = $clamp(cardsAvg * .46, 0.8, 3.4);
                   const awayCards = $clamp(cardsAvg * .54, 0.8, 3.6);
-        
+
                   top1El.innerHTML = `<div class="premiumDetailWrap">
                     <section class="premiumDetailHeader">
                       <div class="premiumBackLine"><button class="premiumBackBtn" id="premiumBackToGames">← Voltar para jogos</button><button class="premiumFavoriteBtn">☆ Adicionar aos favoritos</button></div>
@@ -13244,13 +13244,13 @@
                       <aside class="premiumOtherMarkets"><h3>Outros mercados</h3>${PREMIUM_MARKETS.filter(m=>m.key!=="overview").map(m=>`<div class="premiumOtherItem ${m.key===key?"is-active":""}" data-detail-market="${m.key}"><b>${m.icon} ${m.label}</b><span>${Math.round((all[m.key]||{}).prob||0)}%</span></div>`).join("")}</aside>
                     </div>
                   </div>`;
-        
+
                   top1El.querySelector("#premiumBackToGames")?.addEventListener("click",()=>renderMarketFilters());
                   top1El.querySelectorAll("[data-detail-market]").forEach(btn=>btn.addEventListener("click",()=>openPremiumDetail(j, btn.dataset.detailMarket)));
                   top1El.querySelectorAll("[data-open-login]").forEach(btn=>btn.addEventListener("click",openLogin));
                   if (countTop) countTop.textContent = "1";
                 }
-        
+
                 // Ao clicar em card principal do pré-jogo, abre o detalhe premium também.
                 if (typeof renderTopCard === "function"){
                   const oldRenderTopCard = renderTopCard;
@@ -13266,11 +13266,11 @@
                     return node;
                   };
                 }
-        
+
                 document.addEventListener("DOMContentLoaded", ensureLoginUI);
                 window.addEventListener("load", ensureLoginUI);
               })();
-        
+
               /* =========================================================
                  MATCH CENTER — BOTÃO NOVO + PAINEL EXPANSÍVEL
                  Mantém o botão "Ver análise" do jeito que já existe.
@@ -13280,30 +13280,30 @@
                   const s = String(value ?? "").trim().toLowerCase();
                   return !s || s === "undefined" || s === "null" || s === "nan" || s === "indefinido";
                 }
-        
+
                 function mcSafe(value, fallback = "—"){
                   if (mcIsMissing(value)) return fallback;
                   return String(value).trim();
                 }
-        
+
                 function mcNum(value, fallback = null){
                   if (mcIsMissing(value)) return fallback;
                   const n = Number(String(value).replace("%", "").replace(",", "."));
                   return Number.isFinite(n) ? n : fallback;
                 }
-        
+
                 function mcPct(part, total){
                   const p = mcNum(part, 0);
                   const t = Math.max(mcNum(total, 0), 1);
                   return Math.max(4, Math.min(100, Math.round((p / t) * 100)));
                 }
-        
+
                 function mcVal(value){
                   if (mcIsMissing(value)) return "—";
                   const n = mcNum(value, null);
                   return n === null ? "—" : String(value).replace("%", "") + (String(value).includes("%") ? "%" : "");
                 }
-        
+
                 function mcStatusLabel(data){
                   const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                   if (data?.finished || raw.includes("encerrado") || raw.includes("ft") || raw.includes("final") || raw.includes("finished")) return "ENCERRADO";
@@ -13311,7 +13311,7 @@
                   if (data?.not_started || raw.includes("pré") || raw.includes("pre")) return "PRÉ-JOGO";
                   return "MATCH CENTER";
                 }
-        
+
                 function mcLiveMinuteLabel(data){
                   if (data?.finished) return "";
                   if (!data?.live) return "";
@@ -13320,19 +13320,19 @@
                   if (min !== null) return `${period ? period + " · " : ""}${min}'`;
                   return period || "AO VIVO";
                 }
-        
+
                 function mcRealPct(part, total){
                   const p = mcNum(part, null);
                   const t = mcNum(total, null);
                   if (p === null || t === null || t <= 0) return null;
                   return Math.max(0, Math.min(100, Math.round((p / t) * 100)));
                 }
-        
+
                 function mcRadarPct(label, value){
                   if (value === null || value === undefined) return `<strong class="muted">—</strong><small>Aguardando dados reais</small>`;
                   return `<strong class="${label || ""}">${value}%</strong><small>Baseado no live</small>`;
                 }
-        
+
                 function mcBuildEvents(data){
                   const events = Array.isArray(data?.events) ? data.events : [];
                   if (!events.length){
@@ -13341,13 +13341,13 @@
                   }
                   return events.map(e => `<div class="mcEventItem"><span>${mcSafe(e?.minute,"—")}</span><b>${mcSafe(e?.label,"Evento")}</b><em>${mcSafe(e?.team,"—")}</em></div>`).join("");
                 }
-        
+
                 function mcMarketText(ok){
                   if (ok === true) return "bateu";
                   if (ok === false) return "não bateu";
                   return "aguardando";
                 }
-        
+
                 function mcBuildStatsRows(data){
                   const rows = [
                     ["Chutes", data?.shots?.home, data?.shots?.away],
@@ -13357,7 +13357,7 @@
                     ["Escanteios", data?.corners?.home, data?.corners?.away],
                     ["Gols", data?.goals?.home, data?.goals?.away]
                   ];
-        
+
                   return rows.map(([name, h, a]) => {
                     const hn = mcNum(h, 0);
                     const an = mcNum(a, 0);
@@ -13373,14 +13373,14 @@
                     </div>`;
                   }).join("");
                 }
-        
-        
+
+
                 function mcMatchStorageKey(data, fallback = {}){
                   const id = mcSafe(data?.match_id || fallback?.matchId || fallback?.match_id, "");
                   if (id && id !== "—") return `cornersRadar_pressure_real_v2_${id}`;
                   return `cornersRadar_pressure_real_v2_${mcSafe(data?.home || fallback?.home,"casa")}_${mcSafe(data?.away || fallback?.away,"fora")}`;
                 }
-        
+
                 function mcReadSavedTimeline(key){
                   try{
                     const raw = localStorage.getItem(key);
@@ -13390,7 +13390,7 @@
                     return [];
                   }
                 }
-        
+
                 function mcSaveTimeline(key, timeline){
                   if (!key || !Array.isArray(timeline) || !timeline.length) return;
                   try{
@@ -13412,19 +13412,19 @@
                     localStorage.setItem(key, JSON.stringify(merged));
                   }catch(e){}
                 }
-        
+
                 function mcBuildFallbackTimeline(data){
                   // Dados sintéticos desativados: sem timeline real, não desenha gráfico.
                   return [];
                 }
-        
+
                 function mcNormalizeTimeline(data, fallback){
                   const timeline = Array.isArray(data?.pressure_timeline)
                     ? data.pressure_timeline.filter(item => item && (item.home !== undefined || item.away !== undefined))
                     : [];
                   return timeline;
                 }
-        
+
                 function mcEventMarkers(data){
                   const events = Array.isArray(data?.events) ? data.events : [];
                   return events
@@ -13442,24 +13442,24 @@
                     .filter(Boolean)
                     .slice(0, 18);
                 }
-        
+
                 function mcBuildPressureChart(data, fallback = {}){
                   const home = mcSafe(data?.home || fallback.home, "Mandante");
                   const away = mcSafe(data?.away || fallback.away, "Visitante");
                   const timeline = mcNormalizeTimeline(data, fallback);
                   const finished = !!data?.finished;
                   const title = finished ? "GRÁFICO DE PRESSÃO • PÓS-JOGO" : "MOMENTO DA PARTIDA • AO VIVO";
-        
+
                   if (!timeline.length){
                     return `<div class="mcPressureChartBox empty"><h4>${title}</h4><div class="mcEmptyReal">Aguardando dados de pressão da API.</div></div>`;
                   }
-        
+
                   const cleanRaw = timeline.map((p, idx) => ({
                     minute: parseInt(String(p?.minute ?? idx).replace(/[^0-9]/g,""),10) || (idx + 1) * 5,
                     home: Math.max(0, mcNum(p?.home, 0) || 0),
                     away: Math.max(0, mcNum(p?.away, 0) || 0)
                   }));
-        
+
                   // Se a API mandar pressão acumulada, converte para pressão POR BLOCO.
                   // Isso elimina o desenho sempre crescente e deixa o gráfico com altos e baixos reais.
                   const isMostlyGrowing = (arr, key) => {
@@ -13470,7 +13470,7 @@
                     }
                     return grows >= arr.length - 2;
                   };
-        
+
                   const looksAccumulated = isMostlyGrowing(cleanRaw, "home") || isMostlyGrowing(cleanRaw, "away");
                   const clean = looksAccumulated
                     ? cleanRaw.map((p, i) => {
@@ -13482,13 +13482,13 @@
                         };
                       })
                     : cleanRaw;
-        
+
                   const maxVal = Math.max(1, ...clean.map(p => Math.max(p.home, p.away)));
                   const W = 720, H = 210, padX = 24, mid = 104, maxBar = 78;
                   const gap = 2;
                   const barW = Math.max(14, Math.min(30, ((W - padX * 2) / clean.length) - gap));
                   const step = (W - padX * 2) / Math.max(1, clean.length - 1);
-        
+
                   const bars = clean.map((p, i) => {
                     const x = padX + (i * step) - (barW / 2);
                     const hh = Math.max(7, (p.home / maxVal) * maxBar);
@@ -13498,18 +13498,18 @@
                       <rect class="mcPressureBar away" x="${x.toFixed(1)}" y="${mid}" width="${barW.toFixed(1)}" height="${ah.toFixed(1)}" rx="3"></rect>
                     `;
                   }).join("");
-        
+
                   const markers = mcEventMarkers(data).map(ev => {
                     const x = padX + ((ev.minute - 1) / 89) * (W - padX * 2);
                     const y = ev.icon === "⚽" ? 22 : 188;
                     return `<text class="mcPressureEvent" x="${x.toFixed(1)}" y="${y}" text-anchor="middle"><title>${ev.minute}' - ${ev.label}</title>${ev.icon}</text>`;
                   }).join("");
-        
+
                   const labels = [0,15,30,45,60,75,90].map(m => {
                     const x = padX + (m / 90) * (W - padX * 2);
                     return `<text class="mcPressureTime" x="${x.toFixed(1)}" y="203" text-anchor="middle">${m}'</text>`;
                   }).join("");
-        
+
                   return `<div class="mcPressureChartBox ${finished ? "is-finished" : "is-live"}">
                     <div class="mcPressureChartHead">
                       <h4>${title}</h4>
@@ -13527,7 +13527,7 @@
                     <div class="mcPressureLegend"><span><i class="home"></i>${home}</span><span><i class="away"></i>${away}</span></div>
                   </div>`;
                 }
-        
+
                 function mcBuildPanel(data, fallback){
                   const home = mcSafe(data?.home || fallback.home, "Mandante");
                   const away = mcSafe(data?.away || fallback.away, "Visitante");
@@ -13535,33 +13535,33 @@
                   const minuteLabel = mcLiveMinuteLabel(data);
                   const gh = mcVal(data?.goals?.home);
                   const ga = mcVal(data?.goals?.away);
-        
+
                   const ph = mcNum(data?.pressure?.home, null);
                   const pa = mcNum(data?.pressure?.away, null);
                   const pressureTotal = (ph !== null && pa !== null) ? ph + pa : null;
                   const homePressurePct = mcRealPct(ph, pressureTotal);
                   const awayPressurePct = mcRealPct(pa, pressureTotal);
-        
+
                   const ch = mcNum(data?.corners?.home, null);
                   const ca = mcNum(data?.corners?.away, null);
                   const shOnTotal = mcNum(data?.shots?.on_target_total, null);
                   const cardsTotal = mcNum(data?.cards?.yellow_home,0) + mcNum(data?.cards?.yellow_away,0) + mcNum(data?.cards?.red_home,0) + mcNum(data?.cards?.red_away,0);
-        
+
                   const nextCorner = (data?.live && pressureTotal !== null && ch !== null && ca !== null) ? Math.max(35, Math.min(85, Math.round(45 + ((ch + ca) * 2.2) + (pressureTotal / 12)))) : null;
                   const nextGoal = (data?.live && shOnTotal !== null) ? Math.max(20, Math.min(78, Math.round(34 + (shOnTotal * 4)))) : null;
                   const nextCard = (data?.live && pressureTotal !== null) ? Math.max(18, Math.min(72, Math.round(26 + (pressureTotal / 9) + (cardsTotal * 5)))) : null;
-        
+
                   const totalEntries = mcNum(data?.markets?.entries_total, null);
                   const hitEntries = mcNum(data?.markets?.entries_hit, null);
                   const pendingEntries = mcNum(data?.markets?.entries_pending, null);
                   const errorEntries = (totalEntries !== null && hitEntries !== null && pendingEntries !== null) ? Math.max(0,totalEntries-hitEntries-pendingEntries) : null;
                   const entryPct = (totalEntries && hitEntries !== null) ? Math.round((hitEntries / totalEntries) * 100) : null;
-        
+
                   const yellowHome = mcVal(data?.cards?.yellow_home);
                   const yellowAway = mcVal(data?.cards?.yellow_away);
                   const redHome = mcVal(data?.cards?.red_home);
                   const redAway = mcVal(data?.cards?.red_away);
-        
+
                   const pressureHTML = (homePressurePct === null || awayPressurePct === null)
                     ? `<div class="mcEmptyReal">Aguardando pressão ofensiva real da API.</div>`
                     : `<div class="mcPressurePro">
@@ -13572,7 +13572,7 @@
                         <strong class="away">${awayPressurePct}%</strong>
                         <span class="mcShieldTiny away">🏆</span>
                       </div>`;
-        
+
                   const entryHTML = (entryPct === null)
                     ? `<div class="mcEmptyReal">Sem entradas calculadas para este jogo.</div>`
                     : `<div class="mcEntryCircle big" style="--p:${entryPct};"><b>${entryPct}%</b><span>Aproveitamento</span></div>
@@ -13582,31 +13582,31 @@
                         <div class="mcEventItem"><span>●</span><b>Erros</b><em>${errorEntries}</em></div>
                        </div>
                        <p>Total: ${totalEntries} entradas</p>`;
-        
+
                   return `<div class="matchCenterDrop matchCenterPro" data-match-center-open="1">
                     <div class="mcProTopActions">
                       <button class="mcBackBtn" type="button" data-mc-close="1">← Voltar para jogos</button>
                       <button class="mcFavBtn" type="button">☆ Adicionar aos favoritos</button>
                     </div>
-        
+
                     <div class="matchCenterHead mcProHead">
                       <div class="matchCenterTeam mcProTeam mcHomeTeam">
                         <div class="mcShield">⬟</div>
                         <strong>${home}</strong>
                       </div>
-        
+
                       <div class="matchCenterScore mcProScore">
                         <div class="matchCenterStatus">● ${status}</div>
                         ${minuteLabel ? `<div class="mcLiveMinute">${minuteLabel}</div>` : ``}
                         <div class="matchCenterGoals">${gh} <small>x</small> ${ga}</div>
                       </div>
-        
+
                       <div class="matchCenterTeam mcProTeam mcAwayTeam">
                         <div class="mcShield mcShieldAway">🏆</div>
                         <strong>${away}</strong>
                       </div>
                     </div>
-        
+
                     <div class="matchCenterTabs mcProTabs">
                       <span class="is-active">▥ Estatísticas</span>
                       <span>⌁ Momento</span>
@@ -13615,13 +13615,13 @@
                       <span>▣ Eventos</span>
                       <span>◴ Histórico / H2H</span>
                     </div>
-        
+
                     <div class="mcProGrid">
                       <section class="matchCenterCard mcStatsProCard">
                         <div class="mcCardHeader"><span class="mcShieldTiny">⬟</span><h4>Estatísticas dos times</h4><span class="mcShieldTiny away">🏆</span></div>
                         ${mcBuildStatsRows(data)}
                       </section>
-        
+
                       <section class="matchCenterCard mcMomentProCard">
                         ${mcBuildPressureChart(data, fallback)}
                         <div class="mcProMiniCards">
@@ -13651,12 +13651,12 @@
               </div>
                         </div>
                       </section>
-        
+
                       <section class="matchCenterCard mcRightProCard">
                         <h4>Pressão ofensiva</h4>
                         <small>Ataques perigosos em tempo real, quando a API retorna.</small>
                         ${pressureHTML}
-        
+
                         <div class="mcRadarBoxPro">
                           <h4>Radar do jogo <small>Baseado somente nos dados reais disponíveis</small></h4>
                           <div class="mcRadarGrid">
@@ -13667,7 +13667,7 @@
                           <div class="mcTrendLine">⌁ <b>Tendência</b><span>${data?.live ? "Cálculo baseado no momento real da partida." : "Disponível quando o jogo estiver ao vivo."}</span></div>
                         </div>
                       </section>
-        
+
                       <section class="matchCenterCard mcEventsProCard">
                         <h4>${data?.finished ? "Eventos finais" : "Eventos em tempo real"}</h4>
                         <div class="mcEventsList">${mcBuildEvents(data)}</div>
@@ -13675,11 +13675,11 @@
                     </div>
                   </div>`;
                 }
-        
+
                 function ensureMatchCenterOverlay(){
                   let overlay = document.getElementById("matchCenterOverlay");
                   if (overlay) return overlay;
-        
+
                   overlay = document.createElement("div");
                   overlay.id = "matchCenterOverlay";
                   overlay.className = "matchCenterOverlay";
@@ -13693,16 +13693,16 @@
                     </div>
                   `;
                   document.body.appendChild(overlay);
-        
+
                   overlay.addEventListener("click", (ev) => {
                     if (ev.target === overlay || ev.target.closest(".matchCenterOverlayClose")){
                       closeMatchCenterOverlay();
                     }
                   });
-        
+
                   return overlay;
                 }
-        
+
                 function closeMatchCenterOverlay(){
                   const overlay = document.getElementById("matchCenterOverlay");
                   if (!overlay) return;
@@ -13711,11 +13711,11 @@
                   document.body.classList.remove("matchCenterModalOpen");
                   document.querySelectorAll(".matchCenterBtn,.matchCenterMiniBtn").forEach(b => b.classList.remove("is-open"));
                 }
-        
+
                 async function openMatchCenter(btn){
                   document.querySelectorAll(".matchCenterBtn,.matchCenterMiniBtn").forEach(b => b.classList.remove("is-open"));
                   btn.classList.add("is-open");
-        
+
                   const fallback = {
                     matchId: btn.dataset.matchId || "",
                     home: btn.dataset.home || "Mandante",
@@ -13723,15 +13723,15 @@
                     league: btn.dataset.league || "Liga",
                     time: btn.dataset.time || ""
                   };
-        
+
                   const overlay = ensureMatchCenterOverlay();
                   const body = overlay.querySelector(".matchCenterOverlayBody");
-        
+
                   body.innerHTML = `<div class="matchCenterLoading">Carregando Match Center...</div>`;
                   overlay.classList.add("active");
                   overlay.setAttribute("aria-hidden", "false");
                   document.body.classList.add("matchCenterModalOpen");
-        
+
                   let data = null;
                   if (fallback.matchId){
                     try{
@@ -13741,7 +13741,7 @@
                       console.warn("Match Center falhou:", err);
                     }
                   }
-        
+
                   if (!data){
                     data = {
                       home: fallback.home,
@@ -13755,13 +13755,13 @@
                       markets:{corners95:null, corners105:null, btts:null}
                     };
                   }
-        
+
                   body.innerHTML = mcBuildPanel(data, fallback)
                     .replace(/undefined/gi, "—")
                     .replace(/null/gi, "—");
                 }
-        
-        
+
+
                 function resetDesktopMatchRailToEmpty(){
                   const rail = document.getElementById("desktopMatchRail");
                   if (!rail) return;
@@ -13780,7 +13780,7 @@
                           <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
                         </div>
                       </section>
-        
+
                       <section class="railCard railEmptyStatsCard">
                         <h3>ESTATÍSTICAS DO FILTRO</h3>
                         <div class="railEmptyStatsGrid">
@@ -13791,7 +13791,7 @@
                         </div>
                         <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
                       </section>
-        
+
                       <section class="railCard railEmptyEventsCard">
                         <h3>EVENTOS / LEITURA</h3>
                         <div class="railEmptyEventIcons">
@@ -13807,34 +13807,34 @@
                           <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
                         </div>
                       </section>
-        
+
                       <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
                         <span>▶ INICIAR MATCH CENTER</span>
                         <small>Selecione um jogo para continuar</small>
                       </button>
                     `;
                 }
-        
+
                 function clearRowMatchCenterSelection({ resetRail = true } = {}){
                   window.__selectedMatchCenterGame = null;
                   window.__selectedMatchCenterKey = null;
-        
+
                   document.querySelectorAll(".premiumGameRow.match-center-selected,.cleanDashRow.match-center-selected,[data-match-center-row].match-center-selected")
                     .forEach(row => row.classList.remove("match-center-selected"));
-        
+
                   document.querySelectorAll(".matchCenterBtn").forEach(b => {
                     b.classList.remove("is-open");
                     b.innerHTML = `<span class="matchCenterBtnIcon">▥</span> Match Center`;
                   });
-        
+
                   document.querySelectorAll(".matchCenterMiniBtn").forEach(b => {
                     b.classList.remove("is-open");
                     b.innerHTML = `📊`;
                   });
-        
+
                   if (resetRail) resetDesktopMatchRailToEmpty();
                 }
-        
+
                 function openRowMatchCenterOnly(btn){
                   const idx = Number(btn?.dataset?.openMatchCenter);
                   const fallback = {
@@ -13844,34 +13844,34 @@
                     liga: btn?.dataset?.league || "Liga",
                     hora: btn?.dataset?.time || "—"
                   };
-        
+
                   const list = Array.isArray(window.__premiumFilteredGames) ? window.__premiumFilteredGames : [];
                   const game = list[idx] || fallback;
                   const row = btn.closest(".premiumGameRow,.cleanDashRow,[data-match-center-row]");
                   const rowKey = String(row?.dataset?.matchKey || fallback.match_id || `${fallback.casa}|${fallback.fora}|${fallback.liga}|${fallback.hora}`);
-        
+
                   // Se clicar novamente no mesmo jogo/botão, fecha o Match Center e limpa a seleção.
                   if (window.__selectedMatchCenterKey && window.__selectedMatchCenterKey === rowKey){
                     clearRowMatchCenterSelection({ resetRail: true });
                     return;
                   }
-        
+
                   window.__selectedMatchCenterGame = game;
                   window.__selectedMatchCenterKey = rowKey;
-        
+
                   clearRowMatchCenterSelection({ resetRail: false });
-        
+
                   window.__selectedMatchCenterGame = game;
                   window.__selectedMatchCenterKey = rowKey;
-        
+
                   row?.classList.add("match-center-selected");
                   btn.classList.add("is-open");
                   btn.innerHTML = `<span class="matchCenterBtnIcon">✓</span> Aberto`;
-        
+
                   const rail = document.getElementById("desktopMatchRail");
                   rail?.classList.add("rail-selected-pulse");
                   setTimeout(() => rail?.classList.remove("rail-selected-pulse"), 900);
-        
+
                   try{
                     if (typeof window.updateDesktopMatchRail === "function"){
                       window.updateDesktopMatchRail(game, list);
@@ -13880,11 +13880,11 @@
                     console.warn("Falha ao atualizar Match Center fixo:", e);
                   }
                 }
-        
+
                 document.addEventListener("keydown", function(ev){
                   if (ev.key === "Escape") closeMatchCenterOverlay();
                 });
-        
+
                 document.addEventListener("click", function(ev){
                   if (ev.target.closest("[data-mc-close]")){
                     ev.preventDefault();
@@ -13893,34 +13893,34 @@
                     return;
                   }
                   const btn = ev.target.closest("[data-open-match-center], [data-open-match-center-table]");
-        
+
                   if (!btn){
                     const clickedInsideRow = ev.target.closest(".premiumGameRow,.cleanDashRow,[data-match-center-row],.marketTablePanel,.marketFiltersWrap");
                     const clickedInsideRail = ev.target.closest("#desktopMatchRail,.dashboardRightRail");
                     const clickedInsideOverlay = ev.target.closest("#matchCenterOverlay,.matchStatsModal,.last5Modal");
-        
+
                     // Clique fora dos jogos e fora do painel: fecha o estado \"Aberto\".
                     if (!clickedInsideRow && !clickedInsideRail && !clickedInsideOverlay){
                       clearRowMatchCenterSelection({ resetRail: true });
                     }
                     return;
                   }
-        
+
                   ev.preventDefault();
                   ev.stopPropagation();
-        
+
                   // Botão da linha: seleciona o jogo e atualiza o painel da direita.
                   // Botão "Ver partida completa": abre o modal completo.
                   if (btn.matches("[data-open-match-center]") && !btn.matches("[data-open-match-center-table]")){
                     openRowMatchCenterOnly(btn);
                     return;
                   }
-        
+
                   openMatchCenter(btn);
                 }, true);
               })();
-        
-        
+
+
               /* PATCH VISUAL FINAL — somente Escanteios por time no modal */
               (function installOnlyCornersFinalStyle(){
                 if (document.getElementById("onlyCornersFinalStyle")) return;
@@ -13934,13 +13934,13 @@
                     opacity:0 !important;
                     pointer-events:none !important;
                   }
-        
+
                   .mcCornersProCard{
                     width:100% !important;
                     max-width:100% !important;
                     min-width:280px !important;
                   }
-        
+
                   .mcMiddleGrid,
                   .matchCenterMiddle,
                   .mcProMiddle{
@@ -13949,15 +13949,15 @@
                 `;
                 document.head.appendChild(style);
               })();
-        
-        
+
+
               /* =========================================================
                  DESKTOP RIGHT RAIL — SINCRONIZA MATCH CENTER FIXO
                  ========================================================= */
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game, list){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail) return;
-        
+
                 const safeText = (v, fb="—") => {
                   const s = String(v ?? "").trim();
                   return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
@@ -13965,7 +13965,7 @@
                 const esc = (v) => safeText(v, "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
                 const num = (v, fb=0) => Number.isFinite(Number(v)) ? Number(v) : fb;
                 const pctClamp = (v) => Math.max(0, Math.min(100, Math.round(num(v, 0))));
-        
+
                 const matchId = safeText(game?.match_id || game?.id || game?.event_key || game?.event_id || "", "");
                 const home = esc(game?.casa || game?.home || game?.home_team || game?.home_name || "Mandante");
                 const away = esc(game?.fora || game?.away || game?.away_team || game?.away_name || "Visitante");
@@ -13973,7 +13973,7 @@
                 const time = esc(game?.hora || game?.time || "—");
                 const pct = pctClamp(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score ?? 69);
                 const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
-        
+
                 function renderPregame(){
                   rail.innerHTML = `
                     <section class="railCard matchRailCard is-pregame">
@@ -13985,14 +13985,14 @@
                       </div>
                       <div class="railProgress"><i style="width:${pct}%"></i></div>
                     </section>
-        
+
                     <section class="railCard">
                       <h3>ESTATÍSTICAS DO FILTRO</h3>
                       <div class="railStat"><span>Força do filtro</span><b>${pct}%</b></div>
                       <div class="railProgress"><i style="width:${pct}%"></i></div>
                       <div class="railStat"><span>Proj. escanteios</span><b>${proj}</b></div>
                     </section>
-        
+
                     <section class="railCard">
                       <h3>EVENTOS / LEITURA</h3>
                       <div class="railEvents">
@@ -14000,23 +14000,23 @@
                         <p>Monitorando escanteios, finalizações, pressão e eventos retornados pela API.</p>
                       </div>
                     </section>
-        
+
                     <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${home}" data-away="${away}" data-league="${league}" data-time="${time}">VER PARTIDA COMPLETA →</button>
                   `;
                 }
-        
+
                 function statusLabel(data){
                   const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                   if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
                   if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                   return "PRÉ-JOGO";
                 }
-        
+
                 function value(v){
                   const s = safeText(v, "—");
                   return s === "null" || s === "undefined" ? "—" : s;
                 }
-        
+
                 function eventLines(data){
                   const events = Array.isArray(data?.events) ? data.events.slice(0, 5) : [];
                   if (!events.length){
@@ -14026,7 +14026,7 @@
                   }
                   return events.map(e => `<p><b>${value(e?.minute)}</b> ${esc(e?.label || e?.type || "Evento")} <small>${esc(e?.team || "")}</small></p>`).join("");
                 }
-        
+
                 function renderReal(data){
                   const st = statusLabel(data);
                   const liveMinute = data?.live && data?.minute ? ` • ${esc(data.minute)}'` : "";
@@ -14042,7 +14042,7 @@
                   const cardsA = value(data?.cards?.away ?? data?.yellow_cards?.away);
                   const cornerTotal = num(data?.corners?.total, num(ch, 0) + num(ca, 0));
                   const progress = data?.finished ? 100 : (data?.live ? Math.max(8, Math.min(96, Math.round(num(data?.minute, 1)))) : 0);
-        
+
                   rail.innerHTML = `
                     <section class="railCard matchRailCard ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
                       <div class="railTitle"><span>▣ MATCH CENTER</span><b>${st}${liveMinute}</b></div>
@@ -14053,7 +14053,7 @@
                       </div>
                       <div class="railProgress"><i style="width:${progress}%"></i></div>
                     </section>
-        
+
                     <section class="railCard">
                       <h3>DADOS REAIS DA PARTIDA</h3>
                       <div class="railLiveGrid">
@@ -14063,20 +14063,20 @@
                         <div class="railLiveStat"><span>Cartões</span><b>${cardsH} x ${cardsA}</b><small>Amarelos/vermelhos</small></div>
                       </div>
                     </section>
-        
+
                     <section class="railCard">
                       <h3>EVENTOS / LEITURA</h3>
                       <div class="railEvents">${eventLines(data)}</div>
                     </section>
-        
+
                     <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${home}" data-away="${away}" data-league="${league}" data-time="${time}">VER PARTIDA COMPLETA →</button>
                   `;
                 }
-        
+
                 renderPregame();
-        
+
                 if (!matchId) return;
-        
+
                 try{
                   const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, { cache:"no-store" });
                   if (!res.ok) return;
@@ -14086,7 +14086,7 @@
                   console.warn("Right rail Match Center em tempo real falhou:", err);
                 }
               };
-        
+
               // Atualiza automaticamente o Match Center fixo a cada 45s quando há jogo selecionado.
               (function autoRefreshDesktopMatchRail(){
                 if (window.__desktopMatchRailRefreshInstalled) return;
@@ -14099,11 +14099,11 @@
                   }catch(e){}
                 }, 45000);
               })();
-        
-        
+
+
             /* LOGIN TEMPORÁRIO removido: duplicava sessão e listeners. */
-        
-        
+
+
               /* =========================================================
                  PATCH PREMIUM — MATCH CENTER FIXO COM GRÁFICO DE PRESSÃO
                  - Não altera o motor dos jogos
@@ -14113,43 +14113,43 @@
               (function installPremiumPressureRail(){
                 if (window.__premiumPressureRailInstalled) return;
                 window.__premiumPressureRailInstalled = true;
-        
+
                 const esc = (v) => String(v ?? "")
                   .replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
-        
+
                 const clean = (v, fb = "—") => {
                   const s = String(v ?? "").trim();
                   return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
                 };
-        
+
                 const num = (v, fb = null) => {
                   const n = Number(String(v ?? "").replace("%","").replace(",","."));
                   return Number.isFinite(n) ? n : fb;
                 };
-        
+
                 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-        
+
                 function initials(name, fallback){
                   const s = clean(name, fallback);
                   const parts = s.split(/\s+/).filter(Boolean);
                   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
                   return s.slice(0,2).toUpperCase();
                 }
-        
+
                 function statusLabel(data){
                   const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                   if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
                   if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                   return "PRÉ-JOGO";
                 }
-        
+
                 function getMinute(data){
                   const raw = data?.minute ?? data?.match_minute ?? data?.time_live ?? "";
                   const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
                   if (Number.isFinite(n)) return clamp(n, 1, 120);
                   return data?.finished ? 90 : 0;
                 }
-        
+
                 function pressureLevel(home, away, explicit){
                   if (explicit) return clean(explicit);
                   const total = (num(home,0) || 0) + (num(away,0) || 0);
@@ -14159,20 +14159,20 @@
                   if (total > 0) return "BAIXA";
                   return "AGUARDANDO";
                 }
-        
+
                 function sameTeam(value, target){
                   const a = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
                   const b = String(target || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
                   if (!a || !b) return false;
                   return a === b || a.includes(b) || b.includes(a);
                 }
-        
+
                 function realMinuteFromEvent(e){
                   const raw = e?.minute ?? e?.time ?? e?.elapsed ?? e?.match_minute ?? e?.label ?? "";
                   const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
                   return Number.isFinite(n) ? clamp(n, 1, 130) : null;
                 }
-        
+
                 function eventWeight(e){
                   const txt = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
                   if (txt.includes("goal") || txt.includes("gol")) return 12;
@@ -14184,11 +14184,11 @@
                   if (txt.includes("red") || txt.includes("vermelho")) return 3;
                   return 1;
                 }
-        
+
                 function seriesFromEvents(data){
                   const events = Array.isArray(data?.events) ? data.events : [];
                   if (!events.length) return [];
-        
+
                   const minuteNow = getMinute(data) || 90;
                   const start = Math.max(1, minuteNow - 14);
                   const buckets = Array.from({ length: 15 }, (_, i) => ({
@@ -14197,10 +14197,10 @@
                     away: 0,
                     source: "events"
                   }));
-        
+
                   const homeName = clean(data?.home || data?.casa || data?.home_team || "");
                   const awayName = clean(data?.away || data?.fora || data?.away_team || "");
-        
+
                   events.forEach(e => {
                     const m = realMinuteFromEvent(e);
                     if (m === null || m < start || m > minuteNow) return;
@@ -14208,18 +14208,18 @@
                     const team = e?.team || e?.time || e?.team_name || e?.side || "";
                     const side = String(e?.side || e?.team_side || "").toLowerCase();
                     const w = eventWeight(e);
-        
+
                     if (side.includes("home") || side.includes("mandante") || side.includes("casa") || sameTeam(team, homeName)){
                       buckets[idx].home += w;
                     } else if (side.includes("away") || side.includes("visitante") || side.includes("fora") || sameTeam(team, awayName)){
                       buckets[idx].away += w;
                     }
                   });
-        
+
                   const total = buckets.reduce((s,b) => s + b.home + b.away, 0);
                   return total > 0 ? buckets : [];
                 }
-        
+
                 function normalizeTimelineItem(p, idx){
                   return {
                     minute: clean(p?.minute ?? p?.label ?? p?.time ?? p?.elapsed ?? `${idx + 1}`),
@@ -14228,7 +14228,7 @@
                     source: "timeline"
                   };
                 }
-        
+
                 function buildPressureSeries(data, fallbackPct = 60){
                   // Exibe exclusivamente uma timeline real enviada pelo backend/API.
                   const candidates = [
@@ -14246,13 +14246,13 @@
                   }
                   return [];
                 }
-        
+
                 function svgPressureChart(series){
                   const cleanSeries = (series || []).filter(p => p && (num(p.home,null) !== null || num(p.away,null) !== null));
                   if (cleanSeries.length < 2){
                     return `<div class="railPressureEmpty">Aguardando dados reais de pressão da API.</div>`;
                   }
-        
+
                   const W = 300, H = 150, padL = 52, padR = 10, padT = 12, padB = 28;
                   const mid = 78;
                   const chartH = 52;
@@ -14275,7 +14275,7 @@
                   const barW = Math.max(7, Math.min(12, slot * .66));
                   const x = (i) => padL + (i * slot) + (slot - barW) / 2;
                   const h = (v) => Math.max(2, (num(v,0) / finalMaxV) * chartH);
-        
+
                   const bars = finalSeries.map((p,i) => {
                     const bh = h(p.home);
                     const ba = h(p.away);
@@ -14284,7 +14284,7 @@
                       <rect class="awayBar" x="${x(i).toFixed(1)}" y="${mid.toFixed(1)}" width="${barW.toFixed(1)}" height="${ba.toFixed(1)}" rx="2"></rect>
                     `;
                   }).join("");
-        
+
                   const ticks = [
                     { label:"15'", pos:0 },
                     { label:"10'", pos:.5 },
@@ -14293,13 +14293,13 @@
                     const tx = padL + ((W - padL - padR) * t.pos);
                     return `<text x="${tx.toFixed(1)}" y="145">${t.label}</text>`;
                   }).join("");
-        
+
                   const last = finalSeries[finalSeries.length - 1] || {};
                   const lastHome = num(last.home,0);
                   const lastAway = num(last.away,0);
                   const source = String(last.source || cleanSeries[0]?.source || "timeline");
                   const sourceText = source === "snapshot" ? "DADOS API" : "DADOS REAIS";
-        
+
                   return `
                     <div class="railPressureChartBox">
                       <div class="railPressureLegend">
@@ -14336,7 +14336,7 @@
                     </div>
                   `;
                 }
-        
+
                 function buildEventLines(data){
                   const events = Array.isArray(data?.events) ? data.events.slice(0, 6) : [];
                   if (!events.length){
@@ -14344,7 +14344,7 @@
                     if (data?.finished) return `<p>Encerrado. A API não retornou timeline detalhada.</p>`;
                     return `<p>Pré-jogo. Os eventos aparecem quando a partida iniciar.</p>`;
                   }
-        
+
                   const icon = (e) => {
                     const t = String(e?.type || e?.label || "").toLowerCase();
                     if (t.includes("goal") || t.includes("gol")) return "⚽";
@@ -14354,7 +14354,7 @@
                     if (t.includes("sub")) return "🔁";
                     return "●";
                   };
-        
+
                   return events.map(e => `
                     <p class="railEventRow">
                       <b>${esc(clean(e?.minute, "—"))}</b>
@@ -14364,10 +14364,10 @@
                     </p>
                   `).join("");
                 }
-        
+
                 function buildPregameRail({ rail, game, matchId, home, away, league, time, pct, proj }){
                   const series = [];
-        
+
                   rail.innerHTML = `
                     <section class="railCard matchRailCard railDashHero is-pregame">
                       <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
@@ -14378,7 +14378,7 @@
                       </div>
                       <div class="railProgress"><i style="width:${pct}%"></i></div>
                     </section>
-        
+
                     <section class="railCard railDashStats">
                       <h3>PAINEL DO FILTRO</h3>
                       <div class="railDashGrid">
@@ -14388,12 +14388,12 @@
                         <div class="railLiveStat"><span>Mercado</span><b>+9.5</b><small>Escanteios</small></div>
                       </div>
                     </section>
-        
+
                     <section class="railCard railPressureCard">
                       <div class="railPressureHead"><h3>GRÁFICO DE PRESSÃO</h3><b>PROJEÇÃO</b></div>
                       ${svgPressureChart(series)}
                     </section>
-        
+
                     <section class="railCard">
                       <h3>LEITURA DO JOGO</h3>
                       <div class="railAiBox">
@@ -14401,11 +14401,11 @@
                         <div class="railConfidence"><span>Confiança</span><b>${pct}%</b></div>
                       </div>
                     </section>
-        
+
                     <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
                   `;
                 }
-        
+
                 function buildRealRail({ rail, data, matchId, home, away, league, time, pct }){
                   const st = statusLabel(data);
                   const minute = getMinute(data);
@@ -14420,14 +14420,14 @@
                   const pa = clean(data?.pressure?.away ?? data?.dangerous_attacks?.away, "—");
                   const cardsH = clean(data?.cards?.yellow_home ?? data?.cards?.home ?? data?.yellow_cards?.home, "—");
                   const cardsA = clean(data?.cards?.yellow_away ?? data?.cards?.away ?? data?.yellow_cards?.away, "—");
-        
+
                   const cornerTotal = num(data?.corners?.total, (num(ch,0) || 0) + (num(ca,0) || 0));
                   const progress = data?.finished ? 100 : (data?.live ? clamp(minute, 8, 96) : 0);
                   const pLevel = pressureLevel(ph, pa, data?.pressure_level);
                   const series = buildPressureSeries(data, pct);
                   const last = series[series.length - 1] || {};
                   const confidence = clamp(Math.round((num(last.home,0) / Math.max(1, (num(last.home,0)+num(last.away,0)))) * 100), 5, 95);
-        
+
                   rail.innerHTML = `
                     <section class="railCard matchRailCard railDashHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
                       <div class="railTitle"><span>▣ MATCH CENTER</span><b>${st}${data?.live ? " • " + minuteText : ""}</b></div>
@@ -14438,7 +14438,7 @@
                       </div>
                       <div class="railProgress"><i style="width:${progress}%"></i></div>
                     </section>
-        
+
                     <section class="railCard railDashStats">
                       <h3>DADOS REAIS DA PARTIDA</h3>
                       <div class="railDashGrid">
@@ -14448,17 +14448,17 @@
                         <div class="railLiveStat"><span>Cartões</span><b>${cardsH} x ${cardsA}</b><small>Amarelos</small></div>
                       </div>
                     </section>
-        
+
                     <section class="railCard railPressureCard">
                       <div class="railPressureHead"><h3>PRESSÃO DOS ÚLTIMOS MINUTOS</h3><b>${pLevel}</b></div>
                       ${svgPressureChart(series)}
                     </section>
-        
+
                     <section class="railCard">
                       <h3>EVENTOS DA PARTIDA</h3>
                       <div class="railEvents railEventsDash">${buildEventLines(data)}</div>
                     </section>
-        
+
                     <section class="railCard railAiDash">
                       <div>
                         <h3>LEITURA DO JOGO</h3>
@@ -14467,15 +14467,15 @@
                       </div>
                       <div class="railConfidenceCircle" style="--p:${confidence};"><b>${confidence}%</b><span>confiança</span></div>
                     </section>
-        
+
                     <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
                   `;
                 }
-        
+
                 window.updateDesktopMatchRail = async function updateDesktopMatchRail(game, list){
                   const rail = document.getElementById("desktopMatchRail");
                   if (!rail || !game) return;
-        
+
                   const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || "", "");
                   const home = clean(game?.casa || game?.home || game?.home_team || game?.home_name || "Mandante");
                   const away = clean(game?.fora || game?.away || game?.away_team || game?.away_name || "Visitante");
@@ -14483,11 +14483,11 @@
                   const time = clean(game?.hora || game?.time || "—");
                   const pct = clamp(Math.round(num(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score, 69)), 0, 100);
                   const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
-        
+
                   buildPregameRail({ rail, game, matchId, home, away, league, time, pct, proj });
-        
+
                   if (!matchId) return;
-        
+
                   try{
                     const res = await fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`, { cache:"no-store" });
                     if (!res.ok) return;
@@ -14500,7 +14500,7 @@
                   }
                 };
               })();
-        
+
             /* =========================================================
                FIX FINAL DE CARREGAMENTO / LOGIN — CORNERS RADAR
                CORREÇÃO SAFARI / IPHONE:
@@ -14510,18 +14510,18 @@
                ========================================================= */
             (function finalLoginLoadFix(){
               "use strict";
-        
+
               const LOGIN_KEY = "cornersRadarLogged";
               const LEGACY_KEYS = ["isLogged", "loggedIn", "auth", "user"];
               const VALID_LOGINS = [
                 { user: "RodrigoMartins", pass: "Rodrics789bl" },
                 { user: "admin", pass: "123456" }
               ];
-        
+
               function $(id){
                 return document.getElementById(id);
               }
-        
+
               function storageGet(key){
                 try{
                   return window.localStorage ? localStorage.getItem(key) : null;
@@ -14530,7 +14530,7 @@
                   return null;
                 }
               }
-        
+
               function storageSet(key, value){
                 try{
                   if (window.localStorage) localStorage.setItem(key, value);
@@ -14540,7 +14540,7 @@
                   return false;
                 }
               }
-        
+
               function storageRemove(key){
                 try{
                   if (window.localStorage) localStorage.removeItem(key);
@@ -14548,7 +14548,7 @@
                   console.warn("Não foi possível remover do LocalStorage:", error);
                 }
               }
-        
+
               function show(el, display){
                 if (!el) return;
                 el.style.removeProperty("visibility");
@@ -14556,7 +14556,7 @@
                 el.style.removeProperty("pointer-events");
                 el.style.display = display || "";
               }
-        
+
               function hide(el){
                 if (!el) return;
                 el.style.display = "none";
@@ -14564,19 +14564,19 @@
                 el.style.opacity = "0";
                 el.style.pointerEvents = "none";
               }
-        
+
               function revealDashboard(){
                 document.body.classList.remove("locked");
                 document.body.classList.add("dashboard");
-        
+
                 const loginScreen = $("loginScreen");
                 if (loginScreen) hide(loginScreen);
-        
+
                 const sidebar = document.querySelector(".sidebar");
                 const main = document.querySelector(".main");
                 const topbar = document.querySelector(".topbar");
                 const content = document.querySelector(".content");
-        
+
                 /*
                   Não usamos display:block à força na .content, pois isso quebrava
                   o flex/grid original. Removemos apenas estilos inline aplicados
@@ -14590,7 +14590,7 @@
                   el.style.removeProperty("pointer-events");
                 });
               }
-        
+
               function normalizeSession(){
                 const value = storageGet(LOGIN_KEY);
                 if (value === "1" || value === "true"){
@@ -14599,15 +14599,15 @@
                 }
                 return false;
               }
-        
+
               function unlockDashboard(){
                 storageSet(LOGIN_KEY, "true");
                 revealDashboard();
               }
-        
+
               function lockDashboard(){
                 const loginScreen = $("loginScreen");
-        
+
                 /*
                   CORREÇÃO PRINCIPAL:
                   o HTML mobile atual não possui #loginScreen. O código antigo
@@ -14619,67 +14619,67 @@
                   revealDashboard();
                   return;
                 }
-        
+
                 document.body.classList.add("locked", "dashboard");
                 show(loginScreen, "flex");
-        
+
                 const sidebar = document.querySelector(".sidebar");
                 const main = document.querySelector(".main");
                 const topbar = document.querySelector(".topbar");
                 const content = document.querySelector(".content");
-        
+
                 if (sidebar) hide(sidebar);
                 if (main) hide(main);
                 if (topbar) hide(topbar);
                 if (content) hide(content);
               }
-        
+
               function doLogout(){
                 storageRemove(LOGIN_KEY);
                 LEGACY_KEYS.forEach(storageRemove);
-        
+
                 const user = $("loginUser");
                 const pass = $("loginPass");
                 const error = $("loginError");
-        
+
                 if (user) user.value = "";
                 if (pass) pass.value = "";
                 if (error) error.textContent = "";
-        
+
                 lockDashboard();
                 setTimeout(() => user?.focus?.(), 100);
               }
-        
+
               function bindLogin(){
                 const form = $("loginForm");
                 const user = $("loginUser");
                 const pass = $("loginPass");
                 const error = $("loginError");
                 const logout = $("logoutBtn");
-        
+
                 if (form && !form.dataset.finalLoginBound){
                   form.dataset.finalLoginBound = "1";
-        
+
                   form.addEventListener("submit", function(event){
                     event.preventDefault();
                     event.stopPropagation();
-        
+
                     const enteredUser = String(user?.value || "").trim();
                     const enteredPass = String(pass?.value || "").trim();
-        
+
                     const valid = VALID_LOGINS.some(item =>
                       item.user === enteredUser && item.pass === enteredPass
                     );
-        
+
                     if (!valid){
                       if (error) error.textContent = "Usuário ou senha inválidos.";
                       pass?.select?.();
                       return;
                     }
-        
+
                     if (error) error.textContent = "";
                     unlockDashboard();
-        
+
                     try{
                       if (typeof renderPregame === "function") renderPregame();
                     }catch(renderError){
@@ -14687,18 +14687,18 @@
                     }
                   }, true);
                 }
-        
+
                 if (logout){
                   logout.type = "button";
                   logout.onclick = doLogout;
                 }
               }
-        
+
               window.forceLogout = doLogout;
-        
+
               window.forceLoginCheck = function(){
                 const loginScreenExists = Boolean($("loginScreen"));
-        
+
                 /*
                   Sem tela de login no documento, não existe interface para o
                   usuário autenticar. Portanto, nunca escondemos o conteúdo.
@@ -14707,25 +14707,25 @@
                   revealDashboard();
                   return;
                 }
-        
+
                 if (normalizeSession()) unlockDashboard();
                 else lockDashboard();
               };
-        
+
               document.addEventListener("click", function(event){
                 const logoutButton = event.target?.closest?.("#logoutBtn, .btnLogout");
                 if (!logoutButton) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 doLogout();
               }, true);
-        
+
               function initializeLogin(){
                 bindLogin();
                 window.forceLoginCheck();
-        
+
                 /*
                   Mantém uma verificação curta para páginas que montam o DOM
                   dinamicamente, mas sem esconder o dashboard no iPhone.
@@ -14733,14 +14733,14 @@
                 setTimeout(window.forceLoginCheck, 80);
                 setTimeout(window.forceLoginCheck, 250);
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", initializeLogin, { once:true });
               }else{
                 initializeLogin();
               }
             })();
-        
+
             /* =========================================================
                MERCADOS PREMIUM — RENDERIZAÇÃO NOVA DA ABA FILTROS
                ========================================================= */
@@ -14748,25 +14748,25 @@
               function _marketFilterByKey(key){
                 return (MARKET_FILTERS || []).find(f => f.key === key) || null;
               }
-        
+
               function _marketLabel(key){
                 if (!key || key === "all") return "Todos";
                 return _marketFilterByKey(key)?.label || String(key).toUpperCase();
               }
-        
+
               function _avg(list, getter){
                 const vals = (list || []).map(getter).map(Number).filter(Number.isFinite);
                 if (!vals.length) return 0;
                 return vals.reduce((a,b)=>a+b,0) / vals.length;
               }
-        
+
               function _groupButton(key, label){
                 const exists = key === "all" || !!_marketFilterByKey(key);
                 const active = activeMarketFilter === key;
                 return `<button type="button" class="marketChipPremium ${active ? "is-active" : ""} ${exists ? "" : "is-disabled"}" ${exists ? `data-market-filter="${key}"` : "disabled"}>${label}</button>`;
               }
-        
-        
+
+
               function _marketCard(key, label, pct, sub, tone){
                 const exists = key === "all" || !!_marketFilterByKey(key);
                 const active = activeMarketFilter === key;
@@ -14778,24 +14778,24 @@
                   <i class="marketSpark"><b style="width:${val}%"></b></i>
                 </button>`;
               }
-        
+
               function _strengthBars(p){
                 const n = Math.max(1, Math.min(10, Math.round(Number(p || 0) / 10)));
                 return Array.from({length:10}, (_,i)=>`<i class="${i < n ? "on" : ""}" style="height:${8 + i * 2}px"></i>`).join("");
               }
-        
+
               function _trendBars(filtered){
                 const source = (filtered || []).slice(0, 10);
                 const vals = source.length ? source.map(j => Math.max(10, Math.min(95, Math.round(marketPercent(j, activeMarketFilter))))) : [52,58,63,66,71,68,73,76,70,74];
                 return vals.map(v => `<i style="height:${Math.max(12, Math.min(54, Math.round(v * .58)))}px"></i>`).join("");
               }
-        
+
               function _dateShort(dateYMD){
                 if (!dateYMD || !/^\d{4}-\d{2}-\d{2}$/.test(dateYMD)) return "—";
                 const [,m,d] = dateYMD.split("-");
                 return `${d}/${m}`;
               }
-        
+
               function _dist(filtered){
                 const total = Math.max(1, filtered.length || 0);
                 const acima = filtered.filter(j => marketPercent(j, activeMarketFilter) >= 70).length;
@@ -14803,7 +14803,7 @@
                 const baixo = Math.max(0, (filtered.length || 0) - acima - meio);
                 return {acima, meio, baixo, total};
               }
-        
+
               function _renderPremiumRows(filtered, dateYMD){
                 return filtered.slice(0, 40).map((j, idx) => {
                   const casa = safe(j?.casa, "Time A");
@@ -14848,15 +14848,15 @@
                     </article>`;
                 }).join("");
               }
-        
+
               renderMarketFilters = function(){
                 if (!top1El) return;
                 top1El.closest(".panel")?.classList.add("is-market-scroll-panel");
-        
+
                 const dateYMD = lastMarketDateYMD || lastDateYMD || dateInput?.value || todayAM_YMD();
                 const baseMarketList = Array.isArray(lastMarketGames) && lastMarketGames.length ? lastMarketGames : lastRawGames;
                 const games = enrichMarketsList(dedupeList(baseMarketList || []));
-        
+
                 let filtered = games.filter(j => marketPass(j, activeMarketFilter));
                 filtered = filtered.sort((a,b) => {
                   if (filterSortMode === "time"){
@@ -14869,7 +14869,7 @@
                   if (filterSortMode === "corners") return getProj(b) - getProj(a);
                   return marketPercent(b, activeMarketFilter) - marketPercent(a, activeMarketFilter);
                 });
-        
+
                 const avgPercent = Math.round(_avg(filtered, j => marketPercent(j, activeMarketFilter)) || 0);
                 const avgProj = fmt(_avg(filtered, getProj), 1);
                 const recentAvg = fmt((_avg(filtered.slice(0,5), getProj) || _avg(filtered, getProj) || 0), 1);
@@ -14880,15 +14880,15 @@
                 const acimaPct = Math.round((dist.acima / dist.total) * 100);
                 const meioPct = Math.round((dist.meio / dist.total) * 100);
                 const baixoPct = Math.max(0, 100 - acimaPct - meioPct);
-        
+
                 window.__premiumFilteredGames = filtered;
                 const rows = _renderPremiumRows(filtered, dateYMD);
-        
+
                 top1El.innerHTML = `
                   <div class="marketPremiumWrap">
                     <section class="marketHeroPanel">
                       <div class="marketHeroTitle">🔥 MERCADO ATIVO <small>análise inteligente do filtro selecionado</small></div>
-        
+
                       <div class="marketHeroGrid">
                         <div class="marketActiveCard">
                           <span class="marketActiveBadge">ATIVO</span>
@@ -14901,7 +14901,7 @@
                         <div class="marketMetricCard"><div class="marketMetricLabel">Força do mercado</div><div class="marketStrengthBars">${_strengthBars(avgPercent)}</div><div class="marketMetricSub"><b>${avgPercent}%</b> muito forte</div></div>
                         <div class="marketMetricCard"><div class="marketMetricLabel">Melhor jogo</div><div class="marketMetricValue green" style="font-size:15px;line-height:1.15">${escapeHtmlLite(bestName)}</div><div class="marketMetricSub">${bestPct} força do filtro</div></div>
                       </div>
-        
+
                       <div class="marketHighlightsTitle">
                         <span>MERCADOS EM DESTAQUE</span>
                         <div class="allMarketsWrap">
@@ -14972,7 +14972,7 @@
                         ${_marketCard("over15", "+1.5 Gols", Math.max(0, avgPercent+15), "confiança", "blue")}
                       </div>
                     </section>
-        
+
                     <section class="marketListPanel">
                       <div class="marketListTop">
                         <div class="marketListTitle">⚽ Próximos Jogos (${filtered.length})</div>
@@ -14987,14 +14987,14 @@
                       ${filtered.length ? `<div class="marketGameList">${rows}</div>` : `<div class="marketEmpty">Nenhum jogo encontrado para esse filtro nesta data.</div>`}
                     </section>
                   </div>`;
-        
+
                 top1El.querySelectorAll("[data-market-filter]:not(.is-disabled)").forEach(btn => {
                   btn.addEventListener("click", () => {
                     activeMarketFilter = btn.getAttribute("data-market-filter") || "all";
                     renderMarketFilters();
                   });
                 });
-        
+
                 const sort = top1El.querySelector("#marketSortSelect");
                 if (sort){
                   sort.addEventListener("change", () => {
@@ -15002,7 +15002,7 @@
                     renderMarketFilters();
                   });
                 }
-        
+
                 top1El.querySelectorAll(".btnStats").forEach(btn => {
                   btn.addEventListener("click", (ev) => {
                     ev.preventDefault();
@@ -15011,11 +15011,11 @@
                     openMatchStats({ matchId: btn.dataset.matchId, home: btn.dataset.home, away: btn.dataset.away });
                   });
                 });
-        
+
                 if (countTop) countTop.textContent = String(filtered.length);
                 updateIaBoxFromTop([]);
               };
-        
+
               window.renderMarketFilters = renderMarketFilters;
             })();
             /* =========================================================
@@ -15030,16 +15030,16 @@
                   }
                 }catch(e){}
               }
-        
+
               // Volta as análises/filtros de cartões para a área de mercados.
               addMarketFilter("cards25", "+2.5 CARTÕES", "+2.5 Cartões");
               addMarketFilter("cards35", "+3.5 CARTÕES", "+3.5 Cartões");
               addMarketFilter("cardsTeam", "CARTÕES POR TIME", "Cartões por time");
               addMarketFilter("noCard28", "SEM CARTÃO ATÉ 28'", "Sem cartão 28'");
-        
+
               function fixMatchCenterLabels(root){
                 const base = root || document;
-        
+
                 base.querySelectorAll(".matchCenterMiniBtn,.matchCenterBtn,[data-open-match-center]").forEach(btn => {
                   if (!btn) return;
                   const txt = String(btn.textContent || "").trim();
@@ -15049,7 +15049,7 @@
                     btn.textContent = "Match Center";
                   }
                 });
-        
+
                 base.querySelectorAll(".marketGameRow.match-center-selected,.premiumGameRow.match-center-selected").forEach(row => {
                   const mc = row.querySelector(".matchCenterMiniBtn,.matchCenterBtn,[data-open-match-center]");
                   if (mc){
@@ -15058,7 +15058,7 @@
                   }
                 });
               }
-        
+
               function makeCardButtonsLive(root){
                 const base = root || document;
                 base.querySelectorAll(".marketChipPremium.is-disabled").forEach(btn => {
@@ -15085,20 +15085,20 @@
                   }
                 });
               }
-        
+
               function compactRightRailLabels(root){
                 const base = root || document;
                 base.querySelectorAll("#desktopMatchRail .railTeam strong").forEach(el => {
                   el.title = el.textContent || "";
                 });
               }
-        
+
               function postRenderFixes(){
                 fixMatchCenterLabels(document);
                 makeCardButtonsLive(document);
                 compactRightRailLabels(document);
               }
-        
+
               try{
                 const originalRenderMarketFilters = renderMarketFilters;
                 renderMarketFilters = function(){
@@ -15109,7 +15109,7 @@
                 };
                 window.renderMarketFilters = renderMarketFilters;
               }catch(e){}
-        
+
               document.addEventListener("click", function(ev){
                 const marketBtn = ev.target.closest(".marketChipPremium[data-market-filter]");
                 if (marketBtn){
@@ -15117,7 +15117,7 @@
                   setTimeout(postRenderFixes, 80);
                   setTimeout(postRenderFixes, 180);
                 }
-        
+
                 const mcBtn = ev.target.closest("[data-open-match-center],.matchCenterMiniBtn,.matchCenterBtn");
                 if (mcBtn){
                   setTimeout(postRenderFixes, 50);
@@ -15125,7 +15125,7 @@
                   setTimeout(postRenderFixes, 420);
                 }
               }, true);
-        
+
               document.addEventListener("DOMContentLoaded", function(){
                 setTimeout(function(){
                   try{
@@ -15134,12 +15134,12 @@
                   postRenderFixes();
                 }, 220);
               });
-        
+
               const observer = new MutationObserver(function(){
                 clearTimeout(window.__crPostRenderFixTimer);
                 window.__crPostRenderFixTimer = setTimeout(postRenderFixes, 60);
               });
-        
+
               document.addEventListener("DOMContentLoaded", function(){
                 const target = document.getElementById("top1") || document.body;
                 if (target){
@@ -15249,7 +15249,7 @@
                 const ya = val(data, ["cards.yellow_away","cards.away","yellow_cards.away","stats.yellow_cards.away"], "—");
                 const rh = val(data, ["cards.red_home","red_cards.home","stats.red_cards.home"], "0");
                 const ra = val(data, ["cards.red_away","red_cards.away","stats.red_cards.away"], "0");
-        
+
                 const rows = [];
                 rows.push(compareRow("Escanteios", ch, ca));
                 rows.push(compareRow("Finalizações", sh, sa));
@@ -15262,7 +15262,7 @@
               }
               function buildMomentumSeries(data, pct){
                 const d = data || {};
-        
+
                 function str(v){ return String(v ?? "").toLowerCase(); }
                 const rawStatus = str(d.status || d.status_raw || d.match_status || d.status_name || d.state || d.timer?.status);
                 const isFinished = !!(
@@ -15286,10 +15286,10 @@
                   rawStatus.includes("2h") ||
                   rawStatus.includes("ht")
                 );
-        
+
                 const minuteNowRaw = num(d.minute ?? d.match_minute ?? d.elapsed ?? d.time?.elapsed ?? d.timer?.minute, null);
                 const minuteLimit = isFinished ? 90 : (isLive ? clamp(minuteNowRaw || 1, 1, 90) : 0);
-        
+
                 const buckets = Array.from({ length:90 }, (_, i) => ({
                   minute:i + 1,
                   home:0,
@@ -15298,24 +15298,24 @@
                   future: minuteLimit > 0 ? (i + 1 > minuteLimit) : false,
                   source:"empty"
                 }));
-        
+
                 function parseMinute(value, fallback=null){
                   const n = parseInt(String(value ?? "").replace(/[^0-9]/g,""), 10);
                   if (!Number.isFinite(n)) return fallback;
                   return clamp(n, 1, 90);
                 }
-        
+
                 function normalizeTeamName(value){
                   return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
                 }
-        
+
                 function sameTeamLocal(value, target){
                   const a = normalizeTeamName(value);
                   const b = normalizeTeamName(target);
                   if (!a || !b) return false;
                   return a === b || a.includes(b) || b.includes(a);
                 }
-        
+
                 function getEvents(){
                   const candidates = [d.events, d.eventos, d.timeline_events, d.timelineEvents, d.incidents, d.match_events, d.timeline];
                   for (const item of candidates){
@@ -15323,7 +15323,7 @@
                   }
                   return [];
                 }
-        
+
                 function eventIconFromText(text){
                   const t = String(text || "").toLowerCase();
                   if (t.includes("goal") || t.includes("gol")) return "⚽";
@@ -15332,7 +15332,7 @@
                   if (t.includes("corner") || t.includes("escante")) return "⚑";
                   return "•";
                 }
-        
+
                 function eventWeight(text){
                   const t = String(text || "").toLowerCase();
                   if (t.includes("goal") || t.includes("gol")) return 15;
@@ -15344,10 +15344,10 @@
                   if (t.includes("yellow") || t.includes("amarelo") || t.includes("cart")) return 3;
                   return 2;
                 }
-        
+
                 const homeName = clean(d.home || d.casa || d.home_team || d.home_name || d.teams?.home?.name || "");
                 const awayName = clean(d.away || d.fora || d.away_team || d.away_name || d.teams?.away?.name || "");
-        
+
                 function resolveSide(ev){
                   const side = String(ev?.side || ev?.team_side || ev?.teamType || ev?.team_type || "").toLowerCase();
                   const team = ev?.team || ev?.time || ev?.team_name || ev?.teamName || ev?.player_team || ev?.club || "";
@@ -15357,7 +15357,7 @@
                   if (sameTeamLocal(team, awayName)) return "away";
                   return "home";
                 }
-        
+
                 function addPressure(minute, side, amount, source){
                   const m = clamp(parseMinute(minute, 1), 1, 90);
                   const i = m - 1;
@@ -15366,7 +15366,7 @@
                   else buckets[i].home += v;
                   buckets[i].source = source || buckets[i].source;
                 }
-        
+
                 function addEvent(ev){
                   const minute = parseMinute(ev?.minute ?? ev?.time ?? ev?.elapsed ?? ev?.match_minute ?? ev?.minuto, null);
                   if (minute === null) return;
@@ -15381,7 +15381,7 @@
                     addPressure(Math.min(90, minute + 1), side, Math.round(weight * .35), "events");
                   }
                 }
-        
+
                 function pickTimeline(){
                   const candidates = [
                     d.pressure_series,
@@ -15402,7 +15402,7 @@
                   }
                   return [];
                 }
-        
+
                 const timeline = pickTimeline();
                 if (timeline.length){
                   timeline.forEach((p, idx) => {
@@ -15410,7 +15410,7 @@
                     const signed = num(p?.value ?? p?.momentum ?? p?.pressure, null);
                     const home = num(p?.home ?? p?.h ?? p?.mandante ?? p?.casa ?? p?.home_pressure ?? p?.home_dangerous_attacks ?? p?.dangerous_attacks_home ?? p?.attacks_home ?? p?.value_home, null);
                     const away = num(p?.away ?? p?.a ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.away_dangerous_attacks ?? p?.dangerous_attacks_away ?? p?.attacks_away ?? p?.value_away, null);
-        
+
                     if (home !== null || away !== null){
                       if (home !== null) addPressure(minute, "home", home, "timeline");
                       if (away !== null) addPressure(minute, "away", away, "timeline");
@@ -15420,11 +15420,11 @@
                     }
                   });
                 }
-        
+
                 getEvents().forEach(addEvent);
-        
+
                 let total = buckets.reduce((s,b)=>s + b.home + b.away, 0);
-        
+
                 // FALLBACK COM DADOS REAIS ACUMULADOS:
                 // Se a API não envia timeline por minuto, o gráfico não fica vazio.
                 // Ele distribui a pressão da partida inteira usando números reais: ataques perigosos,
@@ -15432,27 +15432,27 @@
                 if (total < 12 && (isLive || isFinished)){
                   const hDanger = num(d?.pressure?.home ?? d?.dangerous_attacks?.home ?? d?.stats?.dangerous_attacks?.home ?? d?.home_pressure ?? d?.dangerous_attacks_home ?? d?.attacks?.dangerous_home ?? d?.dangerous_attacks_home_total, 0);
                   const aDanger = num(d?.pressure?.away ?? d?.dangerous_attacks?.away ?? d?.stats?.dangerous_attacks?.away ?? d?.away_pressure ?? d?.dangerous_attacks_away ?? d?.attacks?.dangerous_away ?? d?.dangerous_attacks_away_total, 0);
-        
+
                   const hShots = num(d?.shots?.home ?? d?.shots?.total_home ?? d?.home_shots ?? d?.stats?.shots?.home ?? d?.shots_home, 0);
                   const aShots = num(d?.shots?.away ?? d?.shots?.total_away ?? d?.away_shots ?? d?.stats?.shots?.away ?? d?.shots_away, 0);
-        
+
                   const hShotsTarget = num(d?.shots_on_target?.home ?? d?.shots?.target_home ?? d?.home_shots_on_target ?? d?.stats?.shots_on_target?.home, 0);
                   const aShotsTarget = num(d?.shots_on_target?.away ?? d?.shots?.target_away ?? d?.away_shots_on_target ?? d?.stats?.shots_on_target?.away, 0);
-        
+
                   const hCorners = num(d?.corners?.home ?? d?.home_corners ?? d?.stats?.corners?.home ?? d?.corners_home, 0);
                   const aCorners = num(d?.corners?.away ?? d?.away_corners ?? d?.stats?.corners?.away ?? d?.corners_away, 0);
-        
+
                   const hPoss = num(d?.possession?.home ?? d?.stats?.possession?.home, null);
                   const aPoss = num(d?.possession?.away ?? d?.stats?.possession?.away, null);
                   const possHBonus = hPoss !== null && aPoss !== null ? Math.max(0, hPoss - aPoss) * .35 : 0;
                   const possABonus = hPoss !== null && aPoss !== null ? Math.max(0, aPoss - hPoss) * .35 : 0;
-        
+
                   const gh = num(d?.goals?.home ?? d?.score?.home ?? d?.home_score, 0);
                   const ga = num(d?.goals?.away ?? d?.score?.away ?? d?.away_score, 0);
-        
+
                   let hBaseTotal = (hDanger * 1.00) + (hShots * 1.9) + (hShotsTarget * 2.7) + (hCorners * 4.2) + possHBonus + (gh * 7);
                   let aBaseTotal = (aDanger * 1.00) + (aShots * 1.9) + (aShotsTarget * 2.7) + (aCorners * 4.2) + possABonus + (ga * 7);
-        
+
                   // Último fallback ainda baseado no que existe no card: força do filtro/score.
                   // Só entra se a API não trouxe absolutamente nenhum acumulado.
                   if (hBaseTotal <= 0 && aBaseTotal <= 0){
@@ -15460,7 +15460,7 @@
                     hBaseTotal = base * 8;
                     aBaseTotal = base * 5;
                   }
-        
+
                   const played = Math.max(1, minuteLimit || 90);
                   const segments = [
                     { a: 1,  b: 14, hw: 1.15, aw: .72 },
@@ -15470,7 +15470,7 @@
                     { a: 60, b: 74, hw: 1.08, aw: .76 },
                     { a: 75, b: 90, hw: .86, aw: 1.02 }
                   ];
-        
+
                   for (let m = 1; m <= played; m++){
                     if (m === 45) continue;
                     const seg = segments.find(x => m >= x.a && m <= x.b) || {hw:1, aw:1};
@@ -15482,15 +15482,15 @@
                     if (a > 0) addPressure(m, "away", a, "snapshot");
                   }
                 }
-        
+
                 total = buckets.reduce((s,b)=>s + b.home + b.away, 0);
                 if (total <= 0) return [];
-        
+
                 buckets._minuteLimit = minuteLimit || 90;
                 buckets._fullMatch = true;
                 return buckets;
               }
-        
+
               function momentumSvg(series, homeLabel, awayLabel, homeName="Mandante", awayName="Visitante", gh="0", ga="0"){
                 const rawSeries = (series || [])
                   .filter(x => x && (num(x.home,null) !== null || num(x.away,null) !== null))
@@ -15502,7 +15502,7 @@
                     events: Array.isArray(x.events) ? x.events : []
                   }))
                   .sort((a,b) => a.minute - b.minute);
-        
+
                 if (rawSeries.length < 2){
                   return `
                     <div class="pressureGraphBox pressureGraphEmpty pressureGraphSiteColors">
@@ -15516,7 +15516,7 @@
                     </div>
                   `;
                 }
-        
+
                 function looksAccumulated(list, key){
                   if (!Array.isArray(list) || list.length < 10) return false;
                   let grows = 0;
@@ -15529,7 +15529,7 @@
                   }
                   return (grows + equals) >= Math.ceil((list.length - 1) * .86) && drops <= 2;
                 }
-        
+
                 // Quando o backend/API manda pressão acumulada, transforma em pressão por bloco.
                 // Isso remove o desenho crescente artificial.
                 const accumulated = looksAccumulated(rawSeries, "home") || looksAccumulated(rawSeries, "away");
@@ -15543,7 +15543,7 @@
                       };
                     })
                   : rawSeries;
-        
+
                 // Agrupa em blocos de 3 minutos para as barras ficarem encorpadas e legíveis.
                 const bucketSize = 3;
                 const grouped = [];
@@ -15561,10 +15561,10 @@
                     future: items.length ? items.every(p => p.future) : false
                   });
                 }
-        
+
                 let cleanSeries = grouped.filter(p => (p.home + p.away) > 0 || p.events.length);
                 if (cleanSeries.length < 2) cleanSeries = grouped;
-        
+
                 // Se ainda ficar muito linear, aplica leve variação determinística só na distribuição visual,
                 // sem mudar os totais do comparativo da partida.
                 cleanSeries = cleanSeries.map((p, i) => {
@@ -15576,7 +15576,7 @@
                     away: Math.max(0, p.away * aWave)
                   };
                 });
-        
+
                 const w = 344, h = 222;
                 const leftPad = 20, rightPad = 20;
                 const topBarH = 6;
@@ -15590,7 +15590,7 @@
                 const max = Math.max(8, ...cleanSeries.map(x => Math.max(x.home, x.away)));
                 const slot = plotW / cleanSeries.length;
                 const barW = Math.max(6.8, Math.min(9.4, slot * .70));
-        
+
                 const tickMarks = [0,15,30,45,60,75,90].map(t => {
                   const x = leftPad + plotW * (t / 90);
                   const label = t === 90 ? "90+" : String(t);
@@ -15600,14 +15600,14 @@
                     <text x="${x.toFixed(1)}" y="184" text-anchor="${anchor}" font-size="9" fill="#d9e6f2" font-weight="900">${label}'</text>
                   `;
                 }).join("");
-        
+
                 const intervalX = leftPad + plotW * .5;
                 const intervalMarker = `
                   <line x1="${intervalX.toFixed(1)}" y1="${plotTop-8}" x2="${intervalX.toFixed(1)}" y2="${plotBottom+4}" stroke="rgba(112,99,255,.55)" stroke-width="1.2" stroke-dasharray="5 6"/>
                   <rect x="${(intervalX-16).toFixed(1)}" y="190" width="32" height="17" rx="5" fill="rgba(2,8,12,.92)" stroke="rgba(112,99,255,.35)"/>
                   <text x="${intervalX.toFixed(1)}" y="202" text-anchor="middle" font-size="9" fill="#ffffff" font-weight="950">INT</text>
                 `;
-        
+
                 const bars = cleanSeries.map((x,i)=>{
                   const bx = leftPad + (i * slot) + (slot - barW) / 2;
                   const hVal = Math.max(2.4, (x.home / max) * amp);
@@ -15618,7 +15618,7 @@
                     ${x.away > 0 ? `<rect x="${bx.toFixed(1)}" y="${(mid+4).toFixed(1)}" width="${barW.toFixed(1)}" height="${aVal.toFixed(1)}" rx="2.6" fill="url(#pressureAwayPurpleGrad)" opacity="${opacity}"/>` : ""}
                   `;
                 }).join("");
-        
+
                 const markers = rawSeries.flatMap(x => (x.events || [])
                   .filter(ev => {
                     const txt = String(ev.text || "").toLowerCase();
@@ -15637,7 +15637,7 @@
                       <text x="${ex.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle" font-size="9">${esc(icon)}</text>
                     `;
                   })).join("");
-        
+
                 return `
                   <div class="pressureGraphBox pressureGraphSiteColors">
                     <svg class="pressureGraphSvg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Gráfico de pressão da partida com intervalo">
@@ -15665,7 +15665,7 @@
                       <text x="108" y="${namesY}" text-anchor="end" font-size="11" fill="#e9f5ff" font-weight="950">${esc(homeName)}</text>
                       <text x="${w/2}" y="${namesY+2}" text-anchor="middle" font-size="21" fill="#f4fbff" font-weight="950">${esc(gh)} - ${esc(ga)}</text>
                       <text x="236" y="${namesY}" text-anchor="start" font-size="11" fill="#e9f5ff" font-weight="950">${esc(awayName)}</text>
-        
+
                       ${tickMarks}
                       <line x1="${leftPad}" y1="${mid}" x2="${w-rightPad}" y2="${mid}" stroke="#45b6ff" stroke-width="2.2"/>
                       ${bars}
@@ -15678,7 +15678,7 @@
                     </div>
                   </div>`;
               }
-        
+
                 function eventIcon(text){
                 const t = String(text || "").toLowerCase();
                 if (t.includes("cart") && t.includes("vermel")) return "🟥";
@@ -15703,15 +15703,15 @@
                   return `<div class="railEventLineCompact"><span class="railEventMinute">${esc(min)}'</span><span class="railEventIcon">${eventIcon(text)}</span><span class="railEventText">${esc(text)}</span></div>`;
                 }).join("")}</div>`;
               }
-        
-        
+
+
               /* =========================================================
                  MEMÓRIA DO GRÁFICO DE PRESSÃO
                  - Enquanto o jogo está ao vivo, salva os pontos no navegador
                  - Quando termina, reaproveita o histórico salvo para manter o pós-jogo
                  ========================================================= */
               const PRESSURE_STORE_PREFIX = "cr_pressure_graph_v2:";
-        
+
               function pressureMatchKey(matchId, home, away, league, time){
                 const raw = matchId || `${home}|${away}|${league}|${time}`;
                 return PRESSURE_STORE_PREFIX + String(raw || "sem-id")
@@ -15721,7 +15721,7 @@
                   .replace(/[^a-z0-9|:_-]+/g, "-")
                   .slice(0, 180);
               }
-        
+
               function plainPressureSeries(series){
                 return (Array.isArray(series) ? series : []).map(x => ({
                   minute: clamp(num(x?.minute, 1), 1, 90),
@@ -15737,10 +15737,10 @@
                   })) : []
                 })).filter(x => x.home > 0 || x.away > 0 || x.events.length);
               }
-        
+
               function mergePressureSeries(saved, current, finished=false){
                 const map = new Map();
-        
+
                 function put(item, priority){
                   const m = clamp(num(item?.minute, 1), 1, 90);
                   const old = map.get(m) || { minute:m, home:0, away:0, events:[], future:false, source:"saved", priority:0 };
@@ -15761,19 +15761,19 @@
                     priority: Math.max(priority, old.priority || 0)
                   });
                 }
-        
+
                 plainPressureSeries(saved).forEach(x => put(x, 1));
                 plainPressureSeries(current).forEach(x => put(x, 2));
-        
+
                 const out = Array.from(map.values())
                   .sort((a,b) => a.minute - b.minute)
                   .map(({priority, ...x}) => x);
-        
+
                 out._minuteLimit = finished ? 90 : (current?._minuteLimit || saved?._minuteLimit || 90);
                 out._fullMatch = true;
                 return out;
               }
-        
+
               function loadPressureSeries(key){
                 try{
                   const raw = localStorage.getItem(key);
@@ -15782,7 +15782,7 @@
                   return Array.isArray(parsed?.series) ? parsed.series : [];
                 }catch(_){ return []; }
               }
-        
+
               function savePressureSeries(key, series, meta={}){
                 try{
                   const cleanSeries = plainPressureSeries(series).slice(0, 90);
@@ -15794,7 +15794,7 @@
                   }));
                 }catch(_){ /* localStorage pode estar cheio ou bloqueado */ }
               }
-        
+
               function pressureSeriesWithMemory({ data, pct, matchId, home, away, league, time }){
                 const key = pressureMatchKey(matchId, home, away, league, time);
                 const current = buildMomentumSeries(data || {}, pct);
@@ -15802,18 +15802,18 @@
                 const finished = !!data?.finished;
                 const live = !!data?.live;
                 const merged = mergePressureSeries(saved, current, finished);
-        
+
                 // Salva em todo refresh do Match Center durante o jogo.
                 // Quando encerrar, o último gráfico completo permanece salvo para o pós-jogo.
                 if ((live || finished) && merged.length){
                   savePressureSeries(key, merged, { matchId, home, away, league, time, finished, live });
                 }
-        
+
                 if (finished && merged.length) return merged;
                 if (current.length) return merged.length ? merged : current;
                 return saved.length ? mergePressureSeries(saved, [], finished) : [];
               }
-        
+
               function renderRail({rail, game, data}){
                 const home = clean(data?.home || game?.casa || game?.home || game?.home_team || game?.home_name, "Mandante");
                 const away = clean(data?.away || game?.fora || game?.away || game?.away_team || game?.away_name, "Visitante");
@@ -15829,7 +15829,7 @@
                 const series = pressureSeriesWithMemory({ data:data || {}, pct, matchId, home, away, league, time });
                 const hShort = initials(home,"MA");
                 const aShort = initials(away,"VI");
-        
+
                 rail.innerHTML = `
                   <section class="railCard matchRailCard railSofaHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
                     <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(st)}</b></div>
@@ -15840,27 +15840,27 @@
                     </div>
                     <div class="railProgress"><i style="width:${progress}%"></i></div>
                   </section>
-        
+
                   <section class="railCard railCompareCard">
                     <div class="railSofaTabs"><span class="railSofaTab is-active">Detalhes</span><span class="railSofaTab">Estatísticas</span><span class="railSofaTab">Eventos</span><span class="railSofaTab">Índice</span></div>
                     <h3>COMPARATIVO DA PARTIDA</h3>
                     <div class="railCompareList">${buildCompare(data || {}, game || {})}</div>
                   </section>
-        
+
                   <section class="railCard railMomentumCard railPressureGraphCard">
                     <div class="railPressureHead"><h3>GRÁFICO DE PRESSÃO</h3><b>${data?.live ? "AO VIVO" : (data?.finished ? "PÓS-JOGO" : "PRÉ-JOGO")}</b></div>
                     ${momentumSvg(series, hShort, aShort, home, away, gh, ga)}
                   </section>
-        
+
                   <section class="railCard railEventsCard">
                     <h3>EVENTOS DA PARTIDA</h3>
                     ${buildEvents(data || {})}
                   </section>
-        
+
                   <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
                 `;
               }
-        
+
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game, list){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail || !game) return;
@@ -15877,8 +15877,8 @@
                 }
               };
             })();
-        
-        
+
+
             /* =========================================================
                PATCH VISUAL — GRÁFICO DE PRESSÃO estilo pós-jogo
                ========================================================= */
@@ -15972,7 +15972,7 @@
               `;
               document.head.appendChild(style);
             })();
-        
+
             /* =========================================================
                TOPBAR CLEANUP — evita duplicação visual do Premium/Sair
                O menu premium oficial agora fica no HTML (.accountMenu).
@@ -15981,18 +15981,18 @@
               function cleanupTopbarDuplicates(){
                 const authBar = document.getElementById("premiumAuthBar");
                 if (authBar) authBar.remove();
-        
+
                 document.querySelectorAll(".premiumAuthBar, .premiumLoginBtn, .premiumUserPill, .premiumLogoutBtn").forEach(el => {
                   const insideAccount = el.closest(".accountMenu");
                   if (!insideAccount) el.remove();
                 });
               }
-        
+
               document.addEventListener("DOMContentLoaded", cleanupTopbarDuplicates);
               setTimeout(cleanupTopbarDuplicates, 250);
               setTimeout(cleanupTopbarDuplicates, 1000);
             })();
-        
+
             /* =========================================================
                PATCH FINAL — PRESSURE GRAPH NAS CORES DO SITE + INTERVALO
                ========================================================= */
@@ -16040,7 +16040,7 @@
             var __crPremiumLoaderTimer = null;
             var __crPremiumLoaderPct = 14;
             var __crPremiumLoaderStep = 0;
-        
+
             function crPremiumLoaderEscape(value){
               if (typeof escapeHtmlLite === "function") return escapeHtmlLite(value);
               return String(value ?? "")
@@ -16050,7 +16050,7 @@
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#039;");
             }
-        
+
             function crLoaderMessageByStep(step){
               const messages = [
                 "Conectando à API e validando a data selecionada...",
@@ -16061,13 +16061,13 @@
               ];
               return messages[Math.max(0, Math.min(messages.length - 1, step))];
             }
-        
+
             function crLoaderStepClass(index, activeStep){
               if (index < activeStep) return "done";
               if (index === activeStep) return "active";
               return "";
             }
-        
+
             function crBuildPremiumLoader(label){
               const title = crPremiumLoaderEscape(label || "Corners Radar está analisando os jogos");
               const steps = [
@@ -16077,7 +16077,7 @@
                 { icon:"▦", text:"Calculando mercados" },
                 { icon:"⚑", text:"Finalizando" }
               ];
-        
+
               return `
                 <div class="crPremiumLoader" aria-live="polite" data-cr-premium-loader="1">
                   <div class="crLoaderInner">
@@ -16085,12 +16085,12 @@
                       <span class="crRadarSweep"></span>
                       <span class="crRadarLogo">CR</span>
                     </div>
-        
+
                     <div>
                       <h2 class="crLoaderTitle"><b>Corners Radar</b> está analisando os jogos</h2>
                       <p class="crLoaderSub" data-cr-loader-message>${title}</p>
                     </div>
-        
+
                     <div class="crLoaderSteps" data-cr-loader-steps>
                       ${steps.map((s, i) => `
                         <div class="crLoaderStep ${crLoaderStepClass(i, __crPremiumLoaderStep)}" data-cr-step="${i}">
@@ -16099,15 +16099,15 @@
                         </div>
                       `).join("")}
                     </div>
-        
+
                     <div class="crProgressWrap">
                       <div class="crProgressTrack"><span class="crProgressBar" data-cr-loader-bar style="width:${__crPremiumLoaderPct}%"></span></div>
                       <strong class="crProgressPct" data-cr-loader-pct>${__crPremiumLoaderPct}%</strong>
                     </div>
-        
+
                     <div class="crLoaderHint">Isso pode levar alguns segundos...</div>
                   </div>
-        
+
                   <div class="crSkeletonRows" aria-hidden="true">
                     ${Array.from({length:5}).map((_, idx) => `
                       <div class="crSkeletonRow">
@@ -16122,13 +16122,13 @@
                 </div>
               `;
             }
-        
+
             function crStartPremiumLoaderLoop(){
               if (__crPremiumLoaderTimer) clearInterval(__crPremiumLoaderTimer);
-        
+
               __crPremiumLoaderPct = Math.max(14, Math.min(__crPremiumLoaderPct || 14, 86));
               __crPremiumLoaderStep = Math.max(0, Math.min(__crPremiumLoaderStep || 0, 4));
-        
+
               __crPremiumLoaderTimer = setInterval(function(){
                 const loader = document.querySelector("[data-cr-premium-loader]");
                 if (!loader){
@@ -16136,23 +16136,23 @@
                   __crPremiumLoaderTimer = null;
                   return;
                 }
-        
+
                 const nextPct = Math.min(94, __crPremiumLoaderPct + Math.floor(4 + Math.random() * 9));
                 __crPremiumLoaderPct = nextPct;
-        
+
                 if (nextPct >= 25) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 1);
                 if (nextPct >= 48) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 2);
                 if (nextPct >= 68) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 3);
                 if (nextPct >= 86) __crPremiumLoaderStep = Math.max(__crPremiumLoaderStep, 4);
-        
+
                 const bar = loader.querySelector("[data-cr-loader-bar]");
                 const pct = loader.querySelector("[data-cr-loader-pct]");
                 const msg = loader.querySelector("[data-cr-loader-message]");
-        
+
                 if (bar) bar.style.width = nextPct + "%";
                 if (pct) pct.textContent = nextPct + "%";
                 if (msg) msg.textContent = crLoaderMessageByStep(__crPremiumLoaderStep);
-        
+
                 loader.querySelectorAll("[data-cr-step]").forEach(function(el){
                   const i = Number(el.dataset.crStep || 0);
                   el.classList.toggle("done", i < __crPremiumLoaderStep);
@@ -16160,21 +16160,21 @@
                 });
               }, 820);
             }
-        
+
             function ensureDashboardLoadingStyles(){
               // O estilo premium está no CSS completo. Mantido para compatibilidade.
             }
-        
+
             function showDashboardLoading(label = "Buscando estatísticas, mercados e força do filtro em tempo real..."){
               const host = document.getElementById("top1");
               if (!host) return;
-        
+
               __crPremiumLoaderPct = 14;
               __crPremiumLoaderStep = 0;
               host.innerHTML = crBuildPremiumLoader(label);
               crStartPremiumLoaderLoop();
             }
-        
+
             function resetDesktopMatchRailToEmpty(){
               const rail = document.getElementById("desktopMatchRail");
               if (!rail) return;
@@ -16193,7 +16193,7 @@
                     <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
                   </div>
                 </section>
-        
+
                 <section class="railCard railEmptyStatsCard">
                   <h3>ESTATÍSTICAS DO FILTRO</h3>
                   <div class="railEmptyStatsGrid">
@@ -16204,7 +16204,7 @@
                   </div>
                   <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
                 </section>
-        
+
                 <section class="railCard railEmptyEventsCard">
                   <h3>EVENTOS / LEITURA</h3>
                   <div class="railEmptyEventIcons">
@@ -16220,14 +16220,14 @@
                     <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
                   </div>
                 </section>
-        
+
                 <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
                   <span>▶ INICIAR MATCH CENTER</span>
                   <small>Selecione um jogo para continuar</small>
                 </button>
               `;
             }
-        
+
             /* =========================================================
                MAIS MERCADOS DISPONÍVEIS — dropdown do botão "Ver todos os mercados"
                - Mantém o layout atual
@@ -16260,7 +16260,7 @@
                 ["comboHomeCorners85", "VITÓRIA CASA + +8.5 ESCANTEIOS", "Casa + Cantos"],
                 ["comboAwayCorners85", "VITÓRIA VISITANTE + +8.5 ESCANTEIOS", "Visitante + Cantos"]
               ];
-        
+
               function addExtraMarket(key, label, short){
                 try{
                   if (!Array.isArray(MARKET_FILTERS)) return;
@@ -16269,33 +16269,33 @@
                   }
                 }catch(e){}
               }
-        
+
               EXTRA_MARKETS.forEach(item => addExtraMarket(item[0], item[1], item[2]));
-        
+
               const originalMarketPass = typeof marketPass === "function" ? marketPass : null;
               const originalMarketPercent = typeof marketPercent === "function" ? marketPercent : null;
-        
+
               function seedOf(j){
                 const txt = `${j?.casa || j?.home || ""}|${j?.fora || j?.away || ""}|${j?.liga || ""}|${j?.hora || ""}`;
                 return Math.abs(String(txt).split("").reduce((a,c)=>a + c.charCodeAt(0), 0));
               }
-        
+
               function baseCorners(j){
                 const p = Number(originalMarketPercent ? originalMarketPercent(j, "corners95") : (j?.markets?.prob?.corners95 || getProb?.(j) || 60));
                 const proj = Number(typeof getProj === "function" ? getProj(j) : j?.proj_cantos);
                 const bonus = Number.isFinite(proj) ? (proj - 10) * 7 : 0;
                 return clamp(Math.round(p + bonus), 8, 92);
               }
-        
+
               function baseGoals(j, key){
                 return Number(originalMarketPercent ? originalMarketPercent(j, key) : j?.markets?.prob?.[key] || 0);
               }
-        
+
               function cardBase(j){
                 if (typeof cardMarketPercent === "function") return Number(cardMarketPercent(j, "cards25")) || 54;
                 return 54 + (seedOf(j) % 10);
               }
-        
+
               function resultBase(j){
                 const p = baseCorners(j);
                 const seed = seedOf(j);
@@ -16304,13 +16304,13 @@
                 const draw = clamp(100 - Math.max(home, away) - 12, 18, 36);
                 return { home, away, draw };
               }
-        
+
               function extraMarketPercent(j, key){
                 const c = baseCorners(j);
                 const seed = seedOf(j) % 9;
                 const cb = cardBase(j);
                 const r = resultBase(j);
-        
+
                 switch(key){
                   case "homeCorners35": return clamp(Math.round(c - 6 + seed), 20, 88);
                   case "homeCorners45": return clamp(Math.round(c - 18 + seed), 12, 78);
@@ -16339,9 +16339,9 @@
                   default: return null;
                 }
               }
-        
+
               const extraKeys = new Set(EXTRA_MARKETS.map(x => x[0]));
-        
+
               try{
                 marketPercent = function(j, key){
                   if (extraKeys.has(String(key || ""))){
@@ -16349,7 +16349,7 @@
                   }
                   return originalMarketPercent ? originalMarketPercent(j, key) : 0;
                 };
-        
+
                 marketPass = function(j, key){
                   if (extraKeys.has(String(key || ""))){
                     const p = extraMarketPercent(j, key) || 0;
@@ -16361,7 +16361,7 @@
                   return originalMarketPass ? originalMarketPass(j, key) : true;
                 };
               }catch(e){}
-        
+
               document.addEventListener("click", function(ev){
                 const item = ev.target.closest(".allMarketsDropdown [data-market-filter]");
                 if (!item) return;
@@ -16369,7 +16369,7 @@
                 if (wrap) wrap.classList.remove("is-open");
               }, true);
             })();
-        
+
             /* =========================================================
                PATCH FINAL — MERCADOS PROFISSIONAIS / AMBAS MARCAM
                Mantém Match Center. Acrescenta/garante BTTS, BTTS Não,
@@ -16383,7 +16383,7 @@
                   if (!list.some(m => m && m.key === item.key)) list.push(item);
                 }catch(e){}
               }
-        
+
               const mustHave = [
                 {key:"btts", label:"AMBAS MARCAM", short:"BTTS"},
                 {key:"bttsNo", label:"AMBAS MARCAM — NÃO", short:"BTTS Não"},
@@ -16398,18 +16398,18 @@
                 {key:"cards45", label:"+4.5 CARTÕES", short:"+4.5 Cartões"},
                 {key:"comboBttsCorners95", label:"AMBAS MARCAM + +9.5 ESCANTEIOS", short:"BTTS + Cantos"}
               ];
-        
+
               mustHave.forEach(item => addMarketToList("MARKET_FILTERS", item));
-        
+
               function normalizePct(v, fallback){
                 const n = Number(v);
                 if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
                 return fallback;
               }
-        
+
               const oldMarketPercent = typeof marketPercent === "function" ? marketPercent : null;
               const oldMarketPass = typeof marketPass === "function" ? marketPass : null;
-        
+
               function seeded(j){
                 return Math.abs(String(`${j?.casa||""}${j?.fora||""}${j?.hora||""}${j?.league_id||""}`).split("").reduce((a,c)=>a+c.charCodeAt(0),0));
               }
@@ -16436,7 +16436,7 @@
                 const p = m?.prob || {};
                 return normalizePct(p[key] ?? m[key] ?? j?.[`${key}_prob`], map[key] || 50);
               }
-        
+
               try{
                 marketPercent = function(j,key){
                   key = String(key || "all");
@@ -16455,7 +16455,7 @@
                   return oldMarketPass ? oldMarketPass(j,key) : true;
                 };
               }catch(e){}
-        
+
               document.addEventListener("DOMContentLoaded", function(){
                 try{
                   document.body.classList.add("layout-profissional-btts");
@@ -16474,9 +16474,9 @@
                ========================================================= */
             (function cornerProDashboardRealGamesFix(){
               "use strict";
-        
+
               const API_ENDPOINTS = ["/quentes", "/mercados", "/prelive_best"];
-        
+
               function $(sel){ return document.querySelector(sel); }
               function all(sel){ return Array.from(document.querySelectorAll(sel)); }
               function safe(v, fb="—"){ return (v === undefined || v === null || v === "") ? fb : v; }
@@ -16484,23 +16484,23 @@
               function txt(v){ return String(v ?? "").trim(); }
               function norm(v){ return txt(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim(); }
               function esc(v){ return txt(v).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
-        
+
               function todayManaus(){
                 return new Intl.DateTimeFormat("en-CA", {
                   timeZone:"America/Manaus", year:"numeric", month:"2-digit", day:"2-digit"
                 }).format(new Date());
               }
-        
+
               function hideBadPremiumOverlay(){
                 all("#premiumLoginOverlay,.premiumLoginOverlay").forEach(el => el.remove());
                 all(".premiumAuthBar,.premiumLoginBtn,.premiumUserPill,.premiumLogoutBtn").forEach(el => el.remove());
                 try{ localStorage.setItem("cornersPremiumLogged", "1"); }catch(e){}
               }
-        
+
               function extractArray(payload){
                 if (Array.isArray(payload)) return payload;
                 if (!payload || typeof payload !== "object") return [];
-        
+
                 const directKeys = ["jogos", "games", "matches", "data", "list", "items", "top", "top6", "quentes", "results"];
                 for (const k of directKeys){
                   if (Array.isArray(payload[k])) return payload[k];
@@ -16509,30 +16509,30 @@
                     if (inner.length) return inner;
                   }
                 }
-        
+
                 const values = Object.values(payload);
                 for (const v of values){
                   if (Array.isArray(v) && v.some(x => x && typeof x === "object")) return v;
                 }
                 return [];
               }
-        
+
               async function getJson(url){
                 const res = await fetch(url, { cache:"no-store" });
                 if (!res.ok) throw new Error(`${res.status} ${url}`);
                 return res.json();
               }
-        
+
               async function fetchRealGames(date){
                 try{ sessionStorage.removeItem(`cornerProRealGamesCache:${date}`); }catch(e){}
                 const cacheKey = `cornerProRealGamesCache:v2:${date}`;
-        
+
                 // Cache em memória da própria página
                 window.__cornerProApiCache = window.__cornerProApiCache || {};
                 if (Array.isArray(window.__cornerProApiCache[date]) && window.__cornerProApiCache[date].length){
                   return window.__cornerProApiCache[date];
                 }
-        
+
                 // Cache da sessão: evita recarregar a API toda vez que passa/clica em mercado
                 try{
                   const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
@@ -16541,11 +16541,11 @@
                     return cached;
                   }
                 }catch(e){}
-        
+
                 let lastError = null;
                 for (const ep of API_ENDPOINTS){
                   const sep = ep.includes("?") ? "&" : "?";
-        
+
                   // Sem fresh=1 aqui: queremos reaproveitar cache do servidor/navegador quando possível.
                   const url = `${ep}${sep}date=${encodeURIComponent(date)}`;
                   try{
@@ -16564,32 +16564,32 @@
                 if (lastError) console.warn("Nenhuma rota retornou jogos:", lastError);
                 return [];
               }
-        
-        
+
+
               function normalizeKickoffDisplayTime(raw, shouldAdjust = false){
                 const value = String(raw ?? "").trim();
                 const m = value.match(/^(\d{1,2}):(\d{2})/);
                 if (!m) return value || "--:--";
-        
+
                 let total = Number(m[1]) * 60 + Number(m[2]);
-        
+
                 // A API/servidor antigo costuma entregar 5h à frente.
                 // Ex.: 19:00 precisa aparecer 14:00.
                 if (shouldAdjust) total -= 5 * 60;
-        
+
                 while (total < 0) total += 24 * 60;
                 total = total % (24 * 60);
-        
+
                 return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`;
               }
-        
+
               function normalizeNoShiftTime(raw){
                 return normalizeKickoffDisplayTime(raw, false);
               }
-        
+
               function displayKickoffTimeFromGame(j){
                 if (!j || typeof j !== "object") return "--:--";
-        
+
                 // Novo servidor: já envia o horário correto de Manaus.
                 const ready =
                   j.hora_manaus ??
@@ -16597,24 +16597,24 @@
                   j.time_manaus ??
                   j.kickoff_manaus ??
                   j.horario_manaus;
-        
+
                 if (ready) return normalizeNoShiftTime(ready);
-        
+
                 const rawApi =
                   j.hora_raw ??
                   j.match_time ??
                   j.event_time ??
                   j.kickoff_raw;
-        
+
                 // Se vier o campo bruto da API, ele precisa do ajuste -5.
                 if (rawApi) return normalizeKickoffDisplayTime(rawApi, true);
-        
+
                 // Compatibilidade com servidor antigo:
                 // quando só existe hora/time, aplica -5 para corrigir o caso 19:00 -> 14:00.
                 const legacy = j.hora ?? j.time ?? j.kickoff ?? j.horario ?? "--:--";
                 return normalizeKickoffDisplayTime(legacy, true);
               }
-        
+
               function normalizeGame(j){
                 const home = safe(j.casa ?? j.home ?? j.home_name ?? j.team_home ?? j.mandante ?? j.localteam ?? j.teams?.home?.name, "Time Casa");
                 const away = safe(j.fora ?? j.away ?? j.away_name ?? j.team_away ?? j.visitante ?? j.visitorteam ?? j.teams?.away?.name, "Time Fora");
@@ -16623,16 +16623,16 @@
                 const matchId = safe(j.match_id ?? j.id ?? j.fixture_id ?? j.event_id, "");
                 const proj = num(j.proj_cantos ?? j.projCorners ?? j.corners_projection ?? j.corner_projection);
                 const prob = num(j.over95_prob_adj ?? j.over95_prob ?? j.prob ?? j.ai_score ?? j.score);
-        
+
                 const odds = j.odds || j.markets || {};
                 const oddCorners = num(odds?.corners95?.odd ?? odds?.over95?.odd ?? odds?.over_95_corners ?? odds?.corners ?? j.odd_corners ?? j.odds_corners);
                 const oddGoals = num(odds?.over25?.odd ?? odds?.goals25?.odd ?? odds?.over_25_goals ?? j.odd_goals ?? j.odds_goals);
                 const oddBtts = num(odds?.btts?.odd ?? odds?.ambas?.odd ?? odds?.both_score ?? j.odd_btts ?? j.odds_btts);
                 const oddCards = num(odds?.cards45?.odd ?? odds?.over45cards?.odd ?? odds?.cards ?? j.odd_cards ?? j.odds_cards);
-        
+
                 return { raw:j, home:txt(home), away:txt(away), league:txt(league), time:txt(time).slice(0,5), matchId, proj, prob, oddCorners, oddGoals, oddBtts, oddCards };
               }
-        
+
               function dedupeGames(list){
                 const seen = new Set();
                 const out = [];
@@ -16645,39 +16645,39 @@
                 }
                 return out;
               }
-        
+
               function scoreGame(g){
                 const p = num(g.prob) ?? 0;
                 const pr = num(g.proj) ?? 0;
                 return p + pr * 5;
               }
-        
+
               function percentLabel(v){
                 const n = num(v);
                 if (n === null) return "—";
                 return `${Math.round(Math.max(0, Math.min(99, n)))}%`;
               }
-        
+
               function fmtOdd(v){
                 const n = num(v);
                 return n && n > 1 ? n.toFixed(2) : null;
               }
-        
+
               function fmtMarketValue(odd, percent){
                 const oddTxt = fmtOdd(odd);
                 if (oddTxt) return oddTxt;
                 return percentLabel(percent);
               }
-        
+
               function cornerPercent(g){
                 const p = num(g.prob);
                 const pr = num(g.proj);
-        
+
                 if (p !== null && p > 0) return p;
                 if (pr !== null) return Math.max(42, Math.min(88, 50 + (pr - 9.5) * 10));
                 return 55;
               }
-        
+
               function expectedGoals(g){
                 const j = g.raw || g || {};
                 const direct = num(
@@ -16693,27 +16693,27 @@
                   j.projGoals
                 );
                 if (direct !== null && direct > 0) return Math.max(1.2, Math.min(5.2, direct));
-        
+
                 const key = String(
                   j.match_id ?? j.event_key ?? `${j.casa || g.home || ""}|${j.fora || g.away || ""}|${j.league_id || g.league || ""}`
                 );
                 let hash = 0;
                 for (let i = 0; i < key.length; i++) hash = ((hash * 31) + key.charCodeAt(i)) >>> 0;
-        
+
                 const pr = num(g.proj ?? j.proj_cantos);
                 const p = num(g.prob ?? j.over95_prob_adj ?? j.over95_prob);
                 let total = 2.15 + (hash % 15) * 0.075;
-        
+
                 if (pr !== null) total += (pr - 9.5) * 0.10;
                 if (p !== null) total += (p - 60) * 0.006;
-        
+
                 const league = norm(g.league || j.liga || j.league_name);
                 if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("belgium")) total += 0.18;
                 if (league.includes("serie a") || league.includes("ligue 1")) total -= 0.06;
-        
+
                 return Math.max(1.55, Math.min(4.45, total));
               }
-        
+
               function goalPercent(g, line){
                 const j = g.raw || {};
                 const key = line === 3.5 ? "over35" : line === 2.5 ? "over25" : "over15";
@@ -16723,11 +16723,11 @@
                   j[`over_${String(line).replace(".", "")}_prob`]
                 );
                 if (raw !== null && raw > 5) return raw;
-        
+
                 const total = expectedGoals(g);
                 return Math.max(12, Math.min(88, Math.round(50 + (total - line) * 22)));
               }
-        
+
               function bttsPercent(g){
                 const j = g.raw || {};
                 const raw = num(
@@ -16738,13 +16738,13 @@
                   j.both_teams_score_prob
                 );
                 if (raw !== null && raw > 5) return raw;
-        
+
                 const total = expectedGoals(g);
                 const pr = num(g.proj) ?? 10;
                 let p = 46 + (total - 2.2) * 11 + (pr - 9.5) * 1.7;
                 return Math.max(22, Math.min(76, Math.round(p)));
               }
-        
+
               function cardsPercent(g){
                 const j = g.raw || {};
                 const raw = num(
@@ -16756,11 +16756,11 @@
                   j.over35cards_prob
                 );
                 if (raw !== null && raw > 5) return raw;
-        
+
                 const cards = projectedCards(g);
                 return Math.max(30, Math.min(82, Math.round(46 + (cards - 3.5) * 13)));
               }
-        
+
               function projectedCards(g){
                 const j = g.raw || g || {};
                 const direct = num(
@@ -16772,36 +16772,36 @@
                   j.cartoes_media
                 );
                 if (direct !== null && direct > 0) return Math.max(2.0, Math.min(7.0, direct));
-        
+
                 const key = String(
                   j.match_id ?? j.event_key ?? `${j.casa || g.home || ""}|${j.fora || g.away || ""}|${j.league_id || g.league || ""}`
                 );
                 let hash = 0;
                 for (let i = 0; i < key.length; i++) hash = ((hash * 33) + key.charCodeAt(i)) >>> 0;
-        
+
                 const league = norm(g.league || j.liga || j.league_name);
                 let base = 3.15 + (hash % 16) * 0.105;
-        
+
                 if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig") || league.includes("romania")) base += 0.35;
                 if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie")) base -= 0.10;
-        
+
                 return Math.max(2.45, Math.min(6.45, base));
               }
-        
+
               function lineCorners(g){
                 const pr = num(g.proj);
                 const p = cornerPercent(g);
-        
+
                 if (pr !== null && pr >= 11.4) return "OVER 11.5";
                 if (pr !== null && pr >= 10.4) return "OVER 10.5";
                 if (pr !== null && pr >= 9.4) return "OVER 9.5";
-        
+
                 if (p >= 75) return "OVER 11.5";
                 if (p >= 66) return "OVER 10.5";
                 if (p >= 55) return "OVER 9.5";
                 return "AGUARDAR";
               }
-        
+
               function lineGoals(g){
                 const total = expectedGoals(g);
                 if (total >= 4.05) return "OVER 4.5";
@@ -16809,21 +16809,21 @@
                 if (total >= 2.35) return "OVER 2.5";
                 return "OVER 1.5";
               }
-        
+
               function lineBtts(g){
                 const j = g.raw || {};
                 const p = bttsPercent(g);
-        
+
                 if (p >= 52) return "SIM";
                 if (p <= 42) return "NÃO";
-        
+
                 const hasBtts = j.markets?.btts ?? j.btts ?? j.ambas_marcam;
                 if (hasBtts === true) return "SIM";
                 if (hasBtts === false) return "NÃO";
-        
+
                 return "ANALISAR";
               }
-        
+
               function lineCards(g){
                 const cards = projectedCards(g);
                 if (cards >= 5.65) return "OVER 5.5";
@@ -16831,7 +16831,7 @@
                 if (cards >= 3.35) return "OVER 3.5";
                 return "OVER 2.5";
               }
-        
+
               function marketDisplayPercent(g, type){
                 if (type === "corners") return cornerPercent(g);
                 if (type === "goals") {
@@ -16844,20 +16844,20 @@
                 if (type === "cards") return cardsPercent(g);
                 return null;
               }
-        
+
               function renderGames(games){
                 const panel = $(".gamesPanel");
                 if (!panel) return;
-        
+
                 hideBadPremiumOverlay();
-        
+
                 panel.querySelectorAll(".gameRow,.viewAll,.cornerProStatus,.marketStrictEmpty").forEach(el => el.remove());
-        
+
                 // Guarda TODOS os jogos carregados do dia.
                 // O menu de mercados usa isso para filtrar instantaneamente, sem chamar API de novo.
                 panel.__cornerProAllGames = games.slice();
                 window.__cornerProAllGames = games.slice();
-        
+
                 // FIX: grava a data do cache dos jogos.
                 // Assim, ao clicar em mercado, o site filtra os jogos já carregados
                 // e não chama a API novamente.
@@ -16876,9 +16876,9 @@
                     if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = cacheDate;
                   }catch(e){}
                 }
-        
+
                 const rows = games.slice().sort((a,b) => scoreGame(b) - scoreGame(a)).slice(0,9);
-        
+
                 if (!rows.length){
                   panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Nenhum jogo real retornou da API hoje. Verifique se a rota <b>/quentes</b> está respondendo.</div>`);
                   if(typeof window.CornerProMobileHomeLoading === 'function'){
@@ -16886,7 +16886,7 @@
                   }
                   return;
                 }
-        
+
                 const html = rows.map((g, index) => `
                   <div class="gameRow compactGameRow" data-real-game-index="${index}">
                     <div class="gameMeta">
@@ -16900,10 +16900,10 @@
                     <button class="signal" type="button">▮▮▮</button>
                   </div>
                 `).join("");
-        
+
                 panel.insertAdjacentHTML("beforeend", html + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
                 panel.__cornerProGames = rows;
-        
+
                 // Sincroniza imediatamente o dashboard mobile após os jogos reais entrarem.
                 setTimeout(() => {
                   try{
@@ -16912,7 +16912,7 @@
                     }
                   }catch(e){}
                 }, 0);
-        
+
                 panel.querySelectorAll("[data-real-game-index]").forEach(row => {
                   row.addEventListener("click", () => {
                     const idx = Number(row.dataset.realGameIndex);
@@ -16925,24 +16925,24 @@
                   });
                 });
               }
-        
+
               async function loadAndRender(selectedDate){
                 hideBadPremiumOverlay();
                 const panel = $(".gamesPanel");
                 if (!panel) return;
-        
+
                 const date = selectedDate
                   || document.getElementById("date")?.value
                   || new URLSearchParams(window.location.search).get("date")
                   || new URLSearchParams(window.location.search).get("data")
                   || todayManaus();
-        
+
                 const hiddenDate = document.getElementById("date");
                 if (hiddenDate) hiddenDate.value = date;
-        
+
                 panel.querySelectorAll(".gameRow,.viewAll,.cornerProStatus").forEach(el => el.remove());
                 panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Carregando jogos reais de ${date}...</div>`);
-        
+
                 try{
                   const raw = await fetchRealGames(date);
                   const games = dedupeGames(raw);
@@ -16953,9 +16953,9 @@
                   panel.insertAdjacentHTML("beforeend", `<div class="cornerProStatus">Não foi possível carregar os jogos de ${date}. Verifique se a rota /quentes está respondendo.</div>`);
                 }
               }
-        
+
               window.CornerProReloadRealGames = loadAndRender;
-        
+
               document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(loadAndRender, 250);
                 setTimeout(loadAndRender, 1600);
@@ -16966,7 +16966,7 @@
                 });
               });
             })();
-        
+
             /* =========================================================
                MATCH CENTER DASHBOARD PRO — FIX FINAL
                - Substitui a coluna direita por dashboard premium
@@ -16976,7 +16976,7 @@
             (function installCornerProMatchDashboard(){
               if (window.__cornerProMatchDashboardInstalled) return;
               window.__cornerProMatchDashboardInstalled = true;
-        
+
               const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
               const clean = (v, fb="—") => {
                 const s = String(v ?? "").trim();
@@ -16987,27 +16987,27 @@
                 return Number.isFinite(x) ? x : fb;
               };
               const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
-        
+
               function initials(name){
                 const s = clean(name, "TM");
                 const p = s.split(/\s+/).filter(Boolean);
                 return (p.length > 1 ? p[0][0] + p[1][0] : s.slice(0,2)).toUpperCase();
               }
-        
+
               function statusText(data){
                 const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                 if (data?.finished || raw.includes("finished") || raw.includes("encerrado") || raw.includes("final") || raw === "ft") return "ENCERRADO";
                 if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                 return "PRÉ-JOGO";
               }
-        
+
               function minuteText(data){
                 const raw = data?.minute ?? data?.match_minute ?? data?.time_live ?? data?.elapsed ?? "";
                 const v = parseInt(String(raw).replace(/[^0-9]/g,""), 10);
                 if (Number.isFinite(v) && v > 0) return `${clamp(v,1,130)}'`;
                 return data?.finished ? "90'" : "—";
               }
-        
+
               function val(data, paths, fb="—"){
                 for (const path of paths){
                   const parts = String(path).split(".");
@@ -17017,17 +17017,17 @@
                 }
                 return fb;
               }
-        
+
               function statPair(data, homePaths, awayPaths, fb="—"){
                 return { home: clean(val(data, homePaths, fb), fb), away: clean(val(data, awayPaths, fb), fb) };
               }
-        
+
               function calcPressurePct(data){
                 const corners = statPair(data, ["corners.home","home_corners"], ["corners.away","away_corners"], 0);
                 const shots = statPair(data, ["shots.home","shots.total_home","home_shots"], ["shots.away","shots.total_away","away_shots"], 0);
                 const shotsOn = statPair(data, ["shots_on.home","shots.on_home","shots_on_target.home","home_shots_on"], ["shots_on.away","shots.on_away","shots_on_target.away","away_shots_on"], 0);
                 const danger = statPair(data, ["pressure.home","dangerous_attacks.home","attacks.dangerous_home","home_pressure"], ["pressure.away","dangerous_attacks.away","attacks.dangerous_away","away_pressure"], 0);
-        
+
                 const h = (n(danger.home) * 0.45) + (n(shotsOn.home) * 0.25) + (n(corners.home) * 0.20) + (n(shots.home) * 0.10);
                 const a = (n(danger.away) * 0.45) + (n(shotsOn.away) * 0.25) + (n(corners.away) * 0.20) + (n(shots.away) * 0.10);
                 const total = h + a;
@@ -17037,7 +17037,7 @@
                 const level = total >= 46 ? "PRESSÃO ALTA" : total >= 24 ? "PRESSÃO MÉDIA" : "PRESSÃO BAIXA";
                 return { home:hp, away:ap, level };
               }
-        
+
               function compareRow(icon, label, h, a, suffix=""){
                 const hn = n(h,0), an = n(a,0), max = Math.max(1, hn, an);
                 const hw = clamp(Math.round((hn/max)*100), 4, 100);
@@ -17049,7 +17049,7 @@
                   ${suffix ? `<div class="crSub">${esc(suffix)}</div>` : ""}
                 </div>`;
               }
-        
+
               function makeSeries(data, pressure){
                 const candidates = [data?.pressure_timeline,data?.pressureTimeline,data?.momentum,data?.momentum_timeline,data?.pressure_history,data?.last15Pressure,data?.last15_pressure];
                 for (const c of candidates){
@@ -17072,7 +17072,7 @@
                 }
                 return Array.from({length:12},(_,i)=>({minute:i,home:pressure.home/12,away:pressure.away/12}));
               }
-        
+
               function lineChart(series){
                 const W=300,H=142,pad=18,base=112;
                 const max = Math.max(10, ...series.flatMap(p=>[n(p.home),n(p.away)]));
@@ -17091,7 +17091,7 @@
                   <text class="axis" x="${pad}" y="136">0'</text><text class="axis" x="${W/2-8}" y="136">45'</text><text class="axis" x="${W-pad-18}" y="136">90'</text>
                 </svg><div class="railChartLegend"><span>Mandante</span><span>Visitante</span></div>`;
               }
-        
+
               function eventsHTML(data){
                 const events = Array.isArray(data?.events) ? data.events.slice(0,8) : [];
                 if (!events.length) return `<p class="timelineEmptyPro">Aguardando eventos detalhados da API.</p>`;
@@ -17101,7 +17101,7 @@
                   return `<div class="timelineEventPro"><b>${esc(clean(e?.minute ?? e?.time ?? e?.elapsed,"—"))}</b><i>${icon}</i><div><span>${esc(clean(e?.label || e?.type || e?.detail,"Evento"))}</span><small>${esc(clean(e?.team || e?.time_name || ""))}</small></div></div>`;
                 }).join("")}</div>`;
               }
-        
+
               function renderRail(rail, game, data={}){
                 const home = clean(data.home ?? data.casa ?? game?.casa ?? game?.home ?? game?.home_team, "Mandante");
                 const away = clean(data.away ?? data.fora ?? game?.fora ?? game?.away ?? game?.away_team, "Visitante");
@@ -17123,7 +17123,7 @@
                 const shotsTotal = n(shots.home) + n(shots.away);
                 const dangerTotal = n(danger.home) + n(danger.away);
                 const confidence = clamp(Math.round((pressure.home * .55) + (Math.min(100,cornersTotal*7) * .25) + (Math.min(100,dangerTotal) * .20)), 1, 99);
-        
+
                 rail.innerHTML = `
                   <section class="railCard matchRailCard railDashHeroPro">
                     <div class="railProTop"><div class="railProTitle"><i>⚽</i><span>MATCH CENTER</span></div><b class="railProStatus">${esc(st)}${data?.live ? " • " + esc(minute) : ""}</b></div>
@@ -17131,9 +17131,9 @@
                     <div class="railProTeams"><div class="railProTeam"><div class="railProBadge">${esc(initials(home))}</div><strong>${esc(home)}</strong></div><div class="railProScore"><strong>${esc(scoreH)} × ${esc(scoreA)}</strong><span>${esc(minute)}</span></div><div class="railProTeam"><div class="railProBadge">${esc(initials(away))}</div><strong>${esc(away)}</strong></div></div>
                     <div class="railProMeta"><div><b>${esc(cornersTotal || "—")}</b><small>Escanteios totais</small></div><div><b>${esc(confidence)}%</b><small>Leitura do jogo</small></div></div>
                   </section>
-        
+
                   <section class="railPressureMain"><div class="railPressureHead"><h3>PRESSÃO DO JOGO</h3><b>${esc(pressure.level)}</b></div><div class="pressureNames"><b>${esc(home)}</b><b>${esc(away)}</b></div><div class="pressurePctLine"><strong>${pressure.home}%</strong><div class="pressureTrackPro"><i class="pressureHomeFill" style="width:${pressure.home}%"></i><i class="pressureAwayFill" style="width:${pressure.away}%"></i></div><strong>${pressure.away}%</strong></div><div class="pressureCaption">base: ataques perigosos, finalizações, chutes no alvo e escanteios</div></section>
-        
+
                   <section class="railComparePro"><h3>ESTATÍSTICAS COMPARATIVAS</h3><div class="compareRowsPro">
                     ${compareRow("⚑","Escanteios",corners.home,corners.away,`Total ${cornersTotal || "—"}`)}
                     ${compareRow("🎯","Finalizações",shots.home,shots.away,`Total ${shotsTotal || "—"}`)}
@@ -17142,13 +17142,13 @@
                     ${compareRow("◷","Posse de bola",poss.home,poss.away)}
                     ${compareRow("▰","Cartões amarelos",cards.home,cards.away)}
                   </div></section>
-        
+
                   <section class="railChartPro"><div class="railPressureHead"><h3>GRÁFICO DE PRESSÃO</h3><b>momentum</b></div>${lineChart(series)}</section>
                   <section class="railTimelinePro"><h3>EVENTOS DA PARTIDA</h3>${eventsHTML(data)}</section>
                   <section class="railMiniDashPro"><h3>RESUMO DO JOGO</h3><div class="miniDashGridPro"><div><span>Ritmo</span><b>${esc(pressure.level.replace("PRESSÃO ",""))}</b><small>jogo atual</small></div><div><span>Confiança</span><b>${confidence}%</b><small>dashboard</small></div><div><span>Cantos</span><b>${cornersTotal || "—"}</b><small>total</small></div><div><span>Finalizações</span><b>${shotsTotal || "—"}</b><small>total</small></div></div></section>
                   <button class="railFullBtn railFullBtnPro" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}">VER PARTIDA COMPLETA →</button>`;
               }
-        
+
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
                 const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
                 if (!rail || !game) return;
@@ -17163,7 +17163,7 @@
                 }catch(err){ console.warn("Match Center Dashboard Pro falhou:", err); }
               };
             })();
-        
+
             /* =========================================================
                CALENDÁRIO DO TOPO — abre meses anteriores e próximos
                Ao clicar no dia:
@@ -17181,93 +17181,93 @@
               const prevMonth = document.getElementById("prevMonth");
               const nextMonth = document.getElementById("nextMonth");
               const todayCalendar = document.getElementById("todayCalendar");
-        
+
               if (!btnCalendario || !calendarModal || !calendarDays) return;
-        
-              
+
+
               // WEB V26: no desktop usamos somente o dropdown da topbar.
               if (window.innerWidth > 980) return;
     const MONTHS = [
                 "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                 "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
               ];
-        
+
               function pad(n){
                 return String(n).padStart(2,"0");
               }
-        
+
               function toYMD(date){
                 return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
               }
-        
+
               function parseYMD(value){
                 if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
                 const [y,m,d] = value.split("-").map(Number);
                 return new Date(y, m - 1, d, 12, 0, 0);
               }
-        
+
               function sameDay(a,b){
                 return a.getFullYear() === b.getFullYear()
                   && a.getMonth() === b.getMonth()
                   && a.getDate() === b.getDate();
               }
-        
+
               function getCurrentSelectedDate(){
                 const input = document.getElementById("date");
                 const urlDate = new URLSearchParams(window.location.search).get("data");
                 return parseYMD(input?.value || urlDate || toYMD(new Date()));
               }
-        
+
               let viewDate = getCurrentSelectedDate();
-        
+
               function renderCalendar(){
                 calendarDays.innerHTML = "";
-        
+
                 const selected = getCurrentSelectedDate();
                 const today = new Date();
-        
+
                 const year = viewDate.getFullYear();
                 const month = viewDate.getMonth();
-        
+
                 calendarTitle.textContent = `${MONTHS[month]} ${year}`;
                 if (calendarSubTitle) calendarSubTitle.textContent = "Ver jogos por data";
-        
+
                 const first = new Date(year, month, 1, 12, 0, 0);
                 const start = new Date(first);
                 start.setDate(first.getDate() - first.getDay());
-        
+
                 for(let i = 0; i < 42; i++){
                   const day = new Date(start);
                   day.setDate(start.getDate() + i);
-        
+
                   const btn = document.createElement("button");
                   btn.type = "button";
                   btn.className = "calendarDay";
                   btn.textContent = day.getDate();
                   btn.dataset.date = toYMD(day);
-        
+
                   if (day.getMonth() !== month) btn.classList.add("muted");
                   if (sameDay(day, today)) btn.classList.add("today");
                   if (sameDay(day, selected)) btn.classList.add("selected");
-        
+
                   btn.addEventListener("click", async function(){
                     const ymd = this.dataset.date;
                     const input = document.getElementById("date");
-        
+
                     // Mantém a data escolhida no endereço também.
                     // O servidor/JS usa "date", não "data".
                     const url = new URL(window.location.href);
                     url.searchParams.set("date", ymd);
                     window.history.pushState({}, "", url.toString());
-        
+
                     if (input){
                       input.value = ymd;
                       input.dispatchEvent(new Event("input", { bubbles:true }));
                       input.dispatchEvent(new Event("change", { bubbles:true }));
                     }
-        
+
                     calendarModal.classList.remove("active");
-        
+
                     // PUXA OS JOGOS DA API NA DATA ESCOLHIDA
                     // Seu script principal usa loadAll({ date, fresh }).
                     try{
@@ -17275,14 +17275,14 @@
                         await loadAll({ date: ymd, fresh: true });
                         return;
                       }
-        
+
                       // Fallback para telas de mercados/filtros.
                       if (typeof loadMarketGames === "function" && typeof renderMarketFilters === "function"){
                         await loadMarketGames({ date: ymd, fresh: true });
                         renderMarketFilters();
                         return;
                       }
-        
+
                       // Último fallback, caso esteja em outro arquivo/página.
                       window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
                     }catch(err){
@@ -17290,64 +17290,64 @@
                       window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
                     }
                   });
-        
+
                   calendarDays.appendChild(btn);
                 }
               }
-        
+
               function openCalendar(){
                 viewDate = getCurrentSelectedDate();
                 renderCalendar();
                 calendarModal.classList.add("active");
                 calendarModal.setAttribute("aria-hidden", "false");
               }
-        
+
               function close(){
                 calendarModal.classList.remove("active");
                 calendarModal.setAttribute("aria-hidden", "true");
               }
-        
+
               btnCalendario.addEventListener("click", function(e){
                 e.preventDefault();
                 openCalendar();
               });
-        
+
               prevMonth?.addEventListener("click", function(){
                 viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
                 renderCalendar();
               });
-        
+
               nextMonth?.addEventListener("click", function(){
                 viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
                 renderCalendar();
               });
-        
+
               todayCalendar?.addEventListener("click", function(){
                 viewDate = new Date();
                 const input = document.getElementById("date");
                 const ymd = toYMD(viewDate);
-        
+
                 if (input){
                   input.value = ymd;
                   input.dispatchEvent(new Event("input", { bubbles:true }));
                   input.dispatchEvent(new Event("change", { bubbles:true }));
                 }
-        
+
                 renderCalendar();
               });
-        
+
               closeCalendar?.addEventListener("click", close);
               closeCalendarX?.addEventListener("click", close);
-        
+
               calendarModal.addEventListener("click", function(e){
                 if (e.target === calendarModal) close();
               });
-        
+
               document.addEventListener("keydown", function(e){
                 if (e.key === "Escape") close();
               });
             })();
-        
+
             /* =========================================================
                CALENDÁRIO TOPBAR — DROPDOWN HOVER INTEGRADO À API
                Usa loadAll({ date, fresh:true }) quando existir.
@@ -17360,87 +17360,87 @@
               const prevBtn = document.getElementById("topCalPrev");
               const nextBtn = document.getElementById("topCalNext");
               const todayBtn = document.getElementById("topCalToday");
-        
+
               if (!btn || !drop || !daysEl || !titleEl) return;
-        
+
               const MONTHS = [
                 "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
                 "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"
               ];
-        
+
               let closeTimer = null;
-        
+
               function pad(n){
                 return String(n).padStart(2,"0");
               }
-        
+
               function toYMD(date){
                 return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
               }
-        
+
               function parseYMD(value){
                 if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date();
                 const [y,m,d] = value.split("-").map(Number);
                 return new Date(y, m - 1, d, 12, 0, 0);
               }
-        
+
               function sameDay(a,b){
                 return a.getFullYear() === b.getFullYear()
                   && a.getMonth() === b.getMonth()
                   && a.getDate() === b.getDate();
               }
-        
+
               function getSelectedYMD(){
                 const input = document.getElementById("date");
                 return input?.value || toYMD(new Date());
               }
-        
+
               let viewDate = parseYMD(getSelectedYMD());
-        
+
               function render(){
                 daysEl.innerHTML = "";
-        
+
                 const selected = parseYMD(getSelectedYMD());
                 const today = new Date();
                 const year = viewDate.getFullYear();
                 const month = viewDate.getMonth();
-        
+
                 titleEl.textContent = `${MONTHS[month]} ${year}`;
-        
+
                 const first = new Date(year, month, 1, 12, 0, 0);
                 const start = new Date(first);
                 start.setDate(first.getDate() - first.getDay());
-        
+
                 for (let i = 0; i < 42; i++){
                   const day = new Date(start);
                   day.setDate(start.getDate() + i);
-        
+
                   const b = document.createElement("button");
                   b.type = "button";
                   b.className = "topCalendarDay";
                   b.textContent = day.getDate();
                   b.dataset.date = toYMD(day);
-        
+
                   if (day.getMonth() !== month) b.classList.add("is-muted");
                   if (sameDay(day, today)) b.classList.add("is-today");
                   if (sameDay(day, selected)) b.classList.add("is-selected");
-        
+
                   daysEl.appendChild(b);
                 }
               }
-        
+
               function positionDropdown(){
                 const rect = btn.getBoundingClientRect();
                 const gap = 8;
                 const width = drop.offsetWidth || 320;
                 let left = rect.left + (rect.width / 2) - (width / 2);
                 left = Math.max(12, Math.min(left, window.innerWidth - width - 12));
-        
+
                 drop.style.left = `${left}px`;
                 drop.style.right = "auto";
                 drop.style.top = `${rect.bottom + gap}px`;
               }
-        
+
               function open(){
                 clearTimeout(closeTimer);
                 viewDate = parseYMD(getSelectedYMD());
@@ -17450,7 +17450,7 @@
                 drop.classList.add("is-open");
                 drop.setAttribute("aria-hidden","false");
               }
-        
+
               function closeSoon(){
                 clearTimeout(closeTimer);
                 closeTimer = setTimeout(() => {
@@ -17459,23 +17459,23 @@
                   drop.setAttribute("aria-hidden","true");
                 }, 180);
               }
-        
+
               function keepOpen(){
                 clearTimeout(closeTimer);
               }
-        
+
               async function selectDate(ymd){
                 const input = document.getElementById("date");
-        
+
                 const url = new URL(window.location.href);
                 url.hash = "";
                 url.searchParams.delete("data");
                 url.searchParams.set("date", ymd);
                 window.history.replaceState({}, "", `${url.pathname}${url.search}`);
-        
+
                 if (input){
                   input.value = ymd;
-    
+
                   // No desktop o reload é controlado por CornerProDesktopReloadDate,
                   // evitando os listeners antigos que poderiam disparar outro carregamento.
                   if (window.innerWidth <= 980){
@@ -17483,11 +17483,11 @@
                     input.dispatchEvent(new Event("change", { bubbles:true }));
                   }
                 }
-        
+
                 btn.classList.remove("is-open");
                 drop.classList.remove("is-open");
                 drop.setAttribute("aria-hidden","true");
-        
+
                 try{
                   // WEB V25 — o calendário controla diretamente o dashboard desktop.
                   // Mantém o mesmo layout e faz UM carregamento da data escolhida.
@@ -17495,36 +17495,36 @@
                     await window.CornerProDesktopReloadDate(ymd);
                     return;
                   }
-    
+
                   // Fallback legado para outras telas.
                   if (typeof window.CornerProReloadRealGames === "function"){
                     await window.CornerProReloadRealGames(ymd);
                     return;
                   }
-        
+
                   if (typeof loadAll === "function"){
                     await loadAll({ date: ymd, fresh: true });
                     return;
                   }
-        
+
                   if (typeof window.loadAll === "function"){
                     await window.loadAll({ date: ymd, fresh: true });
                     return;
                   }
-        
+
                   if (typeof loadMarketGames === "function" && typeof renderMarketFilters === "function"){
                     await loadMarketGames({ date: ymd, fresh: true });
                     renderMarketFilters();
                     return;
                   }
-        
+
                   window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
                 }catch(err){
                   console.error("Erro ao carregar jogos da data:", err);
                   window.location.href = `/pre-jogo.html?date=${encodeURIComponent(ymd)}`;
                 }
               }
-        
+
               btn.addEventListener("mouseenter", open);
               btn.addEventListener("mouseleave", closeSoon);
               btn.addEventListener("click", (e) => {
@@ -17538,32 +17538,32 @@
                   open();
                 }
               });
-        
+
               drop.addEventListener("mouseenter", keepOpen);
               drop.addEventListener("mouseleave", closeSoon);
-        
+
               prevBtn?.addEventListener("click", () => {
                 viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12, 0, 0);
                 render();
               });
-        
+
               nextBtn?.addEventListener("click", () => {
                 viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12, 0, 0);
                 render();
               });
-        
+
               todayBtn?.addEventListener("click", () => {
                 const ymd = toYMD(new Date());
                 viewDate = parseYMD(ymd);
                 selectDate(ymd);
               });
-        
+
               daysEl.addEventListener("click", (e) => {
                 const day = e.target.closest(".topCalendarDay");
                 if (!day) return;
                 selectDate(day.dataset.date);
               });
-        
+
               document.addEventListener("click", (e) => {
                 if(!drop.classList.contains("is-open")) return;
                 if(drop.contains(e.target) || btn.contains(e.target)) return;
@@ -17571,20 +17571,20 @@
                 drop.classList.remove("is-open");
                 drop.setAttribute("aria-hidden","true");
               });
-    
+
               document.addEventListener("keydown", (e) => {
                 if (e.key !== "Escape") return;
                 btn.classList.remove("is-open");
                 drop.classList.remove("is-open");
                 drop.setAttribute("aria-hidden","true");
               });
-        
+
               window.addEventListener("resize", () => {
                 if (drop.classList.contains("is-open")) positionDropdown();
               });
             })();
-        
-        
+
+
             /* PATCH FINAL — calendário carregando jogos reais do dashboard
                Removido para evitar carregamento duplicado: o clique agora é tratado pelo calendário principal acima.
             */
@@ -17595,7 +17595,7 @@
             (function installUltraPremiumRightRail(){
               if (window.__ultraPremiumRightRailInstalled) return;
               window.__ultraPremiumRightRailInstalled = true;
-        
+
               const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
               const clean = (v, fb="—") => {
                 const s = String(v ?? "").trim();
@@ -17616,34 +17616,34 @@
                 const p = s.split(/\s+/).filter(Boolean);
                 return ((p[0]?.[0] || fb[0]) + (p[1]?.[0] || p[0]?.[1] || fb[1] || "P")).toUpperCase();
               };
-        
+
               function getMinute(data){
                 const raw = data?.minute ?? data?.elapsed ?? data?.time_elapsed ?? data?.timer ?? data?.match_minute;
                 const n = parseInt(String(raw ?? "").replace(/[^0-9]/g,""),10);
                 return Number.isFinite(n) ? clamp(n,1,130) : (data?.finished ? 90 : null);
               }
-        
+
               function statusLabel(data){
                 const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                 if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
                 if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                 return "PRÉ-JOGO";
               }
-        
+
               function eventMinute(e){
                 const n = parseInt(String(e?.minute ?? e?.time ?? e?.elapsed ?? e?.label ?? "").replace(/[^0-9]/g,""),10);
                 return Number.isFinite(n) ? clamp(n,1,130) : null;
               }
-        
+
               function normTeam(s){
                 return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
               }
-        
+
               function sameTeam(a,b){
                 const x = normTeam(a), y = normTeam(b);
                 return x && y && (x === y || x.includes(y) || y.includes(x));
               }
-        
+
               function eventWeight(e){
                 const t = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
                 if (t.includes("goal") || t.includes("gol")) return 12;
@@ -17654,7 +17654,7 @@
                 if (t.includes("yellow") || t.includes("amarelo")) return 2;
                 return 1;
               }
-        
+
               function seriesFromTimeline(data){
                 const candidates = [
                   data?.pressure_timeline, data?.pressureTimeline, data?.pressure_history, data?.pressureHistory,
@@ -17674,7 +17674,7 @@
                 }
                 return [];
               }
-        
+
               function seriesFromEvents(data, homeName, awayName){
                 const events = Array.isArray(data?.events) ? data.events : [];
                 if (!events.length) return [];
@@ -17693,13 +17693,13 @@
                 });
                 return buckets.some(b => b.home || b.away) ? buckets : [];
               }
-        
+
               function buildPressureSeries(data, homeName, awayName){
                 // Nada de estimativa por eventos, snapshot ou fórmulas: somente série real da API.
                 const real = seriesFromTimeline(data);
                 return real.length >= 2 ? real : [];
               }
-        
+
               function svgPressureChart(series){
                 if (!series || series.length < 2) return `<div class="railPressureEmpty">Aguardando dados reais de pressão da API.</div>`;
                 const W=300,H=150,padL=52,padR=10,padT=12,padB=25,mid=78,chartH=52;
@@ -17730,7 +17730,7 @@
                   </svg>
                 </div>`;
               }
-        
+
               function compareRow(icon, label, h, a){
                 const hh = clean(h,"—"), aa = clean(a,"—");
                 const hn = num(h,0), an = num(a,0), total = Math.max(1, hn + an);
@@ -17738,7 +17738,7 @@
                 const ap = clamp(100-hp,0,100);
                 return `<div class="railCompareRow"><strong>${esc(hh)}</strong><div class="railCompareMid"><div class="railCompareLabel"><i>${icon}</i>${esc(label)}</div><div class="railCompareTrack"><i style="width:${hp}%"></i><em style="width:${ap}%"></em></div></div><strong>${esc(aa)}</strong></div>`;
               }
-        
+
               function eventIcon(e){
                 const t = String(e?.type || e?.label || "").toLowerCase();
                 if (t.includes("goal") || t.includes("gol")) return "⚽";
@@ -17748,7 +17748,7 @@
                 if (t.includes("sub")) return "↔";
                 return "•";
               }
-        
+
               function eventLines(data){
                 const events = Array.isArray(data?.events) ? data.events.slice(0,6) : [];
                 if (!events.length){
@@ -17758,7 +17758,7 @@
                 }
                 return events.map(e => `<p class="railEventRow"><b>${esc(clean(e?.minute,"—"))}</b><span>${eventIcon(e)}</span><em>${esc(clean(e?.label || e?.type,"Evento"))}</em><small>${esc(clean(e?.team,""))}</small></p>`).join("");
               }
-        
+
               function renderPregame(rail, ctx){
                 const p = clamp(Math.round(num(ctx.pct,69)),0,100);
                 rail.innerHTML = `<section class="railCard matchRailCard railDashHero is-pregame">
@@ -17771,7 +17771,7 @@
                 <section class="railCard railAiDash"><div><h3>LEITURA DO JOGO</h3><p>Jogo selecionado. Quando iniciar, a lateral vira um painel em tempo real com pressão, estatísticas e eventos.</p><small>Base: mercado selecionado e dados da API.</small></div><div class="railConfidenceCircle" style="--p:${p}"><b>${p}%</b><span>confiança</span></div></section>
                 <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(ctx.matchId)}" data-home="${esc(ctx.home)}" data-away="${esc(ctx.away)}" data-league="${esc(ctx.league)}" data-time="${esc(ctx.time)}">VER PARTIDA COMPLETA →</button>`;
               }
-        
+
               function renderReal(rail, ctx, data){
                 const st = statusLabel(data);
                 const minute = getMinute(data);
@@ -17807,7 +17807,7 @@
                 <section class="railCard railAiDash"><div><h3>LEITURA DO JOGO</h3><p>${p >= 55 ? esc(ctx.home) + " com maior domínio ofensivo no recorte atual." : esc(ctx.away) + " equilibrando melhor a pressão no recorte atual."}</p><small>Baseado nos dados reais disponíveis.</small></div><div class="railConfidenceCircle" style="--p:${confidence}"><b>${confidence}%</b><span>confiança</span></div></section>
                 <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(ctx.matchId)}" data-home="${esc(ctx.home)}" data-away="${esc(ctx.away)}" data-league="${esc(ctx.league)}" data-time="${esc(ctx.time)}">VER PARTIDA COMPLETA →</button>`;
               }
-        
+
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail || !game) return;
@@ -17838,7 +17838,7 @@
                 }
               };
             })();
-        
+
             /* =========================================================
                MATCH CENTER PRO — RAIL DASH AVANÇADO
                - Sobrescreve apenas a coluna #desktopMatchRail
@@ -17859,20 +17859,20 @@
                 const p = clean(name, fb).split(/\s+/).filter(Boolean);
                 return (p.length > 1 ? p[0][0] + p[1][0] : p[0]?.slice(0,2) || fb).toUpperCase();
               };
-        
+
               function getStatus(data){
                 const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                 if (data?.finished || raw.includes("finished") || raw.includes("final") || raw.includes("ft") || raw.includes("encerrado")) return "ENCERRADO";
                 if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                 return "PRÉ-JOGO";
               }
-        
+
               function getMinute(data){
                 const n = parseInt(String(data?.minute ?? data?.match_minute ?? data?.time_live ?? "").replace(/[^\d]/g,""), 10);
                 if (Number.isFinite(n)) return clamp(n, 1, 120);
                 return data?.finished ? 90 : 0;
               }
-        
+
               function buildSeries(data, ph, pa){
                 const candidates = [data?.pressure_timeline,data?.pressureTimeline,data?.pressure_history,data?.pressureHistory,data?.momentum,data?.momentum_timeline,data?.last15_pressure,data?.dangerous_attacks_timeline];
                 for (const c of candidates){
@@ -17914,7 +17914,7 @@
                 }
                 return [];
               }
-        
+
               function pressureChart(series, homePct=60){
                 const W = 320, H = 104, base = 52, top = 10, bottom = 92;
                 let data = Array.isArray(series) ? series.filter(Boolean) : [];
@@ -17951,7 +17951,7 @@
                   <text x="0" y="102">0'</text><text x="101" y="102">30'</text><text x="210" y="102">60'</text><text x="297" y="102">90'</text>
                 </svg>`;
               }
-        
+
               function compareRow(label, icon, h, a){
                 const hn = num(h,0), an = num(a,0), total = Math.max(1, hn + an);
                 const hp = clamp(Math.round((hn/total)*100), 0, 100);
@@ -17960,7 +17960,7 @@
                   <b>${esc(h)}</b><div class="mcProCompareMid"><span style="width:${hp}%"></span><i>${icon}</i><em style="width:${ap}%"></em><strong>${esc(label)}</strong></div><b class="away">${esc(a)}</b>
                 </div>`;
               }
-        
+
               function renderRail({rail, game, data=null, matchId, home, away, league, time, pct, proj}){
                 const status = data ? getStatus(data) : "PRÉ-JOGO";
                 const minute = data ? getMinute(data) : 0;
@@ -17981,7 +17981,7 @@
                 const pressPct = data ? clamp(Math.round((num(ph,0)/totalPress)*100),5,95) : clamp(pct,5,95);
                 const series = data ? buildSeries(data, ph, pa) : [];
                 const indice = clamp(Math.round((pct + pressPct) / 2), 5, 96);
-        
+
                 rail.innerHTML = `
                   <section class="railCard mcProHero ${data?.live ? "is-live" : ""} ${data?.finished ? "is-finished" : ""}">
                     <div class="mcProTop"><span>● MATCH CENTER</span><b>${esc(status)}</b></div>
@@ -17993,14 +17993,14 @@
                     </div>
                     <div class="mcProDominance"><span style="width:${pressPct}%"></span><b>${pressPct}% pressão</b></div>
                   </section>
-        
+
                   <section class="railCard mcProKpis">
                     <div class="mcProKpi"><span>⚑</span><small>Escanteios</small><b>${esc(ch)} x ${esc(ca)}</b></div>
                     <div class="mcProKpi"><span>◎</span><small>Finalizações</small><b>${esc(sh)} x ${esc(sa)}</b></div>
                     <div class="mcProKpi"><span>↗</span><small>Proj. Cantos</small><b>${esc(proj)}</b></div>
                     <div class="mcProKpi"><span>📊</span><small>Leitura do jogo</small><b>${indice}%</b></div>
                   </section>
-        
+
                   <section class="railCard mcProPressure">
                     <div class="mcProSectionHead"><h3>PRESSÃO DO JOGO</h3><b>${pressPct >= 70 ? "DOMÍNIO ALTO" : pressPct >= 55 ? "VANTAGEM" : "EQUILIBRADO"}</b></div>
                     <div class="mcProPressureDuel">
@@ -18011,7 +18011,7 @@
                     <div class="mcProChartTitle">BARRA DE PRESSÃO • 90 MIN</div>
                     <div class="mcProChartBox">${pressureChart(series, pressPct)}</div>
                   </section>
-        
+
                   <section class="railCard mcProCompare">
                     <div class="mcProSectionHead"><h3>COMPARATIVO</h3><b>REAL</b></div>
                     ${compareRow("Escanteios", "⚑", ch, ca)}
@@ -18020,16 +18020,16 @@
                     ${compareRow("Ataques perigosos", "↯", ph, pa)}
                     ${compareRow("Cartões amarelos", "▰", cardsH, cardsA)}
                   </section>
-        
+
                   <section class="railCard mcProInsight">
                     <div><h3>LEITURA DO JOGO</h3><p>${data ? `${esc(home)} aparece com ${pressPct}% da pressão no recorte atual.` : `Pré-jogo carregado. Quando a partida iniciar, entram pressão real, eventos e estatísticas da API.`}</p></div>
                     <div class="mcProAiCircle" style="--p:${indice};"><b>${indice}%</b><span>Índice</span></div>
                   </section>
-        
+
                   <button class="railFullBtn mcProBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
                 `;
               }
-        
+
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail || !game) return;
@@ -18054,14 +18054,14 @@
                 }
               };
             })();
-        
+
             /* =========================================================
                NO-IA LABEL PATCH — remove textos de IA apenas do Match Center
                ========================================================= */
             (function removeIaLabelsFromMatchCenter(){
               if (window.__noIaMatchCenterLabels) return;
               window.__noIaMatchCenterLabels = true;
-        
+
               const replacements = [
                 [/LEITURA\s*IA/gi, "LEITURA DO JOGO"],
                 [/Radar\s*IA/gi, "Radar do jogo"],
@@ -18070,13 +18070,13 @@
                 [/Leitura\s*IA/gi, "Leitura do jogo"],
                 [/\bIA\b/g, "Índice"]
               ];
-        
+
               function cleanNode(root){
                 if (!root) return;
                 const scope = root.matches?.("#desktopMatchRail,#matchCenterOverlay,.dashboardRightRail,.matchCenterOverlay") ? root : root.querySelector?.("#desktopMatchRail,#matchCenterOverlay,.dashboardRightRail,.matchCenterOverlay");
                 const targets = scope ? [scope] : [];
                 if (!targets.length && root.id === "desktopMatchRail") targets.push(root);
-        
+
                 targets.forEach(area => {
                   const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT);
                   const nodes = [];
@@ -18088,19 +18088,19 @@
                   });
                 });
               }
-        
+
               const obs = new MutationObserver(muts => muts.forEach(m => {
                 cleanNode(m.target);
                 m.addedNodes && m.addedNodes.forEach(n => n.nodeType === 1 && cleanNode(n));
               }));
-        
+
               document.addEventListener("DOMContentLoaded", () => {
                 cleanNode(document.body);
                 obs.observe(document.body, { childList:true, subtree:true, characterData:true });
               });
             })();
-        
-        
+
+
             /* =========================================================
                MARKET HOVER PREMIUM — CORNER PRO
                Injeta menus premium nos cards de mercados sem alterar o HTML.
@@ -18127,7 +18127,7 @@
                   tip:"Visão geral para selecionar rapidamente os melhores mercados antes do jogo.",
                   all:"VER ANÁLISE COMPLETA"
                 },
-        
+
                 "ESCANTEIOS": {
                   icon:"⚑",
                   title:"Mercados de Escanteios",
@@ -18150,7 +18150,7 @@
                   tip:"Dica Corner Pro: jogos acima de 9.5 escanteios entram como prioridade no radar.",
                   all:"VER TODOS OS ESCANTEIOS"
                 },
-        
+
                 "GOLS": {
                   icon:"✹",
                   title:"Mercados de Gols",
@@ -18173,7 +18173,7 @@
                   tip:"Use gols junto com pressão ofensiva e BTTS para evitar seleção apenas por odd alta.",
                   all:"VER TODOS OS GOLS"
                 },
-        
+
                 "CARTÕES": {
                   icon:"▯",
                   title:"Mercados de Cartões",
@@ -18194,7 +18194,7 @@
                   tip:"Ideal para clássicos, jogos tensos e partidas com árbitro de média alta.",
                   all:"VER TODOS OS CARTÕES"
                 },
-        
+
                 "PLAYER PROPS": {
                   icon:"♞",
                   title:"Player Props",
@@ -18215,7 +18215,7 @@
                   all:"ABRIR PLAYER PROPS"
                 }
               };
-        
+
               function escapeHTML(value){
                 return String(value ?? "")
                   .replaceAll("&","&amp;")
@@ -18224,7 +18224,7 @@
                   .replaceAll('"',"&quot;")
                   .replaceAll("'","&#039;");
               }
-        
+
               function buildMenu(data){
                 const sections = data.sections.map(section => `
                   <div class="marketMenuSection">
@@ -18239,7 +18239,7 @@
                     </div>
                   </div>
                 `).join("");
-        
+
                 return `
                   <div class="marketMenuPro" aria-hidden="true">
                     <div class="marketMenuTop">
@@ -18252,9 +18252,9 @@
                       </div>
                       <span class="marketMenuBadge">${escapeHTML(data.badge)}</span>
                     </div>
-        
+
                     <div class="marketMenuGrid">${sections}</div>
-        
+
                     <div class="marketMenuTip">
                       <p>${escapeHTML(data.tip)}</p>
                       <button class="marketMenuAll" type="button">${escapeHTML(data.all)} →</button>
@@ -18262,25 +18262,25 @@
                   </div>
                 `;
               }
-        
+
               function setup(){
                 const tabs = Array.from(document.querySelectorAll(".marketTabs .marketTab"));
                 if (!tabs.length) return;
-        
+
                 tabs.forEach(tab => {
                   if (tab.dataset.marketHoverReady === "1") return;
-        
+
                   const label = String(tab.querySelector("b")?.textContent || tab.textContent || "")
                     .trim()
                     .toUpperCase();
-        
+
                   const data = DATA[label];
                   if (!data) return;
-        
+
                   tab.classList.add("hasMarketMenu");
                   tab.dataset.marketHoverReady = "1";
                   tab.insertAdjacentHTML("beforeend", buildMenu(data));
-        
+
                   tab.addEventListener("click", (event) => {
                     const item = event.target.closest(".marketMenuItem,.marketMenuAll");
                     if (!item) return;
@@ -18289,14 +18289,14 @@
                   });
                 });
               }
-        
+
               document.addEventListener("DOMContentLoaded", setup);
-        
+
               const observer = new MutationObserver(setup);
               observer.observe(document.documentElement, { childList:true, subtree:true });
             })();
-        
-        
+
+
             /* =========================================================
                MERCADOS HOVER — FILTRO ESTÁVEL SEM TREMER A TELA
                - Passar o mouse filtra os jogos já carregados.
@@ -18308,7 +18308,7 @@
             (function installCornerProHoverMarketFilterStable(){
               if (window.__cornerProHoverMarketFilterStableInstalled) return;
               window.__cornerProHoverMarketFilterStableInstalled = true;
-        
+
               const LABELS = {
                 btts: "Ambas Marcam",
                 over15: "+1.5 Gols",
@@ -18331,13 +18331,13 @@
                 cards55: "+5.5 Cartões",
                 cards65: "+6.5 Cartões"
               };
-        
+
               const cache = new Map();
               let activeKey = "";
               let lastPaintAt = 0;
               let timer = null;
               let isPainting = false;
-        
+
               function $(sel){ return document.querySelector(sel); }
               function all(sel){ return Array.from(document.querySelectorAll(sel)); }
               function clean(v){ return String(v ?? "").replace(/\s+/g," ").trim(); }
@@ -18345,7 +18345,7 @@
               function n(v, fb=null){ const x = Number(String(v ?? "").replace("%","").replace(",",".")); return Number.isFinite(x) ? x : fb; }
               function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
               function norm(v){ return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9.]+/g," ").trim(); }
-        
+
               function getDateKey(){
                 return (
                   document.getElementById("date")?.value ||
@@ -18354,7 +18354,7 @@
                   new Intl.DateTimeFormat("en-CA", { timeZone:"America/Manaus", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date())
                 );
               }
-        
+
               function getAllGames(){
                 const panel = $(".gamesPanel");
                 const sources = [
@@ -18364,26 +18364,26 @@
                   window.lastMarketGames,
                   window.lastRawGames
                 ];
-        
+
                 for (const list of sources){
                   if (Array.isArray(list) && list.length) return list;
                 }
-        
+
                 return [];
               }
-        
+
               function getRaw(g){ return g?.raw || g || {}; }
-        
+
               function proj(g){
                 const raw = getRaw(g);
                 return n(g?.proj ?? raw.proj_cantos ?? raw.projCorners ?? raw.corners_projection ?? raw.corner_projection ?? raw.expected_corners, 0);
               }
-        
+
               function prob(g){
                 const raw = getRaw(g);
                 return n(g?.prob ?? raw.over95_prob_adj ?? raw.over95_prob ?? raw.prob ?? raw.ai_score ?? raw.score, 0);
               }
-        
+
               function expectedGoals(g){
                 const raw = getRaw(g);
                 const direct = n(
@@ -18397,23 +18397,23 @@
                   raw.goals_projection ??
                   raw.projGoals
                 );
-        
+
                 if (direct !== null) return direct;
-        
+
                 let total = 2.15;
                 const p = proj(g);
                 const pr = prob(g);
-        
+
                 if (p) total += (p - 9.5) * 0.20;
                 if (pr) total += (pr - 60) * 0.010;
-        
+
                 const league = norm(g?.league || raw.liga || raw.league_name || raw.league?.name);
                 if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("jupiler") || league.includes("belgium")) total += 0.18;
                 if (league.includes("serie a") || league.includes("ligue 1")) total -= 0.08;
-        
+
                 return clamp(total, 1.4, 4.1);
               }
-        
+
               function cornerPercent(g, line){
                 const raw = getRaw(g);
                 const key = String(line).replace(".","");
@@ -18423,96 +18423,96 @@
                   raw[`corners${key}_prob`] ??
                   raw[`corners${key}_filter_prob`]
                 );
-        
+
                 if (ready !== null && ready > 5) return ready;
-        
+
                 const p = proj(g);
                 if (!p) return 0;
-        
+
                 return clamp(Math.round(50 + (p - line) * 18), 3, 92);
               }
-        
+
               function goalPercent(g, line){
                 const raw = getRaw(g);
                 const key = `over${String(line).replace(".","")}`;
                 const ready = n(raw.markets?.prob?.[key] ?? raw[`${key}_prob`] ?? raw[`over_${String(line).replace(".","")}_prob`]);
-        
+
                 if (ready !== null && ready > 5) return ready;
-        
+
                 return clamp(Math.round(50 + (expectedGoals(g) - line) * 22), 5, 90);
               }
-        
+
               function bttsPercent(g){
                 const raw = getRaw(g);
                 const ready = n(raw.markets?.prob?.btts ?? raw.btts_prob ?? raw.prob_btts ?? raw.ambas_marcam_prob);
-        
+
                 if (ready !== null && ready > 5) return ready;
-        
+
                 return clamp(Math.round(42 + (expectedGoals(g) - 2.1) * 18), 5, 82);
               }
-        
+
               function projectedCards(g){
                 const raw = getRaw(g);
                 const direct = n(raw.proj_cards ?? raw.cards_projection ?? raw.expected_cards_total ?? raw.total_cards_avg ?? raw.media_cartoes_total ?? raw.cartoes_media);
-        
+
                 if (direct !== null) return direct;
-        
+
                 const league = norm(g?.league || raw.liga || raw.league_name || raw.league?.name);
                 let base = 3.6;
-        
+
                 if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig")) base += 0.45;
                 if (league.includes("premier") || league.includes("bundesliga")) base -= 0.10;
-        
+
                 const p = proj(g);
                 if (p) base += (p - 10) * 0.10;
-        
+
                 return clamp(base, 2.2, 5.8);
               }
-        
+
               function cardPercent(g, line){
                 const raw = getRaw(g);
                 const key = `cards${String(line).replace(".","")}`;
                 const ready = n(raw.markets?.prob?.[key] ?? raw[`${key}_prob`]);
-        
+
                 if (ready !== null && ready > 5) return ready;
-        
+
                 return clamp(Math.round(46 + (projectedCards(g) - line) * 13), 5, 86);
               }
-        
+
               function marketPercent(g, key){
                 if (key === "btts") return bttsPercent(g);
-        
+
                 let m = String(key).match(/^corners(\d+)(ht)?$/);
                 if (m) return cornerPercent(g, Number(m[1]) / 10);
-        
+
                 m = String(key).match(/^over(\d+)$/);
                 if (m) return goalPercent(g, Number(m[1]) / 10);
-        
+
                 m = String(key).match(/^cards(\d+)$/);
                 if (m) return cardPercent(g, Number(m[1]) / 10);
-        
+
                 return prob(g);
               }
-        
+
               function marketPass(g, key){
                 const raw = getRaw(g);
-        
+
                 if (raw.markets && typeof raw.markets[key] === "boolean") return raw.markets[key] === true;
-        
+
                 if (key === "btts") return bttsPercent(g) >= 52;
-        
+
                 let m = String(key).match(/^corners(\d+)(ht)?$/);
                 if (m) return cornerPercent(g, Number(m[1]) / 10) >= 55;
-        
+
                 m = String(key).match(/^over(\d+)$/);
                 if (m) return goalPercent(g, Number(m[1]) / 10) >= 52;
-        
+
                 m = String(key).match(/^cards(\d+)$/);
                 if (m) return cardPercent(g, Number(m[1]) / 10) >= 52;
-        
+
                 return false;
               }
-        
+
               function gameInfo(g){
                 const raw = getRaw(g);
                 return {
@@ -18522,32 +18522,32 @@
                   time: clean(g.time ?? raw.hora ?? raw.time ?? (raw.match_time ? normalizeKickoffDisplayTime(raw.match_time, true) : raw.horario) ?? "--:--").slice(0,5)
                 };
               }
-        
+
               function fmtValue(g, key){
                 const pct = Math.round(marketPercent(g, key));
                 return pct ? `${pct}%` : "—";
               }
-        
+
               function buildRows(key){
                 const dateKey = getDateKey();
                 const cacheKey = `${dateKey}:${key}`;
-        
+
                 if (cache.has(cacheKey)) return cache.get(cacheKey);
-        
+
                 const games = getAllGames();
                 const label = LABELS[key] || key;
-        
+
                 const filtered = games
                   .filter(g => marketPass(g, key))
                   .sort((a,b) => marketPercent(b, key) - marketPercent(a, key))
                   .slice(0, 16);
-        
+
                 const allGames = getAllGames();
-        
+
                 const html = filtered.map((g, index) => {
                   const d = gameInfo(g);
                   const rawIndex = allGames.indexOf(g);
-        
+
                   return `
                     <div class="gameRow compactGameRow" data-hover-market-row="1" data-real-game-index="${rawIndex >= 0 ? rawIndex : index}">
                       <div class="gameMeta">
@@ -18562,46 +18562,46 @@
                     </div>
                   `;
                 }).join("");
-        
+
                 cache.set(cacheKey, html);
                 return html;
               }
-        
+
               function setPanelStableHeight(panel){
                 const h = panel.offsetHeight;
                 if (h > 0) panel.style.minHeight = `${h}px`;
               }
-        
+
               function paint(key, force = false){
                 if (!key) return;
-        
+
                 const now = performance.now();
-        
+
                 // Evita a tremedeira: pointerover dispara várias vezes dentro do mesmo botão.
                 if (!force && key === activeKey) return;
                 if (!force && now - lastPaintAt < 90) return;
                 if (isPainting) return;
-        
+
                 const panel = $(".gamesPanel");
                 if (!panel) return;
-        
+
                 isPainting = true;
                 lastPaintAt = now;
                 activeKey = key;
-        
+
                 setPanelStableHeight(panel);
-        
+
                 const label = LABELS[key] || key;
                 const title = panel.querySelector(".sectionHead h2");
                 if (title) title.textContent = `Jogos — ${label}`;
-        
+
                 const html = buildRows(key);
-        
+
                 panel.classList.add("is-filtering-market");
-        
+
                 requestAnimationFrame(() => {
                   panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-        
+
                   if (!html.trim()){
                     panel.insertAdjacentHTML("beforeend", `
                       <div class="marketStrictEmpty">
@@ -18612,45 +18612,45 @@
                   } else {
                     panel.insertAdjacentHTML("beforeend", html + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
                   }
-        
+
                   const games = getAllGames();
-        
+
                   panel.querySelectorAll("[data-hover-market-row]").forEach(row => {
                     row.addEventListener("click", () => {
                       const idx = Number(row.dataset.realGameIndex);
                       const g = games[idx];
                       if (!g) return;
-        
+
                       const d = gameInfo(g);
                       const raw = getRaw(g);
                       const gameForRail = { ...raw, casa:d.home, fora:d.away, liga:d.league, hora:d.time, match_id:raw.match_id ?? raw.id };
-        
+
                       if (typeof window.updateDesktopMatchRail === "function") {
                         window.updateDesktopMatchRail(gameForRail, games.map(x => getRaw(x)));
                       }
                     });
                   });
-        
+
                   setTimeout(() => {
                     panel.classList.remove("is-filtering-market");
                     isPainting = false;
                   }, 80);
                 });
               }
-        
+
               function detectKey(item){
                 const explicit = item.dataset.marketFilter || item.dataset.premiumMarket || item.dataset.market || item.dataset.filter;
                 if (explicit) return explicit;
-        
+
                 const tab = item.closest(".marketTab");
                 const tabText = norm(tab?.querySelector("b")?.textContent || tab?.textContent);
                 const itemText = norm(item.textContent);
                 const joined = `${tabText} ${itemText}`;
-        
+
                 const isCorners = joined.includes("escanteio") || joined.includes("canto") || joined.includes("asiatico") || joined.includes("ht") || joined.includes("ft");
                 const isGoals = joined.includes("gol") || joined.includes("btts") || joined.includes("ambos") || joined.includes("marca");
                 const isCards = joined.includes("cart");
-        
+
                 const over = joined.match(/over\s*(\d+(?:\.\d+)?)/i);
                 if (over){
                   const line = over[1].replace(".","");
@@ -18658,54 +18658,54 @@
                   if (isCards) return `cards${line}`;
                   if (isGoals) return `over${line}`;
                 }
-        
+
                 if (joined.includes("btts") || joined.includes("ambos")) return "btts";
-        
+
                 return "";
               }
-        
+
               function selectItem(item, key){
                 if (item.classList.contains("is-selected") && activeKey === key) return;
-        
+
                 all(".marketMenuItem.is-selected").forEach(x => x.classList.remove("is-selected"));
                 item.classList.add("is-selected");
                 item.dataset.marketFilter = key;
               }
-        
+
               function schedule(item, force = false){
                 const key = detectKey(item);
                 if (!key) return;
-        
+
                 selectItem(item, key);
-        
+
                 clearTimeout(timer);
                 timer = setTimeout(() => paint(key, force), force ? 0 : 120);
               }
-        
+
               document.addEventListener("pointerover", function(ev){
                 const item = ev.target.closest(".marketMenuItem,.marketMenuAll,[data-market-filter],[data-premium-market]");
                 if (!item) return;
                 if (!item.closest(".marketMenuPro,.allMarketsDropdown,.premiumMarketChips")) return;
-        
+
                 schedule(item, false);
               }, true);
-        
+
               document.addEventListener("click", function(ev){
                 const item = ev.target.closest(".marketMenuItem,.marketMenuAll,[data-market-filter],[data-premium-market]");
                 if (!item) return;
                 if (!item.closest(".marketMenuPro,.allMarketsDropdown,.premiumMarketChips")) return;
-        
+
                 const key = detectKey(item);
                 if (!key) return;
-        
+
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
-        
+
                 selectItem(item, key);
                 paint(key, true);
               }, true);
-        
+
               // Se mudar a data, limpa o estado para permitir novo filtro.
               document.addEventListener("change", function(ev){
                 if (ev.target && ev.target.id === "date"){
@@ -18715,20 +18715,20 @@
                   if (panel) panel.style.minHeight = "";
                 }
               }, true);
-        
+
               window.cornerProClearHoverMarketCache = function(){
                 cache.clear();
                 activeKey = "";
                 const panel = $(".gamesPanel");
                 if (panel) panel.style.minHeight = "";
               };
-        
+
               window.cornerProFilterMarketHover = function(key){
                 paint(key, true);
               };
             })();
-        
-        
+
+
             /* =========================================================
                FECHAR CAIXA DE MERCADOS AO CLICAR FORA
                - Depois de escolher o mercado, a caixa fecha.
@@ -18737,10 +18737,10 @@
             (function closeMarketBoxOnOutsideClick(){
               if (window.__closeMarketBoxOnOutsideClickInstalled) return;
               window.__closeMarketBoxOnOutsideClickInstalled = true;
-        
+
               function closeMenus(){
                 document.body.classList.add("marketMenuClosedByClick");
-        
+
                 document.querySelectorAll(".marketTab.hasMarketMenu,.marketTab,.marketMenuPro").forEach(el => {
                   el.classList.remove("is-open", "open", "is-active", "active-hover");
                   if (el.classList.contains("marketMenuPro")){
@@ -18748,47 +18748,47 @@
                   }
                 });
               }
-        
+
               function unlockMenus(){
                 document.body.classList.remove("marketMenuClosedByClick");
               }
-        
+
               document.addEventListener("click", function(event){
                 const clickedInsideMenu = event.target.closest(".marketMenuPro");
                 const clickedMarketTab = event.target.closest(".marketTab.hasMarketMenu");
-        
+
                 // Se clicou em um mercado interno, filtra e fecha a caixa logo depois.
                 if (event.target.closest(".marketMenuItem,.marketMenuAll,[data-market-filter],[data-premium-market]")){
                   setTimeout(closeMenus, 90);
                   return;
                 }
-        
+
                 // Se clicou fora da caixa e fora dos cards de mercado, fecha.
                 if (!clickedInsideMenu && !clickedMarketTab){
                   closeMenus();
                 }
               }, true);
-        
+
               // Ao passar novamente no card principal, libera a caixa para abrir outra vez.
               document.addEventListener("pointerenter", function(event){
                 if (event.target.closest && event.target.closest(".marketTab.hasMarketMenu")){
                   unlockMenus();
                 }
               }, true);
-        
+
               document.addEventListener("pointerover", function(event){
                 if (event.target.closest && event.target.closest(".marketTab.hasMarketMenu")){
                   unlockMenus();
                 }
               }, true);
-        
+
               // Ao sair da região dos mercados, fecha também.
               document.addEventListener("pointerleave", function(event){
                 const tab = event.target.closest && event.target.closest(".marketTab.hasMarketMenu");
                 if (tab) closeMenus();
               }, true);
             })();
-        
+
             /* =========================================================
                MERCADOS INLINE DISCRETO — IGUAL AO MODELO ENVIADO
                - Remove dropdown grande dentro das abas
@@ -18799,7 +18799,7 @@
             (function installCornerProInlineMarkets(){
               if (window.__cornerProInlineMarketsInstalled) return;
               window.__cornerProInlineMarketsInstalled = true;
-        
+
               const MARKET_DATA = {
                 "PRÉ-JOGO": {
                   count:"12 MERCADOS",
@@ -18862,7 +18862,7 @@
                   ]
                 }
               };
-        
+
               function esc(value){
                 return String(value ?? "")
                   .replaceAll("&","&amp;")
@@ -18871,20 +18871,20 @@
                   .replaceAll('"',"&quot;")
                   .replaceAll("'","&#039;");
               }
-        
+
               function normalizeLabel(text){
                 return String(text || "")
                   .replace(/\s+/g," ")
                   .trim()
                   .toUpperCase();
               }
-        
+
               function findDataForTab(tab){
                 const b = tab.querySelector("b");
                 const label = normalizeLabel(b ? b.textContent : tab.textContent);
                 return MARKET_DATA[label] ? { key:label, data:MARKET_DATA[label] } : null;
               }
-        
+
               function panelHTML(data){
                 const sections = data.sections.map(section => `
                   <section class="marketInlineSection">
@@ -18900,7 +18900,7 @@
                     <button class="marketInlineMore" type="button">Ver mais⌄</button>
                   </section>
                 `).join("");
-        
+
                 return `
                   <div class="marketInlineHead">
                     <div class="marketInlineTitle">
@@ -18916,25 +18916,25 @@
                   </div>
                 `;
               }
-        
+
               function build(){
                 const tabsBox = document.querySelector(".marketTabs");
                 if (!tabsBox || tabsBox.dataset.inlineReady === "1") return;
-        
+
                 const tabs = Array.from(tabsBox.querySelectorAll(".marketTab"));
                 const validTabs = tabs.map(tab => ({ tab, found:findDataForTab(tab) })).filter(x => x.found);
                 if (!validTabs.length) return;
-        
+
                 // Remove menus antigos que ficavam dentro das abas.
                 tabsBox.querySelectorAll(".marketMenuPro").forEach(el => el.remove());
-        
+
                 const panel = document.createElement("section");
                 panel.className = "marketInlinePanel";
                 panel.setAttribute("aria-live", "polite");
-        
+
                 const gamesPanel = document.querySelector(".gamesPanel");
                 const parent = tabsBox.parentElement;
-        
+
                 if (gamesPanel && parent && gamesPanel.parentElement === parent){
                   const work = document.createElement("div");
                   work.className = "marketWorkArea";
@@ -18944,7 +18944,7 @@
                 } else {
                   tabsBox.insertAdjacentElement("afterend", panel);
                 }
-        
+
                 function activate(tab){
                   const found = findDataForTab(tab);
                   if (!found) return;
@@ -18952,25 +18952,25 @@
                   tab.classList.add("is-active-market");
                   panel.innerHTML = panelHTML(found.data);
                 }
-        
+
                 validTabs.forEach(({tab}) => {
                   tab.addEventListener("click", event => {
                     activate(tab);
                   }, true);
                 });
-        
+
                 const initial = validTabs.find(x => x.tab.classList.contains("active")) || validTabs[1] || validTabs[0];
                 activate(initial.tab);
                 tabsBox.dataset.inlineReady = "1";
               }
-        
+
               document.addEventListener("DOMContentLoaded", build);
-        
+
               const observer = new MutationObserver(build);
               observer.observe(document.documentElement, { childList:true, subtree:true });
             })();
-        
-        
+
+
             /* =========================================================
                MERCADOS INLINE — DATA CERTA + CACHE POR DATA
                - Mantém layout/CSS intactos.
@@ -18982,15 +18982,15 @@
             (function mercadosInlineComCachePorData(){
               if (window.__mercadosInlineComCachePorDataFinal) return;
               window.__mercadosInlineComCachePorDataFinal = true;
-        
+
               const $ = (sel, root = document) => root.querySelector(sel);
               const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
               const MARKET_CACHE = new Map(); // dateYMD -> games[]
-        
+
               function isYMD(v){
                 return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
               }
-        
+
               function todayAM(){
                 return new Intl.DateTimeFormat("en-CA", {
                   timeZone:"America/Manaus",
@@ -18999,11 +18999,11 @@
                   day:"2-digit"
                 }).format(new Date());
               }
-        
+
               function clean(v){
                 return String(v ?? "").replace(/\s+/g, " ").trim();
               }
-        
+
               function norm(v){
                 return clean(v)
                   .toLowerCase()
@@ -19013,7 +19013,7 @@
                   .replace(/\s+/g, " ")
                   .trim();
               }
-        
+
               function esc(v){
                 return String(v ?? "").replace(/[&<>"']/g, ch => ({
                   "&":"&amp;",
@@ -19023,65 +19023,65 @@
                   "'":"&#039;"
                 }[ch]));
               }
-        
+
               function num(v, fb = null){
                 if (v === true || v === false) return fb;
                 const n = Number(String(v ?? "").replace("%", "").replace(",", "."));
                 return Number.isFinite(n) ? n : fb;
               }
-        
+
               function clamp(n, a, b){
                 return Math.max(a, Math.min(b, n));
               }
-        
+
               function raw(g){
                 return g?.raw || g || {};
               }
-        
+
               function selectedDate(){
                 const win = window.__cornerProSelectedDate;
                 if (isYMD(win)) return win;
-        
+
                 const input = $("#date")?.value;
                 if (isYMD(input)) return input;
-        
+
                 try{
                   const params = new URLSearchParams(window.location.search);
                   const urlDate = params.get("date") || params.get("data");
                   if (isYMD(urlDate)) return urlDate;
                 }catch(e){}
-        
+
                 const store = localStorage.getItem("cornerProSelectedDate");
                 if (isYMD(store)) return store;
-        
+
                 try{
                   if (typeof lastDateYMD !== "undefined" && isYMD(lastDateYMD)) return lastDateYMD;
                   if (typeof lastMarketDateYMD !== "undefined" && isYMD(lastMarketDateYMD)) return lastMarketDateYMD;
                 }catch(e){}
-        
+
                 return todayAM();
               }
-        
+
               function setSelectedDate(ymd, { clearPanelCache = true } = {}){
                 if (!isYMD(ymd)) return;
-        
+
                 window.__cornerProSelectedDate = ymd;
                 localStorage.setItem("cornerProSelectedDate", ymd);
-        
+
                 const input = $("#date");
                 if (input && input.value !== ymd){
                   input.value = ymd;
                   input.dispatchEvent(new Event("input", { bubbles:true }));
                   input.dispatchEvent(new Event("change", { bubbles:true }));
                 }
-        
+
                 try{
                   const url = new URL(window.location.href);
                   url.searchParams.set("date", ymd);
                   url.searchParams.delete("data");
                   window.history.replaceState({}, "", url.toString());
                 }catch(e){}
-        
+
                 if (clearPanelCache){
                   const panel = $(".gamesPanel");
                   if (panel){
@@ -19093,7 +19093,7 @@
                   window.__cornerProAllGamesDate = ymd;
                 }
               }
-        
+
               function info(g){
                 const r = raw(g);
                 return {
@@ -19104,30 +19104,30 @@
                   id: clean(r.match_id ?? r.id ?? r.event_key ?? r.event_id ?? "")
                 };
               }
-        
+
               function gameKey(g){
                 const d = info(g);
                 return d.id || `${norm(d.league)}|${norm(d.home)}|${norm(d.away)}|${d.time}`;
               }
-        
+
               function dedupeGames(list){
                 const seen = new Set();
                 const out = [];
-        
+
                 for (const g of Array.isArray(list) ? list : []){
                   const k = gameKey(g);
                   if (!k || seen.has(k)) continue;
                   seen.add(k);
                   out.push(g);
                 }
-        
+
                 return out;
               }
-        
+
               function seed(g){
                 return Math.abs(gameKey(g).split("").reduce((a,c) => a + c.charCodeAt(0), 0));
               }
-        
+
               function enhance(list){
                 let arr = dedupeGames(list);
                 try{
@@ -19135,36 +19135,36 @@
                 }catch(e){}
                 return dedupeGames(arr);
               }
-        
+
               function storeMarketGames(ymd, games){
                 const arr = enhance(games);
                 MARKET_CACHE.set(ymd, arr);
-        
+
                 try{
                   if (typeof lastMarketGames !== "undefined") lastMarketGames = arr.slice();
                   if (typeof lastMarketDateYMD !== "undefined") lastMarketDateYMD = ymd;
                   if (typeof loadingMarkets !== "undefined") loadingMarkets = false;
                 }catch(e){}
-        
+
                 const panel = $(".gamesPanel");
                 if (panel){
                   panel.__cornerProAllGames = arr.slice();
                   panel.dataset.marketCacheDate = ymd;
                 }
-        
+
                 window.__cornerProAllGames = arr.slice();
                 window.__cornerProAllGamesDate = ymd;
-        
+
                 return arr;
               }
-        
+
               async function loadGamesOnceForDate(ymd = selectedDate()){
                 setSelectedDate(ymd, { clearPanelCache:false });
-        
+
                 if (MARKET_CACHE.has(ymd) && MARKET_CACHE.get(ymd).length){
                   return MARKET_CACHE.get(ymd);
                 }
-        
+
                 // 1) reaproveita lastMarketGames somente se a data for a mesma.
                 try{
                   if (
@@ -19177,7 +19177,7 @@
                     return storeMarketGames(ymd, lastMarketGames);
                   }
                 }catch(e){}
-        
+
                 // 2) reaproveita painel somente se for a mesma data.
                 const panel = $(".gamesPanel");
                 if (
@@ -19187,7 +19187,7 @@
                 ){
                   return storeMarketGames(ymd, panel.__cornerProAllGames);
                 }
-        
+
                 if (
                   window.__cornerProAllGamesDate === ymd &&
                   Array.isArray(window.__cornerProAllGames) &&
@@ -19195,7 +19195,7 @@
                 ){
                   return storeMarketGames(ymd, window.__cornerProAllGames);
                 }
-        
+
                 // 3) se lastRawGames é da data selecionada, usa sem API.
                 try{
                   if (
@@ -19208,22 +19208,22 @@
                     return storeMarketGames(ymd, lastRawGames);
                   }
                 }catch(e){}
-        
+
                 // 4) IMPORTANTE: clique em mercado NÃO chama API.
                 // A API deve ser chamada somente no carregamento inicial ou ao trocar a data.
                 // Se ainda não existe cache para a data, devolve vazio para evitar loop de "Carregando jogos...".
                 try{
                   if (typeof loadingMarkets !== "undefined") loadingMarkets = false;
                 }catch(e){}
-        
+
                 return storeMarketGames(ymd, []);
               }
-        
+
               function lineFromText(text){
                 const m = String(text || "").match(/(?:over|under|\+)\s*(\d+(?:\.\d+)?)/i);
                 return m ? Number(m[1]) : null;
               }
-        
+
               function contextFromButton(btn){
                 const label = clean(btn.dataset.marketLine || btn.textContent || "Mercado");
                 const panel = btn.closest(".marketInlinePanel");
@@ -19232,7 +19232,7 @@
                 const text = norm(`${title} ${section} ${label}`);
                 return { label, title, section, text };
               }
-        
+
               function projectedCorners(g){
                 const r = raw(g);
                 const direct = num(
@@ -19248,7 +19248,7 @@
                 if (direct !== null && direct > 0) return direct;
                 return 9.4 + (seed(g) % 25) / 10;
               }
-        
+
               function expectedGoals(g){
                 const r = raw(g);
                 const direct = num(
@@ -19263,27 +19263,27 @@
                   r.projGoals,
                   null
                 );
-        
+
                 if (direct !== null && direct > 0) return direct;
-        
+
                 const league = norm(info(g).league);
                 const baseProb = num(r.over95_prob_adj ?? r.over95_prob ?? r.ai_score ?? r.score ?? 60, 60);
-        
+
                 let total = 2.12;
                 total += (projectedCorners(g) - 9.5) * 0.20;
                 total += (baseProb - 60) * 0.010;
-        
+
                 if (league.includes("premier") || league.includes("bundesliga") || league.includes("eredivisie") || league.includes("jupiler") || league.includes("super lig")){
                   total += 0.18;
                 }
-        
+
                 if (league.includes("serie a") || league.includes("ligue 1")){
                   total -= 0.08;
                 }
-        
+
                 return clamp(total, 1.35, 4.35);
               }
-        
+
               function projectedCards(g){
                 const r = raw(g);
                 const direct = num(
@@ -19295,26 +19295,26 @@
                   r.cartoes_media,
                   null
                 );
-        
+
                 if (direct !== null && direct > 0) return direct;
-        
+
                 const league = norm(info(g).league);
                 let total = 3.45;
-        
+
                 if (league.includes("la liga") || league.includes("serie a") || league.includes("portugal") || league.includes("super lig")){
                   total += 0.42;
                 }
-        
+
                 if (league.includes("premier") || league.includes("bundesliga")){
                   total -= 0.08;
                 }
-        
+
                 total += (projectedCorners(g) - 10) * 0.09;
                 total += (seed(g) % 7) * 0.04;
-        
+
                 return clamp(total, 2.1, 6.2);
               }
-        
+
               function getPath(obj, paths){
                 for (const path of paths){
                   const parts = String(path).split(".");
@@ -19327,7 +19327,7 @@
                 }
                 return null;
               }
-        
+
               function percentValue(v, fallback = null){
                 if (typeof v === "boolean") return fallback;
                 const n = num(v, null);
@@ -19335,7 +19335,7 @@
                 if (n > 0 && n <= 1) return clamp(Math.round(n * 100), 0, 100);
                 return clamp(Math.round(n), 0, 100);
               }
-        
+
               function percentGoals(g, line){
                 const r = raw(g);
                 const key = `over${String(line).replace(".", "")}`;
@@ -19350,7 +19350,7 @@
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(50 + (expectedGoals(g) - line) * 22), 5, 92);
               }
-        
+
               function percentBtts(g){
                 const r = raw(g);
                 const ready = percentValue(getPath(r, [
@@ -19361,11 +19361,11 @@
                   "ambas_marcam_prob",
                   "both_teams_score_prob"
                 ]), null);
-        
+
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(43 + (expectedGoals(g) - 2.12) * 15 + (seed(g) % 8)), 12, 84);
               }
-        
+
               function percentCorners(g, line, ht = false){
                 const r = raw(g);
                 const key = `corners${String(line).replace(".", "")}${ht ? "ht" : ""}`;
@@ -19375,13 +19375,13 @@
                   `${key}_prob`,
                   `${key}_filter_prob`
                 ]), null);
-        
+
                 if (ready !== null && ready > 5) return ready;
-        
+
                 const projected = ht ? projectedCorners(g) * 0.46 : projectedCorners(g);
                 return clamp(Math.round(50 + (projected - line) * 16), 5, 93);
               }
-        
+
               function percentCards(g, line){
                 const r = raw(g);
                 const key = `cards${String(line).replace(".", "")}`;
@@ -19390,19 +19390,19 @@
                   `${key}_prob`,
                   `over${String(line).replace(".", "")}cards_prob`
                 ]), null);
-        
+
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(48 + (projectedCards(g) - line) * 14), 5, 90);
               }
-        
+
               function marketPercent(g, ctx){
                 const t = ctx.text;
                 const line = lineFromText(ctx.label);
-        
+
                 if (t.includes("ambas") || t.includes("ambos") || t.includes("btts")){
                   return percentBtts(g);
                 }
-        
+
                 if (t.includes("gol") || t.includes("gols")){
                   const l = line || 2.5;
                   if (t.includes("under") || t.includes("nao") || t.includes("não")){
@@ -19410,7 +19410,7 @@
                   }
                   return percentGoals(g, l);
                 }
-        
+
                 if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
                   const l = line || 9.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1o tempo") || t.includes("1º tempo");
@@ -19420,7 +19420,7 @@
                   }
                   return percentCorners(g, l, ht);
                 }
-        
+
                 if (t.includes("cart")){
                   const l = line || (t.includes("vermelho") ? 5.0 : 3.5);
                   if (t.includes("under") || t.includes("sem cartao") || t.includes("sem cartão")){
@@ -19428,36 +19428,36 @@
                   }
                   return percentCards(g, l);
                 }
-        
+
                 const r = raw(g);
                 const base = num(r.ai_score ?? r.score ?? r.local_score ?? r.over95_prob_adj ?? r.over95_prob, 58);
                 return clamp(Math.round(base + (seed(g) % 9) - 4), 12, 94);
               }
-        
+
               function marketPass(g, ctx){
                 const t = ctx.text;
                 const p = marketPercent(g, ctx);
-        
+
                 if (t.includes("over 4.5") || t.includes("+4.5") || t.includes("over 5.5") || t.includes("+5.5") || t.includes("over 6.5") || t.includes("+6.5")) return p >= 28;
                 if (t.includes("over 3.5") || t.includes("+3.5")) return p >= 30;
                 if (t.includes("over 2.5") || t.includes("+2.5")) return p >= 34;
                 if (t.includes("under")) return p >= 38;
                 if (t.includes("ambas") || t.includes("ambos") || t.includes("btts")) return p >= 38;
-        
+
                 if (t.includes("escanteio") || t.includes("canto")){
                   const l = lineFromText(ctx.label) || 9.5;
                   const projected = projectedCorners(g);
                   return t.includes("under") ? projected <= l + 0.8 : projected >= l - 0.8;
                 }
-        
+
                 if (t.includes("cart")){
                   const l = lineFromText(ctx.label) || 3.5;
                   return t.includes("under") ? projectedCards(g) <= l + 0.7 : projectedCards(g) >= l - 0.7;
                 }
-        
+
                 return true;
               }
-        
+
               function makeRow(g, ctx, index){
                 const d = info(g);
                 const p = Math.round(marketPercent(g, ctx));
@@ -19475,22 +19475,22 @@
                   </div>
                 `;
               }
-        
+
               async function renderMarket(ctx){
                 const panel = $(".gamesPanel");
                 if (!panel) return;
-        
+
                 const ymd = selectedDate();
                 const oldH = panel.offsetHeight;
                 if (oldH > 0) panel.style.minHeight = `${oldH}px`;
-        
+
                 const title = $(".sectionHead h2", panel);
                 if (title) title.textContent = `Jogos — ${ctx.label}`;
-        
+
                 panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-        
+
                 let games = MARKET_CACHE.get(ymd);
-        
+
                 // Clique em mercado deve filtrar LOCALMENTE.
                 // Não mostra loading e não chama API de novo.
                 if (!games || !games.length){
@@ -19502,7 +19502,7 @@
                     }
                   }catch(e){}
                 }
-        
+
                 if (!games || !games.length){
                   try{
                     if (window.__cornerProAllGamesDate === ymd && Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
@@ -19510,7 +19510,7 @@
                     }
                   }catch(e){}
                 }
-        
+
                 if (!games || !games.length){
                   try{
                     if (typeof lastMarketDateYMD !== "undefined" && lastMarketDateYMD === ymd && Array.isArray(lastMarketGames) && lastMarketGames.length){
@@ -19518,7 +19518,7 @@
                     }
                   }catch(e){}
                 }
-        
+
                 if (!games || !games.length){
                   try{
                     if (typeof lastDateYMD !== "undefined" && lastDateYMD === ymd && Array.isArray(lastRawGames) && lastRawGames.length){
@@ -19526,11 +19526,11 @@
                     }
                   }catch(e){}
                 }
-        
+
                 if (!games || !games.length){
                   games = await loadGamesOnceForDate(ymd);
                 }
-        
+
                 if (!games.length){
                   panel.insertAdjacentHTML("beforeend", `
                     <div class="marketStrictEmpty">Nenhum jogo carregado para <b>${esc(ymd)}</b>.</div>
@@ -19538,13 +19538,13 @@
                   `);
                   return;
                 }
-        
+
                 const filtered = games
                   .map((g, i) => ({ g, i }))
                   .filter(item => marketPass(item.g, ctx))
                   .sort((a,b) => marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
                   .slice(0, 18);
-        
+
                 if (!filtered.length){
                   panel.insertAdjacentHTML("beforeend", `
                     <div class="marketStrictEmpty">Nenhum jogo encontrado para <b>${esc(ctx.label)}</b> em <b>${esc(ymd)}</b>.</div>
@@ -19552,20 +19552,20 @@
                   `);
                   return;
                 }
-        
+
                 panel.insertAdjacentHTML(
                   "beforeend",
                   filtered.map(item => makeRow(item.g, ctx, item.i)).join("") +
                   `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
                 );
               }
-        
+
               async function restoreAll(){
                 const ymd = selectedDate();
                 let games = MARKET_CACHE.get(ymd);
                 if (!games || !games.length) games = await loadGamesOnceForDate(ymd);
                 const panel = $(".gamesPanel");
-        
+
                 if (typeof renderGames === "function"){
                   try{
                     renderGames(games);
@@ -19573,11 +19573,11 @@
                     return;
                   }catch(e){}
                 }
-        
+
                 if (!panel) return;
-        
+
                 panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-        
+
                 const ctx = { label:"Todos", text:"todos" };
                 panel.insertAdjacentHTML(
                   "beforeend",
@@ -19585,64 +19585,64 @@
                   `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
                 );
               }
-        
+
               // Guarda data escolhida sem limpar o cache já carregado daquela data.
               document.addEventListener("click", function(ev){
                 const day = ev.target.closest(".topCalendarDay,[data-cal-day]");
                 if (!day) return;
-        
+
                 const ymd = day.dataset.date || day.dataset.calDay;
                 if (!isYMD(ymd)) return;
-        
+
                 setSelectedDate(ymd, { clearPanelCache:true });
               }, true);
-        
+
               document.addEventListener("input", function(ev){
                 if (ev.target && ev.target.id === "date" && isYMD(ev.target.value)){
                   setSelectedDate(ev.target.value, { clearPanelCache:true });
                 }
               }, true);
-        
+
               document.addEventListener("change", function(ev){
                 if (ev.target && ev.target.id === "date" && isYMD(ev.target.value)){
                   setSelectedDate(ev.target.value, { clearPanelCache:true });
                 }
               }, true);
-        
+
               // Clique em mercado: intercepta antes de qualquer handler antigo.
               document.addEventListener("click", function(ev){
                 const btn = ev.target.closest(".marketInlineItem");
                 if (!btn) return;
-        
+
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
-        
+
                 $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
                 btn.classList.add("is-selected");
-        
+
                 renderMarket(contextFromButton(btn));
               }, true);
-        
+
               document.addEventListener("click", function(ev){
                 const btn = ev.target.closest(".viewAll");
                 if (!btn) return;
-        
+
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
-        
+
                 restoreAll();
               }, true);
-        
+
               document.addEventListener("click", async function(ev){
                 const row = ev.target.closest(".gameRow[data-market-cache-row]");
                 if (!row) return;
-        
+
                 const games = await loadGamesOnceForDate(selectedDate());
                 const g = games[Number(row.dataset.gameIndex)];
                 if (!g) return;
-        
+
                 const r = raw(g);
                 const d = info(g);
                 const railGame = {
@@ -19653,7 +19653,7 @@
                   hora:d.time,
                   match_id:r.match_id ?? r.id ?? r.event_key ?? r.event_id
                 };
-        
+
                 try{
                   if (typeof updateDesktopMatchRail === "function"){
                     updateDesktopMatchRail(railGame, games.map(raw));
@@ -19662,27 +19662,27 @@
                   }
                 }catch(e){}
               }, true);
-        
+
               // FIX DEFINITIVO: ao atualizar/abrir a página, sempre começa no dia atual.
               // Não reaproveita mais data da URL, input antigo ou localStorage.
               const initial = todayAM();
-        
+
               try{
                 localStorage.removeItem("cornerProSelectedDate");
                 window.__cornerProSelectedDate = initial;
-        
+
                 const url = new URL(window.location.href);
                 url.searchParams.delete("date");
                 url.searchParams.delete("data");
                 window.history.replaceState({}, "", url.toString());
               }catch(e){}
-        
+
               if (isYMD(initial)) setSelectedDate(initial, { clearPanelCache:false });
-        
+
               window.cornerProSetDate = function(ymd){
                 setSelectedDate(ymd, { clearPanelCache:true });
               };
-        
+
               window.cornerProClearMarketCache = function(){
                 MARKET_CACHE.clear();
               };
@@ -19695,27 +19695,27 @@
             (function installFinalRightRailMatchCenter(){
               const esc = (v) => String(v ?? "")
                 .replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
-        
+
               const clean = (v, fb = "—") => {
                 const s = String(v ?? "").trim();
                 return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
               };
-        
+
               const num = (v, fb = null) => {
                 const n = Number(String(v ?? "").replace("%","").replace(",","."));
                 return Number.isFinite(n) ? n : fb;
               };
-        
+
               const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
               const pct = (v) => clamp(Math.round(num(v, 0)), 0, 100);
-        
+
               function initials(name, fallback){
                 const s = clean(name, fallback);
                 const parts = s.split(/\s+/).filter(Boolean);
                 if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
                 return s.slice(0,2).toUpperCase();
               }
-        
+
               function valueFrom(obj, paths, fb = "—"){
                 for (const path of paths){
                   const parts = path.split(".");
@@ -19725,27 +19725,27 @@
                 }
                 return fb;
               }
-        
+
               function numberFrom(obj, paths, fb = null){
                 const v = valueFrom(obj, paths, "");
                 const n = num(v, null);
                 return n === null ? fb : n;
               }
-        
+
               function statusLabel(data){
                 const raw = String(data?.status || data?.status_raw || "").toLowerCase();
                 if (data?.finished || raw.includes("ft") || raw.includes("final") || raw.includes("finished") || raw.includes("encerrado")) return "ENCERRADO";
                 if (data?.live || raw.includes("live") || raw.includes("ao vivo")) return "AO VIVO";
                 return "PRÉ-JOGO";
               }
-        
+
               function getMinute(data){
                 const raw = data?.minute ?? data?.match_minute ?? data?.time_live ?? data?.elapsed ?? "";
                 const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
                 if (Number.isFinite(n)) return clamp(n, 1, 120);
                 return data?.finished ? 90 : 0;
               }
-        
+
               function splitPercent(a, b){
                 const x = num(a, null), y = num(b, null);
                 if (x === null || y === null){
@@ -19755,7 +19755,7 @@
                 const home = clamp(Math.round((x / total) * 100), 0, 100);
                 return { home, away:100 - home };
               }
-        
+
               function metricRow(label, homeVal, awayVal, maxHint){
                 const hNum = num(homeVal, null);
                 const aNum = num(awayVal, null);
@@ -19771,7 +19771,7 @@
                     <div class="mcRailRowValue away">${esc(awayVal)}</div>
                   </div>`;
               }
-        
+
               function pressureLevel(ph, pa, explicit){
                 if (explicit) return clean(explicit);
                 const total = (num(ph,0) || 0) + (num(pa,0) || 0);
@@ -19781,13 +19781,13 @@
                 if (total > 0) return "BAIXO";
                 return "AGUARDANDO";
               }
-        
+
               function eventMinute(e){
                 const raw = e?.minute ?? e?.time ?? e?.elapsed ?? e?.match_minute ?? e?.label ?? "";
                 const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
                 return Number.isFinite(n) ? clamp(n, 1, 120) : null;
               }
-        
+
               function eventIcon(e){
                 const t = String(e?.type || e?.label || e?.detail || e?.description || "").toLowerCase();
                 if (t.includes("goal") || t.includes("gol")) return "⚽";
@@ -19797,7 +19797,7 @@
                 if (t.includes("sub")) return "↕";
                 return "•";
               }
-        
+
               function normalizeTimelineItem(p, idx){
                 return {
                   minute: num(p?.minute ?? p?.time ?? p?.elapsed ?? p?.label, idx + 1),
@@ -19805,7 +19805,7 @@
                   away: num(p?.away ?? p?.visitante ?? p?.fora ?? p?.away_pressure ?? p?.a, 0)
                 };
               }
-        
+
               function buildSeries(data, ph, pa){
                 const candidates = [
                   data?.pressure_timeline,
@@ -19817,14 +19817,14 @@
                   data?.attacks_timeline,
                   data?.dangerous_attacks_timeline
                 ];
-        
+
                 for (const c of candidates){
                   if (Array.isArray(c) && c.length >= 4){
                     const real = c.map(normalizeTimelineItem).filter(p => Number.isFinite(p.home) || Number.isFinite(p.away));
                     if (real.length >= 4) return real.slice(-28);
                   }
                 }
-        
+
                 const events = Array.isArray(data?.events) ? data.events : [];
                 if (events.length){
                   const buckets = Array.from({length:18}, (_,i) => ({ minute:i * 5, home:0, away:0 }));
@@ -19840,7 +19840,7 @@
                   });
                   if (buckets.some(b => b.home || b.away)) return buckets;
                 }
-        
+
                 const h = num(ph, 0) || 0;
                 const a = num(pa, 0) || 0;
                 const minute = getMinute(data) || 90;
@@ -19856,11 +19856,11 @@
                   };
                 });
               }
-        
+
               function linePath(points){
                 return points.map((p,i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
               }
-        
+
               function areaPath(points, mid, topSide){
                 if (!points.length) return "";
                 if (topSide){
@@ -19868,7 +19868,7 @@
                 }
                 return `M${points[0].x.toFixed(1)},${mid} ` + linePath(points).replace(/^M[^L]+/, `L${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`) + ` L${points[points.length-1].x.toFixed(1)},${mid} Z`;
               }
-        
+
               function pressureChart(data, ph, pa, events){
                 const series = buildSeries(data || {}, ph, pa).slice(-30);
                 const W = 330, H = 174, left = 24, right = 8, top = 14, bottom = 24, mid = 86;
@@ -19885,7 +19885,7 @@
                   const x = left + clamp(m, 0, 90) / 90 * span;
                   return `<line class="eventLine" x1="${x.toFixed(1)}" y1="18" x2="${x.toFixed(1)}" y2="150"></line><text class="eventText" x="${x.toFixed(1)}" y="16" text-anchor="middle">${eventIcon(e)}</text>`;
                 }).join("");
-        
+
                 return `
                   <div class="mcRailSvgWrap">
                     <svg class="mcRailPressureSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de pressão da partida">
@@ -19908,7 +19908,7 @@
                     <div class="mcRailLegend"><span><i></i>Mandante</span><span class="away"><i></i>Visitante</span></div>
                   </div>`;
               }
-        
+
               function importantEvents(events){
                 const list = Array.isArray(events) ? events.slice(0,7) : [];
                 if (!list.length){
@@ -19916,7 +19916,7 @@
                 }
                 return `<div class="mcRailEvents">${list.map(e => `<span title="${esc(clean(e?.minute,""))} ${esc(clean(e?.label || e?.type,"Evento"))}">${eventIcon(e)}</span><div class="line"></div>`).join("")}</div>`;
               }
-        
+
               function emptyRail(){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail) return;
@@ -19929,13 +19929,13 @@
                   </section>
                   <button class="railFullBtn railFullBtnDisabled" type="button" disabled>INICIAR MATCH CENTER</button>`;
               }
-        
+
               window.resetDesktopMatchRailToEmpty = emptyRail;
-        
+
               window.updateDesktopMatchRail = async function updateDesktopMatchRail(game){
                 const rail = document.getElementById("desktopMatchRail");
                 if (!rail || !game) return;
-        
+
                 const matchId = clean(game?.match_id || game?.id || game?.event_key || game?.event_id || "", "");
                 const home0 = clean(game?.casa || game?.home || game?.home_team || game?.home_name || "Mandante");
                 const away0 = clean(game?.fora || game?.away || game?.away_team || game?.away_name || "Visitante");
@@ -19943,7 +19943,7 @@
                 const time0 = clean(game?.hora || game?.time || "—");
                 const basePct = pct(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score ?? 69);
                 const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
-        
+
                 function render(data = {}){
                   const isReal = !!data && Object.keys(data).length > 0 && !data.error;
                   const home = clean(data?.home || data?.casa || data?.home_team || home0);
@@ -19953,7 +19953,7 @@
                   const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
                   const minute = isReal ? getMinute(data) : 0;
                   const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
-        
+
                   const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
                   const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");
                   const ch = clean(data?.corners?.home ?? data?.home_corners ?? (isReal ? null : game?.corners_home), "—");
@@ -19978,7 +19978,7 @@
                   const reading = isReal
                     ? `${split.home >= split.away ? home : away} aparece com maior pressão ofensiva no recorte atual.`
                     : `Pré-jogo selecionado. Projeção de ${proj} escanteios e força do filtro em ${basePct}%.`;
-        
+
                   rail.innerHTML = `
                     <section class="railCard mcRailScoreCard ${st === "AO VIVO" ? "is-live" : ""}">
                       <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(st)}${st === "AO VIVO" && minute ? " • " + minute + "'" : ""}</b></div>
@@ -19990,7 +19990,7 @@
                       </div>
                       <div class="mcRailTimeline"><i style="width:${progress}%"></i></div>
                     </section>
-        
+
                     <section class="railCard mcRailCompare">
                       <div class="mcRailCompareHead"><h3>Comparativo</h3><span>REAL</span></div>
                       ${metricRow("Escanteios", ch, ca)}
@@ -20001,7 +20001,7 @@
                       ${metricRow("Faltas", foulH, foulA)}
                       ${metricRow("Cartões", cardH, cardA)}
                     </section>
-        
+
                     <section class="railCard mcRailPressureCard">
                       <div class="mcRailPressureHead"><h3>Gráfico de pressão</h3><b>${esc(pressureLevel(ph, pa, data?.pressure_level))}</b></div>
                       <div class="mcRailPressureSplit">
@@ -20011,7 +20011,7 @@
                       </div>
                       ${pressureChart(data || {}, ph, pa, events)}
                     </section>
-        
+
                     <div class="mcRailBottomGrid">
                       <section class="railCard mcRailMini">
                         <h3>Leitura do jogo</h3>
@@ -20022,13 +20022,13 @@
                         ${importantEvents(events)}
                       </section>
                     </div>
-        
+
                     <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
                   `;
                 }
-        
+
                 render({});
-        
+
                 if (!matchId) return;
                 try{
                   async function fetchMatchCenterFinal(){
@@ -20040,35 +20040,35 @@
                     const payload = await res.json();
                     return payload && !payload.error ? payload : null;
                   }
-        
+
                   let data = await fetchMatchCenterFinal();
                   if (!data) return;
-        
+
                   const hasFinalStats = [
                     data?.corners?.home, data?.corners?.away,
                     data?.shots?.home, data?.shots?.away,
                     data?.possession?.home, data?.possession?.away,
                     data?.passes?.home, data?.passes?.away
                   ].some(v => v !== null && v !== undefined && v !== "");
-        
+
                   // Algumas ligas publicam o consolidado poucos segundos depois do apito final.
                   if (data.finished && !hasFinalStats){
                     await new Promise(resolve => setTimeout(resolve, 1400));
                     data = (await fetchMatchCenterFinal()) || data;
                   }
-        
+
                   render(data);
                 }catch(err){
                   console.warn("Match Center lateral final falhou:", err);
                 }
               };
-        
+
               document.addEventListener("DOMContentLoaded", () => {
                 const rail = document.getElementById("desktopMatchRail");
                 if (rail && !window.__selectedMatchCenterGame) emptyRail();
               });
             })();
-        
+
             /* =========================================================
                FIX DEFINITIVO — MATCH CENTER AO ATUALIZAR A PÁGINA
                Mantém o estado vazio completo: Match Center + Estatísticas + Eventos.
@@ -20076,18 +20076,18 @@
             (function fixEmptyMatchCenterOnRefresh(){
               if (window.__fixEmptyMatchCenterOnRefreshInstalled) return;
               window.__fixEmptyMatchCenterOnRefreshInstalled = true;
-        
+
               const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({
                 "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
               }[ch]));
-        
+
               function renderEmptyMatchCenter(){
                 const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
                 if (!rail) return;
-        
+
                 // Se já existe partida selecionada/renderizada, não mexe.
                 if (rail.querySelector(".mcRailScoreCard, .mcProScoreCard, [data-open-match-center-table]:not(.railFullBtnDisabled)")) return;
-        
+
                 rail.innerHTML = `
                   <section class="railCard mcRailEmptyBox">
                     <div class="railTitle">
@@ -20098,7 +20098,7 @@
                     <h3>AGUARDANDO PARTIDA</h3>
                     <p>Selecione um jogo para abrir o placar, comparativo e gráfico de pressão no painel lateral.</p>
                   </section>
-        
+
                   <section class="railCard">
                     <h3>ESTATÍSTICAS DO FILTRO</h3>
                     <div class="railEmptyStatsGrid">
@@ -20109,7 +20109,7 @@
                     </div>
                     <p class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</p>
                   </section>
-        
+
                   <section class="railCard">
                     <h3>EVENTOS / LEITURA</h3>
                     <div class="railEmptyEventIcons">
@@ -20125,39 +20125,39 @@
                       <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
                     </div>
                   </section>
-        
+
                   <button class="railFullBtn railFullBtnDisabled" type="button" disabled>
                     ▶ INICIAR MATCH CENTER
                     <small>SELECIONE UM JOGO PARA CONTINUAR</small>
                   </button>`;
               }
-        
+
               window.resetDesktopMatchRailToEmpty = renderEmptyMatchCenter;
               window.renderEmptyMatchCenter = renderEmptyMatchCenter;
-        
+
               function scheduleFix(){
                 setTimeout(renderEmptyMatchCenter, 40);
                 setTimeout(renderEmptyMatchCenter, 180);
                 setTimeout(renderEmptyMatchCenter, 600);
               }
-        
+
               document.addEventListener("DOMContentLoaded", scheduleFix);
               window.addEventListener("load", scheduleFix);
-        
+
               const obs = new MutationObserver(() => {
                 const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
                 if (!rail) return;
                 const hasEmptySingle = rail.querySelector(".mcRailEmptyBox") && !rail.textContent.includes("ESTATÍSTICAS DO FILTRO");
                 if (hasEmptySingle) setTimeout(renderEmptyMatchCenter, 20);
               });
-        
+
               document.addEventListener("DOMContentLoaded", () => {
                 const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
                 if (rail) obs.observe(rail, { childList:true, subtree:false });
                 setTimeout(() => obs.disconnect(), 5000);
               });
             })();
-        
+
             /* =========================================================
                DATA INICIAL DO DASHBOARD
                - Preserva ?date=YYYY-MM-DD ao atualizar a página
@@ -20167,7 +20167,7 @@
             (function initializeDashboardDate(){
               if (window.__cornerProDashboardDateInitialized) return;
               window.__cornerProDashboardDateInitialized = true;
-        
+
               function todayManausYMD(){
                 try{
                   return new Intl.DateTimeFormat("en-CA", {
@@ -20180,21 +20180,21 @@
                   return new Date().toISOString().slice(0,10);
                 }
               }
-        
+
               function initialize(){
                 const params = new URLSearchParams(window.location.search);
                 const selected = params.get("date") || params.get("data") || todayManausYMD();
                 const input = document.getElementById("date");
                 if (input) input.value = selected;
                 window.__cornerProSelectedDate = selected;
-        
+
                 const url = new URL(window.location.href);
                 url.hash = "";
                 url.searchParams.delete("data");
                 url.searchParams.set("date", selected);
                 window.history.replaceState({}, "", `${url.pathname}${url.search}`);
               }
-        
+
               if (document.readyState === "loading") {
                 document.addEventListener("DOMContentLoaded", initialize, { once:true });
               } else {
@@ -20211,19 +20211,19 @@
             (function(){
               if (window.__cornerProStrictAllMarketsV2) return;
               window.__cornerProStrictAllMarketsV2 = true;
-        
+
               const $ = (sel, root=document) => root.querySelector(sel);
               const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-        
+
               function clean(v, fallback=""){
                 const s = String(v ?? "").replace(/\s+/g," ").trim();
                 return s || fallback;
               }
-        
+
               function norm(v){
                 return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
               }
-        
+
               function esc(v){
                 return String(v ?? "")
                   .replaceAll("&","&amp;")
@@ -20232,17 +20232,17 @@
                   .replaceAll('"',"&quot;")
                   .replaceAll("'","&#039;");
               }
-        
+
               function num(v, fallback=null){
                 if (v === undefined || v === null || v === "") return fallback;
                 if (typeof v === "string") v = v.replace(",", ".").replace("%", "");
                 const n = Number(v);
                 return Number.isFinite(n) ? n : fallback;
               }
-        
+
               function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
               function raw(g){ return g?.raw || g?.data || g || {}; }
-        
+
               function getPath(obj, paths){
                 const r = raw(obj);
                 for (const path of paths){
@@ -20256,7 +20256,7 @@
                 }
                 return null;
               }
-        
+
               function pctValue(v, fallback=null){
                 if (typeof v === "boolean") return fallback;
                 const n = num(v, null);
@@ -20264,7 +20264,7 @@
                 if (n > 0 && n <= 1) return clamp(Math.round(n * 100), 0, 100);
                 return clamp(Math.round(n), 0, 100);
               }
-        
+
               function seed(g){
                 const d = info(g);
                 let s = `${d.league}|${d.home}|${d.away}|${d.time}`;
@@ -20272,7 +20272,7 @@
                 for (let i=0;i<s.length;i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
                 return Math.abs(h);
               }
-        
+
               function info(g){
                 const r = raw(g);
                 return {
@@ -20282,7 +20282,7 @@
                   away: clean(r.fora || r.away || r.away_name || r.awayTeam || r.team_away || r.visitante || "Visitante")
                 };
               }
-        
+
               function projectedCorners(g){
                 const r = raw(g);
                 const direct = num(
@@ -20291,14 +20291,14 @@
                   null
                 );
                 if (direct !== null && direct > 0) return direct;
-        
+
                 const home = num(r.home_corners_avg ?? r.casa_cantos_media ?? r.home?.corners_avg ?? r.stats?.home_corners_avg, null);
                 const away = num(r.away_corners_avg ?? r.fora_cantos_media ?? r.away?.corners_avg ?? r.stats?.away_corners_avg, null);
                 if (home !== null && away !== null) return clamp(home + away, 5.5, 15.8);
-        
+
                 return 9.2 + (seed(g) % 31) / 10;
               }
-        
+
               function expectedGoals(g){
                 const r = raw(g);
                 const direct = num(
@@ -20307,17 +20307,17 @@
                   null
                 );
                 if (direct !== null && direct > 0) return direct;
-        
+
                 const hg = num(r.home_goals_avg ?? r.casa_gols_media ?? r.home?.goals_avg, null);
                 const ag = num(r.away_goals_avg ?? r.fora_gols_media ?? r.away?.goals_avg, null);
                 if (hg !== null && ag !== null) return clamp(hg + ag, 0.8, 5.2);
-        
+
                 const p25 = pctValue(getPath(g,["markets.prob.over25","over25_prob","prob_over25"]), null);
                 if (p25 !== null) return clamp(2.5 + (p25 - 50) / 32, 1.2, 4.4);
-        
+
                 return 2.25 + (seed(g) % 18) / 10;
               }
-        
+
               function projectedCards(g){
                 const r = raw(g);
                 const direct = num(
@@ -20326,7 +20326,7 @@
                   null
                 );
                 if (direct !== null && direct > 0) return direct;
-        
+
                 const league = norm(info(g).league);
                 let total = 3.4;
                 if (league.includes("serie a") || league.includes("la liga") || league.includes("portugal") || league.includes("turk")) total += .45;
@@ -20334,12 +20334,12 @@
                 total += (seed(g) % 9) * .08;
                 return clamp(total, 1.8, 6.6);
               }
-        
+
               function lineFromText(text){
                 const m = String(text || "").match(/(?:over|under|\+)\s*(\d+(?:\.\d+)?)/i);
                 return m ? Number(m[1]) : null;
               }
-        
+
               function ctxFromButton(btn){
                 const label = clean(btn.dataset.marketLine || btn.dataset.market || btn.textContent || "Mercado");
                 const panel = btn.closest(".marketInlinePanel,.gamesPanel,.dashboardMainColumn");
@@ -20348,7 +20348,7 @@
                 const text = norm(`${title} ${section} ${label}`);
                 return { label, title, section, text };
               }
-        
+
               function percentCorners(g, line, ht=false){
                 const key = `corners${String(line).replace(".","")}${ht ? "ht" : ""}`;
                 const ready = pctValue(getPath(g,[`markets.prob.${key}`,`markets.filterProb.${key}`,`${key}_prob`,`${key}_filter_prob`]), null);
@@ -20356,27 +20356,27 @@
                 const proj = projectedCorners(g) * (ht ? .46 : 1);
                 return clamp(Math.round(50 + (proj - line) * 16), 3, 96);
               }
-        
+
               function percentGoals(g, line){
                 const key = `over${String(line).replace(".","")}`;
                 const ready = pctValue(getPath(g,[`markets.prob.${key}`,`markets.${key}_prob`,`${key}_prob`,`prob_${key}`]), null);
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(50 + (expectedGoals(g) - line) * 24), 3, 94);
               }
-        
+
               function percentBtts(g){
                 const ready = pctValue(getPath(g,["markets.prob.btts","markets.btts_prob","btts_prob","prob_btts","ambas_marcam_prob"]), null);
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(42 + (expectedGoals(g) - 2.1) * 17 + (seed(g) % 7)), 8, 86);
               }
-        
+
               function percentCards(g, line){
                 const key = `cards${String(line).replace(".","")}`;
                 const ready = pctValue(getPath(g,[`markets.prob.${key}`,`${key}_prob`,`over${String(line).replace(".","")}cards_prob`]), null);
                 if (ready !== null && ready > 5) return ready;
                 return clamp(Math.round(50 + (projectedCards(g) - line) * 15), 3, 92);
               }
-        
+
               function resultOdd(g, kind){
                 const paths = {
                   home:["odds.home","odds.casa","odds.home_win","odd_home","casa_odd","homeOdd"],
@@ -20385,11 +20385,11 @@
                 }[kind] || [];
                 return num(getPath(g, paths), null);
               }
-        
+
               function passResult(g, t){
                 if (t.includes("dupla") && t.includes("casa")) return true;
                 if (t.includes("dupla") && (t.includes("visit") || t.includes("fora"))) return true;
-        
+
                 if (t.includes("empate")){
                   const odd = resultOdd(g,"draw");
                   return odd === null ? true : odd <= 3.65;
@@ -20404,19 +20404,19 @@
                 }
                 return true;
               }
-        
+
               function marketPercent(g, ctx){
                 const t = ctx.text;
                 const line = lineFromText(ctx.label);
-        
+
                 if (t.includes("ambas") || t.includes("btts")) return percentBtts(g);
-        
+
                 if (t.includes("cart")){
                   const l = line || (t.includes("vermelh") ? 5 : 3.5);
                   if (t.includes("under") || t.includes("sem cart")) return clamp(Math.round(56 + (l - projectedCards(g)) * 15), 3, 92);
                   return percentCards(g, l);
                 }
-        
+
                 if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
                   const l = line || 9.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
@@ -20426,34 +20426,34 @@
                   }
                   return percentCorners(g, l, ht);
                 }
-        
+
                 if (t.includes("gol") || t.includes("gols")){
                   const l = line || 2.5;
                   if (t.includes("under") || t.includes("menos")) return clamp(Math.round(56 + (l - expectedGoals(g)) * 24), 3, 94);
                   return percentGoals(g, l);
                 }
-        
+
                 const base = num(getPath(g,["ai_score","score","local_score","over95_prob_adj","over95_prob"]), 58);
                 return clamp(Math.round(base), 8, 94);
               }
-        
+
               function marketPass(g, ctx){
                 const t = ctx.text;
                 const p = marketPercent(g, ctx);
-        
+
                 // COMBINADAS: precisa passar em todas as partes relevantes.
                 if (t.includes("+") && (t.includes("casa") || t.includes("visitante") || t.includes("empate"))){
                   if (!passResult(g, t)) return false;
                   if (t.includes("over") || t.includes("+") || t.includes("gol")) return p >= 48;
                   return true;
                 }
-        
+
                 if (t.includes("ambas") || t.includes("btts")) return p >= 50;
-        
+
                 if (t.includes("resultado") || t.includes("vence") || t.includes("empate") || t.includes("dupla")){
                   return passResult(g, t);
                 }
-        
+
                 if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
                   const line = lineFromText(ctx.label) || 9.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
@@ -20461,25 +20461,25 @@
                   if (t.includes("under")) return proj <= line && p >= 46;
                   return proj >= line && p >= (line >= 11.5 ? 44 : line >= 10.5 ? 48 : 50);
                 }
-        
+
                 if (t.includes("gol") || t.includes("gols")){
                   const line = lineFromText(ctx.label) || 2.5;
                   const proj = expectedGoals(g);
                   if (t.includes("under") || t.includes("menos")) return proj <= line && p >= 46;
                   return proj >= line - 0.05 && p >= (line >= 3.5 ? 38 : line >= 2.5 ? 45 : 50);
                 }
-        
+
                 if (t.includes("cart")){
                   const line = lineFromText(ctx.label) || 3.5;
                   const proj = projectedCards(g);
                   if (t.includes("under") || t.includes("sem cart")) return proj <= line && p >= 44;
                   return proj >= line && p >= (line >= 5.5 ? 34 : line >= 4.5 ? 40 : 45);
                 }
-        
+
                 // Player props/mercados sem estatística direta: mantém os jogos com maior força geral.
                 return p >= 52;
               }
-        
+
               function getCurrentGames(){
                 const ymd = selectedDate();
                 const panel = $(".gamesPanel");
@@ -20489,20 +20489,20 @@
                   panel?.__cornerProGames,
                   window.__cornerProApiCache?.[ymd]
                 ];
-        
+
                 for (const arr of candidates){
                   if (Array.isArray(arr) && arr.length) return arr.map(x => x?.raw || x);
                 }
                 return [];
               }
-        
+
               function selectedDate(){
                 const input = document.getElementById("date");
                 if (input?.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) return input.value;
                 if (window.__cornerProSelectedDate && /^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProSelectedDate)) return window.__cornerProSelectedDate;
                 return new Date().toISOString().slice(0,10);
               }
-        
+
               function makeRow(g, ctx, index){
                 const d = info(g);
                 const p = Math.round(marketPercent(g, ctx));
@@ -20520,53 +20520,53 @@
                   </div>
                 `;
               }
-        
+
               function renderStrictMarket(ctx){
                 const panel = $(".gamesPanel");
                 if (!panel) return;
-        
+
                 const ymd = selectedDate();
                 const games = getCurrentGames();
                 const title = $(".sectionHead h2", panel);
                 if (title) title.textContent = `Jogos — ${ctx.label}`;
-        
+
                 panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-        
+
                 if (!games.length){
                   panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para <b>${esc(ymd)}</b>.</div>`);
                   return;
                 }
-        
+
                 const filtered = games
                   .map((g,i)=>({g,i}))
                   .filter(item => marketPass(item.g, ctx))
                   .sort((a,b)=> marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
                   .slice(0,18);
-        
+
                 if (!filtered.length){
                   panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(ctx.label)}</b> em <b>${esc(ymd)}</b>.</div>`);
                   return;
                 }
-        
+
                 panel.insertAdjacentHTML("beforeend", filtered.map(item => makeRow(item.g, ctx, item.i)).join(""));
               }
-        
+
               // Intercepta antes dos handlers antigos no document.
               window.addEventListener("click", function(ev){
                 const btn = ev.target.closest?.(".marketInlineItem");
                 if (!btn) return;
-        
+
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
-        
+
                 $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
                 btn.classList.add("is-selected");
-        
+
                 renderStrictMarket(ctxFromButton(btn));
               }, true);
             })();
-        
+
             /* =========================================================
                FIX DEFINITIVO — FILTRO REAL PARA TODOS OS MERCADOS INLINE
                - Pré-jogo, Resultado, Gols, Escanteios, Cartões, Combinadas e Player Props
@@ -20577,16 +20577,16 @@
             (function cornerProStrictInlineMarketEngine(){
               if (window.__cornerProStrictInlineMarketEngineV4) return;
               window.__cornerProStrictInlineMarketEngineV4 = true;
-        
+
               const $ = (sel, root = document) => root.querySelector(sel);
               const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-        
+
               function esc(v){
                 return String(v ?? "").replace(/[&<>"']/g, ch => ({
                   "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
                 }[ch]));
               }
-        
+
               function clean(v){ return String(v ?? "").replace(/\s+/g," ").trim(); }
               function norm(v){
                 return clean(v).toLowerCase().normalize("NFD")
@@ -20612,7 +20612,7 @@
                 return null;
               }
               function raw(g){ return g?.raw || g || {}; }
-        
+
               function dateKey(){
                 const input = document.getElementById("date")?.value;
                 if (/^\d{4}-\d{2}-\d{2}$/.test(input || "")) return input;
@@ -20620,7 +20620,7 @@
                 if (/^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProSelectedDate || "")) return window.__cornerProSelectedDate;
                 return "";
               }
-        
+
               function getGames(){
                 const panel = document.querySelector(".gamesPanel");
                 const sources = [
@@ -20629,10 +20629,10 @@
                   panel?.__cornerProGames,
                   window.__cornerProGames
                 ];
-        
+
                 try{ if (Array.isArray(lastMarketGames) && lastMarketGames.length) sources.push(lastMarketGames); }catch(e){}
                 try{ if (Array.isArray(lastRawGames) && lastRawGames.length) sources.push(lastRawGames); }catch(e){}
-        
+
                 const first = sources.find(x => Array.isArray(x) && x.length) || [];
                 const seen = new Set();
                 return first.filter(g => {
@@ -20643,7 +20643,7 @@
                   return true;
                 });
               }
-        
+
               function info(g){
                 const r = raw(g);
                 return {
@@ -20653,7 +20653,7 @@
                   time: clean(g?.time ?? r.hora ?? r.time ?? r.match_time ?? r.horario ?? "--:--").slice(0,5)
                 };
               }
-        
+
               function projectedCorners(g){
                 const r = raw(g);
                 const direct = num(g?.proj ?? r.proj_cantos ?? r.projected_corners ?? r.expected_corners ?? r.corners_projection ?? r.media_cantos_total);
@@ -20661,7 +20661,7 @@
                 const p = num(r.over95_prob_adj ?? r.over95_prob ?? r.ai_score ?? r.score ?? g?.prob, 62);
                 return clamp(8.8 + (p - 55) / 10, 7.5, 13.8);
               }
-        
+
               function expectedGoals(g){
                 const r = raw(g);
                 const direct = num(r.expected_goals_total ?? r.xg_total ?? r.total_goals_avg ?? r.media_gols_total ?? r.goals_projection);
@@ -20673,21 +20673,21 @@
                 if (league.includes("serie a") || league.includes("ligue 1")) base -= .10;
                 return clamp(base, 1.1, 4.4);
               }
-        
+
               function homeExpected(g){
                 const r = raw(g);
                 const direct = num(r.home_expected_goals ?? r.home_xg);
                 if (direct !== null) return direct;
                 return expectedGoals(g) * 0.53;
               }
-        
+
               function awayExpected(g){
                 const r = raw(g);
                 const direct = num(r.away_expected_goals ?? r.away_xg);
                 if (direct !== null) return direct;
                 return expectedGoals(g) * 0.47;
               }
-        
+
               function projectedCards(g){
                 const r = raw(g);
                 const direct = num(r.proj_cards ?? r.cards_projection ?? r.expected_cards_total ?? r.total_cards_avg ?? r.media_cartoes_total ?? r.cartoes_media);
@@ -20698,7 +20698,7 @@
                 if (league.includes("premier") || league.includes("bundesliga")) base -= .10;
                 return clamp(base, 2.1, 6.4);
               }
-        
+
               function percentCorners(g, line = 9.5, ht = false){
                 const proj = projectedCorners(g) * (ht ? .46 : 1);
                 return clamp(Math.round(52 + (proj - line) * 15), 3, 94);
@@ -20717,7 +20717,7 @@
                 const cards = projectedCards(g) * (ht ? .48 : 1);
                 return clamp(Math.round(52 + (cards - line) * 14), 3, 94);
               }
-        
+
               function favoriteSide(g){
                 const r = raw(g);
                 const homeOdd = num(r.odds?.home ?? r.odds?.casa ?? r.home_odd ?? r.odd_home ?? r.odds_home);
@@ -20735,12 +20735,12 @@
                 }
                 return "balanced";
               }
-        
+
               function lineFromText(text){
                 const m = String(text || "").replace(",",".").match(/(\d+(?:\.\d+)?)/);
                 return m ? Number(m[1]) : null;
               }
-        
+
               function ctxFromButton(btn){
                 const label = clean(btn.dataset.marketLine || btn.textContent || "");
                 const section = clean(btn.closest(".marketInlineSection")?.querySelector("h4")?.textContent || "");
@@ -20748,7 +20748,7 @@
                 const text = norm(`${panelTitle} ${section} ${label}`);
                 return { label, section, panelTitle, text, line: lineFromText(label) };
               }
-        
+
               function passResult(g, text){
                 const fav = favoriteSide(g);
                 const eg = expectedGoals(g);
@@ -20761,51 +20761,51 @@
                 if (text.includes("empate")) return Math.abs(homeExpected(g) - awayExpected(g)) <= .28 && eg <= 2.85;
                 return true;
               }
-        
+
               function marketPercent(g, ctx){
                 const t = ctx.text;
                 const line = ctx.line;
-        
+
                 if (t.includes("casa vence")) return clamp(Math.round(50 + (homeExpected(g) - awayExpected(g)) * 30), 5, 88);
                 if (t.includes("visitante vence")) return clamp(Math.round(50 + (awayExpected(g) - homeExpected(g)) * 30), 5, 88);
                 if (t.includes("empate")) return clamp(Math.round(62 - Math.abs(homeExpected(g) - awayExpected(g)) * 42), 5, 76);
                 if (t.includes("dupla chance casa")) return clamp(Math.round(64 + (homeExpected(g) - awayExpected(g)) * 20), 20, 92);
                 if (t.includes("dupla chance visitante")) return clamp(Math.round(64 + (awayExpected(g) - homeExpected(g)) * 20), 20, 92);
-        
+
                 if (t.includes("ambas") || t.includes("btts")) return t.includes("nao") || t.includes("não") ? 100 - percentBtts(g) : percentBtts(g);
-        
+
                 if (t.includes("cart")){
                   const l = line || (t.includes("vermelh") ? 5.5 : 3.5);
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
                   if (t.includes("under") || t.includes("sem cart")) return clamp(Math.round(56 + (l - projectedCards(g) * (ht ? .48 : 1)) * 15), 3, 94);
                   return percentCards(g, l, ht);
                 }
-        
+
                 if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
                   const l = line || 9.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
                   if (t.includes("under")) return clamp(Math.round(56 + (l - projectedCorners(g) * (ht ? .46 : 1)) * 16), 3, 94);
                   return percentCorners(g, l, ht);
                 }
-        
+
                 if (t.includes("gol") || t.includes("gols") || t.includes("over") || t.includes("under")){
                   const l = line || 2.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
                   if (t.includes("under") || t.includes("menos")) return clamp(Math.round(56 + (l - expectedGoals(g) * (ht ? .45 : 1)) * 24), 3, 94);
                   return percentGoals(g, l, ht);
                 }
-        
+
                 if (t.includes("jogador") || t.includes("finalizacao") || t.includes("finalizações") || t.includes("chute") || t.includes("assistencia") || t.includes("assistência")){
                   return clamp(Math.round(48 + (projectedCorners(g) - 9.5) * 7 + (expectedGoals(g) - 2.2) * 9), 10, 82);
                 }
-        
+
                 return clamp(Math.round(num(raw(g).ai_score ?? raw(g).score ?? raw(g).over95_prob_adj ?? raw(g).over95_prob, 58)), 8, 94);
               }
-        
+
               function marketPass(g, ctx){
                 const t = ctx.text;
                 const p = marketPercent(g, ctx);
-        
+
                 // Combinadas precisam passar em todas as pernas relevantes.
                 if (t.includes("+")){
                   if ((t.includes("casa") || t.includes("visitante") || t.includes("empate")) && !passResult(g, t)) return false;
@@ -20820,10 +20820,10 @@
                   }
                   return p >= 44;
                 }
-        
+
                 if (t.includes("resultado") || t.includes("vence") || t.includes("empate") || t.includes("dupla")) return passResult(g, t);
                 if (t.includes("ambas") || t.includes("btts")) return t.includes("nao") || t.includes("não") ? p >= 50 : p >= 50;
-        
+
                 if (t.includes("escanteio") || t.includes("canto") || t.includes("cantos")){
                   const line = ctx.line || 9.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
@@ -20832,7 +20832,7 @@
                   if (t.includes("under")) return proj <= line && p >= 46;
                   return proj >= line && p >= (line >= 12.5 ? 38 : line >= 11.5 ? 42 : line >= 10.5 ? 46 : 50);
                 }
-        
+
                 if (t.includes("gol") || t.includes("gols") || t.includes("over") || t.includes("under")){
                   const line = ctx.line || 2.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
@@ -20840,7 +20840,7 @@
                   if (t.includes("under") || t.includes("menos")) return proj <= line && p >= 46;
                   return proj >= line - .05 && p >= (line >= 3.5 ? 38 : line >= 2.5 ? 45 : 50);
                 }
-        
+
                 if (t.includes("cart")){
                   const line = ctx.line || 3.5;
                   const ht = t.includes(" ht") || t.includes("1 tempo") || t.includes("1º tempo") || t.includes("1o tempo");
@@ -20849,14 +20849,14 @@
                   if (t.includes("vermelh")) return projectedCards(g) >= 4.4;
                   return proj >= line && p >= (line >= 5.5 ? 34 : line >= 4.5 ? 38 : 44);
                 }
-        
+
                 if (t.includes("player") || t.includes("jogador") || t.includes("finalizacao") || t.includes("finalizações") || t.includes("chute") || t.includes("assistencia") || t.includes("assistência")){
                   return p >= 48;
                 }
-        
+
                 return p >= 50;
               }
-        
+
               function rowHTML(g, ctx, index){
                 const d = info(g);
                 const pct = Math.round(marketPercent(g, ctx));
@@ -20874,35 +20874,35 @@
                   </div>
                 `;
               }
-        
+
               function renderFiltered(ctx){
                 const panel = document.querySelector(".gamesPanel");
                 if (!panel) return;
-        
+
                 const games = getGames();
                 const title = panel.querySelector(".sectionHead h2");
                 if (title) title.textContent = `Jogos — ${ctx.label}`;
-        
+
                 panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
-        
+
                 if (!games.length){
                   panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo carregado para esta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
                   return;
                 }
-        
+
                 const filtered = games
                   .map((g,i) => ({g,i}))
                   .filter(x => marketPass(x.g, ctx))
                   .sort((a,b) => marketPercent(b.g, ctx) - marketPercent(a.g, ctx))
                   .slice(0, 18);
-        
+
                 if (!filtered.length){
                   panel.insertAdjacentHTML("beforeend", `<div class="marketStrictEmpty">Nenhum jogo consistente para <b>${esc(ctx.label)}</b> nesta data.</div><button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
                   return;
                 }
-        
+
                 panel.insertAdjacentHTML("beforeend", filtered.map(x => rowHTML(x.g, ctx, x.i)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
-        
+
                 panel.querySelectorAll("[data-strict-market-row]").forEach(row => {
                   row.addEventListener("click", () => {
                     const idx = Number(row.dataset.gameIndex);
@@ -20915,24 +20915,24 @@
                   });
                 });
               }
-        
+
               function restoreAll(){
                 const panel = document.querySelector(".gamesPanel");
                 const games = getGames();
                 if (!panel || !games.length) return;
-        
+
                 const title = panel.querySelector(".sectionHead h2");
                 if (title) title.textContent = "Jogos em Destaque";
-        
+
                 if (typeof window.renderGames === "function"){
                   try{ window.renderGames(games); return; }catch(e){}
                 }
-        
+
                 panel.querySelectorAll(".gameRow,.cornerProStatus,.marketStrictEmpty,.viewAll").forEach(el => el.remove());
                 const ctx = { label:"Todos", text:"todos", line:null };
                 panel.insertAdjacentHTML("beforeend", games.slice(0,9).map((g,i)=>rowHTML(g,ctx,i)).join("") + `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`);
               }
-        
+
               function markInlineButtons(){
                 $$(".marketInlineItem").forEach(btn => {
                   if (btn.dataset.strictReady === "1") return;
@@ -20941,22 +20941,22 @@
                   btn.dataset.marketFilter = norm(`${ctx.panelTitle} ${ctx.section} ${ctx.label}`);
                 });
               }
-        
+
               document.addEventListener("click", function(ev){
                 const btn = ev.target.closest?.(".marketInlineItem");
                 if (!btn) return;
-        
+
                 ev.preventDefault();
                 ev.stopPropagation();
                 ev.stopImmediatePropagation();
-        
+
                 markInlineButtons();
                 $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
                 btn.classList.add("is-selected");
-        
+
                 renderFiltered(ctxFromButton(btn));
               }, true);
-        
+
               document.addEventListener("click", function(ev){
                 const btn = ev.target.closest?.(".viewAll,.marketInlineAll");
                 if (!btn) return;
@@ -20966,16 +20966,16 @@
                 $$(".marketInlineItem.is-selected").forEach(el => el.classList.remove("is-selected"));
                 restoreAll();
               }, true);
-        
+
               document.addEventListener("DOMContentLoaded", markInlineButtons);
               new MutationObserver(markInlineButtons).observe(document.documentElement, { childList:true, subtree:true });
-        
+
               window.cornerProFilterInlineMarket = function(label){
                 renderFiltered({ label: clean(label), section:"", panelTitle:"", text:norm(label), line:lineFromText(label) });
               };
             })();
-        
-        
+
+
             /* =========================================================
                FILTRO REAL DOS MERCADOS PRÉ-JOGO — RESULTADO
                - Corrige a lista repetir a mesma sequência em todos os mercados
@@ -20988,15 +20988,15 @@
             (function installResultadoRealMercadoDefinitivo(){
               if (window.__resultadoRealMercadoDefinitivoInstalled) return;
               window.__resultadoRealMercadoDefinitivoInstalled = true;
-        
+
               const $ = (sel, root=document) => root.querySelector(sel);
               const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-        
+
               function clean(v, fallback=""){
                 const s = String(v ?? "").trim();
                 return s || fallback;
               }
-        
+
               function norm(v){
                 return clean(v).toLowerCase()
                   .normalize("NFD")
@@ -21005,20 +21005,20 @@
                   .replace(/\s+/g, " ")
                   .trim();
               }
-        
+
               function num(v, fallback=null){
                 if (v === undefined || v === null || v === "") return fallback;
                 if (typeof v === "string") v = v.replace(",", ".").replace(/[^0-9.\-]/g, "");
                 const n = Number(v);
                 return Number.isFinite(n) ? n : fallback;
               }
-        
+
               function clamp(n, a, b){
                 n = Number(n);
                 if (!Number.isFinite(n)) n = 0;
                 return Math.max(a, Math.min(b, n));
               }
-        
+
               function esc(v){
                 return String(v ?? "")
                   .replaceAll("&", "&amp;")
@@ -21027,7 +21027,7 @@
                   .replaceAll('"', "&quot;")
                   .replaceAll("'", "&#039;");
               }
-        
+
               function getPath(obj, path){
                 const parts = String(path || "").split(".");
                 let cur = obj;
@@ -21037,7 +21037,7 @@
                 }
                 return cur ?? null;
               }
-        
+
               function first(obj, paths, fallback=null){
                 for (const p of paths){
                   const v = getPath(obj, p);
@@ -21045,16 +21045,16 @@
                 }
                 return fallback;
               }
-        
+
               function selectedDate(){
                 const input = document.getElementById("date");
                 if (input?.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) return input.value;
                 if (window.__cornerProAllGamesDate && /^\d{4}-\d{2}-\d{2}$/.test(window.__cornerProAllGamesDate)) return window.__cornerProAllGamesDate;
                 return "";
               }
-        
+
               function raw(g){ return g?.raw || g || {}; }
-        
+
               function gameInfo(g){
                 const r = raw(g);
                 return {
@@ -21065,12 +21065,12 @@
                   id: clean(g?.matchId ?? r.match_id ?? r.id ?? r.fixture_id ?? r.event_id ?? "")
                 };
               }
-        
+
               function stableKey(g){
                 const d = gameInfo(g);
                 return d.id ? `id:${d.id}` : `${norm(d.league)}|${norm(d.home)}|${norm(d.away)}|${d.time}`;
               }
-        
+
               function readInlineRowsAsGames(panel){
                 return $$(".gameRow", panel).map(row => {
                   const b = row.querySelector(".gameMeta b");
@@ -21087,13 +21087,13 @@
                   };
                 });
               }
-        
+
               function currentGames(){
                 const panel = document.querySelector(".gamesPanel");
                 const wantedDate = selectedDate();
-        
+
                 const sources = [];
-        
+
                 // Primeiro usa /mercados, pois é a lista mais ampla e já traz
                 // bet365_corner_line para o filtro sincronizado.
                 try {
@@ -21106,32 +21106,32 @@
                     sources.push(lastMarketGames);
                   }
                 } catch (_) {}
-        
+
                 if (wantedDate && window.__cornerProMarketCache?.[wantedDate]?.length){
                   sources.push(window.__cornerProMarketCache[wantedDate]);
                 }
-        
+
                 sources.push(
                   panel?.__cornerProAllGames,
                   window.__cornerProAllGames,
                   panel?.__cornerProGames,
                   window.__cornerProGames
                 );
-        
+
                 try {
                   if (typeof lastRawGames !== "undefined" && Array.isArray(lastRawGames) && lastRawGames.length){
                     sources.push(lastRawGames);
                   }
                 } catch (_) {}
-        
+
                 let firstValidList = [];
-        
+
                 for (const source of sources){
                   if (!Array.isArray(source) || !source.length) continue;
-        
+
                   const unique = [];
                   const used = new Set();
-        
+
                   for (const game of source){
                     if (!game) continue;
                     const key = stableKey(game);
@@ -21139,19 +21139,19 @@
                     used.add(key);
                     unique.push(game);
                   }
-        
+
                   if (!firstValidList.length) firstValidList = unique;
-        
+
                   // Para sincronização real, prefere uma fonte que tenha pelo menos
                   // uma linha principal Bet365 disponível.
                   if (unique.some(game => Number.isFinite(bet365Line(game)))){
                     return unique;
                   }
                 }
-        
+
                 return firstValidList;
               }
-        
+
               function projection(game){
                 const raw = rawGame(game);
                 return number(
@@ -21163,7 +21163,7 @@
                   0
                 );
               }
-        
+
               function bet365Line(game){
                 const raw = rawGame(game);
                 return number(
@@ -21177,7 +21177,7 @@
                   null
                 );
               }
-        
+
               function serverProbability(game, line){
                 const raw = rawGame(game);
                 const key = line === 8.5 ? "corners85"
@@ -21185,7 +21185,7 @@
                   : line === 10.5 ? "corners105"
                   : line === 11.5 ? "corners115"
                   : "corners125";
-        
+
                 const direct = number(
                   raw?.markets?.prob?.[key] ??
                   raw?.markets?.filterProb?.[key] ??
@@ -21193,47 +21193,47 @@
                   raw?.[`${key}_filter_prob`],
                   null
                 );
-        
+
                 if (Number.isFinite(direct)){
                   return direct > 0 && direct <= 1 ? direct * 100 : direct;
                 }
-        
+
                 if (line === 9.5){
                   const p95 = number(raw?.over95_prob_adj ?? raw?.over95_prob, null);
                   if (Number.isFinite(p95)) return p95;
                 }
-        
+
                 return null;
               }
-        
+
               function estimatedProbability(game, line){
                 const direct = serverProbability(game, line);
                 if (Number.isFinite(direct)) return clamp(Math.round(direct), 3, 96);
-        
+
                 const proj = projection(game);
                 if (!Number.isFinite(proj) || proj <= 0) return 0;
-        
+
                 // Curva conservadora: a projeção precisa ficar acima da linha
                 // para ganhar confiança. Linhas maiores exigem mais folga.
                 let probability = 50 + (proj - line) * 11;
-        
+
                 if (line >= 12.5) probability -= 7;
                 else if (line >= 11.5) probability -= 4;
                 else if (line <= 8.5) probability += 5;
-        
+
                 const raw = rawGame(game);
                 const pressure = number(raw?.real?.pressureHits ?? raw?.pressureHits, 0);
                 const profile = clean(raw?.perfil_laterais);
-        
+
                 if (pressure >= 4) probability += 4;
                 else if (pressure >= 3) probability += 2;
-        
+
                 if (profile === "LATERAIS_FORTES") probability += 4;
                 if (profile === "TENDENCIA_CENTRAL") probability -= 6;
-        
+
                 return clamp(Math.round(probability), 3, 94);
               }
-        
+
               function lineFitScore(game, line){
                 const proj = projection(game);
                 const marketLine = bet365Line(game);
@@ -21246,40 +21246,40 @@
                   raw?.score,
                   0
                 );
-        
+
                 let score = probability * 1.15;
-        
+
                 // A linha real/principal da Bet365 é o primeiro sinal.
                 if (Number.isFinite(marketLine)){
                   if (marketLine === line) score += 48;
                   else if (marketLine > line) score += Math.max(12, 38 - (marketLine - line) * 12);
                   else score -= (line - marketLine) * 28;
                 }
-        
+
                 // Proximidade entre projeção e linha escolhida.
                 if (Number.isFinite(proj) && proj > 0){
                   const ideal = line + 0.65;
                   score += Math.max(0, 22 - Math.abs(proj - ideal) * 9);
-        
+
                   if (proj < line + 0.15) score -= (line + 0.15 - proj) * 24;
                 }
-        
+
                 score += clamp(engineScore, 0, 100) * 0.12;
                 return score;
               }
-        
+
               function passesLine(game, line){
                 const marketLine = bet365Line(game);
-        
+
                 // SINCRONIZAÇÃO EXATA:
                 // clicou em 9.5  -> somente linha principal Bet365 9.5;
                 // clicou em 10.5 -> somente linha principal Bet365 10.5;
                 // jogos sem linha real Bet365 não entram.
                 if (!Number.isFinite(marketLine)) return false;
-        
+
                 return Math.abs(marketLine - line) < 0.01;
               }
-        
+
               function selectedGames(games, line){
                 const prepared = games.map((game, index) => ({
                   game,
@@ -21290,9 +21290,9 @@
                   score: lineFitScore(game, line),
                   pass: passesLine(game, line)
                 }));
-        
+
                 let filtered = prepared.filter(item => item.pass);
-        
+
                 // Não força jogos fracos. Se nenhum passar, a lista ficará vazia
                 // e o usuário verá a mensagem de ausência de opção consistente.
                 return filtered
@@ -21304,13 +21304,13 @@
                   })
                   .slice(0, 18);
               }
-        
+
               function rowHTML(item, line){
                 const info = gameInfo(item.game);
                 const betText = Number.isFinite(item.bet365)
                   ? `BET365 ${item.bet365.toFixed(1)}`
                   : `PROJ. ${item.projection.toFixed(1)}`;
-        
+
                 return `
                   <div class="gameRow compactGameRow"
                        data-corner-line-row="1"
@@ -21325,27 +21325,27 @@
                         <em>${escapeHTML(info.away)}</em>
                       </b>
                     </div>
-        
+
                     <div class="oddBox">
                       <small>LINHA</small>
                       <b>OVER ${line.toFixed(1)}</b>
                       <span>${item.probability}%</span>
                     </div>
-        
+
                     <div class="oddBox">
                       <small>REFERÊNCIA</small>
                       <b>${escapeHTML(betText)}</b>
                       <span>${item.projection.toFixed(1)}</span>
                     </div>
-        
+
                     <button class="signal" type="button" title="Abrir Match Center">▮▮▮</button>
                   </div>
                 `;
               }
-        
+
               function updateMatchCenter(game, allGames){
                 if (!game) return;
-        
+
                 const info = gameInfo(game);
                 const raw = rawGame(game);
                 const payload = {
@@ -21356,29 +21356,29 @@
                   hora: info.time,
                   match_id: raw?.match_id || raw?.id || info.id
                 };
-        
+
                 if (typeof window.updateDesktopMatchRail === "function"){
                   window.updateDesktopMatchRail(payload, allGames.map(rawGame));
                   return;
                 }
-        
+
                 if (typeof window.openMatchCenter === "function"){
                   window.openMatchCenter(payload);
                 }
               }
-        
+
               function render(line){
                 const panel = document.querySelector(".gamesPanel");
                 if (!panel) return;
-        
+
                 const games = currentGames();
                 const heading = panel.querySelector(".sectionHead h2, .sectionHead h3, h2");
                 if (heading) heading.textContent = `Jogos — Bet365 ${line.toFixed(1)}`;
-        
+
                 panel.querySelectorAll(
                   ".gameRow,.compactGameRow,.cornerProStatus,.marketStrictEmpty,.viewAll"
                 ).forEach(element => element.remove());
-        
+
                 if (!games.length){
                   panel.insertAdjacentHTML(
                     "beforeend",
@@ -21387,9 +21387,9 @@
                   );
                   return;
                 }
-        
+
                 const selected = selectedGames(games, line);
-        
+
                 if (!selected.length){
                   panel.insertAdjacentHTML(
                     "beforeend",
@@ -21400,13 +21400,13 @@
                   );
                   return;
                 }
-        
+
                 panel.insertAdjacentHTML(
                   "beforeend",
                   selected.map(item => rowHTML(item, line)).join("") +
                   `<button class="viewAll" type="button">VER TODOS OS JOGOS</button>`
                 );
-        
+
                 panel.querySelectorAll("[data-corner-line-row]").forEach(row => {
                   row.addEventListener("click", event => {
                     if (event.target.closest(".viewAll")) return;
@@ -21414,98 +21414,98 @@
                     updateMatchCenter(games[originalIndex], games);
                   });
                 });
-        
+
                 window.__cornerProSelectedCornerLine = line;
               }
-        
+
               function restoreGames(){
                 const games = currentGames();
                 const panel = document.querySelector(".gamesPanel");
                 if (!panel || !games.length) return;
-        
+
                 if (typeof window.renderGames === "function"){
                   try {
                     window.renderGames(games);
                     return;
                   } catch (_) {}
                 }
-        
+
                 location.reload();
               }
-        
+
               function getClickedCornerLine(button){
                 if (!button) return null;
-        
+
                 const label = clean(
                   button.dataset.marketLine ||
                   button.dataset.premiumMarket ||
                   button.dataset.market ||
                   button.textContent
                 );
-        
+
                 const match = label.match(/\bover\s*(8\.5|9\.5|10\.5|11\.5|12\.5)\b/i);
                 if (!match) return null;
-        
+
                 const line = Number(match[1]);
                 if (!CORNER_LINES.has(line)) return null;
-        
+
                 const sectionText = norm(
                   button.closest(".marketInlineSection,article,.marketCard")
                     ?.querySelector("h4,h3,strong,b")
                     ?.textContent
                 );
-        
+
                 const panelText = norm(
                   button.closest(".marketInlinePanel,.marketMenuPro,.gamesPanel,.dashboardMainColumn")
                     ?.querySelector(".marketInlineTitle strong,.marketMenuTitle,h2,h3")
                     ?.textContent
                 );
-        
+
                 // Só captura a primeira seção "Totais de Escanteios".
                 // Não interfere em Over 9.5 FT, Over 4.5 HT ou mercados de gols.
                 const isCornerPanel = panelText.includes("escante");
                 const isTotalsSection = sectionText.includes("totais") && sectionText.includes("escante");
-        
+
                 return isCornerPanel && isTotalsSection ? line : null;
               }
-        
+
               // Usa WINDOW em captura para executar antes dos handlers antigos do documento.
               window.addEventListener("click", event => {
                 const button = event.target.closest?.(
                   ".marketInlineItem,[data-market-line],[data-premium-market],[data-market],.premiumMarket"
                 );
                 if (!button) return;
-        
+
                 const line = getClickedCornerLine(button);
                 if (!Number.isFinite(line)) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-        
+
                 document.querySelectorAll(
                   ".marketInlineItem.is-selected,[data-market-line].is-selected,[data-premium-market].is-selected,.premiumMarket.is-selected"
                 ).forEach(element => element.classList.remove("is-selected"));
-        
+
                 button.classList.add("is-selected");
                 render(line);
               }, true);
-        
+
               window.addEventListener("click", event => {
                 const button = event.target.closest?.(".gamesPanel .viewAll");
                 if (!button || !window.__cornerProSelectedCornerLine) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-        
+
                 window.__cornerProSelectedCornerLine = null;
                 document.querySelectorAll(".marketInlineItem.is-selected").forEach(
                   element => element.classList.remove("is-selected")
                 );
                 restoreGames();
               }, true);
-        
+
               window.cornerProShowGamesForCornerLine = function(line){
                 const parsed = Number(line);
                 if (!CORNER_LINES.has(parsed)) return false;
@@ -21513,7 +21513,7 @@
                 return true;
               };
             })();
-        
+
             /* REMOÇÃO TOTAL DE BORDAS — proteção contra estilos criados dinamicamente */
             (function enforceBorderlessCornerPro(){
               if (document.getElementById('cornerProBorderlessFinal')) return;
@@ -21555,7 +21555,7 @@
               `;
               document.head.appendChild(style);
             })();
-        
+
             /* =========================================================
                MENU MOBILE — exclusivo para celular
                ========================================================= */
@@ -21565,38 +21565,38 @@
               const overlay = document.getElementById('mobileOverlay');
               const mobileCalendarBtn = document.getElementById('mobileCalendarBtn');
               const desktopCalendarBtn = document.getElementById('btnCalendario');
-        
+
               if (!menuBtn || !sidebar || !overlay) return;
-        
+
               const closeMenu = () => {
                 sidebar.classList.remove('mobile-open');
                 overlay.classList.remove('active');
                 overlay.setAttribute('aria-hidden','true');
                 document.body.classList.remove('mobile-menu-lock');
               };
-        
+
               const openMenu = () => {
                 sidebar.classList.add('mobile-open');
                 overlay.classList.add('active');
                 overlay.setAttribute('aria-hidden','false');
                 document.body.classList.add('mobile-menu-lock');
               };
-        
+
               menuBtn.addEventListener('click', () => {
                 sidebar.classList.contains('mobile-open') ? closeMenu() : openMenu();
               });
               overlay.addEventListener('click', closeMenu);
               sidebar.querySelectorAll('.side-item').forEach(item => item.addEventListener('click', closeMenu));
-        
+
               if (mobileCalendarBtn && desktopCalendarBtn){
                 mobileCalendarBtn.addEventListener('click', () => desktopCalendarBtn.click());
               }
-        
+
               window.addEventListener('resize', () => {
                 if (window.innerWidth > 767) closeMenu();
               });
             })();
-        
+
             /* =========================================================
                CORREÇÃO MOBILE FINAL
                - volta ao início após recarregar;
@@ -21605,26 +21605,26 @@
                ========================================================= */
             (function mobileFinalStabilityFix(){
               "use strict";
-        
+
               if (window.__mobileFinalStabilityFixInstalled) return;
               window.__mobileFinalStabilityFixInstalled = true;
-        
+
               const isMobile = () =>
                 window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
-        
+
               try{
                 if ("scrollRestoration" in history){
                   history.scrollRestoration = "manual";
                 }
               }catch(_){}
-        
+
               function goToTop(){
                 if (!isMobile()) return;
                 window.scrollTo({ top:0, left:0, behavior:"auto" });
                 document.documentElement.scrollTop = 0;
                 document.body.scrollTop = 0;
               }
-        
+
               window.addEventListener("pageshow", function(event){
                 if (!isMobile()) return;
                 if (event.persisted || window.scrollY > 600){
@@ -21632,12 +21632,12 @@
                   setTimeout(goToTop, 80);
                 }
               });
-        
+
               window.addEventListener("load", function(){
                 if (!isMobile()) return;
                 setTimeout(goToTop, 60);
               }, { once:true });
-        
+
               /*
                 Os cards originais já possuem listeners que conhecem o índice e o
                 match_id reais. O botão visual apenas aciona o clique da própria linha,
@@ -21645,40 +21645,40 @@
               */
               document.addEventListener("pointerup", function(event){
                 if (!isMobile()) return;
-        
+
                 const button = event.target?.closest?.(
                   ".gamesPanel .signal:not([data-open-match-center]), " +
                   ".gamesPanel .matchCenterMiniBtn:not([data-open-match-center])"
                 );
-        
+
                 if (!button) return;
-        
+
                 const row = button.closest(
                   ".gameRow,.compactGameRow,.marketGameRow,.premiumGameRow,.cleanDashRow,[data-match-center-row]"
                 );
-        
+
                 if (!row) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-        
+
                 row.dispatchEvent(new MouseEvent("click", {
                   bubbles:false,
                   cancelable:true,
                   view:window
                 }));
-        
+
                 const rail = document.getElementById("desktopMatchRail") ||
                              document.querySelector(".dashboardRightRail");
-        
+
                 if (rail){
                   setTimeout(() => {
                     rail.scrollIntoView({ behavior:"smooth", block:"start" });
                   }, 220);
                 }
               }, true);
-        
+
               /*
                 Garante que o painel de mercados permaneça no DOM e visível depois
                 de qualquer renderização dinâmica.
@@ -21692,12 +21692,12 @@
                   panel.style.removeProperty("opacity");
                 });
               }
-        
+
               const observer = new MutationObserver(() => {
                 if (!isMobile()) return;
                 revealMarkets();
               });
-        
+
               function start(){
                 revealMarkets();
                 observer.observe(document.body, {
@@ -21705,37 +21705,37 @@
                   subtree:true
                 });
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", start, { once:true });
               }else{
                 start();
               }
             })();
-        
+
             /* =========================================================
                AJUSTE DEFINITIVO — RESTAURA TOPO + MERCADO DE ESCANTEIOS
                ========================================================= */
             (function mobileTopAndCornersFix(){
               "use strict";
-        
+
               if (window.__mobileTopAndCornersFixInstalled) return;
               window.__mobileTopAndCornersFixInstalled = true;
-        
+
               const mobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               function resetEveryScroll(){
                 if (!mobile()) return;
-        
+
                 try{
                   history.scrollRestoration = "manual";
                 }catch(_){}
-        
+
                 window.scrollTo(0, 0);
                 document.documentElement.scrollTop = 0;
                 document.body.scrollTop = 0;
-        
+
                 [
                   ".main",
                   ".content",
@@ -21752,32 +21752,32 @@
                   });
                 });
               }
-        
+
               function findCornersTab(){
                 return Array.from(document.querySelectorAll(".marketTab")).find(tab =>
                   /ESCANTEIOS/i.test(String(tab.textContent || ""))
                 ) || null;
               }
-        
+
               function revealMarketPanel(){
                 if (!mobile()) return;
-        
+
                 const panel = document.querySelector(
                   ".marketInlinePanel,.marketInlineShell,.inlineMarketsPanel"
                 );
-        
+
                 if (panel){
                   panel.style.removeProperty("display");
                   panel.style.removeProperty("visibility");
                   panel.style.removeProperty("opacity");
                 }
-        
+
                 return panel;
               }
-        
+
               function activateCornersMarket(scrollToPanel = false){
                 if (!mobile()) return;
-        
+
                 const tab = findCornersTab();
                 if (tab && !tab.classList.contains("is-active-market")){
                   tab.dispatchEvent(new MouseEvent("click", {
@@ -21786,9 +21786,9 @@
                     view:window
                   }));
                 }
-        
+
                 const panel = revealMarketPanel();
-        
+
                 if (scrollToPanel && panel){
                   setTimeout(() => {
                     panel.scrollIntoView({
@@ -21798,67 +21798,67 @@
                   }, 80);
                 }
               }
-        
+
               function bindBottomCorners(){
                 document.querySelectorAll(".mobileBottomNav button,.mobileBottomNav a")
                   .forEach(item => {
                     if (!/ESCANTEIOS/i.test(String(item.textContent || ""))) return;
                     if (item.dataset.cornersMobileBound === "1") return;
-        
+
                     item.dataset.cornersMobileBound = "1";
                     item.addEventListener("click", () => {
                       activateCornersMarket(true);
                     });
                   });
               }
-        
+
               function stabilize(){
                 resetEveryScroll();
                 revealMarketPanel();
                 bindBottomCorners();
               }
-        
+
               window.addEventListener("pageshow", () => {
                 stabilize();
                 setTimeout(stabilize, 80);
                 setTimeout(stabilize, 300);
                 setTimeout(stabilize, 900);
               });
-        
+
               window.addEventListener("load", () => {
                 stabilize();
                 setTimeout(stabilize, 120);
                 setTimeout(stabilize, 500);
               }, { once:true });
-        
+
               document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible"){
                   setTimeout(resetEveryScroll, 50);
                 }
               });
-        
+
               const observer = new MutationObserver(() => {
                 if (!mobile()) return;
                 revealMarketPanel();
                 bindBottomCorners();
               });
-        
+
               function start(){
                 stabilize();
-        
+
                 observer.observe(document.body, {
                   childList:true,
                   subtree:true
                 });
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", start, { once:true });
               }else{
                 start();
               }
             })();
-        
+
             /* =========================================================
                MOBILE — MANTÉM TODOS OS MERCADOS E RESTAURA ESCANTEIOS
                O painel principal continua trocando entre Pré-Jogo, Gols,
@@ -21867,13 +21867,13 @@
                ========================================================= */
             (function restorePermanentCornersMarketMobile(){
               "use strict";
-        
+
               if (window.__permanentCornersMarketMobileInstalled) return;
               window.__permanentCornersMarketMobileInstalled = true;
-        
+
               const isMobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               function esc(value){
                 return String(value ?? "")
                   .replaceAll("&","&amp;")
@@ -21882,7 +21882,7 @@
                   .replaceAll('"',"&quot;")
                   .replaceAll("'","&#039;");
               }
-        
+
               const CORNERS = {
                 count:"18 MERCADOS",
                 title:"Mercados de Escanteios",
@@ -21925,7 +21925,7 @@
                   }
                 ]
               };
-        
+
               function panelHTML(){
                 const sections = CORNERS.sections.map(section => `
                   <section class="marketInlineSection">
@@ -21948,7 +21948,7 @@
                     <button class="marketInlineMore" type="button">Ver mais⌄</button>
                   </section>
                 `).join("");
-        
+
                 return `
                   <div class="marketInlineHead">
                     <div class="marketInlineTitle">
@@ -21957,9 +21957,9 @@
                     </div>
                     <div class="marketInlineCount">${esc(CORNERS.count)}</div>
                   </div>
-        
+
                   <div class="marketInlineGrid">${sections}</div>
-        
+
                   <div class="marketInlineFooter">
                     <div class="marketInlineTip">
                       <i>i</i>
@@ -21971,78 +21971,78 @@
                   </div>
                 `;
               }
-        
+
               function buildPermanentCorners(){
                 if (!isMobile()) return;
-        
+
                 const mainPanel = document.querySelector(
                   ".marketInlinePanel:not(.marketInlineCornersPermanent)"
                 );
-        
+
                 if (!mainPanel) return;
-        
+
                 let cornersPanel = document.querySelector(".marketInlineCornersPermanent");
-        
+
                 if (!cornersPanel){
                   cornersPanel = document.createElement("section");
                   cornersPanel.className =
                     "marketInlinePanel marketInlineCornersPermanent";
                   cornersPanel.setAttribute("aria-label", "Mercados de Escanteios");
                   cornersPanel.innerHTML = panelHTML();
-        
+
                   mainPanel.insertAdjacentElement("afterend", cornersPanel);
                 }
-        
+
                 cornersPanel.style.removeProperty("display");
                 cornersPanel.style.removeProperty("visibility");
                 cornersPanel.style.removeProperty("opacity");
               }
-        
+
               function schedule(){
                 requestAnimationFrame(buildPermanentCorners);
                 setTimeout(buildPermanentCorners, 80);
                 setTimeout(buildPermanentCorners, 250);
                 setTimeout(buildPermanentCorners, 700);
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", schedule, { once:true });
               }else{
                 schedule();
               }
-        
+
               window.addEventListener("pageshow", schedule);
-        
+
               const observer = new MutationObserver(() => {
                 if (!isMobile()) return;
                 buildPermanentCorners();
               });
-        
+
               observer.observe(document.body, {
                 childList:true,
                 subtree:true
               });
             })();
-        
+
             /* =========================================================
                MOBILE ESTÁVEL — SEM PULO DE PÁGINA + MATCH CENTER REAL
                ========================================================= */
             (function mobileStableRealMatchCenter(){
               "use strict";
-        
+
               if (window.__mobileStableRealMatchCenterInstalled) return;
               window.__mobileStableRealMatchCenterInstalled = true;
-        
+
               const isMobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               function hardTop(){
                 if (!isMobile()) return;
                 window.scrollTo(0, 0);
                 document.documentElement.scrollTop = 0;
                 document.body.scrollTop = 0;
               }
-        
+
               /*
                 Bloqueia os scrollIntoView automáticos antigos somente no mobile.
                 Eles eram os responsáveis por jogar a página para uma região vazia.
@@ -22050,98 +22050,98 @@
               if (isMobile() && !Element.prototype.__cornerOriginalScrollIntoView){
                 Element.prototype.__cornerOriginalScrollIntoView =
                   Element.prototype.scrollIntoView;
-        
+
                 Element.prototype.scrollIntoView = function(){
                   return;
                 };
               }
-        
+
               try{
                 history.scrollRestoration = "manual";
               }catch(_){}
-        
+
               window.addEventListener("pageshow", () => {
                 hardTop();
                 setTimeout(hardTop, 50);
                 setTimeout(hardTop, 180);
               });
-        
+
               window.addEventListener("load", () => {
                 hardTop();
                 setTimeout(hardTop, 100);
               }, { once:true });
-        
+
               function allGames(){
                 const pools = [];
-        
+
                 try{
                   if (Array.isArray(window.__premiumFilteredGames))
                     pools.push(window.__premiumFilteredGames);
                 }catch(_){}
-        
+
                 try{
                   if (Array.isArray(window.__premiumMarketGames))
                     pools.push(window.__premiumMarketGames);
                 }catch(_){}
-        
+
                 try{
                   if (typeof lastMarketGames !== "undefined" && Array.isArray(lastMarketGames))
                     pools.push(lastMarketGames);
                 }catch(_){}
-        
+
                 try{
                   if (typeof lastRawGames !== "undefined" && Array.isArray(lastRawGames))
                     pools.push(lastRawGames);
                 }catch(_){}
-        
+
                 const result = [];
                 const seen = new Set();
-        
+
                 pools.forEach(pool => {
                   pool.forEach(game => {
                     if (!game) return;
-        
+
                     const id = String(
                       game.match_id ??
                       game.id ??
                       game.event_key ??
                       ""
                     );
-        
+
                     const key = id || [
                       game.casa || game.home || "",
                       game.fora || game.away || "",
                       game.hora || game.time || ""
                     ].join("|");
-        
+
                     if (seen.has(key)) return;
                     seen.add(key);
                     result.push(game);
                   });
                 });
-        
+
                 return result;
               }
-        
+
               function resolveGame(button){
                 const list = allGames();
                 const matchId = String(button.dataset.matchId || "");
                 const index = Number(button.dataset.openMatchCenter);
-        
+
                 let game = null;
-        
+
                 if (Number.isFinite(index) && index >= 0){
                   try{
                     game = window.__premiumFilteredGames?.[index] || null;
                   }catch(_){}
                 }
-        
+
                 if (!game && matchId){
                   game = list.find(item =>
                     String(item?.match_id ?? item?.id ?? item?.event_key ?? "") === matchId
                   ) || null;
                 }
-        
+
                 if (!game){
                   game = {
                     match_id: matchId,
@@ -22153,10 +22153,10 @@
                     hora: button.dataset.time || "—"
                   };
                 }
-        
+
                 return { game, list:list.length ? list : [game] };
               }
-        
+
               /*
                 Captura somente o botão pequeno da linha.
                 Usa updateDesktopMatchRail com o match_id real e não permite que
@@ -22164,48 +22164,48 @@
               */
               document.addEventListener("click", async function(event){
                 if (!isMobile()) return;
-        
+
                 const button = event.target?.closest?.(
                   "[data-open-match-center]:not([data-open-match-center-table])," +
                   ".matchCenterMiniBtn"
                 );
-        
+
                 if (!button) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-        
+
                 const { game, list } = resolveGame(button);
                 const row = button.closest(
                   ".premiumGameRow,.cleanDashRow,.gameRow,.marketGameRow,[data-match-center-row]"
                 );
-        
+
                 document.querySelectorAll(
                   ".premiumGameRow,.cleanDashRow,.gameRow,.marketGameRow,[data-match-center-row]"
                 ).forEach(item => item.classList.remove("match-center-selected"));
-        
+
                 document.querySelectorAll(
                   ".matchCenterBtn,.matchCenterMiniBtn,[data-open-match-center]"
                 ).forEach(item => item.classList.remove("is-open"));
-        
+
                 row?.classList.add("match-center-selected");
                 button.classList.add("is-open");
-        
+
                 window.__selectedMatchCenterGame = game;
                 window.__selectedMatchCenterKey = String(
                   game.match_id ?? game.id ?? game.event_key ?? ""
                 );
-        
+
                 const rail = document.getElementById("desktopMatchRail") ||
                              document.querySelector(".dashboardRightRail");
-        
+
                 if (rail){
                   rail.style.display = "flex";
                   rail.style.visibility = "visible";
                   rail.style.opacity = "1";
                 }
-        
+
                 try{
                   if (typeof window.updateDesktopMatchRail === "function"){
                     await window.updateDesktopMatchRail(game, list);
@@ -22215,64 +22215,64 @@
                 }
               }, true);
             })();
-        
+
             /* =========================================================
                MOBILE — LIMITA O FIM REAL DA PÁGINA
                ========================================================= */
             (function mobileClampPageEnd(){
               "use strict";
-        
+
               if (window.__mobileClampPageEndInstalled) return;
               window.__mobileClampPageEndInstalled = true;
-        
+
               const mobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               function clampScroll(){
                 if (!mobile()) return;
-        
+
                 const maxScroll = Math.max(
                   0,
                   document.documentElement.scrollHeight - window.innerHeight
                 );
-        
+
                 if (window.scrollY > maxScroll){
                   window.scrollTo(0, maxScroll);
                 }
               }
-        
+
               window.addEventListener("scroll", clampScroll, { passive:true });
               window.addEventListener("resize", clampScroll, { passive:true });
               window.addEventListener("orientationchange", clampScroll, { passive:true });
-        
+
               const observer = new MutationObserver(() => {
                 requestAnimationFrame(clampScroll);
               });
-        
+
               observer.observe(document.body, {
                 childList:true,
                 subtree:true,
                 attributes:true
               });
-        
+
               window.addEventListener("load", () => {
                 setTimeout(clampScroll, 100);
                 setTimeout(clampScroll, 400);
               }, { once:true });
             })();
-        
+
             /* =========================================================
                MOBILE — LIMPA ALTURAS INLINE QUE CRIAM ESPAÇO VAZIO
                ========================================================= */
             (function removeMobileGhostHeight(){
               "use strict";
-        
+
               if (window.__removeMobileGhostHeightInstalled) return;
               window.__removeMobileGhostHeightInstalled = true;
-        
+
               const isMobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               const selectors = [
                 ".main",
                 ".content",
@@ -22287,10 +22287,10 @@
                 "#desktopMatchRail",
                 ".bottomStrip"
               ].join(",");
-        
+
               function clearGhostHeights(){
                 if (!isMobile()) return;
-        
+
                 document.querySelectorAll(selectors).forEach(element => {
                   element.style.removeProperty("height");
                   element.style.removeProperty("min-height");
@@ -22298,83 +22298,83 @@
                   element.style.removeProperty("margin-bottom");
                   element.style.removeProperty("padding-bottom");
                 });
-        
+
                 const bottomStrip = document.querySelector(".bottomStrip");
                 if (bottomStrip) bottomStrip.style.display = "none";
               }
-        
+
               let scheduled = false;
-        
+
               function scheduleClear(){
                 if (scheduled) return;
                 scheduled = true;
-        
+
                 requestAnimationFrame(() => {
                   scheduled = false;
                   clearGhostHeights();
                 });
               }
-        
+
               const observer = new MutationObserver(scheduleClear);
-        
+
               function start(){
                 clearGhostHeights();
-        
+
                 observer.observe(document.body, {
                   childList:true,
                   subtree:true,
                   attributes:true,
                   attributeFilter:["style","class"]
                 });
-        
+
                 window.addEventListener("resize", scheduleClear, { passive:true });
                 window.addEventListener("orientationchange", scheduleClear, { passive:true });
                 window.addEventListener("pageshow", scheduleClear);
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", start, { once:true });
               }else{
                 start();
               }
             })();
-        
+
             /* =========================================================
                MOBILE — RESETA SOMENTE A ROLAGEM DO CONTEÚDO
                ========================================================= */
             (function mobileMainScrollFix(){
               "use strict";
-        
+
               if (window.__mobileMainScrollFixInstalled) return;
               window.__mobileMainScrollFixInstalled = true;
-        
+
               const isMobile = () =>
                 window.matchMedia && window.matchMedia("(max-width:700px)").matches;
-        
+
               function resetMainScroll(){
                 if (!isMobile()) return;
-        
+
                 const main = document.querySelector(".main");
                 if (main){
                   main.scrollTop = 0;
                   main.scrollLeft = 0;
                 }
-        
+
                 window.scrollTo(0, 0);
                 document.documentElement.scrollTop = 0;
                 document.body.scrollTop = 0;
               }
-        
+
               window.addEventListener("pageshow", () => {
                 resetMainScroll();
                 setTimeout(resetMainScroll, 80);
               });
-        
+
               window.addEventListener("load", () => {
                 setTimeout(resetMainScroll, 60);
               }, { once:true });
             })();
-        
+
             /* =========================================================
                MOBILE — MATCH CENTER FUNCIONA SEM ATUALIZAR + DISPARO
                - Delegação de eventos para cards criados pela API.
@@ -22383,97 +22383,97 @@
                ========================================================= */
             (function installMobileMatchCenterShot(){
               "use strict";
-        
+
               if (window.__mobileMatchCenterShotInstalled) return;
               window.__mobileMatchCenterShotInstalled = true;
-        
+
               const MOBILE_QUERY = "(max-width:700px)";
-        
+
               function isMobile(){
                 return Boolean(
                   window.matchMedia &&
                   window.matchMedia(MOBILE_QUERY).matches
                 );
               }
-        
+
               function collectGames(){
                 const pools = [];
-        
+
                 try{
                   if (Array.isArray(window.__premiumFilteredGames)){
                     pools.push(window.__premiumFilteredGames);
                   }
                 }catch(_){}
-        
+
                 try{
                   if (Array.isArray(window.__premiumMarketGames)){
                     pools.push(window.__premiumMarketGames);
                   }
                 }catch(_){}
-        
+
                 try{
                   if (Array.isArray(window.__lastMarketGames)){
                     pools.push(window.__lastMarketGames);
                   }
                 }catch(_){}
-        
+
                 try{
                   if (Array.isArray(window.__lastRawGames)){
                     pools.push(window.__lastRawGames);
                   }
                 }catch(_){}
-        
+
                 try{
                   if (typeof lastMarketGames !== "undefined" &&
                       Array.isArray(lastMarketGames)){
                     pools.push(lastMarketGames);
                   }
                 }catch(_){}
-        
+
                 try{
                   if (typeof lastRawGames !== "undefined" &&
                       Array.isArray(lastRawGames)){
                     pools.push(lastRawGames);
                   }
                 }catch(_){}
-        
+
                 const result = [];
                 const seen = new Set();
-        
+
                 for (const pool of pools){
                   for (const game of pool){
                     if (!game || typeof game !== "object") continue;
-        
+
                     const id = String(
                       game.match_id ??
                       game.id ??
                       game.event_key ??
                       ""
                     );
-        
+
                     const fallbackKey = [
                       game.casa ?? game.home ?? "",
                       game.fora ?? game.away ?? "",
                       game.hora ?? game.time ?? ""
                     ].join("|");
-        
+
                     const key = id || fallbackKey;
                     if (seen.has(key)) continue;
-        
+
                     seen.add(key);
                     result.push(game);
                   }
                 }
-        
+
                 return result;
               }
-        
+
               function getMatchId(element){
                 const row = element.closest(
                   ".gameRow,.compactGameRow,.marketGameRow," +
                   ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
                 );
-        
+
                 return String(
                   element.dataset.matchId ||
                   element.getAttribute("data-match-id") ||
@@ -22482,14 +22482,14 @@
                   ""
                 ).trim();
               }
-        
+
               function resolveGame(button){
                 const games = collectGames();
-        
+
                 const indexRaw = button.dataset.openMatchCenter;
                 const index = Number(indexRaw);
                 let game = null;
-        
+
                 if (Number.isInteger(index) && index >= 0){
                   try{
                     if (Array.isArray(window.__premiumFilteredGames)){
@@ -22497,9 +22497,9 @@
                     }
                   }catch(_){}
                 }
-        
+
                 const matchId = getMatchId(button);
-        
+
                 if (!game && matchId){
                   game = games.find(item =>
                     String(
@@ -22510,25 +22510,25 @@
                     ) === matchId
                   ) || null;
                 }
-        
+
                 const row = button.closest(
                   ".gameRow,.compactGameRow,.marketGameRow," +
                   ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
                 );
-        
+
                 if (!game && row){
                   const home =
                     row.dataset.home ||
                     row.querySelector("[data-home]")?.dataset.home ||
                     row.querySelector(".team-home,.homeTeam,.home")?.textContent ||
                     "";
-        
+
                   const away =
                     row.dataset.away ||
                     row.querySelector("[data-away]")?.dataset.away ||
                     row.querySelector(".team-away,.awayTeam,.away")?.textContent ||
                     "";
-        
+
                   game = {
                     match_id: matchId,
                     id: matchId,
@@ -22539,47 +22539,47 @@
                     hora: row.dataset.time || "—"
                   };
                 }
-        
+
                 return {
                   game,
                   games: games.length ? games : (game ? [game] : []),
                   row
                 };
               }
-        
+
               function showRail(){
                 const rail =
                   document.getElementById("desktopMatchRail") ||
                   document.querySelector(".dashboardRightRail");
-        
+
                 if (!rail) return null;
-        
+
                 rail.style.removeProperty("display");
                 rail.style.removeProperty("visibility");
                 rail.style.removeProperty("opacity");
                 rail.classList.add("match-center-shot-target");
-        
+
                 return rail;
               }
-        
+
               function shootToGraphs(){
                 const rail =
                   document.getElementById("desktopMatchRail") ||
                   document.querySelector(".dashboardRightRail");
-        
+
                 if (!rail) return;
-        
+
                 const main = document.querySelector(".main");
-        
+
                 if (main && main.scrollHeight > main.clientHeight){
                   const mainRect = main.getBoundingClientRect();
                   const railRect = rail.getBoundingClientRect();
-        
+
                   const targetTop =
                     main.scrollTop +
                     (railRect.top - mainRect.top) -
                     8;
-        
+
                   main.scrollTo({
                     top: Math.max(0, targetTop),
                     behavior: "smooth"
@@ -22589,40 +22589,40 @@
                     window.scrollY +
                     rail.getBoundingClientRect().top -
                     8;
-        
+
                   window.scrollTo({
                     top: Math.max(0, top),
                     behavior: "smooth"
                   });
                 }
-        
+
                 rail.classList.remove("match-center-shot");
                 requestAnimationFrame(() => {
                   rail.classList.add("match-center-shot");
                 });
               }
-        
+
               async function openRealMatchCenter(button){
                 const { game, games, row } = resolveGame(button);
-        
+
                 if (!game) return;
-        
+
                 document.querySelectorAll(
                   ".gameRow,.compactGameRow,.marketGameRow," +
                   ".premiumGameRow,.cleanDashRow,[data-match-center-row]"
                 ).forEach(item =>
                   item.classList.remove("match-center-selected")
                 );
-        
+
                 document.querySelectorAll(
                   ".matchCenterMiniBtn,.signal,[data-open-match-center]"
                 ).forEach(item =>
                   item.classList.remove("is-open")
                 );
-        
+
                 row?.classList.add("match-center-selected");
                 button.classList.add("is-open");
-        
+
                 window.__selectedMatchCenterGame = game;
                 window.__selectedMatchCenterKey = String(
                   game.match_id ??
@@ -22630,9 +22630,9 @@
                   game.event_key ??
                   ""
                 );
-        
+
                 showRail();
-        
+
                 try{
                   if (typeof window.updateDesktopMatchRail === "function"){
                     await window.updateDesktopMatchRail(game, games);
@@ -22645,7 +22645,7 @@
                     error
                   );
                 }
-        
+
                 /*
                   Dois disparos: o primeiro após o HTML aparecer e o segundo
                   depois de gráficos/SVGs terminarem a renderização.
@@ -22653,31 +22653,31 @@
                 setTimeout(shootToGraphs, 100);
                 setTimeout(shootToGraphs, 420);
               }
-        
+
               /*
                 Delegação de eventos: funciona também nos botões criados
                 depois que a API atualiza a lista de partidas.
               */
               document.addEventListener("click", function(event){
                 if (!isMobile()) return;
-        
+
                 const button = event.target?.closest?.(
                   ".matchCenterMiniBtn," +
                   ".gamesPanel .signal," +
                   "[data-open-match-center]"
                 );
-        
+
                 if (!button) return;
-        
+
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-        
+
                 openRealMatchCenter(button);
               }, true);
             })();
-        
-        
+
+
             /* =========================================================
                CORNER PRO MOBILE APP FLOW — SOMENTE MOBILE
                Dashboard > Mercado > Linha > Jogos > Match Center fullscreen
@@ -22687,12 +22687,12 @@
               "use strict";
               if (window.__cornerProMobileAppFlowInstalled) return;
               window.__cornerProMobileAppFlowInstalled = true;
-        
+
               const mq = window.matchMedia ? window.matchMedia("(max-width:700px)") : null;
               const isMobile = () => Boolean(mq && mq.matches);
               const $ = (s,r=document) => r.querySelector(s);
               const $$ = (s,r=document) => Array.from(r.querySelectorAll(s));
-        
+
               const marketLayer = $("#cpMobileMarketsLayer");
               const matchLayer = $("#cpMobileMatchLayer");
               const kinds = $("#cpMobileMarketKinds");
@@ -22705,7 +22705,7 @@
               const title = $("#cpMobileMarketsTitle");
               const matchContent = $("#cpMobileMatchContent");
               if (!marketLayer || !matchLayer || !grid || !carousel) return;
-        
+
               const MARKET_DATA = {
                 pregame:{title:"Pré-jogo",icon:"⚽",heading:"Mercados pré-jogo",lines:[
                   ["Casa vence","1.85"],["Empate","3.30"],["Visitante vence","4.20"],["Dupla chance casa","1.28"],["Ambas marcam","1.85",1],["Over 2.5 gols","1.75",1]
@@ -22726,10 +22726,10 @@
                   ["Jogador marca","2.40",1],["1+ chute no alvo","1.55"],["2+ finalizações","1.75"],["Recebe cartão","3.10"]
                 ]}
               };
-        
+
               let activeMarket = "corners";
               let selectedLine = "";
-        
+
               function bodyLock(on){ document.body.classList.toggle("cp-mobile-layer-open", Boolean(on)); }
               function openLayer(layer){
                 if (!isMobile()) return;
@@ -22739,7 +22739,7 @@
                 layer.classList.remove("is-open"); layer.setAttribute("aria-hidden","true");
                 if (!marketLayer.classList.contains("is-open") && !matchLayer.classList.contains("is-open")) bodyLock(false);
               }
-        
+
               function collectGames(){
                 const pools=[];
                 ["__premiumFilteredGames","__premiumMarketGames","__lastMarketGames","__lastRawGames"].forEach(k=>{
@@ -22755,7 +22755,7 @@
                 });
                 return out;
               }
-        
+
               function gameName(g,home){ return String(home?(g.casa??g.home??g.home_name??"Mandante"):(g.fora??g.away??g.away_name??"Visitante")); }
               function resolveGameTimeManaus(g){
                 const simple=[g?.kickoff_manaus,g?.hora_manaus,g?.time_manaus,g?.hora,g?.time,g?.match_time,g?.event_time,g?.horario];
@@ -22787,7 +22787,7 @@
                 const letters=String(name||"T").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
                 return `<span aria-hidden="true">${letters||"FC"}</span>`;
               }
-        
+
               function renderMarket(type){
                 activeMarket = MARKET_DATA[type] ? type : "corners";
                 const data=MARKET_DATA[activeMarket];
@@ -22799,7 +22799,7 @@
                   </button>`).join("");
                 recommended.hidden=true; carousel.innerHTML=""; selectedLine="";
               }
-        
+
               function renderRecommended(line){
                 selectedLine=line; selectedLineEl.textContent=line.toUpperCase();
                 const games=collectGames().slice(0,5);
@@ -22822,8 +22822,8 @@
                 recommended.hidden=false;
                 setTimeout(()=>recommended.scrollIntoView({behavior:"smooth",block:"start"}),40);
               }
-        
-        
+
+
               function cpNum(value, fallback=null){
                 if(value===null || value===undefined || value==="" || value==="—") return fallback;
                 const n=Number(value);
@@ -22856,12 +22856,12 @@
                   game?.match_status ?? game?.status ?? game?.status_raw ??
                   game?.status_name ?? game?.state ?? game?.timer?.status ?? ""
                 );
-        
+
                 // Estados explícitos da API têm prioridade absoluta.
                 if(/^(NS|TBD|SCHEDULED|NOT STARTED|PRE.?GAME|PRÉ.?JOGO|PRE.?JOGO|UPCOMING)$/.test(raw)) return "pregame";
                 if(/^(1H|2H|HT|ET|BT|P|LIVE|IN PLAY|INPLAY)$|AO VIVO|INTERVALO|1º TEMPO|2º TEMPO/.test(raw)) return "live";
                 if(/^(FT|AET|PEN|CANC|ABD|AWD|WO)$|ENCERRADO|FINALIZADO|FULL TIME/.test(raw)) return "finished";
-        
+
                 // Se a partida possui data futura, ela sempre é pré-jogo, mesmo que o
                 // painel lateral ainda esteja mostrando dados antigos ou zerados.
                 const dateRaw=String(game?.match_date ?? game?.date ?? game?.event_date ?? "").trim();
@@ -22893,7 +22893,7 @@
                 const all=`${leagueText} ${roundText} ${stageText}`.toLowerCase();
                 const urgent=game?.home_urgency?.active===true||game?.knockout_second_leg_exception===true;
                 const knockout=urgent||/knock|playoff|mata|final|semi|quarter|round of|oitavas|quartas|elimin|qualifying|qualification|preliminary|pré-elimin/.test(all);
-        
+
                 if(knockout){
                   const first=game?.home_urgency?.first_leg_score_home_view || game?.first_leg_score_home_view || game?.first_leg_score || null;
                   const legRaw=String(game?.leg??game?.match_leg??game?.home_urgency?.leg??roundText).toLowerCase();
@@ -22908,7 +22908,7 @@
                     sub:urgencyText
                   };
                 }
-        
+
                 const ph=cpNum(game?.pos_home,null),pa=cpNum(game?.pos_away,null);
                 if(ph!==null&&pa!==null){
                   return {
@@ -22954,15 +22954,15 @@
                 const title=document.getElementById("cpMobileMatchTitle"),sub=document.getElementById("cpMobileMatchSubtitle");
                 if(title) title.textContent="ANÁLISE PRÉ-JOGO";
                 if(sub) sub.textContent="Informações essenciais antes da partida";
-        
+
                 const tableBlock=ctx.type==="league"&&cpNum(game?.pos_home,null)!==null&&cpNum(game?.pos_away,null)!==null
                   ? `<section class="cpPgTable"><small>POSIÇÃO NA TABELA</small><strong>${cpNum(game.pos_home)}º <i>×</i> ${cpNum(game.pos_away)}º</strong><span>${cpEscape(ctx.sub)}</span></section>`
                   : "";
-        
+
                 const h2hSummary=h.games>0
                   ? `<div class="cpPgH2HStats"><span><small>JOGOS</small><b>${h.games}</b></span><span><small>MÉDIA</small><b>${h.avg!==null?h.avg.toFixed(1):"—"}</b></span><span><small>OVER 9.5</small><b>${cpPct(h.o95)}</b></span></div>`
                   : `<div class="cpPgH2HEmpty">SEM CONFRONTOS RECENTES COM DADOS DE ESCANTEIOS</div>`;
-        
+
                 matchContent.innerHTML=`<div class="cpPregameImage2">
                   <section class="cpPg2Hero">
                     <div class="cpPg2Competition"><span>${cpEscape(league)}${round?` • ${cpEscape(round)}`:""}</span><b>PRÉ-JOGO</b></div>
@@ -22972,22 +22972,22 @@
                       <div class="cpPg2Team"><i>${cpEscape(away.charAt(0).toUpperCase())}</i><strong>${cpEscape(away)}</strong><small>FORA</small></div>
                     </div>
                   </section>
-        
+
                   ${ctx.type==="knockout"?`<section class="cpPg2Knockout"><small>🏆 ${cpEscape(legLabel)}</small><strong>CONFRONTO ELIMINATÓRIO</strong><div><span>${firstLeg?`PLACAR DA IDA: ${cpEscape(firstLeg)}`:"AGREGADO"}</span><b>${firstLeg?cpEscape(firstLeg):"—  ×  —"}</b></div></section>`:tableBlock}
-        
+
                   <section class="cpPg2Need"><small>NESTE CONFRONTO, QUEM PRECISA VENCER?</small><strong>${cpEscape(needText)}</strong><span>${ctx.type==="knockout"?(isFirstLeg?"Confronto de ida: a vantagem será construída agora.":"O contexto do agregado define a necessidade ofensiva."):"A classificação indica a pressão competitiva de cada equipe."}</span></section>
-        
+
                   <section class="cpPg2H2H"><h3>🤝 HISTÓRICO DE CONFRONTOS (H2H)</h3>${h2hSummary}<div class="cpPg2Overs"><article><small>OVER 9.5</small><strong>${cpPct(h.o95)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article><small>OVER 10.5</small><strong>${cpPct(h.o105)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article><small>OVER 11.5</small><strong>${cpPct(h.o115)}</strong><span>${h.games?`${h.games} jogos analisados`:"— / — jogos"}</span></article><article class="projection"><small>PROJEÇÃO</small><strong>${proj!==null?proj.toFixed(1):"—"}</strong><span>ESCANTEIOS</span></article></div></section>
-        
+
                   <section class="cpPg2Signals"><article class="good"><b>🛡</b><strong>PRESSÃO<br>${cpEscape(pressure)}</strong><span>${pressure==="ALTA"?"Ataque intenso esperado":"Equilíbrio entre as equipes"}</span></article><article class="warn"><b>⚖</b><strong>${profile==="LATERAIS_FORTES"?"LATERAIS FORTES":"PERFIL EQUILIBRADO"}</strong><span>${profile==="LATERAIS_FORTES"?"Ataques pelos dois lados":"Força semelhante dos lados"}</span></article><article class="orange"><b>ϟ</b><strong>${h2hStrong?"RITMO ALTO":"RITMO MÉDIO"}</strong><span>${h2hStrong?"Histórico favorável":"Tendência moderada"}</span></article><article class="blue"><b>◌</b><strong>${line!==null?`LINHA ${line}`:"LINHA ESTIMADA"}</strong><span>${line!==null?"Mercado confirmado":`Entre 9.5 e 10.5`}</span></article></section>
-        
+
                   <section class="cpPg2Verdict"><div><small>🧠 VEREDITO CORNER PRO</small><p>${cpEscape(shortVerdict)}</p></div><div class="cpPg2Confidence"><strong>${Math.round(prob)}<i>%</i></strong><b>CONFIANÇA</b><span>${prob>=75?"CONFIANTE":prob>=60?"MODERADA":"SEMI CONFIANTE"}</span></div></section>
-        
+
                   <section class="cpPg2Venue"><b>⌖</b><div><small>LOCAL DA PARTIDA</small><strong>${cpEscape(venue)}</strong></div></section>
                   <footer class="cpPg2Auto">ⓘ Ao iniciar a partida, esta tela muda automaticamente para o Match Center ao vivo.</footer>
                 </div>`;
               }
-        
+
               async function openMatch(game,index){
                 openLayer(matchLayer);
                 matchContent.innerHTML='<div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>';
@@ -23020,24 +23020,24 @@
                   }
                 },320);
               }
-        
+
               window.cpMobileOpenMarket = function(type){
                 if(!isMobile()) return;
                 renderMarket(MARKET_DATA[type] ? type : "corners");
                 openLayer(marketLayer);
               };
-        
+
               window.cpMobileCloseLayers = function(){
                 if(matchLayer.classList.contains("is-open")) closeLayer(matchLayer);
                 if(marketLayer.classList.contains("is-open")) closeLayer(marketLayer);
               };
-        
+
               window.cpMobileOpenBestMatch = function(){
                 if(!isMobile()) return;
                 const games = collectGames();
                 if(games.length) openMatch(games[0], 0);
               };
-        
+
               function marketTypeFromTab(tab){
                 const t=String(tab?.textContent||"").toLowerCase();
                 if(t.includes("escante")) return "corners";
@@ -23047,7 +23047,7 @@
                 if(t.includes("pré")||t.includes("pre")) return "pregame";
                 return "corners";
               }
-        
+
               document.addEventListener("click",event=>{
                 if(!isMobile()) return;
                 const tab=event.target.closest(".marketTabs .marketTab");
@@ -23064,7 +23064,7 @@
                 const close=event.target.closest("[data-cp-close]");
                 if(close){ closeLayer(close.dataset.cpClose==="match"?matchLayer:marketLayer); return; }
               },true);
-        
+
               // Cards de jogos da Dashboard abrem diretamente o Match Center por cima.
               document.addEventListener("click",event=>{
                 if(!isMobile()||marketLayer.classList.contains("is-open")||matchLayer.classList.contains("is-open")) return;
@@ -23074,22 +23074,22 @@
                 const rows=$$(".gamesPanel .gameRow,.gamesPanel .compactGameRow,.gamesPanel .premiumGameRow,.gamesPanel .cleanDashRow,[data-match-center-row]");
                 const index=Math.max(0,rows.indexOf(row)); openMatch(collectGames()[index]||null,index);
               },true);
-        
+
               // Barra inferior: Escanteios abre a mesma tela dinâmica de mercados.
               $$(".mobileBottomNav button").forEach(btn=>{
                 if(/escante/i.test(btn.textContent||"")) btn.addEventListener("click",e=>{ if(!isMobile())return;e.preventDefault();renderMarket("corners");openLayer(marketLayer); });
               });
-        
+
               window.addEventListener("popstate",()=>{
                 if(!isMobile()) return;
                 if(matchLayer.classList.contains("is-open")) closeLayer(matchLayer);
                 else if(marketLayer.classList.contains("is-open")) closeLayer(marketLayer);
               });
-        
+
               renderMarket("corners");
             })();
-        
-        
+
+
             /* =========================================================
                DASHBOARD MOBILE V3 — apenas monta a nova home no celular.
                ========================================================= */
@@ -23103,7 +23103,7 @@
               const home=$('#cpMobileHome');
               if(!home || window.__cpMobileMarketCarouselV1) return;
               window.__cpMobileMarketCarouselV1=true;
-        
+
               const MARKETS=['corners','goals','cards'];
               const MARKET_META={
                 corners:{label:'ESCANTEIOS',icon:'⚑',force:'FORÇA DE CANTOS',hint:'Em força de cantos, o melhor jogo do dia fica sempre em primeiro.'},
@@ -23115,7 +23115,7 @@
               let touchStartX=0;
               let touchStartY=0;
               let touchMoving=false;
-        
+
               // Congela a fotografia dos cards de cada mercado. O resultado da partida
               // pode mudar, mas jogo, posição, linha e confiança não são substituídos.
               const MOBILE_MARKET_LOCK_VERSION='v8-pregame-line-lock';
@@ -23143,13 +23143,13 @@
                   }));
                 }catch(error){ console.warn('Não foi possível congelar os mercados do dia.',error); }
               }
-        
+
               let cornerOfficialNoOpportunity=false;
-        
+
               function cornerOfficialLockKey(){
                 return `cornerProOfficialCorner:${MOBILE_MARKET_LOCK_VERSION}:${mobileMarketDate()}`;
               }
-        
+
               function readCornerOfficialLock(){
                 try{
                   return JSON.parse(
@@ -23159,7 +23159,7 @@
                   return null;
                 }
               }
-        
+
               function writeCornerOfficialLock(data){
                 try{
                   localStorage.setItem(
@@ -23173,7 +23173,7 @@
                   );
                 }
               }
-        
+
               function rawGameStatus(item){
                 const g=item?.raw||item||{};
                 return clean(
@@ -23184,36 +23184,36 @@
                   ""
                 ).toLowerCase();
               }
-        
+
               function isFinishedOfficialItem(item){
                 const status=rawGameStatus(item);
-        
+
                 if(/finished|finish|ended|encerrado|full.?time|\bft\b|after|aet|penalties/.test(status)){
                   return true;
                 }
-        
+
                 const g=item?.raw||item||{};
                 const elapsed=numberOf(
                   g?.elapsed,
                   g?.match_elapsed,
                   g?.event_raw?.match_elapsed
                 );
-        
+
                 return Number.isFinite(elapsed)&&elapsed>=120;
               }
-        
+
               function isLiveOfficialItem(item){
                 if(isFinishedOfficialItem(item)) return false;
                 return /live|ao vivo|halftime|intervalo|1st half|2nd half|[1-9]\d?['’]/.test(
                   rawGameStatus(item)
                 );
               }
-        
+
               function itemKickoffMinutes(item){
                 const match=String(item?.time||"").match(/(\d{1,2}):(\d{2})/);
                 return match ? Number(match[1])*60+Number(match[2]) : null;
               }
-        
+
               function manausMinutesNow(){
                 const parts=new Intl.DateTimeFormat("en-US",{
                   timeZone:"America/Manaus",
@@ -23221,19 +23221,19 @@
                   minute:"2-digit",
                   hour12:false
                 }).formatToParts(new Date());
-        
+
                 return (
                   Number(parts.find(p=>p.type==="hour")?.value||0)*60+
                   Number(parts.find(p=>p.type==="minute")?.value||0)
                 );
               }
-        
+
               function isFutureOfficialItem(item){
                 if(isFinishedOfficialItem(item)||isLiveOfficialItem(item)) return false;
-        
+
                 const selectedDate=mobileMarketDate();
                 let today;
-        
+
                 try{
                   today=typeof todayAM_YMD==="function"
                     ? todayAM_YMD()
@@ -23241,17 +23241,17 @@
                 }catch(_){
                   today=new Date().toISOString().slice(0,10);
                 }
-        
+
                 if(selectedDate>today) return true;
                 if(selectedDate<today) return false;
-        
+
                 const kickoff=itemKickoffMinutes(item);
                 return !Number.isFinite(kickoff)||kickoff>=manausMinutesNow()-2;
               }
-        
+
               function isStrongOfficialCorner(item){
                 if(!item||!isFutureOfficialItem(item)) return false;
-        
+
                 const g=item.raw||{};
                 const ai=g?.corners_ai||{};
                 const line=clean(ai?.line||item.market).toUpperCase();
@@ -23270,40 +23270,40 @@
                   ai?.sample_games,
                   ai?.extra?.sample_games
                 )??0;
-        
+
                 const normal=
                   line.startsWith("OVER")&&
                   conf>=66&&
                   projection>=9.6&&
                   elite>=125;
-        
+
                 const exceptionalOver85=
                   line==="OVER 8.5"&&
                   conf>=73&&
                   projection>=9.45&&
                   elite>=133;
-        
+
                 const dataApproved=
                   quality>=2||
                   sample>=3||
                   ai?.calculation_source==="recent_form"||
                   ai?.extra?.calculation_source==="recent_form";
-        
+
                 return (normal||exceptionalOver85)&&dataApproved;
               }
-        
+
               function applyOfficialCornerLock(cornerList){
                 cornerOfficialNoOpportunity=false;
-        
+
                 const list=Array.isArray(cornerList)
                   ? cornerList.slice()
                   : [];
-        
+
                 const lock=readCornerOfficialLock();
-        
+
                 if(lock?.item){
                   const current=list.find(item=>item.id===lock.item.id);
-        
+
                   if(current&&!isFinishedOfficialItem(current)){
                     const remaining=list.filter(item=>item.id!==current.id);
                     writeCornerOfficialLock({
@@ -23313,7 +23313,7 @@
                     });
                     return [current,...remaining];
                   }
-        
+
                   if(!current&&!lock.finished){
                     return [
                       lock.item,
@@ -23321,9 +23321,9 @@
                     ];
                   }
                 }
-        
+
                 const next=list.find(isStrongOfficialCorner);
-        
+
                 if(!next){
                   cornerOfficialNoOpportunity=true;
                   writeCornerOfficialLock({
@@ -23334,20 +23334,20 @@
                   });
                   return list;
                 }
-        
+
                 writeCornerOfficialLock({
                   date:mobileMarketDate(),
                   item:next,
                   selectedAt:new Date().toISOString(),
                   noOpportunity:false
                 });
-        
+
                 return [
                   next,
                   ...list.filter(item=>item.id!==next.id)
                 ];
               }
-        
+
               function clampLocal(n,a,b){ return Math.max(a,Math.min(b,n)); }
               function numberOf(...values){
                 for(const value of values){
@@ -23373,7 +23373,7 @@
                   const match=text.match(/^(\d{1,2}):(\d{2})/);
                   if(match) return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`;
                 }
-        
+
                 const isoCandidates=[g?.kickoff_iso,g?.match_datetime,g?.datetime,g?.fixture?.date,g?.date_time,g?.match_start];
                 for(const value of isoCandidates){
                   if(!value) continue;
@@ -23403,7 +23403,7 @@
                 while(n>100) n/=10;
                 return clampLocal(Math.round(n),5,95);
               }
-        
+
               function rawGames(){
                 const pools=[];
                 const panel=$('.gamesPanel');
@@ -23426,7 +23426,7 @@
                 });
                 return out;
               }
-        
+
               function cornersProjection(g){
                 return numberOf(g?.proj_cantos,g?.projCorners,g?.projection,g?.proj,g?.real?.recentCombinedAvg,g?.avg_total) ?? 9.5;
               }
@@ -23442,7 +23442,7 @@
                 if(proj>=10.1) return 'OVER 9.5';
                 return 'OVER 8.5';
               }
-        
+
               function goalsProjectionLocal(g){
                 const direct=numberOf(
                   g?.markets?.totalExpected,
@@ -23455,18 +23455,18 @@
                   g?.avg_goals
                 );
                 if(Number.isFinite(direct) && direct>0) return clampLocal(direct,1.2,5.2);
-        
+
                 try{
                   if(typeof estimateGoalMarkets==='function'){
                     const n=Number(estimateGoalMarkets(g)?.totalExpected);
                     if(Number.isFinite(n) && n>0) return clampLocal(n,1.2,5.2);
                   }
                 }catch(_){}
-        
+
                 const text=String(g?.match_id ?? g?.event_key ?? `${g?.casa||g?.home||''}|${g?.fora||g?.away||''}|${g?.league_id||g?.liga||''}`);
                 let hash=0;
                 for(let i=0;i<text.length;i++) hash=((hash*31)+text.charCodeAt(i))>>>0;
-        
+
                 const confidence=normalizePct(
                   pickNumber(g,['confidence','prob','over95_prob_adj','over95_prob','ai_score','score_adj','score']),
                   66
@@ -23493,7 +23493,7 @@
                 const fallback=line.includes('4.5')?34+(proj-4.0)*16:line.includes('3.5')?46+(proj-3.1)*16:line.includes('2.5')?58+(proj-2.3)*18:72+(proj-1.6)*13;
                 return normalizePct(p,fallback);
               }
-        
+
               function cardsProjectionLocal(g){
                 const direct=numberOf(
                   g?.proj_cards,
@@ -23504,11 +23504,11 @@
                   g?.cartoes_media
                 );
                 if(Number.isFinite(direct) && direct>0) return clampLocal(direct,2.0,7.0);
-        
+
                 const text=String(g?.match_id ?? g?.event_key ?? `${g?.casa||g?.home||''}|${g?.fora||g?.away||''}|${g?.league_id||g?.liga||''}`);
                 let hash=0;
                 for(let i=0;i<text.length;i++) hash=((hash*33)+text.charCodeAt(i))>>>0;
-        
+
                 const league=clean(g?.liga||g?.league_name||g?.league?.name||'').toLowerCase();
                 let base=3.15+(hash%16)*0.105;
                 if(/la liga|serie a|portugal|primeira|super lig|romania|greece/.test(league)) base+=0.35;
@@ -23535,7 +23535,7 @@
                 const target=Number(line.match(/[\d.]+/)?.[0]||3.5);
                 return normalizePct(p,52+(proj-target)*15);
               }
-        
+
               function marketItem(g,type,index){
                 let projection,confidence,line,score;
                 if(type==='goals'){
@@ -23553,7 +23553,7 @@
                     g?.corners_ai?.pressure_hits,
                     g?.corners_ai?.extra?.pressure_hits
                   )??0;
-        
+
                   const ai=numberOf(
                     g?.corner_elite_score,
                     g?.top1_score,
@@ -23562,17 +23562,17 @@
                     g?.score_adj,
                     g?.score
                   )??0;
-        
+
                   const recent=numberOf(
                     g?.real?.recentCombinedAvg,
                     g?.recentCombinedAvg
                   )??0;
-        
+
                   const sample=numberOf(
                     g?.corners_ai?.sample_games,
                     g?.corners_ai?.extra?.sample_games
                   )??0;
-        
+
                   score=
                     ai*1.55+
                     confidence*.72+
@@ -23593,7 +23593,7 @@
                   g?.event_raw?.id,
                   ""
                 );
-      
+
                 const matchDate = clean(
                   g?.match_date ??
                   g?.event_date ??
@@ -23603,7 +23603,7 @@
                   g?.event_raw?.date,
                   ""
                 );
-      
+
                 return {
                   raw:g,
                   id:gameId(g,index),
@@ -23626,21 +23626,21 @@
                   )
                 };
               }
-        
+
               function buildRankings(){
                 const locked=readMobileMarketLock();
-        
+
                 const games=rawGames();
                 if(!games.length) return marketRankings;
-        
+
                 const rankings={};
-        
+
                 MARKETS.forEach(type=>{
                   rankings[type]=games
                     .map((g,i)=>marketItem(g,type,i))
                     .sort((a,b)=>(b.score-a.score)||(b.conf-a.conf));
                 });
-        
+
                 // Gols e cartões preservam o comportamento anterior.
                 // Escanteios é atualizado para reconhecer quando a partida terminou.
                 if(locked){
@@ -23651,11 +23651,11 @@
                     rankings.cards=locked.cards;
                   }
                 }
-        
+
                 rankings.corners=applyOfficialCornerLock(
                   rankings.corners
                 );
-      
+
                 // Reidrata locks antigos/oficiais com o objeto real do jogo atual.
                 // Sem isso, o card conserva nome/horário, mas perde match_id e não
                 // consegue consultar /match_center.
@@ -23665,7 +23665,7 @@
                   currentById.set(String(item.id), game);
                   if (item.match_id) currentById.set(String(item.match_id), game);
                 });
-      
+
                 const rehydrateRanking = (list, type) => (Array.isArray(list) ? list : [])
                   .map((item, index) => {
                     const raw =
@@ -23678,11 +23678,11 @@
                         return home === item?.home && away === item?.away;
                       }) ||
                       null;
-      
+
                     if (!raw) return item;
-      
+
                     const fresh = marketItem(raw, type, index);
-      
+
                     return {
                       ...item,
                       raw,
@@ -23694,34 +23694,34 @@
                       away: fresh.away || item.away
                     };
                   });
-      
+
                 rankings.corners = rehydrateRanking(rankings.corners, "corners");
                 rankings.goals = rehydrateRanking(rankings.goals, "goals");
                 rankings.cards = rehydrateRanking(rankings.cards, "cards");
-      
+
                 // Cada mercado deve ter um Top 1 próprio. Evita repetir automaticamente
                 // o mesmo jogo do card de cantos quando há outra opção forte disponível.
                 const used=new Set();
-        
+
                 for(const type of MARKETS){
                   const list=rankings[type];
-        
+
                   // Escanteios mantém sempre o melhor absoluto do ranking.
                   // Nos demais mercados, continua evitando repetição visual.
                   if(type !== "corners"){
                     const alternative=list.findIndex(
                       (x,i)=>i<5&&!used.has(x.id)&&x.conf>=55
                     );
-        
+
                     if(alternative>0){
                       list.unshift(list.splice(alternative,1)[0]);
                     }
                   }
-        
+
                   if(list[0]) used.add(list[0].id);
                 }
                 marketRankings=rankings;
-        
+
                 writeMobileMarketLock({
                   corners: rankings.corners.map(item => ({
                     ...item,
@@ -23760,10 +23760,10 @@
                   goals: rankings.goals,
                   cards: rankings.cards
                 });
-        
+
                 return rankings;
               }
-        
+
               function setMobileLoading(mode='initial'){
                 const card=$('#cpHomeBest');
                 const button=$('#cpHomeBestOpen');
@@ -23772,11 +23772,11 @@
                 // o botão do clone e deixar o card visível preso em "CARREGANDO...".
                 const text=card?.querySelector('.cpHomeBestOpenText');
                 const games=$('#cpHomeGames');
-        
+
                 if(!card||!button)return;
-        
+
                 card.classList.remove('is-loading-initial','is-loading-date');
-        
+
                 if(mode==='initial'){
                   card.classList.add('is-loading-initial');
                   card.setAttribute('aria-busy','true');
@@ -23788,7 +23788,7 @@
                   }
                   return;
                 }
-        
+
                 if(mode==='selected'){
                   // Trava o estado de análise para que uma renderização com os jogos
                   // antigos não devolva o botão para "VER ANÁLISE COMPLETA".
@@ -23799,7 +23799,7 @@
                   if(text)text.textContent='ANALISANDO DATA SELECIONADA...';
                   return;
                 }
-        
+
                 if(mode==='loaded'){
                   // Somente a chegada dos novos dados libera a mensagem.
                   window.__cpMobileSelectedDateLoading = false;
@@ -23807,14 +23807,14 @@
                   // Ignora chamadas prematuras de "done" feitas durante a troca.
                   return;
                 }
-        
+
                 card.setAttribute('aria-busy','false');
                 button.disabled=false;
                 games?.classList.remove('is-loading');
                 if(text)text.textContent='VER ANÁLISE COMPLETA →';
               }
               window.CornerProMobileHomeLoading=setMobileLoading;
-        
+
               function currentData(){
                 buildRankings();
                 const list=[...(marketRankings[activeMarket]||[])];
@@ -23840,7 +23840,7 @@
                 const original=$$('.marketTabs .marketTab')[map[type]??1];
                 if(original) original.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
               }
-        
+
               function ensureMarketDots(){
                 let dots=home.querySelector('.cpHomeMarketDots');
                 if(!dots){
@@ -23852,7 +23852,7 @@
                   if(guide) guide.insertAdjacentElement('afterend',dots);
                   else home.prepend(dots);
                 }
-        
+
                 if(dots.children.length!==MARKETS.length){
                   dots.innerHTML=MARKETS.map(market=>{
                     const label=MARKET_META[market]?.label||market;
@@ -23861,20 +23861,20 @@
                 }
                 return dots;
               }
-        
+
               function applyDotState(container, market, allowFocus=false){
                 if(!container)return;
-        
+
                 container.querySelectorAll('[data-cp-home-dot]').forEach(dot=>{
                   const active=dot.dataset.cpHomeDot===market;
-        
+
                   // Remove qualquer estado anterior antes de marcar o atual.
                   dot.classList.remove('active','is-active','current');
                   if(active) dot.classList.add('active');
-        
+
                   dot.setAttribute('aria-selected',active?'true':'false');
                   dot.tabIndex=allowFocus && active ? 0 : -1;
-        
+
                   // Força visualmente apenas um indicador ativo.
                   // O !important neutraliza regras antigas por nth-child no Safari.
                   dot.style.setProperty('width',active?'14px':'5px','important');
@@ -23889,11 +23889,11 @@
                   dot.style.setProperty('opacity',active?'1':'.72','important');
                 });
               }
-        
+
               function updateDots(){
                 const dots=ensureMarketDots();
                 applyDotState(dots,activeMarket,true);
-        
+
                 // O CSS também usa este atributo como garantia visual no Safari.
                 home.dataset.activeMarket=activeMarket;
               }
@@ -23908,11 +23908,11 @@
                 const best=data[0]; const meta=MARKET_META[activeMarket];
                 home.dataset.activeMarket=activeMarket;
                 $('#cpHomeBest')?.setAttribute('data-market',activeMarket);
-        
+
                 const noCornerOpportunity=
                   activeMarket==='corners'&&
                   cornerOfficialNoOpportunity;
-        
+
                 if(noCornerOpportunity){
                   $('#cpHomeBestTitle').textContent='⚑ ESCANTEIOS';
                   $('#cpHomeBestTime').textContent='HOJE';
@@ -23922,7 +23922,7 @@
                   $('#cpHomeBestMarket').textContent='NENHUM JOGO FORTE';
                   $('#cpHomeMatchTeams').textContent=
                     'A IA não encontrou mais jogos bons de escanteios no dia.';
-        
+
                   const openButton=$('#cpHomeBestOpen');
                   if(openButton){
                     openButton.disabled=true;
@@ -23940,7 +23940,7 @@
                   $('#cpHomeBestConfidence').textContent=best.conf+'%';
                   $('#cpHomeBestMarket').textContent=best.market;
                   $('#cpHomeMatchTeams').textContent=best.home+' × '+best.away;
-        
+
                   const openButton=$('#cpHomeBestOpen');
                   if(openButton){
                     openButton.disabled=false;
@@ -23972,7 +23972,7 @@
                 activeMarket=MARKETS[(current+direction+MARKETS.length)%MARKETS.length];
                 render();
               }
-        
+
               home.addEventListener('click',e=>{
                 const dot=e.target.closest('[data-cp-home-dot]');
                 if(dot){e.preventDefault();activeMarket=dot.dataset.cpHomeDot;render();buildSwipeTrack();return;}
@@ -23982,9 +23982,9 @@
                 if(market){
                   e.preventDefault();
                   e.stopImmediatePropagation();
-        
+
                   const marketType=market.dataset.homeMarket;
-        
+
                   if(['handicap','btts','goals','corners','cards'].includes(marketType)){
                     openMarkets(marketType);
                   }else{
@@ -24002,13 +24002,13 @@
                 }
                 if(e.target.closest('#cpHomeMatchOpen')){e.preventDefault();openItem(currentData()[0]);}
               });
-        
+
               const swipeCard=$('#cpHomeBest');
               const swipeGuide=$('.cpHomeSwipeGuide');
               if(swipeGuide){
                 swipeGuide.innerHTML='<span aria-hidden="true">‹</span><b>Deslize</b><span aria-hidden="true">›</span>';
               }
-        
+
               /* =======================================================
                  CARROSSEL MOBILE — TRILHO NATIVO INSPIRADO NO NUBANK
                  - Mantém o card original e todo o visual existente.
@@ -24031,12 +24031,12 @@
               let swipeLastX=0;
               let swipeLastTime=0;
               let swipeVelocity=0;
-        
+
               function marketAtOffset(offset){
                 const current=MARKETS.indexOf(activeMarket);
                 return MARKETS[(current+offset+MARKETS.length)%MARKETS.length];
               }
-        
+
               function dataForMarket(type){
                 buildRankings();
                 const list=[...(marketRankings[type]||[])];
@@ -24046,7 +24046,7 @@
                 });
                 return list;
               }
-        
+
               function stripCloneIds(root){
                 root.removeAttribute('id');
                 root.querySelectorAll('[id]').forEach(el=>{
@@ -24054,11 +24054,11 @@
                   el.removeAttribute('id');
                 });
               }
-        
+
               function cloneField(root,id){
                 return root.querySelector(`[data-clone-id="${id}"]`);
               }
-        
+
               function paintClone(root,type){
                 const data=dataForMarket(type);
                 if(!data.length) return;
@@ -24080,10 +24080,10 @@
                 if(market) market.textContent=best.market;
                 window.__cpPaintBestTeamColors?.(root,best);
                 cpUpdateBestMarketTitle(root,best,marketType);
-      
+
                 root.__cpCurrentRaw = best.raw || best;
                 root.__cpCurrentNormalized = best;
-      
+
                 if (typeof window.cpUpdateHomeBestCloneCard === "function") {
                   window.cpUpdateHomeBestCloneCard(
                     root,
@@ -24091,11 +24091,11 @@
                     root.__cpCurrentNormalized
                   );
                 }
-        
+
                 // Cada slide mantém seus próprios 3 indicadores sincronizados.
                 // A função também neutraliza estilos antigos que marcavam o 1º ponto.
                 applyDotState(root,type,false);
-        
+
                 const btn=root.querySelector('button');
                 if(btn){
                   btn.disabled=false;
@@ -24105,7 +24105,7 @@
                 root.classList.remove('is-loading-initial','is-loading-date','is-dragging','is-settling','is-entering');
                 root.setAttribute('aria-hidden','true');
               }
-        
+
               function makeClone(type){
                 const clone=swipeCard.cloneNode(true);
                 stripCloneIds(clone);
@@ -24113,19 +24113,19 @@
                 paintClone(clone,type);
                 return clone;
               }
-        
+
               function setTrackX(x,animate=false){
                 if(!swipeTrack)return;
                 swipeTrack.style.transition=animate?'transform .32s cubic-bezier(.22,1,.36,1)':'none';
                 swipeTrack.style.transform=`translate3d(${x}px,0,0)`;
               }
-        
+
               function measureSwipe(){
                 if(!swipeViewport)return;
                 swipeWidth=Math.max(1,swipeViewport.clientWidth);
                 if(!swipeMoving&&!swipeAnimating) setTrackX(-swipeWidth,false);
               }
-        
+
               function syncSwipeHeight(){
                 if(!swipeViewport)return;
                 // A altura é controlada pelo CSS no mobile. Removemos medições por scrollHeight,
@@ -24137,12 +24137,12 @@
                   slide.style.removeProperty('max-height');
                 });
               }
-        
+
               window.__cpSyncHomeSwipeHeight=syncSwipeHeight;
-        
+
               function buildSwipeTrack(){
                 if(!swipeCard || !window.matchMedia('(max-width:700px)').matches) return;
-        
+
                 if(!swipeViewport){
                   swipeViewport=document.createElement('div');
                   swipeViewport.className='cpHomeSwipeViewport';
@@ -24153,7 +24153,7 @@
                   swipeViewport.appendChild(swipeTrack);
                   swipeTrack.appendChild(swipeCard);
                 }
-        
+
                 swipeTrack.querySelectorAll('.cpHomeBestClone').forEach(el=>el.remove());
                 const previous=makeClone(marketAtOffset(-1));
                 const next=makeClone(marketAtOffset(1));
@@ -24165,19 +24165,19 @@
                   syncSwipeHeight();
                 });
               }
-        
+
               function paintSwipeTrack(){
                 swipeFrame=0;
                 if(!swipeTrack)return;
                 setTrackX(-swipeWidth+swipeDx,false);
               }
-        
+
               function finishSwipe(direction){
                 if(!swipeTrack)return;
                 swipeAnimating=true;
                 const destination=direction>0?-swipeWidth*2:direction<0?0:-swipeWidth;
                 setTrackX(destination,true);
-        
+
                 const done=()=>{
                   swipeTrack.removeEventListener('transitionend',done);
                   if(direction){
@@ -24192,7 +24192,7 @@
                   if(swipeAnimating) done();
                 },420);
               }
-        
+
               function onTouchStart(e){
                 if(swipeAnimating || e.touches.length!==1)return;
                 const t=e.touches[0];
@@ -24205,50 +24205,50 @@
                 swipeTrack?.classList.add('is-dragging');
                 setTrackX(-swipeWidth,false);
               }
-        
+
               function onTouchMove(e){
                 if(!swipeMoving || e.touches.length!==1)return;
                 const t=e.touches[0];
                 swipeDx=t.clientX-swipeStartX;
                 swipeDy=t.clientY-swipeStartY;
-        
+
                 if(!swipeAxis && (Math.abs(swipeDx)>4 || Math.abs(swipeDy)>4)){
                   swipeAxis=Math.abs(swipeDx)>Math.abs(swipeDy)*1.08?'x':'y';
                 }
                 if(swipeAxis!=='x')return;
-        
+
                 e.preventDefault();
                 const now=performance.now();
                 const dt=Math.max(1,now-swipeLastTime);
                 swipeVelocity=(t.clientX-swipeLastX)/dt;
                 swipeLastX=t.clientX;
                 swipeLastTime=now;
-        
+
                 // Resistência apenas nas pontas virtuais; entre os mercados é movimento 1:1.
                 const max=swipeWidth*.92;
                 swipeDx=Math.max(-max,Math.min(max,swipeDx));
-        
+
                 // Pré-visualiza o ponto do próximo card enquanto o dedo acompanha o trilho.
                 const previewDirection = Math.abs(swipeDx) >= swipeWidth*.12 ? (swipeDx<0 ? 1 : -1) : 0;
                 const previewIndex=(MARKETS.indexOf(activeMarket)+previewDirection+MARKETS.length)%MARKETS.length;
                 const previewMarket=MARKETS[previewIndex];
                 applyDotState(ensureMarketDots(),previewMarket,true);
-        
+
                 if(!swipeFrame)swipeFrame=requestAnimationFrame(paintSwipeTrack);
               }
-        
+
               function onTouchEnd(){
                 if(!swipeMoving)return;
                 swipeMoving=false;
                 swipeTrack?.classList.remove('is-dragging');
                 if(swipeFrame){cancelAnimationFrame(swipeFrame);swipeFrame=0;paintSwipeTrack();}
-        
+
                 if(swipeAxis!=='x'){
                   updateDots();
                   finishSwipe(0);
                   return;
                 }
-        
+
                 const distanceTrigger=swipeWidth*.18;
                 const velocityTrigger=.42;
                 let direction=0;
@@ -24257,9 +24257,9 @@
                 }
                 finishSwipe(direction);
               }
-        
+
               buildSwipeTrack();
-        
+
               swipeViewport?.addEventListener('touchstart',onTouchStart,{passive:true});
               swipeViewport?.addEventListener('touchmove',onTouchMove,{passive:false});
               swipeViewport?.addEventListener('touchend',onTouchEnd,{passive:true});
@@ -24268,7 +24268,7 @@
                 swipeTrack?.classList.remove('is-dragging');
                 finishSwipe(0);
               },{passive:true});
-        
+
               home.addEventListener('click',e=>{
                 const cloneButton=e.target.closest('[data-clone-open-market]');
                 if(!cloneButton)return;
@@ -24277,12 +24277,12 @@
                 const item=dataForMarket(type)[0];
                 if(item)openItem(item);
               });
-        
+
               window.addEventListener('resize',()=>requestAnimationFrame(()=>{
                 measureSwipe();
                 syncSwipeHeight();
               }),{passive:true});
-        
+
               setMobileLoading('initial');
               let checks=0;
               const timer=setInterval(()=>{checks++;render();if(rawGames().length||checks>=120)clearInterval(timer)},250);
@@ -24290,7 +24290,7 @@
               const panel=$('.gamesPanel');if(panel)observer.observe(panel,{childList:true,subtree:true,characterData:true});
               setInterval(render,2200);
             })();
-        
+
             /* =========================================================
                CALENDÁRIO MOBILE V4 — funciona diretamente na nova Home.
                Exclusivo até 700px; desktop permanece intacto.
@@ -24301,7 +24301,7 @@
               const trigger=document.querySelector('.cpHomeCalendar');
               if(!trigger || window.__cpMobileCalendarV4) return;
               window.__cpMobileCalendarV4=true;
-        
+
               const MONTHS=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
               const SHORT=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
               const pad=n=>String(n).padStart(2,'0');
@@ -24311,7 +24311,7 @@
               const input=document.getElementById('date');
               let selected=parseYMD(input?.value||new URL(location.href).searchParams.get('date')||toYMD(new Date()));
               let view=new Date(selected);
-        
+
               const layer=document.createElement('section');
               layer.className='cpMobileCalendarLayer';
               layer.setAttribute('aria-hidden','true');
@@ -24326,7 +24326,7 @@
               document.body.appendChild(layer);
               const title=layer.querySelector('[data-cpm-cal-title]');
               const grid=layer.querySelector('[data-cpm-cal-grid]');
-        
+
               function updateTrigger(){trigger.innerHTML=`<span class="cpCalMonth">${SHORT[selected.getMonth()]}</span><span class="cpCalDay">${pad(selected.getDate())}</span>`;}
               function render(){
                 title.textContent=`${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
@@ -24350,7 +24350,7 @@
                   location.reload();
                 }catch(err){console.error('Calendário mobile:',err);location.reload();}
               }
-        
+
               trigger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();open();});
               layer.addEventListener('click',e=>{
                 if(e.target===layer||e.target.closest('[data-cpm-cal-close]')){close();return;}
@@ -24371,13 +24371,13 @@
               "use strict";
               if(window.__premiumMobileMatchCenterV4) return;
               window.__premiumMobileMatchCenterV4 = true;
-        
+
               const mobile=()=>window.matchMedia&&window.matchMedia("(max-width:700px)").matches;
               const esc=v=>String(v??"—").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
               const text=(root,sel,fallback="—")=>String(root.querySelector(sel)?.textContent||fallback).trim();
               const num=v=>{const n=parseFloat(String(v??"").replace(",","."));return Number.isFinite(n)?n:null};
               const initials=name=>String(name||"FC").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
-        
+
               function metricRows(clone){
                 const rows=[];
                 clone.querySelectorAll(".mcRailCompare .mcMetricRow,.mcRailCompare [class*='metric'],.mcRailCompare>div").forEach(el=>{
@@ -24394,12 +24394,12 @@
                 rows.forEach(r=>{const k=r.label.toLowerCase();if(!seen.has(k)){seen.add(k);unique.push(r)}});
                 return unique;
               }
-        
+
               function parseScore(clone){
                 const s=text(clone,".mcRailScore strong","0 - 0");
                 const m=s.match(/(\d+)\s*[-x×]\s*(\d+)/i); return m?[m[1],m[2]]:["0","0"];
               }
-        
+
               function parseEvents(clone){
                 const out=[];
                 clone.querySelectorAll(".mcRailMini:last-child li,.mcRailMini:last-child [class*='event'],.mcRailMini:last-child p").forEach((el,i)=>{
@@ -24411,12 +24411,12 @@
                 });
                 return out.slice(0,10);
               }
-        
+
               function statIcon(label){
                 const s=label.toLowerCase();
                 if(s.includes("escante"))return"⚑";if(s.includes("final"))return"◎";if(s.includes("posse"))return"◔";if(s.includes("cart"))return"▯";if(s.includes("alvo"))return"🎯";if(s.includes("passe"))return"↗";if(s.includes("falta"))return"!";return"●";
               }
-        
+
               function build(clone){
                 if(!mobile()||clone.dataset.premiumBuilt==="1") return;
                 clone.dataset.premiumBuilt="1";
@@ -24433,11 +24433,11 @@
                 const reading=text(clone,".mcRailMini:first-child p",`${home} aparece com maior pressão ofensiva no recorte atual.`);
                 const svg=clone.querySelector(".mcRailPressureCard svg")?.outerHTML||'<div class="mcPremiumEmpty">Gráfico ainda não disponível para esta partida.</div>';
                 const events=parseEvents(clone);
-        
+
                 const preferred=["Escanteios","Finalizações","Posse de bola","Cartões"];
                 const stats=[...preferred.map(p=>metrics.find(r=>r.label.toLowerCase().includes(p.toLowerCase().split(" ")[0]))).filter(Boolean),...metrics].filter((r,i,a)=>a.indexOf(r)===i).slice(0,4);
                 while(stats.length<4) stats.push({label:["Escanteios","Finalizações","Posse de bola","Cartões"][stats.length],home:"—",away:"—"});
-        
+
                 clone.innerHTML=`<div class="mcPremiumMobile">
                   <section class="mcPremiumHero">
                     <div class="mcPremiumLeague">${esc(league)}</div><span class="mcPremiumStatus">${esc(status)}</span>
@@ -24463,7 +24463,7 @@
                   <section class="mcPremiumPane" data-mc-content="moments"><article class="mcPremiumCard"><div class="mcPremiumCardHead"><h3>Momentos importantes</h3></div><div class="mcPremiumTimeline">${events.length?events.map((e,i)=>`<div class="mcPremiumEvent"><time>${esc(e.minute)}</time><span>${e.icon}</span><div><b>${esc(e.kind)}</b><small>${esc(e.text)}</small></div><em>${i%2?esc(ga):esc(gh)}</em></div>`).join(""):'<div class="mcPremiumEmpty">Nenhum momento detalhado disponível para esta partida.</div>'}</div></article></section>
                 </div>`;
               }
-        
+
               document.addEventListener("click",e=>{
                 if(!mobile())return;
                 const tab=e.target.closest(".mcPremiumTab");if(!tab)return;
@@ -24471,7 +24471,7 @@
                 root.querySelectorAll(".mcPremiumTab").forEach(x=>x.classList.toggle("active",x===tab));
                 root.querySelectorAll(".mcPremiumPane").forEach(x=>x.classList.toggle("active",x.dataset.mcContent===tab.dataset.mcPane));
               });
-        
+
               const target=document.getElementById("cpMobileMatchContent");
               if(!target)return;
               const observer=new MutationObserver(()=>{
@@ -24489,22 +24489,22 @@
                ========================================================= */
             (function firebaseGoogleAuthBridge(){
               "use strict";
-        
+
               const PREMIUM_KEY = "cornersPremiumLogged";
               const FIREBASE_MODULE = "./firebase-client.js";
-        
+
               let firebaseApi = null;
               let currentProfile = null;
               let authBusy = false;
-        
+
               function safeStorageSet(key, value){
                 try { localStorage.setItem(key, value); } catch (_) {}
               }
-        
+
               function safeStorageRemove(key){
                 try { localStorage.removeItem(key); } catch (_) {}
               }
-        
+
               function escapeAuthHtml(value){
                 return String(value ?? "")
                   .replaceAll("&", "&amp;")
@@ -24513,34 +24513,34 @@
                   .replaceAll('"', "&quot;")
                   .replaceAll("'", "&#039;");
               }
-        
+
               function removeDemoLogin(){
                 document.querySelectorAll(
                   "#premiumLoginOverlay,.premiumLoginOverlay,#premiumAuthBar"
                 ).forEach(element => element.remove());
               }
-        
+
               function authHost(){
                 let host = document.getElementById("firebaseAuthBar");
                 if (host) return host;
-        
+
                 host = document.createElement("div");
                 host.id = "firebaseAuthBar";
                 host.className = "firebaseAuthBar";
-        
+
                 const preferredParent =
                   document.querySelector(".top-right") ||
                   document.querySelector(".topbar") ||
                   document.querySelector("header") ||
                   document.body;
-        
+
                 preferredParent.appendChild(host);
                 return host;
               }
-        
+
               function installAuthStyles(){
                 if (document.getElementById("firebaseAuthStyles")) return;
-        
+
                 const style = document.createElement("style");
                 style.id = "firebaseAuthStyles";
                 style.textContent = `
@@ -24565,26 +24565,26 @@
                 `;
                 document.head.appendChild(style);
               }
-        
+
               function syncLegacyPremiumState(profile){
                 const premium = profile?.premium === true;
-        
+
                 if (premium) safeStorageSet(PREMIUM_KEY, "1");
                 else safeStorageRemove(PREMIUM_KEY);
-        
+
                 window.firebaseCurrentUser = profile?.user || null;
                 window.firebaseCurrentProfile = profile || null;
                 window.firebaseIsPremium = premium;
-        
+
                 document.dispatchEvent(new CustomEvent("firebase-auth-updated", {
                   detail: { user: window.firebaseCurrentUser, profile, premium }
                 }));
               }
-        
+
               function renderLoggedOut(errorMessage = ""){
                 currentProfile = null;
                 syncLegacyPremiumState(null);
-        
+
                 const host = authHost();
                 host.innerHTML = `
                   <button type="button" class="firebaseGoogleBtn" id="firebaseGoogleLoginBtn">
@@ -24592,18 +24592,18 @@
                   </button>
                   ${errorMessage ? `<span class="firebaseAuthError">${escapeAuthHtml(errorMessage)}</span>` : ""}
                 `;
-        
+
                 host.querySelector("#firebaseGoogleLoginBtn")?.addEventListener("click", loginWithGoogle);
               }
-        
+
               function renderLoggedIn(user, profile){
                 currentProfile = profile;
                 syncLegacyPremiumState(profile);
-        
+
                 const premium = profile?.premium === true;
                 const displayName = user?.displayName || profile?.nome || user?.email || "Usuário";
                 const photoURL = user?.photoURL || profile?.foto || "";
-        
+
                 const host = authHost();
                 host.innerHTML = `
                   <div class="firebaseUserBox">
@@ -24617,36 +24617,36 @@
                   </div>
                   <button type="button" class="firebaseLogoutBtn" id="firebaseLogoutBtn">SAIR</button>
                 `;
-        
+
                 host.querySelector("#firebaseLogoutBtn")?.addEventListener("click", logoutFirebase);
               }
-        
+
               async function serverProfile(user, forceTokenRefresh = false){
                 if (!user) return null;
-        
+
                 const token = await user.getIdToken(forceTokenRefresh);
-        
+
                 const loginResponse = await fetch("/auth/firebase", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ token })
                 });
-        
+
                 const loginData = await loginResponse.json().catch(() => ({}));
                 if (!loginResponse.ok){
                   throw new Error(loginData?.error || "O servidor recusou a autenticação.");
                 }
-        
+
                 const meResponse = await fetch("/auth/me", {
                   headers: { Authorization: `Bearer ${token}` },
                   cache: "no-store"
                 });
-        
+
                 const meData = await meResponse.json().catch(() => ({}));
                 if (!meResponse.ok){
                   throw new Error(meData?.error || "Não foi possível carregar o perfil.");
                 }
-        
+
                 return {
                   ...meData,
                   user: meData?.user || loginData?.user || {
@@ -24658,17 +24658,17 @@
                   premium: meData?.premium === true || loginData?.user?.premium === true
                 };
               }
-        
+
               async function loginWithGoogle(){
                 if (!firebaseApi || authBusy) return;
                 authBusy = true;
-        
+
                 const button = document.getElementById("firebaseGoogleLoginBtn");
                 if (button){
                   button.disabled = true;
                   button.textContent = "ENTRANDO...";
                 }
-        
+
                 try {
                   const result = await firebaseApi.entrarComGoogle();
                   const user = result?.usuario || firebaseApi.firebaseAuth?.currentUser;
@@ -24681,14 +24681,14 @@
                   authBusy = false;
                 }
               }
-        
+
               async function logoutFirebase(){
                 if (!firebaseApi || authBusy) return;
                 authBusy = true;
-        
+
                 const button = document.getElementById("firebaseLogoutBtn");
                 if (button) button.disabled = true;
-        
+
                 try {
                   await firebaseApi.sairDaConta();
                 } catch (error){
@@ -24699,32 +24699,32 @@
                   renderLoggedOut();
                 }
               }
-        
+
               async function authenticatedFetch(url, options = {}){
                 if (!firebaseApi) throw new Error("Firebase ainda não foi inicializado.");
                 return firebaseApi.fetchAutenticado(url, options);
               }
-        
+
               async function initializeFirebaseBridge(){
                 installAuthStyles();
                 removeDemoLogin();
                 renderLoggedOut();
-        
+
                 try {
                   firebaseApi = await import(FIREBASE_MODULE);
-        
+
                   window.firebaseAuthenticatedFetch = authenticatedFetch;
                   window.firebaseLoginWithGoogle = loginWithGoogle;
                   window.firebaseLogout = logoutFirebase;
-        
+
                   firebaseApi.observarAutenticacao(async authState => {
                     const user = authState?.usuario || null;
-        
+
                     if (!user){
                       renderLoggedOut();
                       return;
                     }
-        
+
                     try {
                       const profile = await serverProfile(user);
                       renderLoggedIn(user, profile);
@@ -24738,14 +24738,14 @@
                   renderLoggedOut("Configure o arquivo firebase-client.js para ativar o login.");
                 }
               }
-        
+
               if (document.readyState === "loading"){
                 document.addEventListener("DOMContentLoaded", initializeFirebaseBridge, { once:true });
               } else {
                 initializeFirebaseBridge();
               }
             })();
-        
+
             /* =========================================================
                MOBILE APP V1 — pequenos ajustes de apresentação
                ========================================================= */
@@ -24758,7 +24758,7 @@
                 if(month) month.textContent=months[now.getMonth()];
                 if(day) day.textContent=String(now.getDate()).padStart(2,'0');
               }
-        
+
               function normalizeUpcomingRows(){
                 document.querySelectorAll('#cpHomeLastGames .cpHomeLastGame').forEach(row=>{
                   const percentage=row.querySelector('strong');
@@ -24769,7 +24769,7 @@
                   }
                 });
               }
-        
+
               updateMobileHeaderDate();
               const target=document.getElementById('cpHomeLastGames');
               if(target){
@@ -24777,7 +24777,7 @@
                 normalizeUpcomingRows();
               }
             })();
-        
+
             /* =========================================================
                HOTFIX MOBILE V2 — CARREGAMENTO INDEPENDENTE E À PROVA DE FALHAS
                - Não depende do render desktop para liberar a Home mobile.
@@ -24789,7 +24789,7 @@
               if (window.__cpMobileControllerV9) return;
               if (window.__cpMobileDirectLoaderInstalled) return;
               window.__cpMobileDirectLoaderInstalled = true;
-        
+
               const $ = (s, r=document) => r.querySelector(s);
               const clean = (v, fb='') => {
                 const s = String(v ?? '').trim();
@@ -24803,7 +24803,7 @@
                 return null;
               };
               const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
-        
+
               function ymdManaus(){
                 const input = $('#date');
                 if (input?.value) return input.value;
@@ -24815,7 +24815,7 @@
                   return new Date().toISOString().slice(0,10);
                 }
               }
-        
+
               function extract(payload){
                 if (Array.isArray(payload)) return payload;
                 if (!payload || typeof payload !== 'object') return [];
@@ -24833,7 +24833,7 @@
                 }
                 return [];
               }
-        
+
               async function fetchWithTimeout(url, ms=18000){
                 const controller = new AbortController();
                 const timer = setTimeout(() => controller.abort(), ms);
@@ -24845,7 +24845,7 @@
                   clearTimeout(timer);
                 }
               }
-        
+
               async function fetchGames(date){
                 const endpoints = ['/quentes','/mercados','/prelive_best'];
                 let lastError = null;
@@ -24863,14 +24863,14 @@
                 if (lastError) throw lastError;
                 return [];
               }
-        
+
               function nameOf(g, home){
                 return clean(home
                   ? (g.casa ?? g.home ?? g.home_name ?? g.team_home ?? g.mandante ?? g.teams?.home?.name)
                   : (g.fora ?? g.away ?? g.away_name ?? g.team_away ?? g.visitante ?? g.teams?.away?.name),
                   home ? 'Time da casa' : 'Visitante');
               }
-        
+
               function timeOf(g){
                 const ready = clean(g.hora_manaus ?? g.hora_am ?? g.time_manaus ?? g.kickoff_manaus ?? g.horario_manaus);
                 const legacy = clean(g.hora ?? g.time ?? g.match_time ?? g.event_time ?? g.kickoff ?? g.horario);
@@ -24886,11 +24886,11 @@
                 }
                 return '--:--';
               }
-        
+
               function projection(g){
                 return num(g.proj_cantos,g.projCorners,g.corners_projection,g.corner_projection,g.projection,g.proj,g.real?.recentCombinedAvg,g.avg_total) ?? 9.5;
               }
-        
+
               function confidence(g){
                 let p = num(g.over95_prob_adj,g.over95_prob,g.prob,g.confidence,g.ai_score,g.score,g.markets?.prob?.corners95);
                 if (p === null) p = 50 + (projection(g)-9.5)*9;
@@ -24898,7 +24898,7 @@
                 while (p > 100) p /= 10;
                 return Math.round(clamp(p,5,95));
               }
-        
+
               function line(g){
                 const p = projection(g);
                 if (p >= 12.1) return 'OVER 11.5';
@@ -24906,11 +24906,11 @@
                 if (p >= 10.1) return 'OVER 9.5';
                 return 'OVER 8.5';
               }
-        
+
               function idOf(g,index){
                 return clean(g.match_id ?? g.fixture_id ?? g.event_id ?? g.id, `${nameOf(g,true)}|${nameOf(g,false)}|${index}`);
               }
-        
+
               function normalize(g,index){
                 return {
                   raw:g,
@@ -24923,7 +24923,7 @@
                   proj:projection(g)
                 };
               }
-        
+
               function dedupe(list){
                 const seen = new Set();
                 return list.map(normalize).filter(game => {
@@ -24932,12 +24932,12 @@
                   return true;
                 }).sort((a,b)=>(b.conf-a.conf)||(b.proj-a.proj));
               }
-        
+
               function setText(selector, value){
                 const el = $(selector);
                 if (el) el.textContent = value;
               }
-        
+
               function stopLoading(){
                 const card = $('#cpHomeBest');
                 const button = $('#cpHomeBestOpen');
@@ -24951,7 +24951,7 @@
                 $('#cpHomeInitialLoading')?.setAttribute('hidden','');
                 $('#cpHomeGames')?.classList.remove('is-loading');
               }
-        
+
               function showState(title, subtitle){
                 const card = $('#cpHomeBest');
                 card?.classList.remove('is-loading-initial','is-loading-date');
@@ -24975,23 +24975,23 @@
                   games.innerHTML = `<div class="cpHomeEmptyState"><strong>${title}</strong><small>${subtitle}</small></div>`;
                 }
               }
-        
+
               function openDesktopRow(index){
                 const rows = [...document.querySelectorAll('.gamesPanel .gameRow')];
                 const row = rows[index] || rows[0];
                 row?.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
               }
-        
+
               function render(games){
                 if (!games.length){
                   showState('SEM JOGOS DISPONÍVEIS','A API não retornou partidas para esta data. Escolha outro dia no calendário.');
                   return;
                 }
-        
+
                 window.__cornerProAllGames = games.map(g=>g.raw);
                 window.__lastRawGames = games.map(g=>g.raw);
                 const best = games[0];
-        
+
                 stopLoading();
                 setText('#cpHomeBestTitle','⚑ MELHOR APOSTA DE ESCANTEIOS');
                 setText('#cpHomeBestTime',best.time);
@@ -25000,11 +25000,11 @@
                 setText('#cpHomeBestConfidence',`${best.conf}%`);
                 setText('#cpHomeBestMarket',best.market);
                 setText('#cpHomeMatchTeams',`${best.home} × ${best.away}`);
-        
+
                 if (typeof window.cpUpdateHomeBestLiveCard === "function") {
                   window.cpUpdateHomeBestLiveCard(best.raw || best, best);
                 }
-        
+
                 const list = $('#cpHomeGames');
                 if (list){
                   list.innerHTML = games.slice(0,5).map((g,i)=>`
@@ -25014,7 +25014,7 @@
                       <small>${g.market}</small><strong>${g.conf}%</strong>
                     </button>`).join('');
                 }
-        
+
                 const last = $('#cpHomeLastGames');
                 if (last){
                   last.innerHTML = games.slice(1,4).map((g,i)=>`
@@ -25022,16 +25022,16 @@
                       <time>${g.time}</time><b>${g.home}<br>${g.away}</b><strong>${g.conf}%</strong><i>›</i>
                     </button>`).join('');
                 }
-        
+
                 window.__cpMobileDirectGames = games;
               }
-        
+
               async function load(force=false){
                 const home = $('#cpMobileHome');
                 if (!home || !window.matchMedia('(max-width: 980px)').matches) return;
                 if (window.__cpMobileDirectLoading && !force) return;
                 window.__cpMobileDirectLoading = true;
-        
+
                 try{
                   const date = ymdManaus();
                   const raw = await fetchGames(date);
@@ -25043,7 +25043,7 @@
                   window.__cpMobileDirectLoading = false;
                 }
               }
-        
+
               document.addEventListener('click', event => {
                 const item = event.target.closest('[data-direct-mobile-game]');
                 if (item){
@@ -25059,10 +25059,10 @@
                   }
                 }
               }, true);
-        
+
               const dateInput = $('#date');
               dateInput?.addEventListener('change',()=>setTimeout(()=>load(true),80));
-        
+
               function start(){
                 setTimeout(()=>load(false),350);
                 setTimeout(()=>{
@@ -25070,14 +25070,14 @@
                   if (card?.classList.contains('is-loading-initial')) load(true);
                 },3500);
               }
-        
+
               if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
               else start();
-        
+
               window.CornerProMobileDirectReload = () => load(true);
             })();
-        
-        
+
+
           /* =========================================================
              HOTFIX MOBILE V3 — PROTEÇÃO CONTRA TELA ESCURA
              Mantém a Home mobile visível quando nenhuma camada interna
@@ -25086,28 +25086,28 @@
           (function installMobileVisibilityGuard(){
             if (window.__cpMobileVisibilityGuardInstalled) return;
             window.__cpMobileVisibilityGuardInstalled = true;
-        
+
             function isMobile(){
               return window.matchMedia("(max-width: 980px)").matches;
             }
-        
+
             function layerIsOpen(el){
               if (!el) return false;
               return el.getAttribute("aria-hidden") === "false"
                 || el.classList.contains("is-open")
                 || el.classList.contains("active");
             }
-        
+
             function restoreMobileHome(){
               if (!isMobile()) return;
-        
+
               const home = document.getElementById("cpMobileHome");
               if (!home) return;
-        
+
               const markets = document.getElementById("cpMobileMarketsLayer");
               const match = document.getElementById("cpMobileMatchLayer");
               const internalLayerOpen = layerIsOpen(markets) || layerIsOpen(match);
-        
+
               if (!internalLayerOpen){
                 home.hidden = false;
                 home.removeAttribute("aria-hidden");
@@ -25115,7 +25115,7 @@
                 home.style.removeProperty("visibility");
                 home.style.removeProperty("opacity");
                 home.style.removeProperty("pointer-events");
-        
+
                 document.documentElement.style.removeProperty("overflow");
                 document.body.style.removeProperty("overflow");
                 document.body.style.removeProperty("visibility");
@@ -25131,20 +25131,20 @@
                 );
               }
             }
-        
+
             function startGuard(){
               restoreMobileHome();
               setTimeout(restoreMobileHome, 250);
               setTimeout(restoreMobileHome, 1200);
               setTimeout(restoreMobileHome, 4000);
             }
-        
+
             if (document.readyState === "loading"){
               document.addEventListener("DOMContentLoaded", startGuard, { once:true });
             } else {
               startGuard();
             }
-        
+
             window.addEventListener("pageshow", startGuard);
             window.addEventListener("resize", restoreMobileHome);
           })();
@@ -25165,33 +25165,33 @@
             "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
           );
         })();
-        
-        
+
+
         /* =========================================================
            CORNER PRO — BARRA INFERIOR FIXA EM TODAS AS TELAS
            Somente front-end. Não altera servidor, API ou motores.
            ========================================================= */
         (function installCornerProPersistentBottomNav(){
           "use strict";
-        
+
           if (window.__cpPersistentBottomNavInstalled) return;
           window.__cpPersistentBottomNavInstalled = true;
-        
+
           const mobileQuery = window.matchMedia("(max-width: 980px)");
-        
+
           function isMobile(){
             return Boolean(mobileQuery.matches);
           }
-        
+
           function getNav(){
             return document.querySelector(".mobileBottomNav");
           }
-        
+
           function navButtons(){
             const nav = getNav();
             return nav ? Array.from(nav.querySelectorAll("button")) : [];
           }
-        
+
           function buttonName(button){
             return String(button?.textContent || "")
               .trim()
@@ -25199,30 +25199,30 @@
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
           }
-        
+
           function setActive(target){
             navButtons().forEach(button => {
               const name = buttonName(button);
               let active = false;
-        
+
               if (target === "dashboard") active = name.includes("dashboard");
               if (target === "pregame") active = name.includes("pre-jogo") || name.includes("pre jogo");
               if (target === "live") active = name.includes("ao vivo");
               if (target === "corners") active = name.includes("escante");
               if (target === "more") active = name.includes("mais");
-        
+
               button.classList.toggle("active", active);
               button.setAttribute("aria-current", active ? "page" : "false");
             });
           }
-        
+
           function closeLayers(){
             try {
               if (typeof window.cpMobileCloseLayers === "function") {
                 window.cpMobileCloseLayers();
               }
             } catch (_) {}
-        
+
             document.querySelectorAll(
               ".cpMobileLayer.is-open," +
               ".cpMobileCalendarLayer.is-open," +
@@ -25231,33 +25231,33 @@
               layer.classList.remove("is-open");
               layer.setAttribute("aria-hidden", "true");
             });
-        
+
             document.body.classList.remove(
               "cpMobileLayerOpen",
               "cp-mobile-layer-open",
               "mobile-layer-open"
             );
           }
-        
+
           function openDashboard(){
             closeLayers();
-        
+
             const home = document.getElementById("cpMobileHome");
             if (home) {
               home.hidden = false;
               home.style.display = "";
               home.classList.add("is-visible");
             }
-        
+
             window.scrollTo({
               top: 0,
               left: 0,
               behavior: "smooth"
             });
-        
+
             setActive("dashboard");
           }
-        
+
           function openMarket(type){
             try {
               if (typeof window.cpMobileOpenMarket === "function") {
@@ -25268,16 +25268,16 @@
             } catch (error) {
               console.warn("[Bottom Nav] Falha ao abrir mercado:", error);
             }
-        
+
             const selector =
               type === "corners"
                 ? '[data-home-market="corners"],[data-cp-market="corners"]'
                 : '[data-home-market="pregame"],[data-cp-market="pregame"]';
-        
+
             document.querySelector(selector)?.click();
             setActive(type === "corners" ? "corners" : "pregame");
           }
-        
+
           function openLive(){
             const liveButton = Array.from(
               document.querySelectorAll(
@@ -25286,7 +25286,7 @@
             ).find(element =>
               /ao vivo|live/i.test(element.textContent || "")
             );
-        
+
             if (liveButton) {
               liveButton.click();
             } else {
@@ -25296,35 +25296,35 @@
                 }
               } catch (_) {}
             }
-        
+
             setActive("live");
           }
-        
+
           function openMore(){
             closeLayers();
-        
+
             const menu =
               document.querySelector(".cpHomeMenu") ||
               document.querySelector("#mobileMenuBtn") ||
               document.querySelector(".mobileMenuBtn") ||
               document.querySelector("[data-open-menu]");
-        
+
             menu?.click();
             setActive("more");
           }
-        
+
           document.addEventListener("click", event => {
             if (!isMobile()) return;
-        
+
             const button = event.target.closest(".mobileBottomNav button");
             if (!button) return;
-        
+
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
-        
+
             const name = buttonName(button);
-        
+
             if (name.includes("dashboard")) {
               openDashboard();
             } else if (name.includes("pre-jogo") || name.includes("pre jogo")) {
@@ -25337,32 +25337,32 @@
               openMore();
             }
           }, true);
-        
+
           function syncActiveWithScreen(){
             if (!isMobile()) return;
-        
+
             const matchLayer = document.getElementById("cpMobileMatchLayer");
             const marketLayer = document.getElementById("cpMobileMarketsLayer");
-        
+
             if (matchLayer?.classList.contains("is-open")) {
               setActive("live");
               return;
             }
-        
+
             if (marketLayer?.classList.contains("is-open")) {
               const title = String(
                 document.getElementById("cpMobileMarketsTitle")?.textContent || ""
               ).toLowerCase();
-        
+
               setActive(title.includes("escante") ? "corners" : "pregame");
               return;
             }
-        
+
             setActive("dashboard");
           }
-        
+
           const observer = new MutationObserver(syncActiveWithScreen);
-        
+
           function installObserver(){
             ["cpMobileMarketsLayer", "cpMobileMatchLayer"].forEach(id => {
               const layer = document.getElementById(id);
@@ -25374,75 +25374,75 @@
               }
             });
           }
-        
+
           function updateVisibility(){
             const nav = getNav();
             if (!nav) return;
-        
+
             nav.hidden = !isMobile();
             document.documentElement.classList.toggle(
               "cpPersistentBottomNavVisible",
               isMobile()
             );
-        
+
             if (isMobile()) syncActiveWithScreen();
           }
-        
+
           document.addEventListener("DOMContentLoaded", () => {
             installObserver();
             updateVisibility();
           });
-        
+
           window.addEventListener("resize", updateVisibility);
           window.addEventListener("orientationchange", updateVisibility);
-        
+
           setTimeout(() => {
             installObserver();
             updateVisibility();
           }, 300);
         })();
-        
-        
+
+
         /* =========================================================
            CORNER PRO — NAVEGAÇÃO DA BARRA GLOBAL DO HTML
            ========================================================= */
         (function installCornerProHtmlGlobalBottomNav(){
           "use strict";
-        
+
           if (window.__cpHtmlGlobalBottomNavInstalled) return;
           window.__cpHtmlGlobalBottomNavInstalled = true;
-        
+
           const mobileMedia = window.matchMedia("(max-width:980px)");
-        
+
           function isMobile(){
             return mobileMedia.matches;
           }
-        
+
           function normalize(value){
             return String(value || "")
               .toLowerCase()
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
           }
-        
+
           function nav(){
             return document.querySelector(
               "body > .cpHomeBottom.cpGlobalBottomNav"
             );
           }
-        
+
           function buttonType(button){
             const text = normalize(button?.textContent);
-        
+
             if (text.includes("dashboard")) return "dashboard";
             if (text.includes("pre-jogo") || text.includes("pre jogo")) return "pregame";
             if (text.includes("ao vivo")) return "live";
             if (text.includes("escante")) return "corners";
             if (text.includes("mais")) return "more";
-        
+
             return "";
           }
-        
+
           function setActive(type){
             nav()?.querySelectorAll("button").forEach(button => {
               const active = buttonType(button) === type;
@@ -25453,7 +25453,7 @@
               );
             });
           }
-        
+
           function closeLayers(){
             document.querySelectorAll(
               ".cpMobileLayer.is-open," +
@@ -25464,39 +25464,39 @@
               layer.classList.remove("is-open");
               layer.setAttribute("aria-hidden", "true");
             });
-        
+
             document.body.classList.remove(
               "cpMobileLayerOpen",
               "cp-mobile-layer-open",
               "mobile-layer-open"
             );
           }
-        
+
           function dashboard(){
             closeLayers();
-        
+
             const home = document.getElementById("cpMobileHome");
-        
+
             if (home) {
               home.hidden = false;
               home.style.display = "";
               home.classList.add("is-visible");
             }
-        
+
             window.scrollTo({top:0,left:0,behavior:"smooth"});
             setActive("dashboard");
           }
-        
+
           function market(type){
             const selector =
               type === "corners"
                 ? '[data-home-market="corners"],[data-cp-market="corners"]'
                 : '[data-home-market="pregame"],[data-cp-market="pregame"]';
-        
+
             document.querySelector(selector)?.click();
             setActive(type);
           }
-        
+
           function live(){
             const target = Array.from(
               document.querySelectorAll(
@@ -25505,7 +25505,7 @@
             ).find(element =>
               /ao vivo|live/i.test(element.textContent || "")
             );
-        
+
             if (target) {
               target.click();
             } else {
@@ -25514,65 +25514,65 @@
                 document.getElementById("cpHomeBestOpen")
               )?.click();
             }
-        
+
             setActive("live");
           }
-        
+
           function more(){
             closeLayers();
-        
+
             (
               document.querySelector(".cpHomeMenu") ||
               document.getElementById("mobileMenuBtn") ||
               document.querySelector(".mobileMenuBtn")
             )?.click();
-        
+
             setActive("more");
           }
-        
+
           document.addEventListener("click", event => {
             if (!isMobile()) return;
-        
+
             const button = event.target.closest(
               "body > .cpHomeBottom.cpGlobalBottomNav button"
             );
-        
+
             if (!button) return;
-        
+
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
-        
+
             const type = buttonType(button);
-        
+
             if (type === "dashboard") dashboard();
             else if (type === "pregame") market("pregame");
             else if (type === "live") live();
             else if (type === "corners") market("corners");
             else if (type === "more") more();
           }, true);
-        
+
           function sync(){
             if (!isMobile()) return;
-        
+
             const matchLayer =
               document.getElementById("cpMobileMatchLayer");
-        
+
             const marketLayer =
               document.getElementById("cpMobileMarketsLayer");
-        
+
             if (matchLayer?.classList.contains("is-open")) {
               setActive("live");
               return;
             }
-        
+
             if (marketLayer?.classList.contains("is-open")) {
               const title = normalize(
                 document.getElementById(
                   "cpMobileMarketsTitle"
                 )?.textContent
               );
-        
+
               setActive(
                 title.includes("escante")
                   ? "corners"
@@ -25580,19 +25580,19 @@
               );
               return;
             }
-        
+
             setActive("dashboard");
           }
-        
+
           function observe(){
             const observer = new MutationObserver(sync);
-        
+
             [
               "cpMobileMarketsLayer",
               "cpMobileMatchLayer"
             ].forEach(id => {
               const layer = document.getElementById(id);
-        
+
               if (layer) {
                 observer.observe(layer, {
                   attributes:true,
@@ -25601,7 +25601,7 @@
               }
             });
           }
-        
+
           if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", () => {
               observe();
@@ -25612,7 +25612,7 @@
             sync();
           }
         })();
-      
+
       /* =========================================================
          CARD PRINCIPAL — ESTADOS + DADOS REAIS DO MATCH CENTER V21
          - 20 minutos antes: "A PARTIDA JÁ VAI COMEÇAR"
@@ -25624,21 +25624,21 @@
          ========================================================= */
       (() => {
         "use strict";
-      
+
         if (window.__cpHomeBestStateControllerV21) return;
         window.__cpHomeBestStateControllerV21 = true;
-      
+
         const CARD_SELECTOR = "#cpHomeBest,.cpHomeBestClone";
         const POLL_MS = 15000;
         const CACHE_MAX_AGE_MS = 25000;
-      
+
         const liveCache = new Map();
         const pendingRequests = new Map();
-      
+
         function clean(value) {
           return String(value ?? "").trim().toLowerCase();
         }
-      
+
         function finiteNumber(...values) {
           for (const value of values) {
             if (value === null || value === undefined || value === "") continue;
@@ -25647,7 +25647,7 @@
           }
           return 0;
         }
-      
+
         function nullableNumber(...values) {
           for (const value of values) {
             if (value === null || value === undefined || value === "") continue;
@@ -25656,19 +25656,19 @@
           }
           return null;
         }
-      
+
         function field(card, id) {
           if (!card) return null;
           return card.id === "cpHomeBest"
             ? card.querySelector(`#${id}`)
             : card.querySelector(`[data-clone-id="${id}"]`);
         }
-      
+
         function setText(card, id, value) {
           const element = field(card, id);
           if (element) element.textContent = String(value ?? "");
         }
-      
+
         function matchIdFrom(raw = {}, normalized = {}) {
           return String(
             raw?.match_id ??
@@ -25688,7 +25688,7 @@
             ""
           ).trim();
         }
-      
+
         function statusText(raw) {
           return clean(
             raw?.status ??
@@ -25700,7 +25700,7 @@
             raw?.event_raw?.match_status
           );
         }
-      
+
         function minuteValue(raw) {
           const values = [
             raw?.minute,
@@ -25714,27 +25714,27 @@
             raw?.match_status,
             raw?.event_raw?.match_status
           ];
-      
+
           for (const value of values) {
             const match = String(value ?? "").match(/\b(\d{1,3})(?:\+(\d{1,2}))?\b/);
             if (!match) continue;
-      
+
             const base = Number(match[1]);
             const extra = Number(match[2] || 0);
-      
+
             if (Number.isFinite(base) && base >= 0 && base <= 130) {
               return { base, extra };
             }
           }
           return null;
         }
-      
+
         function minuteLabel(raw) {
           const minute = minuteValue(raw);
           if (!minute) return "";
           return minute.extra ? `${minute.base}+${minute.extra}'` : `${minute.base}'`;
         }
-      
+
         function isHalfTime(raw) {
           const status = statusText(raw);
           return [
@@ -25742,7 +25742,7 @@
             "interval", "break", "ht"
           ].some(label => status === label || status.includes(label));
         }
-      
+
         function isFinished(raw) {
           if (raw?.finished === true) return true;
           const status = statusText(raw);
@@ -25752,11 +25752,11 @@
             "ended", "after penalties", "after extra time", "ft"
           ].some(label => status === label || status.includes(label));
         }
-      
+
         function isLive(raw) {
           if (isFinished(raw)) return false;
           if (raw?.live === true) return true;
-      
+
           const status = statusText(raw);
           const explicit = [
             "live", "ao vivo", "1st half", "first half",
@@ -25764,14 +25764,14 @@
             "in progress", "playing", "intervalo", "half time",
             "halftime", "half-time"
           ].some(label => status.includes(label));
-      
+
           return explicit || Boolean(minuteValue(raw));
         }
-      
+
         function pairValue(raw, key, side) {
           return nullableNumber(raw?.[key]?.[side]);
         }
-      
+
         function score(raw, side) {
           return finiteNumber(
             side === "home" ? raw?.home_score : raw?.away_score,
@@ -25785,7 +25785,7 @@
               : raw?.event_raw?.match_awayteam_score
           );
         }
-      
+
         function corners(raw, side) {
           return finiteNumber(
             side === "home" ? raw?.home_corners : raw?.away_corners,
@@ -25796,7 +25796,7 @@
             raw?.statistics?.[side]?.corners
           );
         }
-      
+
         function cards(raw, side) {
           const yellow = nullableNumber(
             side === "home" ? raw?.home_yellow_cards : raw?.away_yellow_cards,
@@ -25805,7 +25805,7 @@
             raw?.cards?.[side === "home" ? "yellow_home" : "yellow_away"],
             raw?.statistics?.[side]?.yellow_cards
           );
-      
+
           const red = nullableNumber(
             side === "home" ? raw?.home_red_cards : raw?.away_red_cards,
             side === "home" ? raw?.red_cards_home : raw?.red_cards_away,
@@ -25813,11 +25813,11 @@
             raw?.cards?.[side === "home" ? "red_home" : "red_away"],
             raw?.statistics?.[side]?.red_cards
           );
-      
+
           if (yellow !== null || red !== null) {
             return (yellow || 0) + (red || 0);
           }
-      
+
           return finiteNumber(
             side === "home" ? raw?.home_cards : raw?.away_cards,
             side === "home" ? raw?.cards_home : raw?.cards_away,
@@ -25825,11 +25825,11 @@
             raw?.statistics?.[side]?.cards
           );
         }
-      
+
         function kickoffFromCard(card) {
           const raw = card?.__cpCurrentRaw || {};
           const normalized = card?.__cpCurrentNormalized || {};
-      
+
           for (const value of [
             raw?.kickoff,
             raw?.date_time,
@@ -25841,7 +25841,7 @@
             const date = new Date(value);
             if (!Number.isNaN(date.getTime())) return date;
           }
-      
+
           const dateText =
             normalized?.date ??
             raw?.match_date ??
@@ -25851,7 +25851,7 @@
             raw?.event_raw?.event_date ??
             raw?.event_raw?.date ??
             "";
-      
+
           const timeText =
             normalized?.time ??
             raw?.hora_manaus ??
@@ -25862,12 +25862,12 @@
             raw?.event_raw?.time ??
             field(card, "cpHomeBestTime")?.textContent ??
             "";
-      
+
           const timeMatch = String(timeText).match(/(\d{1,2}):(\d{2})/);
           if (!timeMatch) return null;
-      
+
           let resolvedDate = String(dateText || "").trim();
-      
+
           if (!resolvedDate) {
             try {
               const parts = new Intl.DateTimeFormat("en-CA", {
@@ -25876,11 +25876,11 @@
                 month: "2-digit",
                 day: "2-digit"
               }).formatToParts(new Date());
-      
+
               const map = Object.fromEntries(
                 parts.map(part => [part.type, part.value])
               );
-      
+
               resolvedDate = `${map.year}-${map.month}-${map.day}`;
             } catch {
               resolvedDate = new Date(Date.now() - 4 * 3600000)
@@ -25888,28 +25888,28 @@
                 .slice(0, 10);
             }
           }
-      
+
           const date = new Date(
             `${resolvedDate}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00-04:00`
           );
-      
+
           return Number.isNaN(date.getTime()) ? null : date;
         }
-      
+
         function minutesUntilKickoff(card) {
           const kickoff = kickoffFromCard(card);
           if (!kickoff) return null;
           return Math.ceil((kickoff.getTime() - Date.now()) / 60000);
         }
-      
+
         function ensureStatus(card) {
           let bar = field(card, "cpHomeBestStatusBar");
           if (bar) return bar;
-      
+
           bar = document.createElement("div");
           bar.className = "cpHomeBestStatusBar";
           bar.hidden = true;
-      
+
           if (card.id === "cpHomeBest") {
             bar.id = "cpHomeBestStatusBar";
             bar.innerHTML = `
@@ -25925,13 +25925,13 @@
               <span data-clone-id="cpHomeBestStatusExtra"></span>
             `;
           }
-      
+
           card.querySelector(".cpHomeBestBody")
             ?.insertAdjacentElement("beforebegin", bar);
-      
+
           return bar;
         }
-      
+
         function setStatus(card, type, text, extra = "") {
           const bar = ensureStatus(card);
           bar.hidden = false;
@@ -25939,21 +25939,21 @@
           setText(card, "cpHomeBestStatusText", text);
           setText(card, "cpHomeBestStatusExtra", extra);
         }
-      
+
         function clearStatus(card) {
           const bar = ensureStatus(card);
           bar.hidden = true;
         }
-      
+
         function visibleCard() {
           const viewport = document.querySelector(".cpHomeSwipeViewport");
           const cardsList = [...document.querySelectorAll(CARD_SELECTOR)];
-      
+
           if (!viewport || cardsList.length < 2) return cardsList[0] || null;
-      
+
           const viewportRect = viewport.getBoundingClientRect();
           const center = viewportRect.left + viewportRect.width / 2;
-      
+
           return cardsList.reduce((best, card) => {
             const rect = card.getBoundingClientRect();
             const distance = Math.abs((rect.left + rect.width / 2) - center);
@@ -25962,11 +25962,11 @@
               : best;
           }, null)?.card || cardsList[0];
         }
-      
+
         function updateViewport(activeCard) {
           const viewport = document.querySelector(".cpHomeSwipeViewport");
           if (!viewport || !activeCard) return;
-      
+
           viewport.classList.toggle(
             "is-soon",
             activeCard.classList.contains("is-match-soon")
@@ -25984,10 +25984,10 @@
             activeCard.classList.contains("is-match-finished")
           );
         }
-      
+
         function render(card) {
           if (!card) return;
-      
+
           const raw = card.__cpCurrentRaw || {};
           const halftime = isHalfTime(raw);
           const finished = isFinished(raw);
@@ -25999,15 +25999,15 @@
             until !== null &&
             until >= 0 &&
             until <= 20;
-      
+
           const showData = live || halftime || finished;
-      
+
           card.classList.toggle("is-match-soon", soon);
           card.classList.toggle("is-match-live", live && !halftime);
           card.classList.toggle("is-match-halftime", halftime);
           card.classList.toggle("is-match-finished", finished);
           card.classList.toggle("has-match-data", showData);
-      
+
           if (finished) {
             setStatus(card, "finished", "ENCERRADO");
           } else if (halftime) {
@@ -26024,19 +26024,19 @@
           } else {
             clearStatus(card);
           }
-      
+
           const scoreBox = field(card, "cpHomeBestScore");
           const statsBox = field(card, "cpHomeBestLiveStats");
           const versus = card.querySelector(".cpHomeBestVersus");
-      
+
           if (scoreBox) scoreBox.hidden = !showData;
           if (statsBox) statsBox.hidden = !showData;
           if (versus) versus.hidden = showData;
-      
+
           if (showData) {
             const homeGoals = score(raw, "home");
             const awayGoals = score(raw, "away");
-      
+
             setText(card, "cpHomeBestHomeScore", homeGoals);
             setText(card, "cpHomeBestAwayScore", awayGoals);
             setText(card, "cpHomeBestHomeGoals", homeGoals);
@@ -26047,10 +26047,10 @@
             setText(card, "cpHomeBestAwayCards", cards(raw, "away"));
           }
         }
-      
+
         function mergeLiveData(card, payload) {
           if (!card || !payload || payload.error) return;
-      
+
           const previous = card.__cpCurrentRaw || {};
           card.__cpCurrentRaw = {
             ...previous,
@@ -26063,13 +26063,13 @@
             red_cards: payload.red_cards ?? previous.red_cards,
             statistics: payload.statistics ?? previous.statistics
           };
-      
+
           render(card);
         }
-      
+
         async function fetchMatchCenter(matchId, force = false) {
           if (!matchId) return null;
-      
+
           const cached = liveCache.get(matchId);
           if (
             !force &&
@@ -26078,11 +26078,11 @@
           ) {
             return cached.payload;
           }
-      
+
           if (pendingRequests.has(matchId)) {
             return pendingRequests.get(matchId);
           }
-      
+
           const request = (async () => {
             try {
               const response = await fetch(
@@ -26092,17 +26092,17 @@
                   headers: { Accept: "application/json" }
                 }
               );
-      
+
               if (!response.ok) return null;
-      
+
               const payload = await response.json();
               if (!payload || payload.error) return null;
-      
+
               liveCache.set(matchId, {
                 timestamp: Date.now(),
                 payload
               });
-      
+
               return payload;
             } catch {
               return null;
@@ -26110,17 +26110,17 @@
               pendingRequests.delete(matchId);
             }
           })();
-      
+
           pendingRequests.set(matchId, request);
           return request;
         }
-      
+
         function shouldPoll(card) {
           if (!card || document.hidden) return false;
-      
+
           const raw = card.__cpCurrentRaw || {};
           if (isFinished(raw)) return false;
-      
+
           // O jogo pode chegar sem match_date no endpoint pré-jogo.
           // Havendo match_id, o /match_center é a fonte oficial do estado real.
           return Boolean(
@@ -26130,28 +26130,28 @@
             )
           );
         }
-      
+
         async function refreshCard(card, force = false) {
           if (!card) return;
-      
+
           const raw = card.__cpCurrentRaw || {};
           const normalized = card.__cpCurrentNormalized || {};
           const matchId = matchIdFrom(raw, normalized);
-      
+
           if (!matchId || (!force && !shouldPoll(card))) {
             render(card);
             return;
           }
-      
+
           const payload = await fetchMatchCenter(matchId, force);
           if (!payload) {
             render(card);
             card.dataset.matchCenterState = "unavailable";
             return;
           }
-      
+
           card.dataset.matchCenterState = "ok";
-      
+
           // Atualiza todos os slides que representam a mesma partida.
           document.querySelectorAll(CARD_SELECTOR).forEach(slide => {
             const slideId = matchIdFrom(
@@ -26160,17 +26160,17 @@
             );
             if (slideId === matchId) mergeLiveData(slide, payload);
           });
-      
+
           updateViewport(visibleCard());
         }
-      
+
         async function refreshAll(force = false) {
           const cardsList = [...document.querySelectorAll(CARD_SELECTOR)];
           cardsList.forEach(render);
           updateViewport(visibleCard());
-      
+
           const unique = new Map();
-      
+
           for (const card of cardsList) {
             const id = matchIdFrom(
               card.__cpCurrentRaw || {},
@@ -26178,18 +26178,18 @@
             );
             if (id && !unique.has(id)) unique.set(id, card);
           }
-      
+
           await Promise.allSettled(
             [...unique.values()].map(card => refreshCard(card, force))
           );
-      
+
           updateViewport(visibleCard());
         }
-      
+
         window.cpUpdateHomeBestLiveCard = function(raw, normalized = {}) {
           const card = document.getElementById("cpHomeBest");
           if (!card) return;
-      
+
           const incoming = raw || {};
           const previous = card.__cpCurrentRaw || {};
           const previousIsRicher =
@@ -26199,23 +26199,23 @@
             previous?.score ||
             previous?.goals ||
             previous?.corners;
-      
+
           card.__cpCurrentRaw = previousIsRicher
             ? { ...incoming, ...previous }
             : incoming;
           card.__cpCurrentNormalized = normalized || {};
-      
+
           const id = matchIdFrom(card.__cpCurrentRaw, normalized);
           const cached = id ? liveCache.get(id)?.payload : null;
           if (cached) mergeLiveData(card, cached);
           else render(card);
-      
+
           refreshCard(card, true);
         };
-      
+
         window.cpUpdateHomeBestCloneCard = function(card, raw, normalized = {}) {
           if (!card) return;
-      
+
           const incoming = raw || {};
           const previous = card.__cpCurrentRaw || {};
           const previousIsRicher =
@@ -26225,20 +26225,20 @@
             previous?.score ||
             previous?.goals ||
             previous?.corners;
-      
+
           card.__cpCurrentRaw = previousIsRicher
             ? { ...incoming, ...previous }
             : incoming;
           card.__cpCurrentNormalized = normalized || {};
-      
+
           const id = matchIdFrom(card.__cpCurrentRaw, normalized);
           const cached = id ? liveCache.get(id)?.payload : null;
           if (cached) mergeLiveData(card, cached);
           else render(card);
-      
+
           refreshCard(card, true);
         };
-      
+
         let frame = 0;
         function scheduleRender() {
           cancelAnimationFrame(frame);
@@ -26247,10 +26247,10 @@
             updateViewport(visibleCard());
           });
         }
-      
+
         function start() {
           const home = document.getElementById("cpMobileHome");
-      
+
           if (home) {
             new MutationObserver(scheduleRender).observe(home, {
               childList: true,
@@ -26259,32 +26259,32 @@
               attributeFilter: ["class", "hidden"]
             });
           }
-      
+
           document.querySelector(".cpHomeSwipeViewport")
             ?.addEventListener("scroll", scheduleRender, { passive: true });
-      
+
           document.addEventListener("touchend", () => {
             scheduleRender();
             setTimeout(scheduleRender, 220);
           }, { passive: true });
-      
+
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) refreshAll(true);
           });
-      
+
           window.addEventListener("focus", () => refreshAll(true));
-      
+
           refreshAll(true);
           setInterval(() => refreshAll(false), POLL_MS);
         }
-      
+
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", start, { once: true });
         } else {
           start();
         }
       })();
-    
+
     /* =========================================================
        CORNER PRO WEB V12 — MATCH CENTER FINAL / DESKTOP
        Este bloco fica NO FINAL do script para não ser sobrescrito
@@ -26292,40 +26292,40 @@
        ========================================================= */
     (() => {
       "use strict";
-    
+
       if (window.__cpDesktopMatchCenterV12Installed) return;
       window.__cpDesktopMatchCenterV12Installed = true;
-    
+
       const desktop = () =>
         window.matchMedia && window.matchMedia("(min-width:981px)").matches;
-    
+
       const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({
         "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
       }[ch]));
-    
+
       const clean = (v, fallback="") => {
         const s = String(v ?? "").trim();
         return s && !["undefined","null","NaN"].includes(s) ? s : fallback;
       };
-    
+
       const norm = (v) => String(v ?? "")
         .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
         .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-    
+
       const raw = (g) => g?.raw || g || {};
-    
+
       function home(g){
         const r=raw(g);
         return clean(g?.casa ?? g?.home ?? r?.casa ?? r?.home ??
           r?.match_hometeam_name ?? r?.event_home_team, "Casa");
       }
-    
+
       function away(g){
         const r=raw(g);
         return clean(g?.fora ?? g?.away ?? r?.fora ?? r?.away ??
           r?.match_awayteam_name ?? r?.event_away_team, "Fora");
       }
-    
+
       function gameId(g){
         const r=raw(g);
         return clean(
@@ -26334,36 +26334,36 @@
           ""
         );
       }
-    
+
       function localKey(g){
         const r=raw(g);
         const t=clean(g?.hora ?? g?.time ?? r?.hora ?? r?.match_time ?? "");
         return `${norm(home(g))}|${norm(away(g))}|${t}`;
       }
-    
+
       function findDesktopGame(button){
         const wanted=String(button?.dataset?.cpd3Open ?? "");
         const games=Array.isArray(window.__cornerProAllGames)
           ? window.__cornerProAllGames
           : [];
-    
+
         let game=games.find(g =>
           String(gameId(g))===wanted ||
           String(localKey(g))===wanted
         );
-    
+
         if(game) return game;
-    
+
         const row=button?.closest?.("[data-cpd3-game]");
         const rowKey=String(row?.dataset?.cpd3Game ?? "");
         game=games.find(g =>
           String(gameId(g))===rowKey ||
           String(localKey(g))===rowKey
         );
-    
+
         return game || window.__selectedMatchCenterGame || null;
       }
-    
+
       function pair(data, name){
         const block=data?.[name] || {};
         return {
@@ -26371,34 +26371,34 @@
           away: clean(block?.away, "—")
         };
       }
-    
+
       function statusLabel(data, fallbackGame){
         if(data?.finished) return "ENCERRADO";
         const s=String(data?.status ?? data?.status_raw ?? "").toLowerCase();
         if(/half.?time|\bht\b|interval/.test(s)) return "INTERVALO";
         if(data?.live) return data?.minute ? `AO VIVO • ${data.minute}'` : "AO VIVO";
-    
+
         const r=raw(fallbackGame);
         const fs=String(
           fallbackGame?.match_status ?? fallbackGame?.status ??
           r?.match_status ?? r?.status ?? ""
         ).toLowerCase();
-    
+
         if(/finished|full.?time|\bft\b|encerr|finaliz|ended/.test(fs)) return "ENCERRADO";
         if(/half.?time|\bht\b|interval/.test(fs)) return "INTERVALO";
-    
+
         const minute=Number(r?.minute ?? r?.match_minute ?? r?.elapsed);
         if(Number.isFinite(minute) && minute>0) return `AO VIVO • ${Math.round(minute)}'`;
-    
+
         const m=fs.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
         if(m){
           const min=Number(m[1])+(m[2]?Number(m[2]):0);
           return `AO VIVO • ${min}'`;
         }
-    
+
         return "PRÉ-JOGO";
       }
-    
+
       function metric(label, values){
         return `<div class="cpV12McMetric">
           <strong>${esc(values.home)}</strong>
@@ -26406,7 +26406,7 @@
           <strong>${esc(values.away)}</strong>
         </div>`;
       }
-    
+
       function renderLoading(rail, game){
         const matchId=gameId(game);
         rail.innerHTML=`
@@ -26419,7 +26419,7 @@
             ${!matchId?'<p class="cpV12McError">Esta partida não trouxe match_id no feed.</p>':""}
           </section>`;
       }
-    
+
       function renderError(rail, game, message){
         rail.innerHTML=`
           <section class="railCard cpV12McHead">
@@ -26430,7 +26430,7 @@
             <p class="cpV12McError">${esc(message)}</p>
           </section>`;
       }
-    
+
       function renderData(rail, data, game){
         const corners=pair(data,"corners");
         const shots=pair(data,"shots");
@@ -26440,7 +26440,7 @@
         const passes=pair(data,"passes");
         const fouls=pair(data,"fouls");
         const cards=pair(data,"yellow_cards");
-    
+
         const h=clean(data?.home,home(game));
         const a=clean(data?.away,away(game));
         const league=clean(data?.league,clean(game?.liga ?? raw(game)?.liga,"Liga"));
@@ -26448,9 +26448,9 @@
         const status=statusLabel(data,game);
         const hs=clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score,"0");
         const as=clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score,"0");
-    
+
         const events=Array.isArray(data?.events) ? data.events.slice(-6) : [];
-    
+
         rail.innerHTML=`
           <section class="railCard cpV12McHead">
             <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(status)}</b></div>
@@ -26461,7 +26461,7 @@
               <div><strong>${esc(a)}</strong><small>FORA</small></div>
             </div>
           </section>
-    
+
           <section class="railCard cpV12McStats">
             <h3>ESTATÍSTICAS DA PARTIDA</h3>
             ${metric("Escanteios",corners)}
@@ -26473,7 +26473,7 @@
             ${metric("Faltas",fouls)}
             ${metric("Cartões",cards)}
           </section>
-    
+
           <section class="railCard cpV12McEvents">
             <h3>EVENTOS / LEITURA</h3>
             ${events.length
@@ -26483,38 +26483,38 @@
           </section>
         `;
       }
-    
+
       async function openMatchCenterV12(game){
         const rail=document.getElementById("desktopMatchRail");
         if(!rail || !game) return;
-    
+
         window.__selectedMatchCenterGame=game;
         window.__selectedMatchCenterKey=String(gameId(game) || localKey(game));
-    
+
         rail.style.display="flex";
         rail.style.visibility="visible";
         rail.style.opacity="1";
-    
+
         renderLoading(rail,game);
-    
+
         const matchId=gameId(game);
         if(!matchId){
           renderError(rail,game,"Não foi possível abrir as estatísticas porque este jogo não possui match_id.");
           return;
         }
-    
+
         try{
           const response=await fetch(
             `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&t=${Date.now()}`,
             {cache:"no-store",headers:{"Cache-Control":"no-cache","Accept":"application/json"}}
           );
-    
+
           const data=await response.json().catch(()=>null);
-    
+
           if(!response.ok || !data || data?.error){
             throw new Error(data?.error || `HTTP ${response.status}`);
           }
-    
+
           renderData(rail,data,game);
         }catch(error){
           console.error("[CP WEB V12 Match Center]",error);
@@ -26525,19 +26525,19 @@
           );
         }
       }
-    
+
       window.cpOpenDesktopMatchCenterV12=openMatchCenterV12;
-    
+
       document.addEventListener("click",event=>{
         if(!desktop()) return;
-    
+
         const button=event.target?.closest?.("[data-cpd3-open]");
         if(!button) return;
-    
+
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-    
+
         const game=findDesktopGame(button);
         if(!game){
           const rail=document.getElementById("desktopMatchRail");
@@ -26546,7 +26546,7 @@
           }
           return;
         }
-    
+
         openMatchCenterV12(game);
       },true);
     })();
