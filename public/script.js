@@ -2456,7 +2456,7 @@
       
       
       /* =========================================================
-         CORNER PRO MOBILE CONTROLLER V62 — PARIDADE TOTAL COM SITE
+         CORNER PRO MOBILE CONTROLLER V70 — PARIDADE TOTAL SITE/MOBILE
          Home mobile, carrossel automático, mercados e Match Center.
          ========================================================= */
          (() => {
@@ -4070,40 +4070,44 @@
               });
             };
       
-            // PARIDADE SITE/MOBILE — cantos usa o mesmo motor dedicado do desktop.
+            // PARIDADE V70 — mesmo /web_corners_ai usado pelo desktop.
             getJson(
               `/web_corners_ai?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=24`,
               33000
             )
               .then(payload => {
-                if (state.date !== date) return;
                 const cornerGames = extract(payload?.corners ?? payload);
-                if (!cornerGames.length) return;
+                if (!cornerGames.length || state.date !== date) return;
+
                 state.corners = cprMergeEngineKeepingVisibleGames(
                   state.corners,
                   cornerGames,
                   "corners"
                 );
+
                 window.__cpMobileDirectGames = activeList();
                 renderActive({ animate: false });
 
-                const openMarketLayer = $("#cpMobileMarketsLayer");
+                const layer = $("#cpMobileMarketsLayer");
                 if (
                   state.activeMarket === "corners" &&
-                  openMarketLayer &&
+                  layer &&
                   (
-                    openMarketLayer.classList.contains("is-open") ||
-                    openMarketLayer.getAttribute("aria-hidden") === "false"
+                    layer.classList.contains("is-open") ||
+                    layer.getAttribute("aria-hidden") === "false"
                   )
                 ) {
-                  const activeDetailedLine =
-                    $(".cpAnalysisLines button.active", openMarketLayer)
+                  const line =
+                    $(".cpAnalysisLines button.active", layer)
                       ?.dataset?.analysisLine || "IA";
-                  renderDetailedMarket(openMarketLayer, "corners", activeDetailedLine);
+                  renderDetailedMarket(layer, "corners", line);
                 }
               })
               .catch(error => {
-                console.warn("[Corner Pro mobile corners WEB IA]", error?.message || error);
+                console.warn(
+                  "[Corner Pro mobile /web_corners_ai]",
+                  error?.message || error
+                );
               });
 
             // V53 — FAST PATH: BTTS + Handicap não podem depender do motor completo.
@@ -4665,133 +4669,105 @@
       
           function bttsDecisionForGame(game) {
             const raw = game?.raw || game || {};
-            const decision = raw?.btts_ai && typeof raw.btts_ai === "object"
-              ? raw.btts_ai
-              : {};
-      
+            const decision =
+              raw?.btts_ai && typeof raw.btts_ai === "object"
+                ? raw.btts_ai
+                : null;
+
             const stateInfo = bttsGameState(game);
+
+            if (!decision) {
+              return {
+                choice: "",
+                confidence: null,
+                odd: "—",
+                state: "updating",
+                reason: "Aguardando o mesmo motor de Ambas Marcam utilizado no site.",
+                source: "updating"
+              };
+            }
+
             const explicitLine = clean(decision?.line, "").toUpperCase();
             const explicitSkip = Boolean(decision?.skip);
             const updating =
               Boolean(decision?.updating) ||
               explicitLine === "DADOS EM ATUALIZAÇÃO" ||
               explicitLine === "ANALISANDO PARTIDA";
-      
-            const probability = bttsRealProbability(game);
-      
+
             let choice = "";
-            let source = "";
-            let reason = clean(decision?.reason, "");
-      
-            if (!explicitSkip && !updating && explicitLine) {
+            if (!explicitSkip && !updating) {
               if (explicitLine.includes("NÃO") || explicitLine.includes("NAO")) {
                 choice = "NÃO";
-                source = "server";
               } else if (
                 explicitLine.includes("SIM") ||
-                explicitLine.includes("AMBAS MARCAM")
+                explicitLine.includes("YES")
               ) {
                 choice = "SIM";
-                source = "server";
               }
             }
-      
-            if (!choice && probability !== null && !stateInfo.finished) {
-              if (probability >= 60) {
-                choice = "SIM";
-                source = "probability";
-                if (!reason) reason = `Probabilidade real de ambas marcarem: ${probability}%.`;
-              } else if (probability <= 40) {
-                choice = "NÃO";
-                source = "probability";
-                if (!reason) reason = `Probabilidade real de ambas marcarem: ${probability}%.`;
-              }
+
+            let confidence = numberFrom(decision?.confidence);
+            if (confidence !== null) {
+              if (confidence > 0 && confidence <= 1) confidence *= 100;
+              while (confidence > 100) confidence /= 10;
+              confidence = Math.max(0, Math.min(95, Math.round(confidence)));
             }
-      
-            // Guarda a indicação enquanto a partida ainda não terminou.
-            if (!stateInfo.finished && choice) {
-              bttsHistorySave(game, choice, probability, source);
-            }
-      
+
             if (stateInfo.finished) {
-              const stored = bttsHistoryGet(game);
-              const finalChoice = choice || stored?.choice || "";
-      
               return {
-                choice: finalChoice,
-                confidence:
-                  stored?.confidence !== null && stored?.confidence !== undefined
-                    ? Number(stored.confidence)
-                    : probability,
+                choice,
+                confidence,
                 odd: "—",
                 state: "finished",
-                reason: finalChoice
-                  ? `Indicação pré-jogo: AMBAS MARCAM – ${finalChoice}.`
-                  : "Partida encerrada sem indicação pré-jogo registrada para Ambas Marcam.",
-                source: finalChoice ? "history" : "final"
-              };
-            }
-      
-            if (updating && !choice) {
-              return {
-                choice: "",
-                confidence: probability,
-                odd: "—",
-                state: "updating",
-                reason: "Aguardando dados reais do servidor para este mercado.",
-                source: "updating"
-              };
-            }
-      
-            if (explicitSkip && !choice) {
-              return {
-                choice: "",
-                confidence: probability,
-                odd: "—",
-                state: "no-bet",
-                reason: reason || "Sem vantagem estatística suficiente para uma entrada.",
+                reason: clean(
+                  decision?.reason,
+                  choice
+                    ? `Indicação pré-jogo: AMBAS MARCAM – ${choice}.`
+                    : "Partida encerrada sem indicação válida do motor."
+                ),
                 source: "server"
               };
             }
-      
-            if (!choice) {
+
+            if (updating) {
               return {
                 choice: "",
-                confidence: probability,
+                confidence: null,
                 odd: "—",
-                state: probability === null ? "updating" : "no-bet",
-                reason: probability === null
-                  ? "Aguardando dados reais do servidor para este mercado."
-                  : `Probabilidade BTTS em ${probability}%: sem vantagem suficiente para SIM ou NÃO.`,
-                source: probability === null ? "updating" : "probability"
+                state: "updating",
+                reason: "Aguardando o mesmo motor de Ambas Marcam utilizado no site.",
+                source: "updating"
               };
             }
-      
-            let confidence = probability;
-            if (confidence === null) {
-              confidence = numberFrom(decision?.confidence);
-              if (confidence !== null) {
-                if (confidence > 0 && confidence <= 1) confidence *= 100;
-                while (confidence > 100) confidence /= 10;
-                confidence = Math.max(0, Math.min(100, Math.round(confidence)));
-              }
+
+            if (explicitSkip || !choice) {
+              return {
+                choice: "",
+                confidence,
+                odd: "—",
+                state: "no-bet",
+                reason: clean(
+                  decision?.reason,
+                  "O motor do servidor não recomendou entrada em Ambas Marcam."
+                ),
+                source: "server"
+              };
             }
-      
+
             return {
               choice,
               confidence,
               odd: bttsRealOdd(game, choice),
               state: stateInfo.live ? "live" : "pick",
-              reason: reason || (
-                choice === "SIM"
-                  ? "Os dados reais indicam boa chance de as duas equipes marcarem."
-                  : "Os dados reais indicam boa chance de pelo menos uma equipe não marcar."
+              reason: clean(
+                decision?.reason,
+                "Decisão calculada pelo motor do servidor."
               ),
-              source
+              source: "server"
             };
           }
       
-          function renderBttsMarket(layer) {
+          function renderBttsMarket(layer, selectedLine = "IA") {
             const body = $(".cpMobileMarketsBody", layer);
             if (!body) return;
       
@@ -4801,8 +4777,46 @@
             const settlementEntries = [];
             const liveEntries = [];
       
-            const rows = games.map((game, index) => {
-              const rec = bttsDecisionForGame(game);
+            const orderedGames = games.slice().sort((a, b) => {
+              if (selectedLine === "SIM" || selectedLine === "NÃO") {
+                return (
+                  Number(
+                    mobileExactDesktopLineAnalysis(
+                      b,
+                      "btts",
+                      selectedLine
+                    ).probability || 0
+                  ) -
+                  Number(
+                    mobileExactDesktopLineAnalysis(
+                      a,
+                      "btts",
+                      selectedLine
+                    ).probability || 0
+                  )
+                );
+              }
+
+              return 0;
+            });
+
+            const rows = orderedGames.map((game, index) => {
+              const serverRec = bttsDecisionForGame(game);
+              const manualAnalysis =
+                selectedLine === "SIM" || selectedLine === "NÃO"
+                  ? mobileExactDesktopLineAnalysis(game, "btts", selectedLine)
+                  : null;
+
+              const rec = manualAnalysis
+                ? {
+                    choice: selectedLine,
+                    confidence: manualAnalysis.probability,
+                    odd: bttsRealOdd(game, selectedLine),
+                    state: handicapFinished(game) ? "finished" : "pick",
+                    reason: "Probabilidade desta opção calculada com a mesma lógica da linha no site.",
+                    source: "server"
+                  }
+                : serverRec;
               const isPick = rec.state === "pick" || rec.state === "live";
               const isUpdating = rec.state === "updating";
               const isNoBet = rec.state === "no-bet";
@@ -4922,10 +4936,10 @@
               </section>
       
               <div class="cpBttsTabs">
-                <button type="button" class="active" data-btts-tab="ai">IA</button>
-                <button type="button" data-btts-tab="all">TODOS</button>
-                <button type="button" data-btts-tab="yes">SIM</button>
-                <button type="button" data-btts-tab="no">NÃO</button>
+                <button type="button" class="${selectedLine === "IA" ? "active" : ""}" data-btts-tab="IA">IA</button>
+                <button type="button" class="${selectedLine === "TODOS" ? "active" : ""}" data-btts-tab="TODOS">TODOS</button>
+                <button type="button" class="${selectedLine === "SIM" ? "active" : ""}" data-btts-tab="SIM">SIM</button>
+                <button type="button" class="${selectedLine === "NÃO" ? "active" : ""}" data-btts-tab="NÃO">NÃO</button>
               </div>
       
               <section class="cpBttsExplain">
@@ -5185,121 +5199,10 @@
           }
         
           function handicapAutoRecommendation(game) {
-            const raw = game?.raw || {};
-            const serverDecision = raw?.handicap_ai;
-        
-            if (serverDecision && typeof serverDecision === "object") {
-              const sideKey = String(
-                serverDecision.side_key ??
-                serverDecision.side ??
-                ""
-              ).toLowerCase();
-        
-              const side =
-                sideKey === "away" || sideKey === "fora"
-                  ? "away"
-                  : "home";
-        
-              const serverLine =
-                clean(serverDecision.line, "SEM APOSTA");
-      
-              const validServerLines = new Set([
-                "-2.0", "-1.5", "-1.0", "-0.75", "-0.5", "-0.25",
-                "0.0",
-                "+0.25", "+0.5", "+0.75", "+1.0", "+1.5", "+2.0",
-                "SEM APOSTA"
-              ]);
-      
-              const serverStillUpdating =
-                Boolean(serverDecision.updating) ||
-                serverLine === "DADOS EM ATUALIZAÇÃO" ||
-                serverLine === "ANALISANDO PARTIDA";
-      
-              // IMPORTANTE: "DADOS EM ATUALIZAÇÃO" não é uma decisão de SEM APOSTA.
-              // Nessa situação deixamos o fallback do próprio Handicap, logo abaixo,
-              // analisar odds/tabela/médias que já existirem no jogo.
-              if (!serverStillUpdating) {
-                return {
-                  skip:
-                    Boolean(serverDecision.skip) ||
-                    !validServerLines.has(serverLine),
-                  side,
-                  line:
-                    validServerLines.has(serverLine)
-                      ? serverLine
-                      : "SEM APOSTA",
-                  confidence: Number(serverDecision.confidence || 0),
-                  score: Number(serverDecision.score || 0),
-                  market_odd: Number(serverDecision.market_odd || 0) || null,
-                  teamName: clean(
-                    serverDecision.team,
-                    side === "home" ? game.home : game.away
-                  ),
-                  reason: clean(
-                    serverDecision.reason,
-                    "Decisão calculada pelo servidor."
-                  ),
-                  source: "server"
-                };
-              }
-            }
-            const homeOdds = handicapRawNumber(raw, [
-              "home_od", "odds.home", "home_odd", "odd_home",
-              "match_hometeam_odd", "odds.1", "odd1",
-              "handicap_ai.odds.home"
-            ]);
-        
-            const awayOdds = handicapRawNumber(raw, [
-              "away_od", "odds.away", "away_odd", "odd_away",
-              "match_awayteam_odd", "odds.2", "odd2",
-              "handicap_ai.odds.away"
-            ]);
-        
-            const homePos = handicapRawNumber(raw, [
-              "pos_home", "home_position", "table.home.position",
-              "standings.home.position", "posHome"
-            ]);
-        
-            const awayPos = handicapRawNumber(raw, [
-              "pos_away", "away_position", "table.away.position",
-              "standings.away.position", "posAway"
-            ]);
-        
-            const homeGoals = handicapRawNumber(raw, [
-              "home_goals_avg", "home.avg_goals",
-              "stats.home.goals_for_avg", "home_scored_avg",
-              "homeGoalsAvg", "engine_profiles.home.goalsForAvg"
-            ]);
-        
-            const awayGoals = handicapRawNumber(raw, [
-              "away_goals_avg", "away.avg_goals",
-              "stats.away.goals_for_avg", "away_scored_avg",
-              "awayGoalsAvg", "engine_profiles.away.goalsForAvg"
-            ]);
-        
-            const homeConcedes = handicapRawNumber(raw, [
-              "home_concedes_avg", "stats.home.goals_against_avg",
-              "homeConcedesAvg", "engine_profiles.home.goalsAgainstAvg"
-            ]);
-        
-            const awayConcedes = handicapRawNumber(raw, [
-              "away_concedes_avg", "stats.away.goals_against_avg",
-              "awayConcedesAvg", "engine_profiles.away.goalsAgainstAvg"
-            ]);
-        
-            const hasOdds = Number.isFinite(homeOdds) && Number.isFinite(awayOdds);
-            const hasTable = Number.isFinite(homePos) && Number.isFinite(awayPos);
-            const hasGoals = [homeGoals, awayGoals, homeConcedes, awayConcedes]
-              .filter(Number.isFinite).length >= 3;
-        
-            const dataQuality =
-              (hasOdds ? 2 : 0) +
-              (hasTable ? 1 : 0) +
-              (hasGoals ? 2 : 0);
-        
-            if (dataQuality < 3) {
-              // Não converte um servidor ainda atualizando em "SEM APOSTA" falso.
-              // Sem dados mínimos, mantém o estado de atualização para o próximo poll.
+            const raw = game?.raw || game || {};
+            const decision = raw?.handicap_ai;
+
+            if (!decision || typeof decision !== "object") {
               return {
                 skip: true,
                 updating: true,
@@ -5307,152 +5210,87 @@
                 line: "DADOS EM ATUALIZAÇÃO",
                 confidence: 0,
                 score: -999,
+                market_odd: null,
                 teamName: "",
-                reason: "Aguardando a base estatística do Handicap Asiático."
+                reason: "Aguardando o mesmo motor de Handicap utilizado no site.",
+                source: "server"
               };
             }
-        
-            let homeScore = 0;
-            let awayScore = 0;
-            const reasons = [];
-        
-            if (hasOdds) {
-              const homeProbability = 1 / Math.max(1.01, homeOdds);
-              const awayProbability = 1 / Math.max(1.01, awayOdds);
-              const oddsEdge = (homeProbability - awayProbability) * 100;
-        
-              homeScore += oddsEdge;
-              awayScore -= oddsEdge;
-              reasons.push("odds");
-            }
-        
-            if (hasTable) {
-              const tableEdge = (awayPos - homePos) * 1.5;
-              homeScore += tableEdge;
-              awayScore -= tableEdge;
-              reasons.push("classificação");
-            }
-        
-            if (hasGoals) {
-              const homeExpected =
-                ((homeGoals ?? 1.2) + (awayConcedes ?? 1.2)) / 2;
-              const awayExpected =
-                ((awayGoals ?? 1.1) + (homeConcedes ?? 1.1)) / 2;
-        
-              homeScore += (homeExpected - awayExpected) * 14;
-              awayScore += (awayExpected - homeExpected) * 14;
-              reasons.push("médias de gols");
-            }
-        
-            homeScore += 2;
-        
-            const side = homeScore >= awayScore ? "home" : "away";
-            const edge = Math.abs(homeScore - awayScore);
-            const teamName = side === "home" ? game.home : game.away;
-        
-            let line = "";
-            let confidence = 0;
-      
-            const favoriteOdd =
-              side === "home" ? homeOdds : awayOdds;
-      
-            const underdogOdd =
-              side === "home" ? awayOdds : homeOdds;
-      
-            const oddsGap =
-              hasOdds
-                ? Math.abs((underdogOdd ?? 0) - (favoriteOdd ?? 0))
-                : 0;
-      
-            const tableGap =
-              hasTable
-                ? Math.abs(awayPos - homePos)
-                : 0;
-      
-            const strongEvidence =
-              Number(hasOdds) +
-              Number(hasTable) +
-              Number(hasGoals);
-      
-            if (
-              edge >= 34 &&
-              strongEvidence >= 2 &&
-              (!hasOdds || favoriteOdd <= 1.65)
-            ) {
-              line = "-1.0";
-              confidence = 79;
-            } else if (
-              edge >= 26 &&
-              strongEvidence >= 2 &&
-              (!hasOdds || favoriteOdd <= 1.82)
-            ) {
-              line = "-0.75";
-              confidence = 75;
-            } else if (
-              edge >= 18 ||
-              (tableGap >= 10 && oddsGap >= 0.55)
-            ) {
-              line = "-0.5";
-              confidence = 71;
-            } else if (
-              edge >= 11 &&
-              (
-                strongEvidence >= 2 ||
-                tableGap >= 7 ||
-                oddsGap >= 0.38
-              )
-            ) {
-              line = "-0.25";
-              confidence = 67;
-            } else if (
-              edge >= 7 ||
-              tableGap >= 4
-            ) {
-              line = "+0.25";
-              confidence = 64;
-            } else if (
-              edge >= 4 &&
-              hasOdds
-            ) {
-              line = "+0.5";
-              confidence = 62;
-            } else {
-              return {
-                skip: true,
-                side,
-                line: "SEM APOSTA",
-                confidence: 0,
-                score: edge,
-                teamName,
-                reason: "Confronto equilibrado: não há vantagem suficiente."
-              };
-            }
-      
-            confidence = Math.min(
-              82,
-              Math.round(confidence + Math.min(4, dataQuality - 3))
+
+            const sideKey = String(
+              decision.side_key ??
+              decision.side ??
+              ""
+            ).toLowerCase();
+
+            const side =
+              sideKey === "away" || sideKey === "fora"
+                ? "away"
+                : sideKey === "home" || sideKey === "casa"
+                  ? "home"
+                  : "home";
+
+            const line = clean(
+              decision.line,
+              decision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
             );
-        
-            if (confidence < 62) {
+
+            const updating =
+              Boolean(decision.updating) ||
+              line === "DADOS EM ATUALIZAÇÃO" ||
+              line === "ANALISANDO PARTIDA";
+
+            if (updating) {
               return {
                 skip: true,
+                updating: true,
                 side,
-                line: "SEM APOSTA",
-                confidence,
-                score: edge,
-                teamName,
-                reason: "A vantagem calculada ficou abaixo do limite de segurança."
+                line: "DADOS EM ATUALIZAÇÃO",
+                confidence: 0,
+                score: -999,
+                market_odd: null,
+                teamName: "",
+                reason: "Aguardando o mesmo motor de Handicap utilizado no site.",
+                source: "server"
               };
             }
-        
+
+            const validLines = new Set([
+              "-2.0", "-1.5", "-1.0", "-0.75", "-0.5", "-0.25",
+              "0.0",
+              "+0.25", "+0.5", "+0.75", "+1.0", "+1.5", "+2.0",
+              "SEM APOSTA"
+            ]);
+
+            const validLine = validLines.has(line) ? line : "SEM APOSTA";
+            const skip =
+              Boolean(decision.skip) ||
+              validLine === "SEM APOSTA";
+
+            let confidence = Number(decision.confidence || 0);
+            if (confidence > 0 && confidence <= 1) confidence *= 100;
+            while (confidence > 100) confidence /= 10;
+            confidence = Math.max(0, Math.min(95, Math.round(confidence)));
+
             return {
-              skip: false,
+              skip,
+              updating: false,
               side,
-              line,
-              confidence,
-              score: edge + dataQuality * 5,
-              teamName,
-              reason: `${teamName} ${line}: vantagem baseada em ${reasons.join(", ")}.`
+              line: validLine,
+              confidence: skip ? 0 : confidence,
+              score: Number(decision.score || confidence || 0),
+              market_odd: Number(decision.market_odd || 0) || null,
+              teamName: clean(
+                decision.team,
+                side === "home" ? game.home : game.away
+              ),
+              reason: clean(
+                decision.reason,
+                skip
+                  ? "O motor do servidor não recomendou entrada."
+                  : "Decisão calculada pelo motor do servidor."
+              ),
+              source: "server"
             };
           }
         
@@ -5479,30 +5317,32 @@
               ? upcomingHandicapGames
               : originalSourceGames;
       
-            const realAvailableLines = [...new Set(
-              sourceGames.flatMap(game => {
-                const raw = game?.raw || {};
-                const lines = raw?.handicap_available_lines;
-                return Array.isArray(lines) ? lines : [];
-              })
-            )];
-      
-            const handicapUiLines = realAvailableLines.length
-              ? ["IA", ...MARKET.handicap.lines.filter(line =>
-                  line !== "IA" && realAvailableLines.includes(line)
-                )]
-              : MARKET.handicap.lines;
-      
+            const handicapUiLines = MARKET.handicap.lines;
+
             const safeRequestedLine = handicapUiLines.includes(requestedLine)
               ? requestedLine
               : "IA";
       
             let preparedGames = sourceGames
-              .map((game, originalIndex) => ({
-                game,
-                originalIndex,
-                recommendation: handicapAutoRecommendation(game)
-              }));
+              .map((game, originalIndex) => {
+                const recommendation = handicapAutoRecommendation(game);
+                const manualAnalysis =
+                  safeRequestedLine !== "IA" &&
+                  safeRequestedLine !== "TODOS"
+                    ? mobileExactDesktopLineAnalysis(
+                        game,
+                        "handicap",
+                        safeRequestedLine
+                      )
+                    : null;
+
+                return {
+                  game,
+                  originalIndex,
+                  recommendation,
+                  manualAnalysis
+                };
+              });
       
             // V41 — decisão válida do servidor não é descartada apenas
             // porque outros jogos receberam a mesma linha/confiança.
@@ -5520,20 +5360,40 @@
             const settlementEntries = [];
             const liveEntries = [];
         
-            const rows = preparedGames.map(({ game, originalIndex, recommendation }, rowIndex) => {
-              const line = safeRequestedLine === "IA" ? recommendation.line : safeRequestedLine;
-              const side = recommendation.side;
-              const sideLabel = recommendation.skip
+            const rows = preparedGames.map(({ game, originalIndex, recommendation, manualAnalysis }, rowIndex) => {
+              const isManualLine =
+                safeRequestedLine !== "IA" &&
+                safeRequestedLine !== "TODOS";
+
+              const line = isManualLine
+                ? safeRequestedLine
+                : recommendation.line;
+
+              const side = isManualLine
+                ? (manualAnalysis?.pickedSide || recommendation.side)
+                : recommendation.side;
+
+              const manualInvalid =
+                isManualLine &&
+                (!manualAnalysis || !manualAnalysis.valid);
+
+              const effectiveSkip = isManualLine
+                ? manualInvalid
+                : recommendation.skip;
+
+              const sideLabel = effectiveSkip
                 ? "IA"
                 : side === "home"
                   ? "CASA"
                   : "FORA";
+
               const teamName = side === "home" ? game.home : game.away;
-              const confidence = recommendation.skip
+
+              const confidence = effectiveSkip
                 ? 0
-                : safeRequestedLine === "IA"
-                  ? recommendation.confidence
-                  : Math.max(57, Math.min(88, recommendation.confidence - 2));
+                : isManualLine
+                  ? Math.round(Number(manualAnalysis?.probability || 0))
+                  : recommendation.confidence;
       
               const handicapRealOdd = Number(
                 recommendation.market_odd ??
@@ -5541,7 +5401,7 @@
               );
         
               const settlementKey = `handicap-${originalIndex}-${rowIndex}`;
-              const rule = recommendation.skip
+              const rule = effectiveSkip
                 ? {
                     headline: recommendation.reason,
                     details: [
@@ -5552,7 +5412,7 @@
                   }
                 : handicapLineRule(line, sideLabel);
         
-              if (!recommendation.skip) {
+              if (!effectiveSkip) {
                 settlementEntries.push({
                   key: settlementKey,
                   game,
@@ -5566,8 +5426,8 @@
               liveEntries.push({
                 key: liveKey,
                 game,
-                marketType: recommendation.skip ? "" : "handicap",
-                line: recommendation.skip ? "" : line,
+                marketType: effectiveSkip ? "" : "handicap",
+                line: effectiveSkip ? "" : line,
                 side
               });
         
@@ -5578,7 +5438,7 @@
               return `
                 <button
                   type="button"
-                  class="cpHandicapOpportunity ${recommendation.skip ? "is-no-bet" : ""}"
+                  class="cpHandicapOpportunity ${effectiveSkip ? "is-no-bet" : ""}"
                   data-v9-game="${originalIndex}"
                   data-settlement-key="${settlementKey}"
                   data-settlement-market="handicap"
@@ -5600,20 +5460,24 @@
         
                   <div class="cpHandicapPick">
                     ${recommendationBadge}
-                    <strong>${recommendation.updating ? "AGUARDANDO DADOS" : recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
+                    <strong>${recommendation.updating ? "AGUARDANDO DADOS" : effectiveSkip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
                     <p>${recommendation.updating ? "A IA está concluindo a leitura deste confronto." : escapeHtml(rule.headline)}</p>
                     <small>${escapeHtml(
-                      safeRequestedLine !== "IA" && safeRequestedLine !== "TODOS"
-                        ? "Linha manual baseada exclusivamente nos dados do motor de Handicap do servidor."
+                      isManualDesktopParity
+                        ? (
+                            manualAnalysis?.source === "server-line"
+                              ? "Probabilidade específica desta linha fornecida pelo mesmo motor usado no site."
+                              : "Linha calculada pela mesma projeção estatística usada no site."
+                          )
                         : recommendation.reason
                     )}</small>
                     <span class="cpSettlementSlot"></span>
                   </div>
         
                   <div class="cpHandicapOdd">
-                    <small>${recommendation.skip ? "Decisão" : "Odd estimada"}</small>
+                    <small>${effectiveSkip ? "Decisão" : "Odd estimada"}</small>
                     <b>${
-                      recommendation.skip
+                      effectiveSkip
                         ? "—"
                         : Number.isFinite(handicapRealOdd) && handicapRealOdd > 1
                           ? handicapRealOdd.toFixed(2)
@@ -5621,9 +5485,9 @@
                     }</b>
                   </div>
         
-                  <div class="cpHandicapGauge ${recommendation.skip ? "is-disabled" : ""}" style="--handicap:${confidence}">
-                    <span>${recommendation.skip ? "—" : `${confidence}%`}</span>
-                    <small>${recommendation.skip ? "SEM ENTRADA" : "CONFIANÇA"}</small>
+                  <div class="cpHandicapGauge ${effectiveSkip ? "is-disabled" : ""}" style="--handicap:${confidence}">
+                    <span>${effectiveSkip ? "—" : `${confidence}%`}</span>
+                    <small>${effectiveSkip ? "SEM ENTRADA" : "CONFIANÇA"}</small>
                   </div>
         
                   <i class="cpHandicapArrow">›</i>
@@ -6680,42 +6544,44 @@
                 line: "DADOS EM ATUALIZAÇÃO",
                 projection: "0.0",
                 confidence: 0,
-                reason: "Aguardando a análise do mesmo motor usado no site.",
+                reason: "Aguardando o mesmo motor de IA utilizado no site.",
                 skip: true,
                 updating: true,
                 source: "server"
               };
             }
 
-            let serverLine = clean(
+            let line = clean(
               serverDecision.line,
               serverDecision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
             ).toUpperCase();
 
-            let serverConfidence = numberFrom(serverDecision.confidence);
-            if (serverConfidence === null) serverConfidence = 0;
-            if (serverConfidence > 0 && serverConfidence <= 1) serverConfidence *= 100;
-            while (serverConfidence > 100) serverConfidence /= 10;
-            serverConfidence = Math.max(0, Math.min(95, Math.round(serverConfidence)));
+            let confidence = numberFrom(serverDecision.confidence);
+            if (confidence === null) confidence = 0;
+            if (confidence > 0 && confidence <= 1) confidence *= 100;
+            while (confidence > 100) confidence /= 10;
+            confidence = Math.max(0, Math.min(95, Math.round(confidence)));
 
             const projection = numberFrom(serverDecision.projection);
-            const updating = Boolean(serverDecision.updating) ||
-              !serverLine ||
-              serverLine === "DADOS EM ATUALIZAÇÃO" ||
-              serverLine === "ANALISANDO PARTIDA";
+            const updating =
+              Boolean(serverDecision.updating) ||
+              ["DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(line);
 
-            const skip = Boolean(serverDecision.skip) ||
-              serverLine === "SEM APOSTA" ||
+            const skip =
+              Boolean(serverDecision.skip) ||
+              line === "SEM APOSTA" ||
               updating;
 
             return {
-              line: updating ? "DADOS EM ATUALIZAÇÃO" : serverLine,
-              projection: Number.isFinite(projection) ? Number(projection).toFixed(1) : "0.0",
-              confidence: skip ? 0 : serverConfidence,
+              line: updating ? "DADOS EM ATUALIZAÇÃO" : line,
+              projection: Number.isFinite(projection)
+                ? Number(projection).toFixed(1)
+                : "0.0",
+              confidence: skip ? 0 : confidence,
               reason: clean(
                 serverDecision.reason,
                 updating
-                  ? "Aguardando a análise do mesmo motor usado no site."
+                  ? "Aguardando o mesmo motor de IA utilizado no site."
                   : "Decisão calculada pelo motor do servidor."
               ),
               skip,
@@ -6725,7 +6591,8 @@
               pregame_locked_at: serverDecision.pregame_locked_at || null,
               learning_samples: Number(serverDecision.learning_samples || 0),
               calculation_source: clean(
-                serverDecision.calculation_source ?? serverDecision.extra?.calculation_source,
+                serverDecision.calculation_source ??
+                serverDecision.extra?.calculation_source,
                 ""
               ),
               sample_games: Number(
@@ -6879,7 +6746,7 @@
             return mobileDesktopParityClampPct((1 - cdf) * 100);
           }
 
-          function mobileDesktopParityManualLine(game, marketType, selectedLine) {
+          function mobileExactDesktopLineAnalysis(game, marketType, selectedLine) {
             const selectedText = String(selectedLine || "").toUpperCase();
             const numericText = selectedText
               .replace("OVER", "")
@@ -6936,8 +6803,27 @@
             };
           }
 
-          function mobileDesktopParityScore(game, marketType, selectedLine) {
-            const analysis = mobileDesktopParityManualLine(
+          function mobileLegacyParityScore_UNUSED(game, marketType, selectedLine) {
+            const analysis = mobileExactDesktopLineAnalysis(
+              game,
+              marketType,
+              selectedLine
+            );
+
+            const projection = Number(analysis.projection);
+            const margin = Number.isFinite(analysis.margin)
+              ? analysis.margin
+              : 0;
+
+            return (
+              Number(analysis.probability || 0) * 2 +
+              margin * 6 +
+              (Number.isFinite(projection) ? projection : 0)
+            );
+          }
+
+          function mobileExactDesktopLineScore(game, marketType, selectedLine) {
+            const analysis = mobileExactDesktopLineAnalysis(
               game,
               marketType,
               selectedLine
@@ -6956,9 +6842,407 @@
           }
 
           window.CornerProMobileDesktopParity = {
-            analyze: mobileDesktopParityManualLine,
-            score: mobileDesktopParityScore
+            analyze: mobileExactDesktopLineAnalysis,
+            score: mobileExactDesktopLineScore
           };
+
+
+          /* =========================================================
+             V70 — LINHAS MOBILE = LINHAS DESKTOP
+             Fórmulas copiadas da lógica WEB V11.
+             ========================================================= */
+          function mobileExactClampPct(value) {
+            const n = Number(value);
+            return Number.isFinite(n) ? Math.max(1, Math.min(95, n)) : null;
+          }
+
+          function mobileExactDecision(game, marketType) {
+            const raw = game?.raw || game || {};
+            return raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
+          }
+
+          function mobileExactBaseConfidence(game, marketType) {
+            const decision = mobileExactDecision(game, marketType);
+            let n = numberFrom(decision?.confidence);
+            if (n === null) return 0;
+            if (n > 0 && n <= 1) n *= 100;
+            while (n > 100) n /= 10;
+            return Math.max(0, Math.min(95, Math.round(n)));
+          }
+
+          function mobileExactProjection(game, marketType) {
+            const raw = game?.raw || game || {};
+            const decision = mobileExactDecision(game, marketType);
+
+            if (marketType === "corners") {
+              return numberFrom(
+                decision?.projection,
+                raw?.proj_cantos,
+                raw?.corners_projection,
+                raw?.expected_corners,
+                raw?.total_corners_avg
+              );
+            }
+
+            if (marketType === "goals") {
+              return numberFrom(
+                decision?.projection,
+                raw?.expected_goals_total,
+                raw?.goals_projection,
+                raw?.total_goals_avg
+              );
+            }
+
+            if (marketType === "cards") {
+              return numberFrom(
+                decision?.projection,
+                raw?.cards_projection,
+                raw?.proj_cards,
+                raw?.avg_cards,
+                raw?.media_cartoes
+              );
+            }
+
+            return numberFrom(decision?.projection);
+          }
+
+          function mobileExactDirectProbability(game, marketType, target) {
+            const raw = game?.raw || game || {};
+            const decision = mobileExactDecision(game, marketType);
+            const compact = String(target).replace(".", "").replace("-", "m").replace("+", "p");
+            const plain = String(target).replace(".", "");
+            const candidates = [];
+            const push = value => {
+              if (value !== undefined && value !== null && value !== "") {
+                candidates.push(value);
+              }
+            };
+
+            if (marketType === "corners") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(decision?.[`p_over_${plain}`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+              push(raw?.[`p_over_${plain}`]);
+              push(raw?.[`over${plain}Rate`]);
+              push(raw?.[`over${plain}_rate`]);
+              push(raw?.prob?.[`corners${plain}`]);
+              push(raw?.probability?.[`corners${plain}`]);
+            } else if (marketType === "goals") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+              push(raw?.[`prob_over${plain}`]);
+              push(raw?.[`prob_over_${plain}`]);
+              push(raw?.prob?.[`over${plain}`]);
+            } else if (marketType === "cards") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(raw?.[`over${plain}cards_prob`]);
+              push(raw?.[`over${plain}_cards_prob`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+            } else if (marketType === "handicap") {
+              push(decision?.lines?.[target]?.confidence);
+              push(decision?.probabilities?.[target]);
+              push(raw?.handicap_probabilities?.[target]);
+              push(raw?.[`handicap_${compact}_prob`]);
+            }
+
+            for (const value of candidates) {
+              let n = numberFrom(value);
+              if (n === null) continue;
+              if (n > 0 && n <= 1) n *= 100;
+              if (Number.isFinite(n)) return mobileExactClampPct(n);
+            }
+
+            return null;
+          }
+
+          function mobileExactPoissonOver(lambda, line) {
+            if (!Number.isFinite(lambda) || lambda <= 0 || !Number.isFinite(line)) {
+              return null;
+            }
+
+            const threshold = Math.floor(line) + 1;
+            let term = Math.exp(-lambda);
+            let cdf = term;
+
+            for (let k = 1; k < threshold; k += 1) {
+              term *= lambda / k;
+              cdf += term;
+            }
+
+            return mobileExactClampPct((1 - cdf) * 100);
+          }
+
+          function mobileExactHandicapSide(game) {
+            const decision = mobileExactDecision(game, "handicap");
+            const side = String(decision?.side_key ?? decision?.side ?? "").toLowerCase();
+            if (side.includes("away") || side.includes("fora")) return "away";
+            if (side.includes("home") || side.includes("casa")) return "home";
+            return "all";
+          }
+
+          function mobileExactDesktopLineAnalysis(game, marketType, selectedLine) {
+            const baseConf = mobileExactBaseConfidence(game, marketType);
+
+            if (["IA", "TODOS"].includes(selectedLine)) {
+              return {
+                valid: true,
+                probability: baseConf,
+                pick: clean(mobileExactDecision(game, marketType)?.line, "—"),
+                source: "engine"
+              };
+            }
+
+            if (["corners", "goals", "cards"].includes(marketType)) {
+              const target = Number(
+                String(selectedLine)
+                  .toUpperCase()
+                  .replace("OVER", "")
+                  .replace("+", "")
+                  .trim()
+                  .replace(",", ".")
+              );
+
+              const projection = mobileExactProjection(game, marketType);
+
+              if (!Number.isFinite(target)) {
+                return {
+                  valid: false,
+                  probability: baseConf,
+                  pick: `OVER ${selectedLine}`,
+                  source: "none"
+                };
+              }
+
+              let probability = mobileExactDirectProbability(game, marketType, target);
+              let source = "server-line";
+
+              if (probability === null) {
+                probability = mobileExactPoissonOver(Number(projection), target);
+                source = "projection-line";
+              }
+
+              if (probability !== null && baseConf > 0) {
+                probability = mobileExactClampPct(
+                  probability * 0.78 + baseConf * 0.22
+                );
+              }
+
+              return {
+                valid: probability !== null,
+                probability: probability ?? Math.max(0, baseConf - 25),
+                pick: `OVER ${target.toFixed(1)}`,
+                projection,
+                margin: Number.isFinite(projection) ? projection - target : null,
+                source
+              };
+            }
+
+            if (marketType === "handicap") {
+              const target = Number(
+                String(selectedLine).replace("+", "").replace(",", ".")
+              );
+
+              if (!Number.isFinite(target)) {
+                return {
+                  valid: false,
+                  probability: 0,
+                  pick: "—",
+                  source: "invalid-line",
+                  pickedSide: "all"
+                };
+              }
+
+              const raw = game?.raw || game || {};
+              const engineSide = mobileExactHandicapSide(game);
+              const markets = Array.isArray(raw?.asian_handicap_markets)
+                ? raw.asian_handicap_markets
+                : Array.isArray(game?.asian_handicap_markets)
+                  ? game.asian_handicap_markets
+                  : [];
+
+              const candidates = [];
+
+              for (const item of markets) {
+                const homeLine = Number(item?.home_line);
+                const awayLine = Number(item?.away_line);
+                const homeOdd = Number(item?.home_odd);
+                const awayOdd = Number(item?.away_odd);
+
+                if (
+                  Number.isFinite(homeLine) &&
+                  Math.abs(homeLine - target) < 0.001 &&
+                  Number.isFinite(homeOdd) &&
+                  homeOdd > 1
+                ) {
+                  candidates.push({
+                    side: "home",
+                    team: game.home,
+                    line: homeLine,
+                    odd: homeOdd
+                  });
+                }
+
+                if (
+                  Number.isFinite(awayLine) &&
+                  Math.abs(awayLine - target) < 0.001 &&
+                  Number.isFinite(awayOdd) &&
+                  awayOdd > 1
+                ) {
+                  candidates.push({
+                    side: "away",
+                    team: game.away,
+                    line: awayLine,
+                    odd: awayOdd
+                  });
+                }
+              }
+
+              const available = [
+                ...(Array.isArray(raw?.handicap_available_lines)
+                  ? raw.handicap_available_lines
+                  : []),
+                ...(Array.isArray(mobileExactDecision(game, "handicap")?.available_lines)
+                  ? mobileExactDecision(game, "handicap").available_lines
+                  : [])
+              ]
+                .map(value =>
+                  Number(String(value).replace("+", "").replace(",", "."))
+                )
+                .filter(Number.isFinite);
+
+              let chosen = null;
+
+              if (candidates.length) {
+                const preferredSide = target > 0
+                  ? (
+                      engineSide === "home"
+                        ? "away"
+                        : engineSide === "away"
+                          ? "home"
+                          : "all"
+                    )
+                  : engineSide;
+
+                candidates.sort((a, b) => {
+                  const aPreferred = a.side === preferredSide ? 1 : 0;
+                  const bPreferred = b.side === preferredSide ? 1 : 0;
+                  if (bPreferred !== aPreferred) return bPreferred - aPreferred;
+                  return a.odd - b.odd;
+                });
+
+                chosen = candidates[0];
+              }
+
+              if (!chosen) {
+                const lineExists = available.some(
+                  value => Math.abs(value - target) < 0.001
+                );
+
+                const fallbackSide = target > 0
+                  ? (
+                      engineSide === "home"
+                        ? "away"
+                        : engineSide === "away"
+                          ? "home"
+                          : "all"
+                    )
+                  : engineSide;
+
+                if (fallbackSide === "all") {
+                  return {
+                    valid: false,
+                    probability: 0,
+                    pick: "—",
+                    source: "side-unavailable",
+                    pickedSide: "all"
+                  };
+                }
+
+                chosen = {
+                  side: fallbackSide,
+                  team: fallbackSide === "home" ? game.home : game.away,
+                  line: target,
+                  odd: null,
+                  estimated: !lineExists
+                };
+              }
+
+              let probability;
+
+              if (target > 0) {
+                probability =
+                  72 -
+                  Math.max(0, baseConf - 50) * 0.42 +
+                  Math.min(2, target) * 4;
+              } else if (target < 0) {
+                const aggression = Math.abs(target);
+                probability =
+                  baseConf -
+                  Math.max(0, aggression - 0.5) * 11;
+              } else {
+                probability = baseConf;
+              }
+
+              if (Number.isFinite(chosen.odd)) {
+                const implied = 100 / chosen.odd;
+                probability = probability * 0.72 + implied * 0.28;
+              }
+
+              probability = mobileExactClampPct(probability) ?? 0;
+
+              const signed =
+                target > 0
+                  ? `+${target.toFixed(1)}`
+                  : target.toFixed(1);
+
+              return {
+                valid: probability >= 48,
+                probability,
+                pick: `${chosen.team} ${signed}`,
+                source: Number.isFinite(chosen.odd)
+                  ? "real-ah-line"
+                  : chosen.estimated
+                    ? "estimated-ah-line"
+                    : "available-line",
+                pickedSide: chosen.side,
+                marketOdd: Number.isFinite(chosen.odd) ? chosen.odd : null
+              };
+            }
+
+            if (marketType === "btts") {
+              const line = clean(mobileExactDecision(game, "btts")?.line, "").toUpperCase();
+              const wantsYes = selectedLine === "SIM";
+              const agrees = wantsYes
+                ? /(SIM|YES)/.test(line) && !/(NAO|NÃO|NO)/.test(line)
+                : /(NAO|NÃO|NO)/.test(line);
+
+              const probability = mobileExactClampPct(
+                agrees
+                  ? baseConf
+                  : (baseConf ? 100 - baseConf : 45)
+              );
+
+              return {
+                valid: true,
+                probability,
+                pick: wantsYes ? "AMBAS SIM" : "AMBAS NÃO",
+                source: "engine-side"
+              };
+            }
+
+            return {
+              valid: true,
+              probability: baseConf,
+              pick: clean(mobileExactDecision(game, marketType)?.line, "—"),
+              source: "engine"
+            };
+          }
 
           function analysisOdd(confidence, game = null, marketType = "") {
             const variation = game
@@ -6989,7 +7273,7 @@
                   requestedLine !== "TODOS" &&
                   ["corners", "goals", "cards"].includes(marketType)
                 )
-                  ? mobileDesktopParityManualLine(game, marketType, requestedLine)
+                  ? mobileExactDesktopLineAnalysis(game, marketType, requestedLine)
                   : null;
 
                 return {
@@ -7006,12 +7290,12 @@
                   ["corners", "goals", "cards"].includes(marketType)
                 ) {
                   return (
-                    mobileDesktopParityScore(
+                    mobileExactDesktopLineScore(
                       b.game,
                       marketType,
                       requestedLine
                     ) -
-                    mobileDesktopParityScore(
+                    mobileExactDesktopLineScore(
                       a.game,
                       marketType,
                       requestedLine
@@ -7062,7 +7346,13 @@
                   ? recommendation.confidence
                   : (
                       manualAnalysis?.valid
-                        ? Math.max(0, Math.min(95, Math.round(Number(manualAnalysis.probability) || 0)))
+                        ? Math.max(
+                            0,
+                            Math.min(
+                              95,
+                              Math.round(Number(manualAnalysis.probability) || 0)
+                            )
+                          )
                         : 0
                     );
         
@@ -7148,17 +7438,7 @@
                           : escapeHtml(line)
                     }</strong>
                     <p>${escapeHtml((isNoBet || isUpdating) ? recommendation.reason : rule.headline)}</p>
-                    <small>${escapeHtml(
-                      requestedLine !== "IA"
-                        ? (
-                            manualAnalysis?.source === "server-line"
-                              ? "Probabilidade específica desta linha fornecida pelo motor do servidor."
-                              : manualAnalysis?.source === "projection-line"
-                                ? "Linha calculada pela mesma projeção estatística usada no site."
-                                : "Aguardando dados suficientes do motor do servidor."
-                          )
-                        : recommendation.reason
-                    )}</small>
+                    <small>${escapeHtml(recommendation.reason)}</small>
                     <span class="cpSettlementSlot"></span>
                   </div>
         
@@ -8269,6 +8549,28 @@
             });
           }
         
+
+          // V70 — API pública da camada mobile oficial.
+          window.cpMobileOpenMarket = function(type) {
+            if (!mobileMedia.matches) return;
+            if (["corners", "goals", "cards", "handicap", "btts"].includes(type)) {
+              openMarkets(type);
+            }
+          };
+
+          window.cpMobileCloseLayers = function() {
+            const markets = $("#cpMobileMarketsLayer");
+            const match = $("#cpMobileMatchLayer");
+            if (match?.classList.contains("is-open")) closeLayer(match);
+            if (markets?.classList.contains("is-open")) closeLayer(markets);
+          };
+
+          window.cpMobileOpenBestMatch = function() {
+            if (!mobileMedia.matches) return;
+            const best = activeList()[0];
+            if (best) openMatch(best);
+          };
+
           function bind() {
             document.addEventListener("click", event => {
               const dot = event.target.closest("[data-cp-home-dot]");
@@ -8507,6 +8809,20 @@
             mobileMedia.addEventListener?.("change", event => event.matches ? startAutoSlide() : stopAutoSlide());
           }
         
+
+          window.CornerProMobileParityV70 = {
+            version: "V70",
+            markets: {
+              corners: MARKET.corners.lines.slice(),
+              goals: MARKET.goals.lines.slice(),
+              cards: MARKET.cards.lines.slice(),
+              handicap: MARKET.handicap.lines.slice(),
+              btts: MARKET.btts.lines.slice()
+            },
+            analyzeLine: mobileExactDesktopLineAnalysis,
+            serverOnlyAI: true
+          };
+
           async function start() {
             if (!mobileMedia.matches || !$("#cpMobileHome")) return;
       
@@ -21392,6 +21708,7 @@
                - não reorganiza nem remove o Mercado de Escanteios.
                ========================================================= */
             (function mobileFinalStabilityFix(){
+              if (window.__cpMobileControllerV9) return;
               "use strict";
         
               if (window.__mobileFinalStabilityFixInstalled) return;
@@ -21505,6 +21822,7 @@
                AJUSTE DEFINITIVO — RESTAURA TOPO + MERCADO DE ESCANTEIOS
                ========================================================= */
             (function mobileTopAndCornersFix(){
+              if (window.__cpMobileControllerV9) return;
               "use strict";
         
               if (window.__mobileTopAndCornersFixInstalled) return;
@@ -21654,6 +21972,7 @@
                permanece visível abaixo, como antes.
                ========================================================= */
             (function restorePermanentCornersMarketMobile(){
+              if (window.__cpMobileControllerV9) return;
               "use strict";
         
               if (window.__permanentCornersMarketMobileInstalled) return;
@@ -21816,6 +22135,7 @@
                MOBILE ESTÁVEL — SEM PULO DE PÁGINA + MATCH CENTER REAL
                ========================================================= */
             (function mobileStableRealMatchCenter(){
+              if (window.__cpMobileControllerV9) return;
               "use strict";
         
               if (window.__mobileStableRealMatchCenterInstalled) return;
@@ -22472,6 +22792,7 @@
                O desktop permanece intocado.
                ========================================================= */
             (function installCornerProMobileAppFlow(){
+              if (window.__cpMobileControllerV9) return;
               "use strict";
               if (window.__cornerProMobileAppFlowInstalled) return;
               window.__cornerProMobileAppFlowInstalled = true;
@@ -24538,6 +24859,7 @@
                MOBILE APP V1 — pequenos ajustes de apresentação
                ========================================================= */
             (function setupReferenceMobileHome(){
+              if (window.__cpMobileControllerV9) return;
               function updateMobileHeaderDate(){
                 const now=new Date();
                 const months=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
