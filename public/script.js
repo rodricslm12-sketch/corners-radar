@@ -2456,7 +2456,7 @@
       
       
       /* =========================================================
-         CORNER PRO MOBILE CONTROLLER V80 — IAS DESKTOP ATIVAS NO MOBILE
+         CORNER PRO MOBILE CONTROLLER V81 — AMANHÃ + IAS DESKTOP
          Home mobile, carrossel automático, mercados e Match Center.
          ========================================================= */
          (() => {
@@ -2590,6 +2590,53 @@
               return new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
             }
           }
+
+          function mobileSelectedDate() {
+            const isYMD = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+
+            try {
+              const params = new URLSearchParams(window.location.search);
+              const urlDate = params.get("date") || params.get("data");
+              if (isYMD(urlDate)) return urlDate;
+            } catch (_) {}
+
+            if (isYMD(window.__cornerProSelectedDate)) {
+              return window.__cornerProSelectedDate;
+            }
+
+            const inputDate = document.getElementById("date")?.value;
+            if (isYMD(inputDate)) return inputDate;
+
+            try {
+              const stored = localStorage.getItem("cornerProSelectedDate");
+              if (isYMD(stored)) return stored;
+            } catch (_) {}
+
+            return todayManaus();
+          }
+
+          function syncMobileSelectedDate(ymd) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || ""))) return;
+
+            state.date = ymd;
+            window.__cornerProSelectedDate = ymd;
+
+            try {
+              localStorage.setItem("cornerProSelectedDate", ymd);
+            } catch (_) {}
+
+            const hidden = document.getElementById("date");
+            if (hidden) hidden.value = ymd;
+
+            try {
+              const url = new URL(window.location.href);
+              url.hash = "";
+              url.searchParams.delete("data");
+              url.searchParams.set("date", ymd);
+              window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+            } catch (_) {}
+          }
+
         
           function extract(payload, seen = new Set()) {
             if (Array.isArray(payload)) {
@@ -3920,6 +3967,12 @@
           }
   
           function loadMarketEnginesInBackground(date, stamp) {
+            date = /^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))
+              ? String(date)
+              : mobileSelectedDate();
+
+            console.info("[CP MOBILE V81] IAs desktop para data:", date);
+
             const applyEnginePayload = (payload, source = "full") => {
               if (state.date !== date || !payload || typeof payload !== "object") return;
       
@@ -4075,7 +4128,7 @@
       
             // PARIDADE V70 — mesmo /web_corners_ai usado pelo desktop.
             getJson(
-              `/web_corners_ai?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=24`,
+              `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,
               33000
             )
               .then(payload => {
@@ -4118,7 +4171,7 @@
             // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
             // primeiro Ambas Marcam e Handicap; o motor completo melhora os dados depois.
             getJson(
-              `/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=60`,
+              `/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
               22000
             )
               .then(payload => applyEnginePayload(payload, "fast"))
@@ -4128,7 +4181,7 @@
       
             // Motor completo continua em paralelo, mas não bloqueia a tela nem o /mercados.
             getJson(
-              `/market_engines?date=${encodeURIComponent(date)}&_mobile=${stamp}&v=60`,
+              `/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
               90000
             )
               .then(payload => applyEnginePayload(payload, "full"))
@@ -4455,9 +4508,14 @@
   
           async function loadData() {
             if (state.loading) return;
-      
+
+            const resolvedDate = mobileSelectedDate();
+            if (resolvedDate !== state.date) {
+              syncMobileSelectedDate(resolvedDate);
+            }
+
             setLoading(true);
-      
+
             const stamp = Date.now();
             const date = state.date;
             state.officialCornerBest = null;
@@ -8452,10 +8510,7 @@
                 return;
               }
         
-              state.date = ymd;
-        
-              const hidden = $("#date");
-              if (hidden) hidden.value = state.date;
+              syncMobileSelectedDate(ymd);
         
               paintDate();
               close();
@@ -8585,11 +8640,11 @@
             renderBtts: renderBttsMarket,
             renderHandicap: renderHandicapMarket,
             analyzeLine: mobileExactDesktopLineAnalysis,
-            reloadEngines: () =>
-              loadMarketEnginesInBackground(
-                state.date || todayManaus(),
-                Date.now()
-              )
+            reloadEngines: () => {
+              const date = mobileSelectedDate();
+              syncMobileSelectedDate(date);
+              return loadMarketEnginesInBackground(date, Date.now());
+            }
           };
 
           function bind() {
@@ -8867,9 +8922,8 @@
                 if (best) openMatch(best);
               });
             }
-            state.date = $("#date")?.value || todayManaus();
-            const hiddenDate = $("#date");
-            if (hiddenDate) hiddenDate.value = state.date;
+            state.date = mobileSelectedDate();
+            syncMobileSelectedDate(state.date);
             setupDate();
             bind();
             try {
