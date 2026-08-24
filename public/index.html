@@ -17,7 +17,7 @@
   <script id="cpAppV101EarlySwitch">
     (function(){
       if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
-        document.documentElement.classList.add("cp100Mobile","cp101HardSwitch");
+        document.documentElement.classList.add("cp102Mobile","cp101HardSwitch"); window.__CP_APP_V101__ = true;
       }
     })();
   </script>
@@ -25,8 +25,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260824-app-v101-hard-switch" />
-  <script src="script.js?v=cornerpro-app-v101-hard-switch-20260824" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260824-app-v102-data-live" />
+  <script src="script.js?v=cornerpro-app-v102-base-20260824" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -861,16 +861,231 @@
 </script>
 
 
-<!-- CORNER PRO APP V100 — MOBILE NOVO -->
-<section id="cpAppV100">
-  <header class="cp100Top"><div class="cp100Brand"><b>CORNER<span>PRO</span></b><small>ANÁLISES ESPORTIVAS</small></div><button id="cp100User" class="cp100User"><i>G</i><span id="cp100UserName">Entrar com Google</span></button></header>
-  <div class="cp100Date"><div><b>Olá 👋</b><small>Análises do dia com IA</small></div><button id="cp100Refresh">↻</button></div>
-  <section class="cp100Hero"><div class="cp100HeroTop"><b>⚡ MELHOR OPORTUNIDADE</b><span id="cp100HeroStatus">PRÉ-JOGO</span></div><h1 id="cp100HeroTeams">Carregando...</h1><h2 id="cp100HeroPick">IA DO CORNER PRO</h2><div class="cp100HeroFoot"><span id="cp100HeroConf">ANALISANDO</span><span>VER DETALHES ↓</span></div></section>
-  <div class="cp100SectionHead"><h3>Mercados</h3><span>mesmas IAs do site</span></div><div id="cp100Markets" class="cp100Markets"></div>
-  <section class="cp100MarketPanel"><div class="cp100MarketTitle"><h2 id="cp100Title">ESCANTEIOS</h2><small id="cp100Count">0 jogos</small></div><div id="cp100Lines" class="cp100Lines"></div><div id="cp100Games" class="cp100Games"></div></section>
-  <nav class="cp100Bottom"><button class="active"><i>⌂</i>Início</button><button data-m="corners"><i>⚑</i>Mercados</button><button><i>◎</i>Ao Vivo</button><button id="cp100User"><i>◉</i>Perfil</button></nav>
+<!-- CORNER PRO APP V102 — MOBILE NOVO / DADOS DO DESKTOP -->
+<section id="cpAppV102" aria-label="Corner Pro Mobile">
+  <header class="cp102Top">
+    <button class="cp102Menu" type="button" aria-label="Menu">☰</button>
+    <div class="cp102Brand"><b>CORNER<span>PRO</span></b><small>ANÁLISES ESPORTIVAS</small></div>
+    <button id="cp102User" class="cp102User" type="button"><img id="cp102UserImg" hidden alt=""><i>G</i><span id="cp102UserText">Entrar</span></button>
+  </header>
+
+  <section class="cp102DateBar">
+    <div><small>ANÁLISES DO DIA</small><b id="cp102DateText">Hoje</b></div>
+    <button id="cp102Refresh" type="button" aria-label="Atualizar">↻</button>
+  </section>
+
+  <section id="cp102Hero" class="cp102Hero"></section>
+
+  <div class="cp102SectionHead"><div><small>EXPLORE</small><h3>Mercados em destaque</h3></div><span>mesmas IAs do site</span></div>
+  <div id="cp102Markets" class="cp102Markets"></div>
+
+  <section class="cp102MarketPanel">
+    <header class="cp102MarketHead"><div><small>MERCADO ATIVO</small><h2 id="cp102MarketTitle">ESCANTEIOS</h2></div><b id="cp102Count">0 jogos</b></header>
+    <div id="cp102Lines" class="cp102Lines"></div>
+    <div id="cp102Games" class="cp102Games"></div>
+  </section>
+
+  <nav class="cp102Bottom" aria-label="Navegação principal">
+    <button class="active" type="button"><i>⌂</i><span>Início</span></button>
+    <button type="button" data-cp102-market="corners"><i>⚑</i><span>Mercados</span></button>
+    <button type="button" data-cp102-view="live"><i>◎</i><span>Ao Vivo</span></button>
+    <button id="cp102UserBottom" type="button"><i>◉</i><span>Perfil</span></button>
+  </nav>
 </section>
-<div id="cp100Match" class="cp100Match"><header class="cp100MatchHead"><button id="cp100CloseMatch">←</button><b id="cp100MatchTitle">MATCH CENTER</b></header><div id="cp100MatchBody" class="cp100MatchBody"></div></div>
+
+<div id="cp102Match" class="cp102Match" aria-hidden="true">
+  <header class="cp102MatchHead"><button id="cp102CloseMatch" type="button">←</button><b id="cp102MatchTitle">MATCH CENTER</b></header>
+  <div id="cp102MatchBody" class="cp102MatchBody"></div>
+</div>
+
+<script id="cpAppV102Controller">
+(() => {
+  'use strict';
+  if (!window.matchMedia?.('(max-width:980px)').matches) return;
+  if (window.__CP_APP_V102__) return;
+  window.__CP_APP_V102__ = true;
+  window.__CP_APP_V101__ = true;
+
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+  const clean=(v,f='—')=>{const s=String(v??'').trim();return s && !['undefined','null','NaN'].includes(s)?s:f};
+  const num=(...vs)=>{for(const v of vs){if(v===null||v===undefined||v==='')continue;const n=Number(String(v).replace('%','').replace(',','.').trim());if(Number.isFinite(n))return n;}return null};
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+  const MARKETS={
+    corners:{label:'Escanteios',icon:'⚑',hint:'8.5 • 9.5 • 10.5',lines:['IA','TODOS','8.5','9.5','10.5','11.5','12.5'],field:'corners_ai'},
+    goals:{label:'Gols',icon:'⚽',hint:'1.5 • 2.5 • 3.5',lines:['IA','TODOS','1.5','2.5','3.5','4.5'],field:'goals_ai'},
+    cards:{label:'Cartões',icon:'▯',hint:'2.5 • 3.5 • 4.5',lines:['IA','TODOS','2.5','3.5','4.5','5.5'],field:'cards_ai'},
+    handicap:{label:'Handicap',icon:'⇆',hint:'-1.0 • 0.0 • +1.0',lines:['IA','TODOS','-2.0','-1.5','-1.0','-0.5','0.0','+0.5','+1.0','+1.5','+2.0'],field:'handicap_ai'},
+    btts:{label:'Ambas Marcam',icon:'◉',hint:'SIM • NÃO',lines:['IA','TODOS','SIM','NÃO'],field:'btts_ai'},
+    result:{label:'Resultado',icon:'1X2',hint:'CASA • X • FORA',lines:['IA','TODOS','CASA','EMPATE','FORA'],field:'result_ai'},
+    doublechance:{label:'Dupla Chance',icon:'12',hint:'1X • 12 • X2',lines:['IA','TODOS','1X','12','X2'],field:'doublechance_ai'},
+    teamgoals:{label:'Gols do Time',icon:'⚽+',hint:'0.5 • 1.5 • 2.5',lines:['IA','TODOS','0.5','1.5','2.5'],field:'teamgoals_ai'},
+    builder:{label:'Aposta Pronta',icon:'⚡',hint:'MAIOR CONFIANÇA',lines:['IA','TODOS'],field:'builder_ai'}
+  };
+
+  const state={date:'',market:'corners',line:'IA',base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},loading:true,view:'home',selected:null,requestId:0};
+
+  function ymdManaus(){
+    try{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}
+    catch{return new Date().toISOString().slice(0,10)}
+  }
+  function humanDate(ymd){const [y,m,d]=String(ymd).split('-').map(Number);const names=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];return Number.isFinite(d)?`${String(d).padStart(2,'0')} ${names[(m||1)-1]}`:'Hoje'}
+
+  function extractList(payload, market=null, seen=new Set()){
+    if(Array.isArray(payload)) return payload.filter(x=>x&&typeof x==='object');
+    if(!payload||typeof payload!=='object'||seen.has(payload))return[];
+    seen.add(payload);
+    if(market && Array.isArray(payload[market])) return payload[market];
+    const keys=['games','jogos','matches','fixtures','events','data','items','results','response','quentes','list','top','top6','recommendations','opportunities','corners'];
+    for(const k of keys){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==='object');}
+    for(const v of Object.values(payload)){if(v&&typeof v==='object'){const out=extractList(v,market,seen);if(out.length)return out}}
+    return[];
+  }
+
+  const home=g=>clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??g?.event_home_team??g?.raw?.casa??g?.raw?.match_hometeam_name,'Casa');
+  const away=g=>clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??g?.event_away_team??g?.raw?.fora??g?.raw?.match_awayteam_name,'Fora');
+  const time=g=>clean(g?.hora??g?.time??g?.match_time??g?.event_time??g?.raw?.hora??g?.raw?.match_time,'--:--');
+  const league=g=>clean(g?.liga??g?.league_name??g?.league??g?.match_league_name??g?.raw?.liga??g?.raw?.league_name,'Liga');
+  const gid=g=>clean(g?.match_id??g?.event_id??g?.event_key??g?.fixture_id??g?.id??g?.raw?.match_id,'');
+  const pairKey=g=>`${norm(home(g))}|${norm(away(g))}`;
+  const key=g=>gid(g)||pairKey(g);
+  const badge=(g,side)=>{const vals=side==='home'?[g?.home_badge,g?.team_home_badge,g?.home_team_badge,g?.home_logo,g?.raw?.home_badge,g?.raw?.team_home_badge]:[g?.away_badge,g?.team_away_badge,g?.away_team_badge,g?.away_logo,g?.raw?.away_badge,g?.raw?.team_away_badge];return vals.find(x=>/^https?:\/\//i.test(String(x||'')))||''};
+
+  function raw(g){return g?.raw||g||{}}
+  function decision(g,market=state.market){const r=raw(g);if(market==='result'||market==='doublechance'||market==='teamgoals'||market==='builder')return{};const f=MARKETS[market]?.field;return r?.[f]||g?.[f]||{}}
+  function confidence(g,market=state.market){
+    const r=raw(g);let x;
+    if(['result','doublechance','teamgoals'].includes(market)) x=num(market==='teamgoals'?r?.goals_ai?.confidence:null,r?.handicap_ai?.confidence,r?.goals_ai?.confidence,g?.confidence,r?.ai_score);
+    else if(market==='builder') x=Math.max(...['corners','goals','cards','handicap','btts'].map(t=>confidence(g,t)).filter(Number.isFinite),0);
+    else x=num(decision(g,market)?.confidence,decision(g,market)?.probability,g?.confidence,r?.ai_score);
+    if(x!==null&&x>0&&x<=1)x*=100;return x===null?0:Math.max(0,Math.min(95,Math.round(x)));
+  }
+  function projection(g,market=state.market){const r=raw(g),d=decision(g,market);if(market==='corners')return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);if(market==='goals')return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);if(market==='cards')return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);if(['result','doublechance','teamgoals'].includes(market))return num(r?.goals_ai?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);return num(d?.projection)}
+  function marketPick(g,market=state.market){
+    const r=raw(g),d=decision(g,market);
+    if(market==='result'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??r?.oddsInfo?.fav?.side??'');if(s.includes('away')||s.includes('fora'))return'FORA';if(s.includes('home')||s.includes('casa'))return'CASA';return'1X2'}
+    if(market==='doublechance'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??'');if(s.includes('away')||s.includes('fora'))return'X2';if(s.includes('home')||s.includes('casa'))return'1X';return'12'}
+    if(market==='teamgoals'){return `OVER ${state.line==='IA'||state.line==='TODOS'?'0.5':state.line}`}
+    if(market==='builder'){let best={c:0,p:'ANALISANDO'};for(const t of ['corners','goals','cards','handicap','btts']){const c=confidence(g,t),p=clean(decision(g,t)?.line,'');if(c>best.c&&p&&!/atualiza|analisando|sem aposta/i.test(p))best={c,p}}return best.p}
+    return clean(d?.line??d?.pick??d?.recommendation??d?.selection,'ANALISANDO').toUpperCase();
+  }
+  function resolved(g,market=state.market){if(['result','doublechance','teamgoals','builder'].includes(market))return confidence(g,market)>0;const d=decision(g,market),p=marketPick(g,market);return Boolean(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA|^—$/.test(p))}
+
+  function gameStatus(g){
+    const r=raw(g),s=norm(g?.match_status??g?.status??r?.match_status??r?.status??r?.event_status??r?.event_raw?.match_status??'');
+    const minute=num(g?.minute,r?.minute,r?.match_minute,r?.elapsed,r?.event_raw?.match_minute);
+    const hs=num(g?.score_home,r?.score_home,r?.match_hometeam_score,r?.home_score,r?.event_raw?.match_hometeam_score);
+    const as=num(g?.score_away,r?.score_away,r?.match_awayteam_score,r?.away_score,r?.event_raw?.match_awayteam_score);
+    const finished=/finished|full time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet|penalties/.test(s)||Boolean(g?.finished??r?.finished);
+    const halftime=!finished&&(/half time|\bht\b|interval|break/.test(s)||Boolean(g?.halftime??r?.halftime));
+    const sm=s.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);const realMinute=minute!==null?minute:(sm?Number(sm[1])+(sm[2]?Number(sm[2]):0):null);
+    const live=!finished&&(halftime||/live|ao vivo|1st|2nd|in play/.test(s)||(realMinute!==null&&realMinute>0));
+    let label='PRÉ-JOGO';if(finished)label='ENCERRADO';else if(halftime)label='INTERVALO';else if(live)label=realMinute?`AO VIVO • ${Math.round(realMinute)}'`:'AO VIVO';
+    return{finished,halftime,live,label,minute:realMinute,hs,as};
+  }
+  function score(g){const s=gameStatus(g);return s.hs!==null&&s.as!==null?`${s.hs} - ${s.as}`:'VS'}
+  function settlement(g,market=state.market){const s=gameStatus(g);if(!s.finished)return null;const d=decision(g,market),v=norm(d?.outcome??d?.result??d?.settlement??raw(g)?.[`${market}_result`]??'');if(/green|win|won|acerto/.test(v))return'GREEN';if(/red|loss|lost|erro/.test(v))return'RED';if(/push|void|refund|devol/.test(v))return'DEVOLVIDA';return null}
+
+  function mergeAll(){
+    const byId=new Map(),byPair=new Map(),ordered=[];
+    const addBase=g=>{if(!g||typeof g!=='object')return;const k=key(g),p=pairKey(g);let t=(k&&byId.get(k))||byPair.get(p);if(!t){t={...g};ordered.push(t)}else Object.assign(t,g);if(k)byId.set(k,t);if(p)byPair.set(p,t)};
+    state.base.forEach(addBase);
+    for(const [market,list] of Object.entries(state.engines)){
+      for(const e of list||[]){const k=key(e),p=pairKey(e);let t=(k&&byId.get(k))||byPair.get(p);if(!t){t={...e};ordered.push(t);if(k)byId.set(k,t);if(p)byPair.set(p,t)}else Object.assign(t,e);const f=MARKETS[market]?.field;if(f){const d=e?.[f]||e?.raw?.[f]||e?.decision||e?.ai;if(d)t[f]=d}}
+    }
+    state.games=ordered;
+  }
+
+  function sourceForMarket(market=state.market){
+    if(state.engines[market]?.length){const src=state.engines[market];const map=new Map(state.games.map(g=>[key(g),g]));return src.map(e=>map.get(key(e))||state.games.find(g=>pairKey(g)===pairKey(e))||e)}
+    return state.games;
+  }
+  function filtered(market=state.market,line=state.line){
+    let list=sourceForMarket(market).slice();
+    if(line==='IA') list=list.filter(g=>resolved(g,market));
+    else if(line!=='TODOS'){
+      const w=norm(line);list=list.filter(g=>norm(marketPick(g,market)).includes(w)||norm(decision(g,market)?.line).includes(w));
+    }
+    return list.slice(0,30);
+  }
+
+  async function fetchJSON(url,timeout=18000){
+    const c=new AbortController(),timer=setTimeout(()=>c.abort(),timeout);
+    try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(timer)}
+  }
+
+  async function load(force=false){
+    const requestId=++state.requestId;state.loading=true;renderLoading();const date=state.date||ymdManaus(),stamp=Date.now();
+    // 1) fast visible feed: render as soon as one base source succeeds.
+    const fastSources=await Promise.allSettled([
+      fetchJSON(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,15000),
+      fetchJSON(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,22000),
+      fetchJSON(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,35000)
+    ]);
+    if(requestId!==state.requestId)return;
+    const q=fastSources[0].status==='fulfilled'?extractList(fastSources[0].value):[];
+    const m=fastSources[1].status==='fulfilled'?extractList(fastSources[1].value):[];
+    const c=fastSources[2].status==='fulfilled'?extractList(fastSources[2].value,'corners'):[];
+    state.base=m.length?m:q.length?q:c;
+    if(c.length)state.engines.corners=c;
+    mergeAll();render();
+
+    // 2) same multi-market engines used by desktop; enrich without blanking the screen.
+    const engines=await Promise.allSettled([
+      fetchJSON(`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000),
+      fetchJSON(`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,45000)
+    ]);
+    if(requestId!==state.requestId)return;
+    for(const r of engines){if(r.status!=='fulfilled'||!r.value||typeof r.value!=='object')continue;for(const t of ['corners','goals','cards','handicap','btts']){const a=extractList(r.value,t);if(a.length)state.engines[t]=a}}
+    // desktop's /web_corners_ai remains authoritative for corners if available.
+    if(c.length)state.engines.corners=c;
+    mergeAll();state.loading=false;render();
+  }
+
+  function renderMarketStrip(){const box=$('#cp102Markets');if(!box)return;box.innerHTML=Object.entries(MARKETS).map(([k,m])=>{const n=filtered(k,'IA').length||sourceForMarket(k).length;return `<button class="cp102Market ${state.market===k?'active':''}" data-cp102-market="${k}"><span>${m.icon}</span><b>${m.label}</b><small>${m.hint}</small><em>${n} jogos</em></button>`}).join('')}
+  function renderLines(){const m=MARKETS[state.market],box=$('#cp102Lines');if(!box)return;$('#cp102MarketTitle').textContent=m.label.toUpperCase();box.innerHTML=m.lines.map(x=>`<button class="${state.line===x?'active':''}" data-cp102-line="${x}">${x==='IA'?'✦ IA':x}</button>`).join('')}
+  function logoHTML(g,side){const src=badge(g,side),name=side==='home'?home(g):away(g);return src?`<img src="${esc(src)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none">${esc(name.slice(0,2).toUpperCase())}</i>`:`<i>${esc(name.slice(0,2).toUpperCase())}</i>`}
+  function gameCard(g,idx){const st=gameStatus(g),set=settlement(g),p=marketPick(g),pr=projection(g),c=confidence(g);return `<article class="cp102Game" data-cp102-game="${idx}"><div class="cp102GameTop"><div><span>${esc(league(g))}</span><b>${esc(time(g))}</b></div><strong class="cp102Status ${st.live?'live':''} ${st.halftime?'ht':''} ${st.finished?'finished':''}">${esc(st.label)}</strong></div><div class="cp102Teams"><div class="cp102Team"><span>${logoHTML(g,'home')}</span><b>${esc(home(g))}</b></div><em>${esc(score(g))}</em><div class="cp102Team right"><span>${logoHTML(g,'away')}</span><b>${esc(away(g))}</b></div></div><div class="cp102Bet"><div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div>${pr!==null?`<div><small>PROJEÇÃO</small><b>${pr.toFixed(1)}</b></div>`:''}${c?`<div><small>CONFIANÇA</small><b>${c}%</b></div>`:''}</div>${set?`<div class="cp102Settlement ${set.toLowerCase()}">${set}</div>`:''}<button type="button" class="cp102Open">VER ANÁLISE <span>›</span></button></article>`}
+
+  function renderHero(){const list=filtered(),g=list[0]||sourceForMarket(state.market)[0];const hero=$('#cp102Hero');if(!hero)return;if(!g){hero.innerHTML=`<div class="cp102HeroEmpty"><small>✦ IA DO CORNER PRO</small><h2>${state.loading?'CARREGANDO ANÁLISES...':'SEM OPORTUNIDADE APROVADA'}</h2><p>${state.loading?'Consultando os mesmos motores do site.':'Escolha outra linha ou outro mercado.'}</p></div>`;return}const st=gameStatus(g),p=marketPick(g),pr=projection(g),c=confidence(g);hero.innerHTML=`<div class="cp102HeroTop"><b>🔥 MELHOR OPORTUNIDADE • ${esc(MARKETS[state.market].label.toUpperCase())}</b><span class="cp102Status ${st.live?'live':''} ${st.finished?'finished':''}">${esc(st.label)}</span></div><div class="cp102HeroMatch"><div class="cp102HeroTeam"><span>${logoHTML(g,'home')}</span><strong>${esc(home(g))}</strong></div><div class="cp102HeroMid"><small>${esc(league(g))} • ${esc(time(g))}</small><b>${esc(score(g))}</b></div><div class="cp102HeroTeam right"><span>${logoHTML(g,'away')}</span><strong>${esc(away(g))}</strong></div></div><div class="cp102HeroRec"><div><small>IA RECOMENDA</small><strong>${esc(p)}</strong></div>${pr!==null?`<div><small>PROJEÇÃO</small><b>${pr.toFixed(1)}</b></div>`:''}${c?`<div><small>CONFIANÇA</small><b>${c}%</b></div>`:''}</div><button type="button" data-cp102-hero-open>VER ANÁLISE COMPLETA <span>›</span></button>`}
+
+  function renderGames(){const list=filtered(),box=$('#cp102Games');if(!box)return;$('#cp102Count').textContent=`${list.length} ${list.length===1?'jogo':'jogos'}`;if(!list.length){box.innerHTML=`<div class="cp102Empty"><b>${state.loading?'Carregando IA...':'Nenhuma análise aprovada'}</b><span>${state.loading?'Os dados reais já estão sendo consultados.':'Tente TODOS ou escolha outra linha.'}</span></div>`;return}box.innerHTML=list.map(gameCard).join('')}
+  function render(){renderMarketStrip();renderLines();renderHero();renderGames();$('#cp102DateText').textContent=humanDate(state.date);syncAuth()}
+  function renderLoading(){renderHero();renderGames()}
+
+  function syncAuth(){const target=$('#cp102UserText'),photo=$('#authUserPhoto'),name=$('#authUserName'),profile=$('#authUserProfile');if(!target)return;const logged=profile&&!profile.hidden&&clean(name?.textContent,'')&&clean(name?.textContent,'')!=='Usuário';target.textContent=logged?clean(name.textContent,'Perfil'):'Entrar';const img=$('#cp102UserImg');if(img){if(logged&&photo?.src){img.src=photo.src;img.hidden=false}else img.hidden=true}}
+  function openAuth(){const profile=$('#authUserProfile');if(profile&&!profile.hidden){return}const b=$('#btnGoogleLogin')||$('#mobileAuthButton');b?.click()}
+  function openGame(g){state.selected=g;const layer=$('#cp102Match');$('#cp102MatchTitle').textContent=`${home(g)} × ${away(g)}`;const st=gameStatus(g),d=decision(g),p=marketPick(g),pr=projection(g),c=confidence(g);$('#cp102MatchBody').innerHTML=`<section class="cp102MatchHero"><small>${esc(league(g))} • ${esc(time(g))}</small><div><strong>${esc(home(g))}</strong><b>${esc(score(g))}</b><strong>${esc(away(g))}</strong></div><span>${esc(st.label)}</span></section><section class="cp102MatchRec"><small>${esc(MARKETS[state.market].label.toUpperCase())}</small><h2>${esc(p)}</h2><div><span>Projeção <b>${pr!==null?pr.toFixed(1):'—'}</b></span><span>Confiança <b>${c?`${c}%`:'—'}</b></span></div></section><section class="cp102Explain"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,'Análise carregada pelo mesmo motor utilizado no site desktop.'))}</p></section>`;layer.classList.add('open');document.body.classList.add('cp102Locked')}
+  function closeGame(){$('#cp102Match')?.classList.remove('open');document.body.classList.remove('cp102Locked')}
+
+  function bind(){
+    document.addEventListener('click',e=>{
+      const m=e.target.closest('[data-cp102-market]');if(m){state.market=m.dataset.cp102Market;state.line='IA';render();return}
+      const l=e.target.closest('[data-cp102-line]');if(l){state.line=l.dataset.cp102Line;render();return}
+      const card=e.target.closest('[data-cp102-game]');if(card){const list=filtered();const g=list[Number(card.dataset.cp102Game)];if(g)openGame(g);return}
+      if(e.target.closest('[data-cp102-hero-open]')){const g=filtered()[0]||sourceForMarket(state.market)[0];if(g)openGame(g);return}
+      if(e.target.closest('#cp102Refresh')){load(true);return}
+      if(e.target.closest('#cp102User')){openAuth();return}
+      if(e.target.closest('#cp102CloseMatch')){closeGame();return}
+      const live=e.target.closest('[data-cp102-view="live"]');if(live){state.line='TODOS';const all=state.games.filter(g=>gameStatus(g).live||gameStatus(g).halftime);state._liveOverride=all;render();return}
+    },true);
+  }
+
+  function start(){
+    document.documentElement.classList.add('cp102Mobile','cp101HardSwitch');
+    $('#cpDesktopBootScreen')?.setAttribute('hidden','');
+    const boot=$('#cpDesktopBootScreen');if(boot)boot.style.display='none';
+    state.date=$('#date')?.value||ymdManaus();if($('#date'))$('#date').value=state.date;
+    bind();syncAuth();new MutationObserver(syncAuth).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','src']});
+    render();load();
+    setInterval(()=>{if(document.visibilityState==='visible')load()},60000);
+  }
+  start();
+})();
+
+</script>
 
 </body>
 </html>

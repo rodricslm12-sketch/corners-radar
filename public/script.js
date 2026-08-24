@@ -1,3 +1,5 @@
+/* APP V102: a interface mobile nova é controlada pelo HTML independente; evita o controlador V101 duplicado. */
+if (window.matchMedia?.("(max-width:980px)")?.matches) window.__CP_APP_V101__ = true;
 /* =========================================================
    CORNER PRO MOBILE V92 — FONTE ÚNICA DO DESKTOP
    1) O Top 1 mobile de cantos passa a usar /web_corners_ai,
