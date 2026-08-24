@@ -61,7 +61,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function cornerRec(g){const d=dec(g,"corners"),line=clean(d?.line,"").toUpperCase(),p=projection(g,"corners"),c=confidence(g,"corners");if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};if(p!==null){if(p>=11.75)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};if(p>=10.75)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};if(p>=9.55)return{valid:true,line:"OVER 9.5",projection:p,confidence:c}}return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c}}
     function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return cornerRec(g).line;if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;if(m==="builder"){let best={c:0,p:"ANALISANDO"};for(const x of ["corners","goals","cards","handicap","btts"]){const c=confidence(g,x),p=clean(dec(g,x)?.line,"");if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase()}
     function resolved(g,m=state.market){if(m==="corners")return cornerRec(g).valid;if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;const d=dec(g,m),p=pick(g,m);return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p))}
-    function status(g){const r=raw(g),s=norm(r?.match_status??r?.status??r?.event_status??""),minute=num(r?.minute,r?.match_minute,r?.elapsed),hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home),as=num(r?.match_awayteam_score,r?.away_score,r?.score_away);const finished=/finished|full time|\bft\b|encerr|final|ended/.test(s),ht=!finished&&(/half time|\bht\b|interval/.test(s)),live=!finished&&(ht||/live|ao vivo|1st|2nd/.test(s)||(minute!==null&&minute>0));return{finished,ht,live,label:finished?"ENCERRADO":ht?"INTERVALO":live?(minute?`AO VIVO • ${Math.round(minute)}'`:"AO VIVO"):"PRÉ-JOGO",score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:"VS"}}
+    function status(g){
+      const r=raw(g);
+      const s=norm(r?.match_status??r?.status??r?.event_status??r?.status_raw??"");
+      const minute=num(r?.minute,r?.match_minute,r?.elapsed,r?.match_live);
+      const hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home,r?.goals?.home,r?.score?.home);
+      const as=num(r?.match_awayteam_score,r?.away_score,r?.score_away,r?.goals?.away,r?.score?.away);
+      const finished=Boolean(r?.finished)||/finished|full time|full-time|\bft\b|encerr|finaliz|ended|after extra|after pen/.test(s);
+      const ht=!finished&&(Boolean(r?.halftime)||Boolean(r?.half_time)||/half time|half-time|halftime|\bht\b|interval|break/.test(s));
+      const live=!finished&&(ht||Boolean(r?.live)||/live|ao vivo|1st|2nd|in play|in-play|playing|andamento/.test(s)||(minute!==null&&minute>0));
+      const liveMinute=minute!==null&&minute>0?`${Math.round(minute)}'`:"";
+      return{
+        finished,ht,live,
+        label:finished?"ENCERRADO":ht?"INTERVALO":live?(liveMinute?`AO VIVO • ${liveMinute}`:"AO VIVO"):`INÍCIO • ${time(g)}`,
+        short:finished?"FIM":ht?"INTERVALO":live?(liveMinute||"AO VIVO"):`INÍCIO ${time(g)}`,
+        score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:"VS"
+      };
+    }
     function badgeUrl(g,side){const r=raw(g);const vals=side==="home"?[r.home_badge,r.team_home_badge,r.home_team_badge,r.home_logo,r.home_team_logo,r.hometeam_logo,r.event_raw?.team_home_badge,r.event_raw?.home_badge,r.event_raw?.home_team_logo]:[r.away_badge,r.team_away_badge,r.away_team_badge,r.away_logo,r.away_team_logo,r.awayteam_logo,r.event_raw?.team_away_badge,r.event_raw?.away_badge,r.event_raw?.away_team_logo];return clean(vals.find(v=>/^https?:\/\//i.test(String(v||""))),"")}
     function initials(n){const p=String(n||"").trim().split(/\s+/).filter(Boolean);return (p.length>1?p[0][0]+p[1][0]:(p[0]||"--").slice(0,2)).toUpperCase()}
     function logo(g,side){const src=badgeUrl(g,side),n=side==="home"?home(g):away(g);return `<span class="v110Logo">${src?`<img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none">${esc(initials(n))}</i>`:`<i>${esc(initials(n))}</i>`}</span>`}
@@ -83,6 +99,126 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     
     const GAME_THEMES=["lime","cyan","amber","violet","coral","blue"];
     function gameTheme(i){return GAME_THEMES[Math.abs(Number(i)||0)%GAME_THEMES.length]}
+  
+    
+    let selectedMatch=null;
+    let matchPollTimer=null;
+    let baseStatusPollTimer=null;
+  
+    function pair(data,name){
+      const block=data?.[name]||data?.statistics?.[name]||data?.stats?.[name]||{};
+      const h=block?.home??block?.casa??block?.local??"—";
+      const a=block?.away??block?.fora??block?.visitor??"—";
+      return {home:clean(h,"—"),away:clean(a,"—")};
+    }
+    function statsStatus(data,g){
+      const merged={...raw(g),...(data||{})};
+      const temp={...g,raw:merged};
+      return status(temp);
+    }
+    function statsScore(data,g){
+      const hs=clean(data?.goals?.home??data?.score?.home??data?.home_score??raw(g)?.match_hometeam_score??raw(g)?.home_score,"0");
+      const as=clean(data?.goals?.away??data?.score?.away??data?.away_score??raw(g)?.match_awayteam_score??raw(g)?.away_score,"0");
+      return `${hs} - ${as}`;
+    }
+    function mcMetric(label,values,unit=""){
+      const h=values?.home??"—",a=values?.away??"—";
+      return `<div class="v110McMetric"><strong>${esc(h)}${h!=="—"?unit:""}</strong><span>${esc(label)}</span><strong>${esc(a)}${a!=="—"?unit:""}</strong></div>`;
+    }
+    function renderMatchCenter(g,data=null,loading=false,error=""){
+      const body=$("#cpV110MatchBody"); if(!body||!g)return;
+      const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g);
+      const s=data?statsStatus(data,g):status(g);
+      const score=data?statsScore(data,g):s.score;
+      const corners=pair(data||{},"corners");
+      const shots=pair(data||{},"shots");
+      const target=pair(data||{},"shots_on_target");
+      const possession=pair(data||{},"possession");
+      const attacks=pair(data||{},"dangerous_attacks");
+      const passes=pair(data||{},"passes");
+      const fouls=pair(data||{},"fouls");
+      const cards=pair(data||{},"yellow_cards");
+      const events=Array.isArray(data?.events)?data.events.slice(-8):[];
+      const noRealStats=[corners,shots,target,possession,attacks,passes,fouls,cards].every(x=>x.home==="—"&&x.away==="—");
+  
+      body.innerHTML=`
+        <section class="v110MatchCard v110McHero">
+          <div class="v110McTop"><small>${esc(clean(data?.league,league(g)))} • ${esc(clean(data?.time,time(g)))}</small><b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b></div>
+          <div class="v110McScore">
+            <div>${logo(g,"home")}<strong>${esc(clean(data?.home,home(g)))}</strong></div>
+            <em>${esc(score)}</em>
+            <div>${logo(g,"away")}<strong>${esc(clean(data?.away,away(g)))}</strong></div>
+          </div>
+        </section>
+  
+        <section class="v110MatchCard v110McPrediction">
+          <div><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2></div>
+          <div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):"—"}</b></div>
+          <div><small>CONFIANÇA</small><b>${cf?cf+"%":"—"}</b></div>
+        </section>
+  
+        <section class="v110MatchCard v110McStats">
+          <div class="v110McTitle"><h3>ESTATÍSTICAS DA PARTIDA</h3>${loading?'<span class="v110McUpdating">ATUALIZANDO</span>':""}</div>
+          ${error?`<p class="v110McNotice">${esc(error)}</p>`:""}
+          ${noRealStats&&!loading?`<p class="v110McNotice">${s.finished?"As estatísticas detalhadas não foram disponibilizadas pela fonte para esta partida.":s.live||s.ht?"Aguardando atualização das estatísticas ao vivo.":"As estatísticas da partida aparecem aqui assim que o jogo começar."}</p>`:""}
+          ${mcMetric("Escanteios",corners)}
+          ${mcMetric("Finalizações",shots)}
+          ${mcMetric("No alvo",target)}
+          ${mcMetric("Posse",possession,"%")}
+          ${mcMetric("Ataques perigosos",attacks)}
+          ${mcMetric("Passes",passes)}
+          ${mcMetric("Faltas",fouls)}
+          ${mcMetric("Cartões",cards)}
+        </section>
+  
+        <section class="v110MatchCard v110McEvents">
+          <h3>EVENTOS / LEITURA</h3>
+          ${events.length?events.map(e=>`<p><b>${esc(e?.minute??"")}${e?.minute?"'":""}</b><span>${esc(e?.label??e?.type??"Evento")}</span></p>`).join(""):`<p class="v110McNotice">${s.finished?"Nenhum evento detalhado disponível.":s.live||s.ht?"Aguardando novos eventos da partida.":"Eventos serão exibidos durante a partida."}</p>`}
+        </section>
+  
+        <section class="v110MatchCard">
+          <h3>LEITURA DA IA</h3>
+          <p>${esc(clean(d?.reason??d?.explanation??d?.analysis,"Análise carregada pelos mesmos motores utilizados no site desktop."))}</p>
+        </section>`;
+    }
+  
+    async function refreshMatchCenter(g,{silent=false}={}){
+      if(!g)return;
+      const gid=id(g);
+      if(!gid){
+        renderMatchCenter(g,null,false,"Esta partida não trouxe match_id para consultar estatísticas em tempo real.");
+        return;
+      }
+      if(!silent) renderMatchCenter(g,null,true);
+      try{
+        const data=await fetchJ(`/match_center?match_id=${encodeURIComponent(gid)}&fresh=1&t=${Date.now()}`,18000);
+        if(selectedMatch && id(selectedMatch)===gid){
+          // Merge status/score from Match Center back into visible app cards.
+          const idx=state.games.findIndex(x=>id(x)===gid);
+          if(idx>=0) state.games[idx]={...state.games[idx],raw:{...raw(state.games[idx]),...(data||{})}};
+          renderMatchCenter(g,data,false);
+          render();
+        }
+      }catch(e){
+        console.warn("[V115 match_center]",e);
+        if(!silent && selectedMatch && id(selectedMatch)===gid){
+          renderMatchCenter(g,null,false,"Não foi possível atualizar as estatísticas agora. Tente novamente em instantes.");
+        }
+      }
+    }
+  
+    async function refreshBaseStatus(){
+      if(document.hidden)return;
+      try{
+        const stamp=Date.now();
+        const a=extract(await fetchJ(`/quentes?date=${encodeURIComponent(state.date||ymd())}&_mobile=1&ai=0&t=${stamp}`,12000));
+        if(a.length){
+          const current=new Map(state.base.map(g=>[id(g),g]));
+          state.base=a.map(g=>({...current.get(id(g)),...g}));
+          merge();render();
+        }
+      }catch(e){console.warn("[V115 live status]",e)}
+    }
   
     function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
@@ -136,7 +272,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function syncAuth(){const img=$("#cpV110UserImg"),dot=$("#cpV110User i"),btn=$("#cpV110User"),photo=currentUser?.photoURL||currentProfile?.user?.foto||"";if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||"Perfil"):"Entrar com Google";if(dot)dot.style.background=currentUser?"#66ff2a":"#6f7a75"}
     async function initAuth(){try{firebaseApi=await import("./firebase-client.js");firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn("[V110 auth]",e)}syncAuth()})}catch(e){console.warn("[V110 firebase]",e);syncAuth()}}
     async function openAuth(){if(authBusy||!firebaseApi||currentUser)return;authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn("[V110 login]",e)}finally{authBusy=false;syncAuth()}}
-    function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$("#cpV110MatchTitle").textContent=`${home(g)} × ${away(g)}`;$("#cpV110MatchBody").innerHTML=`<section class="v110MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v110MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):"—"}</b> &nbsp; Confiança: <b>${cf?cf+"%":"—"}</b></p></section><section class="v110MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,"Análise carregada pelos mesmos motores utilizados no site desktop."))}</p></section>`;document.documentElement.classList.add("cpV110MatchOpen")}
+    async function openGame(g){
+      if(!g)return;
+      selectedMatch=g;
+      $("#cpV110MatchTitle").textContent=`${home(g)} × ${away(g)}`;
+      document.documentElement.classList.add("cpV110MatchOpen");
+      renderMatchCenter(g,null,true);
+      await refreshMatchCenter(g,{silent:true});
+      if(matchPollTimer) clearInterval(matchPollTimer);
+      matchPollTimer=setInterval(()=>{
+        if(selectedMatch && document.documentElement.classList.contains("cpV110MatchOpen")){
+          refreshMatchCenter(selectedMatch,{silent:true});
+        }
+      },45000);
+    }
   
     document.addEventListener("click",e=>{
       const fav=e.target.closest("[data-v110-fav-team]");
@@ -155,12 +304,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       const nav=e.target.closest("[data-v110-nav]");if(nav){const v=nav.dataset.v110Nav;if(v==="home"){state.view="home";render();window.scrollTo(0,0);return}if(v==="pregame"||v==="live"){state.market="corners";state.line="TODOS";state.view="market";render();window.scrollTo(0,0);return}return}
-      if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");return}
+      if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
       if(e.target.closest("#cpV110User")){openAuth();return}
     },true);
   
     state.date=$("#date")?.value||ymd();if($("#date"))$("#date").value=state.date;
-    render();syncAuth();initAuth();load().catch(e=>{console.error("[CP V110]",e);state.loading=false;render()});
+    render();syncAuth();initAuth();load().catch(e=>{console.error("[CP V115]",e);state.loading=false;render()});if(!baseStatusPollTimer)baseStatusPollTimer=setInterval(refreshBaseStatus,45000);
   })();
   } else {
   /* =========================================================

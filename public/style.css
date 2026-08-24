@@ -20677,3 +20677,181 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     font-size:12px!important;
   }
 }
+
+
+
+/* =========================================================
+   MOBILE V115 — TEMPO / STATUS + ESTATÍSTICAS MATCH CENTER
+   SOMENTE APP <= 980px
+   ========================================================= */
+@media(max-width:980px){
+  .v110GameTop b{
+    min-width:74px!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+  }
+  .v110GameTop b.live{
+    background:#341410!important;
+    color:#ff7755!important;
+    box-shadow:0 0 0 1px rgba(255,119,85,.20)!important;
+  }
+  .v110GameTop b.finished{
+    background:#171e1b!important;
+    color:#bec7c2!important;
+  }
+
+  .v110McHero{
+    padding:12px!important;
+    background:
+      linear-gradient(180deg,rgba(0,6,8,.22),rgba(0,0,0,.78)),
+      url('/images/fundo.jpeg') center/cover no-repeat!important;
+  }
+  .v110McTop{
+    display:flex!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    gap:8px!important;
+  }
+  .v110McTop small{
+    color:#b2bcb7!important;
+    font-size:7px!important;
+  }
+  .v110McTop>b{
+    padding:5px 8px!important;
+    border-radius:999px!important;
+    background:#102617!important;
+    color:#70f331!important;
+    font-size:6.5px!important;
+    white-space:nowrap!important;
+  }
+  .v110McTop>b.live{
+    background:#35120f!important;
+    color:#ff7554!important;
+  }
+  .v110McTop>b.finished{
+    background:#18201d!important;
+    color:#bcc6c1!important;
+  }
+
+  .v110McScore{
+    display:grid!important;
+    grid-template-columns:1fr 70px 1fr!important;
+    align-items:center!important;
+    gap:7px!important;
+    margin-top:15px!important;
+  }
+  .v110McScore>div{
+    min-width:0!important;
+    text-align:center!important;
+  }
+  .v110McScore .v110Logo{
+    width:54px!important;
+    height:54px!important;
+  }
+  .v110McScore .v110Logo img{
+    max-width:52px!important;
+    max-height:52px!important;
+  }
+  .v110McScore strong{
+    display:block!important;
+    margin-top:4px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+  }
+  .v110McScore em{
+    text-align:center!important;
+    color:#70f331!important;
+    font-size:19px!important;
+    font-style:normal!important;
+    font-weight:950!important;
+  }
+
+  .v110McPrediction{
+    display:grid!important;
+    grid-template-columns:1.35fr .65fr .65fr!important;
+    gap:6px!important;
+  }
+  .v110McPrediction>div{
+    padding:8px!important;
+    border-radius:9px!important;
+    background:#0b1511!important;
+  }
+  .v110McPrediction small{
+    display:block!important;
+    color:#7f8b85!important;
+    font-size:5.5px!important;
+    font-weight:900!important;
+  }
+  .v110McPrediction h2,
+  .v110McPrediction b{
+    display:block!important;
+    margin:4px 0 0!important;
+    color:#70f331!important;
+    font-size:9px!important;
+  }
+
+  .v110McTitle{
+    display:flex!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    gap:8px!important;
+  }
+  .v110McTitle h3{
+    margin:0!important;
+  }
+  .v110McUpdating{
+    padding:4px 7px!important;
+    border-radius:999px!important;
+    background:#102617!important;
+    color:#70f331!important;
+    font-size:5.5px!important;
+    font-weight:900!important;
+  }
+  .v110McMetric{
+    display:grid!important;
+    grid-template-columns:48px 1fr 48px!important;
+    align-items:center!important;
+    gap:7px!important;
+    min-height:34px!important;
+    border-top:1px solid #18271f!important;
+  }
+  .v110McMetric strong{
+    text-align:center!important;
+    color:#eef3f0!important;
+    font-size:9px!important;
+  }
+  .v110McMetric span{
+    text-align:center!important;
+    color:#8f9a94!important;
+    font-size:6.5px!important;
+    font-weight:800!important;
+  }
+  .v110McNotice{
+    margin:8px 0!important;
+    padding:8px!important;
+    border-radius:8px!important;
+    background:#0a130f!important;
+    color:#8d9892!important;
+    font-size:7px!important;
+    line-height:1.4!important;
+  }
+
+  .v110McEvents>p{
+    display:grid!important;
+    grid-template-columns:36px 1fr!important;
+    gap:7px!important;
+    margin:0!important;
+    padding:7px 0!important;
+    border-top:1px solid #18271f!important;
+  }
+  .v110McEvents>p>b{
+    color:#70f331!important;
+    font-size:7px!important;
+  }
+  .v110McEvents>p>span{
+    color:#b9c2bd!important;
+    font-size:7px!important;
+  }
+}
