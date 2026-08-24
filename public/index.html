@@ -53,13 +53,13 @@
     #cpAuthModal [hidden] { display: none !important; }
   </style>
 
-  <link rel="stylesheet" href="style.css?v=20260824-app-v106" media="(min-width:981px)">
+  <link rel="stylesheet" href="style.css?v=20260824-app-v107" media="(min-width:981px)">
   <script>
     (function(){
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=cornerpro-desktop-v106-20260824';
+          s.src='script.js?v=cornerpro-desktop-v107-20260824';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -90,7 +90,7 @@
 
   </style>
 
-<style id="cpMobileV106VisualPatch">
+<style id="cpMobileV107VisualPatch">
 @media (max-width:980px){
   #cpNewMobileV105 button,
   #cpV105Match button{
@@ -215,6 +215,287 @@
     color:#fff!important;
   }
   .v105Refresh{color:#69ff2b!important}
+}
+</style>
+
+
+<style id="cpMobileV107Polish">
+@media (max-width:980px){
+  html,body,#cpNewMobileV105{
+    -webkit-text-size-adjust:100%!important;
+    text-size-adjust:100%!important;
+  }
+
+  #cpNewMobileV105{
+    max-width:440px!important;
+    margin:0 auto!important;
+    background:
+      radial-gradient(circle at 50% -8%,rgba(96,255,38,.08),transparent 27%),
+      #020604!important;
+    padding-bottom:84px!important;
+  }
+
+  .v105Top{
+    height:64px!important;
+    grid-template-columns:38px 1fr 40px!important;
+    padding:0 14px!important;
+    border-bottom:1px solid rgba(113,255,52,.10)!important;
+  }
+  .v105IconBtn{
+    width:38px!important;
+    height:38px!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+  }
+  .v105Brand b{
+    font-size:20px!important;
+    line-height:1!important;
+  }
+  .v105Brand small{
+    margin-top:4px!important;
+    font-size:6.5px!important;
+    letter-spacing:1.8px!important;
+  }
+
+  .v105DateRow{
+    gap:7px!important;
+    padding:10px 14px 5px!important;
+  }
+  .v105DateRow button{
+    height:34px!important;
+    padding:0 12px!important;
+    border-radius:11px!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+
+  .v105Intro{
+    padding:14px 16px 10px!important;
+  }
+  .v105Intro small{font-size:7px!important}
+  .v105Intro h1{
+    margin-top:5px!important;
+    font-size:21px!important;
+    line-height:1.06!important;
+    letter-spacing:-.55px!important;
+  }
+  .v105Refresh{
+    width:38px!important;
+    height:38px!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+  }
+
+  .v105Hero{
+    margin:0 14px 17px!important;
+    padding:14px!important;
+    border-radius:19px!important;
+    box-shadow:none!important;
+  }
+  .v105HeroTop b{
+    max-width:72%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+  }
+  .v105Status{
+    padding:5px 8px!important;
+    font-size:7px!important;
+  }
+  .v105HeroMatch{
+    grid-template-columns:1fr 62px 1fr!important;
+    gap:7px!important;
+    margin:14px 0!important;
+  }
+  .v105Logo{
+    width:48px!important;
+    height:48px!important;
+  }
+  .v105Logo img{
+    max-width:48px!important;
+    max-height:48px!important;
+  }
+  .v105Logo i{
+    width:44px!important;
+    height:44px!important;
+    font-size:15px!important;
+    background:linear-gradient(180deg,#102319,#0b1812)!important;
+    border:1px solid #1a3325!important;
+  }
+  .v105HeroTeam strong{
+    margin-top:6px!important;
+    font-size:11px!important;
+  }
+  .v105HeroMid small{
+    font-size:7px!important;
+    line-height:1.45!important;
+  }
+  .v105HeroMid b{
+    margin-top:6px!important;
+    font-size:21px!important;
+  }
+  .v105HeroPick{
+    grid-template-columns:1.35fr .72fr .72fr!important;
+    gap:5px!important;
+    padding:9px!important;
+    border-radius:12px!important;
+  }
+  .v105HeroPick small{font-size:6px!important}
+  .v105HeroPick b{font-size:9px!important}
+  .v105HeroPick div:first-child b{font-size:11px!important}
+  .v105HeroOpen{
+    height:40px!important;
+    margin-top:9px!important;
+    border-radius:11px!important;
+    font-size:9px!important;
+    letter-spacing:.1px!important;
+  }
+
+  .v105SectionHead{
+    align-items:center!important;
+    padding:0 15px 9px!important;
+  }
+  .v105SectionHead h2{font-size:17px!important}
+  .v105SectionHead span{font-size:7px!important}
+  .v105SectionHead button{
+    font-size:7px!important;
+    line-height:1!important;
+  }
+
+  .v105Markets{
+    gap:7px!important;
+    padding:0 14px 16px!important;
+  }
+  .v105Market{
+    flex:0 0 91px!important;
+    width:91px!important;
+    height:88px!important;
+    padding:9px!important;
+    border-radius:14px!important;
+  }
+  .v105Market i{font-size:18px!important}
+  .v105Market b{
+    margin-top:6px!important;
+    font-size:7.5px!important;
+    line-height:1.1!important;
+  }
+  .v105Market small{
+    margin-top:4px!important;
+    font-size:6px!important;
+  }
+  .v105Market em{
+    margin-top:4px!important;
+    font-size:6px!important;
+  }
+
+  .v105Panel{
+    margin:0 14px!important;
+  }
+  .v105PanelTop{
+    align-items:center!important;
+  }
+  .v105PanelTop small{font-size:6px!important}
+  .v105PanelTop h2{
+    margin-top:4px!important;
+    font-size:17px!important;
+  }
+  .v105Count{font-size:9px!important}
+  .v105Lines{
+    gap:6px!important;
+    padding:10px 0 12px!important;
+  }
+  .v105Lines button{
+    min-width:48px!important;
+    height:30px!important;
+    padding:0 10px!important;
+    border-radius:9px!important;
+    font-size:8px!important;
+    line-height:1!important;
+  }
+
+  .v105Games{
+    gap:8px!important;
+  }
+  .v105Game{
+    padding:11px 12px 9px!important;
+    border-radius:15px!important;
+  }
+  .v105GameTop span{font-size:7px!important}
+  .v105GameTeams{
+    grid-template-columns:1fr 48px 1fr!important;
+    margin:9px 0!important;
+  }
+  .v105GameTeams b{
+    font-size:9px!important;
+  }
+  .v105GameTeams em{
+    font-size:11px!important;
+  }
+  .v105Bet{
+    grid-template-columns:1.25fr .7fr .7fr!important;
+    gap:5px!important;
+  }
+  .v105Bet div{
+    padding:7px!important;
+    border-radius:9px!important;
+  }
+  .v105Bet small{font-size:5.5px!important}
+  .v105Bet b{
+    margin-top:3px!important;
+    font-size:8px!important;
+  }
+  .v105GameOpen{
+    height:26px!important;
+    margin-top:6px!important;
+    font-size:7px!important;
+    line-height:26px!important;
+  }
+
+  .v105Bottom{
+    height:62px!important;
+    padding:0 6px env(safe-area-inset-bottom)!important;
+    grid-template-columns:repeat(5,1fr)!important;
+    background:rgba(2,7,5,.985)!important;
+  }
+  .v105Bottom button{
+    min-width:0!important;
+    width:auto!important;
+    height:62px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:3px!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#77837d!important;
+    font-size:8px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+  .v105Bottom button.active{
+    color:#6cff2b!important;
+  }
+  .v105Bottom i{
+    display:block!important;
+    margin:0!important;
+    font-size:16px!important;
+    line-height:1!important;
+  }
+
+  .v105User span{
+    font-size:13px!important;
+    line-height:1!important;
+  }
+
+  .v105MatchCard h2{font-size:16px!important}
+  .v105MatchCard h3{font-size:11px!important}
+  .v105MatchCard p{font-size:10px!important;line-height:1.45!important}
 }
 </style>
 
@@ -1039,7 +1320,7 @@
 (()=>{
   'use strict';
   if(!window.matchMedia?.('(max-width:980px)').matches)return;
-  if(window.__CP_NEW_MOBILE_V106__)return; window.__CP_NEW_MOBILE_V106__=true;
+  if(window.__CP_NEW_MOBILE_V107__)return; window.__CP_NEW_MOBILE_V107__=true;
   const $=(s,r=document)=>r.querySelector(s); const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
   const clean=(v,f='')=>{const s=String(v??'').trim();return s&&!['undefined','null','NaN'].includes(s)?s:f};
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -1099,8 +1380,8 @@
   async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();
     // Base primeiro: não espera IA pesada para mostrar o app.
-    let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn('[V106 quentes fast]',e)}
-    if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn('[V106 mercados fallback]',e)}}
+    let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn('[V107 quentes fast]',e)}
+    if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn('[V107 mercados fallback]',e)}}
     if(req!==state.request)return;state.base=base;merge();render();
     // Motores em paralelo e atualizações independentes.
     const jobs=[
@@ -1123,7 +1404,7 @@
           }
         }
         merge();render();
-      }catch(e){console.warn('[V106 engine]',kind,e)}
+      }catch(e){console.warn('[V107 engine]',kind,e)}
     }));
     if(req===state.request){state.loading=false;render()}
   }
@@ -1136,12 +1417,12 @@
   let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
   async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch('/auth/firebase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||'Falha ao autenticar');const m=await fetch('/auth/me',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||'Falha ao carregar perfil');return {...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
   function syncAuth(){const img=$('#cpV105UserImg'),dot=$('#cpV105User i'),btn=$('#cpV105User');const photo=currentUser?.photoURL||currentProfile?.user?.foto||'';if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||'Perfil'):'Entrar com Google';if(dot)dot.style.background=currentUser?'#66ff2a':'#6f7a75'}
-  async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V106 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V106 firebase]',e);syncAuth()}}
-  async function openAuth(){if(authBusy||!firebaseApi)return;if(currentUser){return}authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn('[V106 login]',e)}finally{authBusy=false;syncAuth()}}
+  async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V107 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V107 firebase]',e);syncAuth()}}
+  async function openAuth(){if(authBusy||!firebaseApi)return;if(currentUser){return}authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn('[V107 login]',e)}finally{authBusy=false;syncAuth()}}
   function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$('#cpV105MatchTitle').textContent=`${home(g)} × ${away(g)}`;$('#cpV105MatchBody').innerHTML=`<section class="v105MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v105MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):'—'}</b> &nbsp; Confiança: <b>${cf?cf+'%':'—'}</b></p></section><section class="v105MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,'Análise carregada pelos mesmos motores utilizados no site desktop.'))}</p></section>`;document.documentElement.classList.add('cpV105MatchOpen')}
   document.addEventListener('click',e=>{const m=e.target.closest('[data-v105-market]');if(m){state.market=m.dataset.v105Market;state.line='IA';render();return}const l=e.target.closest('[data-v105-line]');if(l){state.line=l.dataset.v105Line;render();return}const d=e.target.closest('[data-v105-day]');if(d){document.querySelectorAll('[data-v105-day]').forEach(x=>x.classList.remove('active'));d.classList.add('active');state.date=ymd(Number(d.dataset.v105Day||0));state.line='IA';load();return}const g=e.target.closest('[data-v105-game]');if(g){const x=filtered()[Number(g.dataset.v105Game)];if(x)openGame(x);return}if(e.target.closest('[data-v105-hero]')){const x=filtered()[0]||null;if(x)openGame(x);return}if(e.target.closest('#cpV105CloseMatch')){document.documentElement.classList.remove('cpV105MatchOpen');return}if(e.target.closest('#cpV105Refresh')){load();return}if(e.target.closest('#cpV105User')){openAuth();return}},true);
   state.date=$('#date')?.value||ymd();if($('#date'))$('#date').value=state.date;render();syncAuth();initAuth();
-  load().catch(e=>{console.error('[CP V106]',e);state.loading=false;render()});
+  load().catch(e=>{console.error('[CP V107]',e);state.loading=false;render()});
 })();
 
 </script>
