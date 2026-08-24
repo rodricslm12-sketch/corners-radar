@@ -21029,3 +21029,62 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     line-height:1.4;
   }
 }
+
+/* =========================================================
+   CORNER PRO MOBILE V119 — CARDS MAIS VISÍVEIS / SEM VIDRO
+   SOMENTE APP <= 980px — aplica a TODOS os mercados
+   ========================================================= */
+@media(max-width:980px){
+  #cpNewMobileV110 .v110Games{gap:8px!important}
+
+  #cpNewMobileV110 .v110Game{
+    background:#07100c!important;
+    border:1px solid var(--game-line)!important;
+    box-shadow:none!important;
+    padding:10px 10px 9px!important;
+  }
+  #cpNewMobileV110 .v110Game::before{
+    top:10px!important;bottom:10px!important;width:4px!important;
+    box-shadow:0 0 10px var(--game-accent)!important;
+  }
+  #cpNewMobileV110 .v110GameTop span{color:#aab5af!important;font-size:7px!important;font-weight:700!important}
+  #cpNewMobileV110 .v110GameTop b{background:#102617!important;border:1px solid rgba(103,241,45,.16)!important;font-size:6.4px!important}
+  #cpNewMobileV110 .v110GameTop b.live{background:#32120f!important;color:#ff7659!important;border-color:rgba(255,118,89,.24)!important}
+  #cpNewMobileV110 .v110GameTop b.finished{background:#171d1a!important;color:#bdc6c1!important;border-color:#27302c!important}
+
+  #cpNewMobileV110 .v110GameTeams{margin:10px 0!important;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr)!important}
+  #cpNewMobileV110 .v110GameTeams strong{font-size:9px!important;color:#f4f7f5!important;font-weight:900!important}
+  #cpNewMobileV110 .v110GameTeams em{font-size:11px!important;text-shadow:0 0 10px var(--game-soft)!important}
+  #cpNewMobileV110 .v110Fav{background:#050a08!important;border-color:#26342e!important;color:#9ca7a1!important}
+  #cpNewMobileV110 .v110Fav.active{color:var(--game-accent)!important;border-color:var(--game-line)!important;background:#0b1510!important}
+
+  #cpNewMobileV110 .v110Bet{gap:6px!important}
+  #cpNewMobileV110 .v110Bet div{
+    background:#0d1813!important;
+    border:1px solid #182820!important;
+    padding:8px!important;
+    box-shadow:none!important;
+  }
+  #cpNewMobileV110 .v110Bet div:first-child{
+    background:#0b1710!important;
+    border-color:var(--game-line)!important;
+    box-shadow:inset 3px 0 0 var(--game-accent)!important;
+  }
+  #cpNewMobileV110 .v110Bet small{color:#8e9b94!important;font-size:5.4px!important;font-weight:900!important}
+  #cpNewMobileV110 .v110Bet b{color:#f3f7f4!important;font-size:8px!important;font-weight:900!important}
+  #cpNewMobileV110 .v110Bet div:first-child b{color:var(--game-accent)!important}
+  #cpNewMobileV110 .v110Game>button{color:var(--game-accent)!important;border-top-color:#1b2a23!important;font-weight:900!important}
+
+  /* cores fortes e sólidas: cada jogo recebe uma paleta diferente */
+  #cpNewMobileV110 .theme-lime{--game-accent:#72ff32;--game-soft:rgba(114,255,50,.16);--game-line:rgba(114,255,50,.48)}
+  #cpNewMobileV110 .theme-cyan{--game-accent:#42dcff;--game-soft:rgba(66,220,255,.15);--game-line:rgba(66,220,255,.46)}
+  #cpNewMobileV110 .theme-amber{--game-accent:#ffd04d;--game-soft:rgba(255,208,77,.15);--game-line:rgba(255,208,77,.46)}
+  #cpNewMobileV110 .theme-violet{--game-accent:#bd9cff;--game-soft:rgba(189,156,255,.15);--game-line:rgba(189,156,255,.45)}
+  #cpNewMobileV110 .theme-coral{--game-accent:#ff8178;--game-soft:rgba(255,129,120,.15);--game-line:rgba(255,129,120,.45)}
+  #cpNewMobileV110 .theme-blue{--game-accent:#72b5ff;--game-soft:rgba(114,181,255,.15);--game-line:rgba(114,181,255,.45)}
+
+  /* destaque também fica mais legível, sem efeito de vidro */
+  #cpNewMobileV110 .v110Featured{background:#06100b!important;border-color:#1c2b24!important;box-shadow:none!important}
+  #cpNewMobileV110 .v110Feature{background:#07100c!important}
+  #cpNewMobileV110 .v110Feature em{color:var(--game-accent)!important;border-color:var(--game-line)!important;background:#0b1510!important}
+}

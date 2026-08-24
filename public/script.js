@@ -1,4 +1,4 @@
-/* CORNER PRO MOBILE V110 — layout da imagem de referência */
+/* CORNER PRO MOBILE V119 — visual forte em todos os mercados */
 if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   (()=>{
     "use strict";
