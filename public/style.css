@@ -19779,3 +19779,60 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   .cpV90Empty b{display:block;color:#fff;font-size:12px}
   .cpV90Empty small{display:block;margin-top:6px;color:#8f9a97;font-size:10px;line-height:1.4}
 }
+
+
+
+/* =========================================================
+   CORNER PRO MOBILE V91 — CARDS DE MERCADOS COMPACTOS
+   ========================================================= */
+@media (max-width:980px){
+  .cprMarkets{
+    gap:6px!important;
+    padding-right:8px!important;
+  }
+  .cprMarkets > button{
+    flex:0 0 104px!important;
+    min-width:104px!important;
+    width:104px!important;
+    height:116px!important;
+    min-height:116px!important;
+    padding:6px 4px!important;
+    border-radius:9px!important;
+  }
+  .cprMarkets > button > span{
+    height:24px!important;
+    font-size:19px!important;
+  }
+  .cprMarkets > button > b{
+    font-size:7.8px!important;
+    line-height:1.05!important;
+    margin-top:1px!important;
+  }
+  .cprMarkets > button > small{
+    font-size:5.6px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets .cprSpark{
+    height:9px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets p{
+    font-size:5.6px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets > button > strong{
+    display:none!important;
+  }
+  .cprMarketsSection{
+    padding-bottom:7px!important;
+  }
+}
+@media (max-width:390px){
+  .cprMarkets > button{
+    flex-basis:98px!important;
+    min-width:98px!important;
+    width:98px!important;
+    height:112px!important;
+    min-height:112px!important;
+  }
+}

@@ -3929,20 +3929,43 @@
             const current = Array.isArray(currentList) ? currentList.slice() : [];
             const incoming = buildMarket(incomingRaw, type);
             if (!current.length) return incoming;
-  
-            const incomingById = new Map(
-              incoming.map(item => [String(item.id), item])
-            );
-  
-            return current.map(previous => {
-              const next = incomingById.get(String(previous.id));
+            if (!incoming.length) return current;
+
+            // V91 — o /mercados e os motores podem usar identificadores diferentes
+            // para a mesma partida. O mobile agora casa primeiro por ID e depois por
+            // mandante + visitante + horário, evitando deixar a tela em
+            // "AGUARDANDO DADOS" mesmo quando a IA do desktop já respondeu.
+            const keyText = value => String(value ?? "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, " ")
+              .trim();
+
+            const gameSignature = item => {
+              const raw = item?.raw || item || {};
+              const h = keyText(item?.home ?? raw?.casa ?? raw?.home ?? raw?.home_name ?? raw?.match_hometeam_name);
+              const a = keyText(item?.away ?? raw?.fora ?? raw?.away ?? raw?.away_name ?? raw?.match_awayteam_name);
+              const t = String(item?.time ?? raw?.hora_manaus ?? raw?.hora ?? raw?.match_time ?? raw?.time ?? "")
+                .match(/(\d{1,2}):(\d{2})/);
+              return `${h}|${a}|${t ? `${t[1].padStart(2,"0")}:${t[2]}` : ""}`;
+            };
+
+            const incomingById = new Map(incoming.map(item => [String(item.id), item]));
+            const incomingBySignature = new Map(incoming.map(item => [gameSignature(item), item]));
+            const used = new Set();
+
+            const merged = current.map(previous => {
+              let next = incomingById.get(String(previous.id));
+              if (!next) next = incomingBySignature.get(gameSignature(previous));
               if (!next) return previous;
-  
+
+              used.add(next);
               const field = ENGINE_DECISION_FIELD[type];
               const previousDecision = previous?.raw?.[field];
               const nextDecision = next?.raw?.[field];
               const status = cprMarketStatus(next);
-  
+
               if (
                 (status.live || status.finished) &&
                 cprStableMarketDecision(previousDecision)
@@ -3953,7 +3976,7 @@
                   type
                 )[0] || previous;
               }
-  
+
               return {
                 ...previous,
                 ...next,
@@ -3963,6 +3986,22 @@
                   [field]: nextDecision ?? previousDecision
                 }
               };
+            });
+
+            // Se a IA do site trouxe partidas que não estavam na lista-base do
+            // /mercados, elas também entram no mobile. Assim o app não fica preso
+            // apenas em jogos encerrados/sem decisão enquanto o desktop já possui picks.
+            for (const item of incoming) {
+              if (!used.has(item)) merged.push(item);
+            }
+
+            return merged.sort((a,b) => {
+              const ad = a?.raw?.[ENGINE_DECISION_FIELD[type]];
+              const bd = b?.raw?.[ENGINE_DECISION_FIELD[type]];
+              const ar = cprStableMarketDecision(ad) ? 1 : 0;
+              const br = cprStableMarketDecision(bd) ? 1 : 0;
+              if (br !== ar) return br - ar;
+              return Number(b?.confidence || 0) - Number(a?.confidence || 0);
             });
           }
   
@@ -27303,4 +27342,47 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
+})();
+
+
+
+/* =========================================================
+   CORNER PRO MOBILE V91 — SINCRONIZAÇÃO VISUAL DAS IAs
+   Garante que uma tela de mercado já aberta seja repintada quando
+   o motor terminar, mesmo que o usuário não feche e abra novamente.
+   ========================================================= */
+(() => {
+  "use strict";
+  if (window.__cpMobileIaVisualSyncV91) return;
+  window.__cpMobileIaVisualSyncV91 = true;
+  const mobile = () => window.matchMedia?.("(max-width:980px)")?.matches;
+  let last = "";
+  function stamp(){
+    const api = window.CornerProMobileOfficialV80;
+    const s = api?.state;
+    if (!s) return "";
+    return ["corners","goals","cards","handicap","btts"].map(type => {
+      const arr = Array.isArray(s[type]) ? s[type] : [];
+      const ready = arr.filter(g => {
+        const d = (g?.raw || g || {})?.[`${type}_ai`];
+        const line = String(d?.line || "").toUpperCase();
+        return d && !d.updating && line && !["DADOS EM ATUALIZAÇÃO","ANALISANDO PARTIDA"].includes(line);
+      }).length;
+      return `${type}:${arr.length}:${ready}`;
+    }).join("|");
+  }
+  setInterval(() => {
+    if (!mobile()) return;
+    const now = stamp();
+    if (!now || now === last) return;
+    last = now;
+    const api = window.CornerProMobileOfficialV80;
+    const layer = document.getElementById("cpMobileMarketsLayer");
+    if (!api || !layer || !(layer.classList.contains("is-open") || layer.getAttribute("aria-hidden") === "false")) return;
+    const type = api.state?.activeMarket;
+    if (["corners","goals","cards","handicap","btts"].includes(type)) {
+      // reaproveita a própria função oficial de abertura/renderização do mercado
+      try { api.openMarket(type); } catch (_) {}
+    }
+  }, 900);
 })();
