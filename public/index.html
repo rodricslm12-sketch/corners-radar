@@ -515,10 +515,10 @@
   if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
   var css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="style.css?v=20260824-mobile-v115";
+  css.href="style.css?v=20260824-mobile-v116";
   document.head.appendChild(css);
   var js=document.createElement("script");
-  js.src="script.js?v=cornerpro-mobile-v115-20260824";
+  js.src="script.js?v=cornerpro-mobile-v116-20260824";
   js.defer=true;
   document.head.appendChild(js);
 })();
@@ -594,6 +594,40 @@
     <button data-v110-market="corners"><i>⚑</i><b>Escanteios</b></button>
     <button data-v110-nav="more"><i>•••</i><b>Mais</b></button>
   </nav>
+</section>
+
+
+<section id="cpV116Calendar" class="v116Overlay" aria-hidden="true">
+  <div class="v116Modal v116CalendarModal" role="dialog" aria-modal="true" aria-labelledby="cpV116CalendarTitle">
+    <header>
+      <div><small>CALENDÁRIO</small><h2 id="cpV116CalendarTitle">Escolha uma data</h2></div>
+      <button type="button" data-v116-close-calendar>×</button>
+    </header>
+    <div class="v116MonthNav">
+      <button type="button" data-v116-month="-1">‹</button>
+      <strong id="cpV116MonthLabel">—</strong>
+      <button type="button" data-v116-month="1">›</button>
+    </div>
+    <div class="v116Week"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+    <div class="v116Days" id="cpV116Days"></div>
+    <button class="v116Today" type="button" data-v116-today>IR PARA HOJE</button>
+  </div>
+</section>
+
+<section id="cpV116Login" class="v116Overlay" aria-hidden="true">
+  <div class="v116Modal v116LoginModal" role="dialog" aria-modal="true" aria-labelledby="cpV116LoginTitle">
+    <button class="v116Close" type="button" data-v116-close-login>×</button>
+    <div class="v116LoginBrand">⚑ <b>CORNER<span>PRO</span></b></div>
+    <h2 id="cpV116LoginTitle">Entrar no CornerPro</h2>
+    <p>Acesse sua conta para manter favoritos, alertas e recursos do seu plano.</p>
+    <button class="v116Google" id="cpV116GoogleLogin" type="button">
+      <span>G</span><b>Entrar com Google</b>
+    </button>
+    <div class="v116Logged" id="cpV116Logged" hidden>
+      <img id="cpV116LoggedImg" alt="">
+      <div><strong id="cpV116LoggedName">Usuário</strong><small id="cpV116LoggedEmail"></small></div>
+    </div>
+  </div>
 </section>
 
 <section id="cpV110Match">

@@ -20855,3 +20855,110 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     font-size:7px!important;
   }
 }
+
+
+
+/* =========================================================
+   MOBILE V116 — CALENDÁRIO + LOGIN GOOGLE
+   SOMENTE APP <= 980px
+   ========================================================= */
+@media(max-width:980px){
+  .v116Overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:2147483500;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    background:rgba(0,0,0,.78);
+    backdrop-filter:blur(10px);
+  }
+  .v116Overlay.open{display:flex}
+  .v116Modal{
+    position:relative;
+    width:min(100%,380px);
+    border:1px solid #21372b;
+    border-radius:16px;
+    background:
+      radial-gradient(circle at 72% 0%,rgba(99,241,39,.11),transparent 30%),
+      linear-gradient(180deg,#0a120f,#050907);
+    box-shadow:0 28px 70px rgba(0,0,0,.62);
+    color:#fff;
+  }
+  .v116CalendarModal{padding:15px}
+  .v116CalendarModal header{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .v116CalendarModal header small{
+    display:block;color:#70f331;font-size:7px;font-weight:950;letter-spacing:1px;
+  }
+  .v116CalendarModal header h2{
+    margin:4px 0 0;font-size:16px;
+  }
+  .v116CalendarModal header>button,.v116Close{
+    width:34px;height:34px;border:1px solid #20332a!important;border-radius:10px!important;background:#08100d!important;color:#d8e0dc!important;font-size:22px!important;
+  }
+  .v116MonthNav{
+    display:grid;grid-template-columns:34px 1fr 34px;align-items:center;gap:8px;margin:13px 0 10px;padding:6px;border:1px solid #172920;border-radius:10px;background:#07100c;
+  }
+  .v116MonthNav button{
+    height:31px;border:1px solid rgba(99,241,39,.28)!important;border-radius:8px!important;color:#70f331!important;font-size:20px!important;
+  }
+  .v116MonthNav strong{text-align:center;font-size:8px;letter-spacing:.5px;color:#c9d2ce}
+  .v116Week,.v116Days{
+    display:grid;grid-template-columns:repeat(7,1fr);gap:5px;
+  }
+  .v116Week{margin-bottom:5px}
+  .v116Week span{text-align:center;color:#6f7c76;font-size:6px;font-weight:900}
+  .v116Days button,.v116Days .empty{
+    height:36px;border-radius:8px!important;
+  }
+  .v116Days button{
+    border:1px solid #172920!important;background:#07100c!important;color:#c8d1cd!important;font-size:8px!important;font-weight:900!important;
+  }
+  .v116Days button.today{color:#70f331!important}
+  .v116Days button.selected{
+    background:#63f127!important;border-color:#63f127!important;color:#071006!important;
+  }
+  .v116Today{
+    width:100%;height:34px;margin-top:10px;border:1px solid rgba(99,241,39,.35)!important;border-radius:9px!important;color:#70f331!important;font-size:7px!important;font-weight:950!important;
+  }
+
+  .v116LoginModal{
+    padding:24px 18px 20px;text-align:center;
+  }
+  .v116Close{
+    position:absolute;right:12px;top:12px;
+  }
+  .v116LoginBrand{
+    margin-top:4px;color:#71f331;font-size:22px;font-weight:950;font-style:italic;
+  }
+  .v116LoginBrand b{color:#fff}
+  .v116LoginBrand span{color:#71f331}
+  .v116LoginModal h2{
+    margin:16px 0 6px;font-size:18px;
+  }
+  .v116LoginModal p{
+    max-width:290px;margin:0 auto 18px;color:#929e98;font-size:8px;line-height:1.5;
+  }
+  .v116Google{
+    width:100%;height:46px;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;border:1px solid #26372f!important;border-radius:11px!important;background:#fff!important;color:#111!important;
+  }
+  .v116Google span{
+    width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:#f4f4f4;font-size:16px;font-weight:950;
+  }
+  .v116Google b{font-size:9px}
+  .v116Logged{
+    display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #1e3328;border-radius:11px;background:#07100c;text-align:left;
+  }
+  .v116Logged img{
+    width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #66ef2d;
+  }
+  .v116Logged strong,.v116Logged small{display:block}
+  .v116Logged strong{font-size:9px}
+  .v116Logged small{margin-top:3px;color:#89958f;font-size:7px}
+}
+@media(min-width:981px){
+  #cpV116Calendar,#cpV116Login{display:none!important}
+}

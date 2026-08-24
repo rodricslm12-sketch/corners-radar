@@ -105,6 +105,52 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     let matchPollTimer=null;
     let baseStatusPollTimer=null;
   
+    let calendarCursor=new Date();
+    function ptMonthLabel(d){
+      try{return new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"America/Manaus"}).format(d).toUpperCase()}
+      catch{return `${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`}
+    }
+    function ymdParts(y,m,d){return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`}
+    function openCalendar(){
+      const current=state.date||ymd();
+      const [y,m]=current.split("-").map(Number);
+      calendarCursor=new Date(y,m-1,1,12);
+      renderCalendar();
+      const modal=$("#cpV116Calendar");
+      if(modal){modal.classList.add("open");modal.setAttribute("aria-hidden","false")}
+    }
+    function closeCalendar(){
+      const modal=$("#cpV116Calendar");
+      if(modal){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}
+    }
+    function renderCalendar(){
+      const label=$("#cpV116MonthLabel"),days=$("#cpV116Days");
+      if(!label||!days)return;
+      label.textContent=ptMonthLabel(calendarCursor);
+      const y=calendarCursor.getFullYear(),m=calendarCursor.getMonth();
+      const first=new Date(y,m,1,12).getDay();
+      const total=new Date(y,m+1,0,12).getDate();
+      const today=ymd();
+      const selected=state.date||today;
+      let html="";
+      for(let i=0;i<first;i++)html+='<span class="empty"></span>';
+      for(let d=1;d<=total;d++){
+        const value=ymdParts(y,m,d);
+        html+=`<button type="button" data-v116-date="${value}" class="${value===selected?"selected":""} ${value===today?"today":""}">${d}</button>`;
+      }
+      days.innerHTML=html;
+    }
+    function selectCalendarDate(value){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||"")))return;
+      state.date=value;
+      state.line="IA";
+      document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));
+      if($("#date"))$("#date").value=value;
+      closeCalendar();
+      load();
+    }
+  
+  
     function pair(data,name){
       const block=data?.[name]||data?.statistics?.[name]||data?.stats?.[name]||{};
       const h=block?.home??block?.casa??block?.local??"—";
@@ -269,9 +315,36 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
     async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch("/auth/firebase",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||"Falha ao autenticar");const m=await fetch("/auth/me",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||"Falha ao carregar perfil");return{...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
-    function syncAuth(){const img=$("#cpV110UserImg"),dot=$("#cpV110User i"),btn=$("#cpV110User"),photo=currentUser?.photoURL||currentProfile?.user?.foto||"";if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||"Perfil"):"Entrar com Google";if(dot)dot.style.background=currentUser?"#66ff2a":"#6f7a75"}
+    function syncAuth(){
+      const img=$("#cpV110UserImg"),dot=$("#cpV110User i"),btn=$("#cpV110User");
+      const photo=currentUser?.photoURL||currentProfile?.user?.foto||"";
+      if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}
+      if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||"Perfil"):"Entrar com Google";
+      if(dot)dot.style.background=currentUser?"#66ff2a":"#6f7a75";
+  
+      const logged=$("#cpV116Logged"),google=$("#cpV116GoogleLogin");
+      const li=$("#cpV116LoggedImg"),ln=$("#cpV116LoggedName"),le=$("#cpV116LoggedEmail");
+      if(currentUser){
+        if(logged)logged.hidden=false;
+        if(google)google.hidden=true;
+        if(li){li.src=photo||"";li.style.display=photo?"block":"none"}
+        if(ln)ln.textContent=currentUser.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
+        if(le)le.textContent=currentUser.email||"";
+      }else{
+        if(logged)logged.hidden=true;
+        if(google)google.hidden=false;
+      }
+    }
+    function openLogin(){
+      const modal=$("#cpV116Login");
+      if(modal){modal.classList.add("open");modal.setAttribute("aria-hidden","false");syncAuth()}
+    }
+    function closeLogin(){
+      const modal=$("#cpV116Login");
+      if(modal){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}
+    }
     async function initAuth(){try{firebaseApi=await import("./firebase-client.js");firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn("[V110 auth]",e)}syncAuth()})}catch(e){console.warn("[V110 firebase]",e);syncAuth()}}
-    async function openAuth(){if(authBusy||!firebaseApi||currentUser)return;authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn("[V110 login]",e)}finally{authBusy=false;syncAuth()}}
+    async function openAuth(){if(authBusy||!firebaseApi||currentUser)return;authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn("[V110 login]",e)}finally{authBusy=false;syncAuth();if(currentUser)closeLogin()}}
     async function openGame(g){
       if(!g)return;
       selectedMatch=g;
@@ -288,6 +361,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
   
     document.addEventListener("click",e=>{
+      if(e.target.closest("#cpV110DateText")){openCalendar();return}
+      const monthBtn=e.target.closest("[data-v116-month]");
+      if(monthBtn){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+Number(monthBtn.dataset.v116Month||0),1,12);renderCalendar();return}
+      const dateBtn=e.target.closest("[data-v116-date]");
+      if(dateBtn){selectCalendarDate(dateBtn.dataset.v116Date);return}
+      if(e.target.closest("[data-v116-today]")){selectCalendarDate(ymd());return}
+      if(e.target.closest("[data-v116-close-calendar]")||e.target.id==="cpV116Calendar"){closeCalendar();return}
+      if(e.target.closest("[data-v116-close-login]")||e.target.id==="cpV116Login"){closeLogin();return}
+      if(e.target.closest("#cpV116GoogleLogin")){openAuth();return}
+  
       const fav=e.target.closest("[data-v110-fav-team]");
       if(fav){
         e.preventDefault();
@@ -305,7 +388,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       const nav=e.target.closest("[data-v110-nav]");if(nav){const v=nav.dataset.v110Nav;if(v==="home"){state.view="home";render();window.scrollTo(0,0);return}if(v==="pregame"||v==="live"){state.market="corners";state.line="TODOS";state.view="market";render();window.scrollTo(0,0);return}return}
       if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
-      if(e.target.closest("#cpV110User")){openAuth();return}
+      if(e.target.closest("#cpV110User")){openLogin();return}
     },true);
   
     state.date=$("#date")?.value||ymd();if($("#date"))$("#date").value=state.date;
