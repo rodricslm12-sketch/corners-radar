@@ -21337,3 +21337,20 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   .v121Menu aside>button span{font-size:12px}
   .v110Bottom button.active{color:#6cff2b!important}
 }
+
+
+/* CORNER PRO MOBILE V122 — HOTFIX: nunca congelar a tela por login diário */
+@media (max-width:980px){
+  html.cpDailyLoginRequired #cpNewMobileV110,
+  .cpDailyLoginRequired #cpNewMobileV110{
+    filter:none!important;
+    pointer-events:auto!important;
+    user-select:auto!important;
+  }
+  html.cpDailyLoginRequired #cpV116Login:not(.open),
+  .cpDailyLoginRequired #cpV116Login:not(.open){
+    display:none!important;
+    background:transparent!important;
+    pointer-events:none!important;
+  }
+}

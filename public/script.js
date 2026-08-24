@@ -423,8 +423,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }catch{}
     }
     function lockAppForDailyLogin(){
-      document.documentElement.classList.add("cpDailyLoginRequired");
-      openLogin();
+      // V122: login não pode bloquear a navegação inteira do app.
+      document.documentElement.classList.remove("cpDailyLoginRequired");
+      syncAuth();
     }
     function unlockAppAfterDailyLogin(){
       document.documentElement.classList.remove("cpDailyLoginRequired");
@@ -473,25 +474,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
           if(!currentUser){
             currentProfile=null;
+            document.documentElement.classList.remove("cpDailyLoginRequired");
             syncAuth();
-            lockAppForDailyLogin();
             return;
           }
   
-          // Mesmo que o Firebase tenha mantido a sessão, exigimos uma confirmação Google
-          // uma vez por dia no fuso de Manaus.
+          // V122: preserva a sessão Firebase já válida.
+          // O login continua disponível pelo perfil, mas não congela o app.
           if(!dailyLoginValid(currentUser)){
-            try{
-              await firebaseApi.sair?.();
-            }catch(e){
-              try{await firebaseApi.firebaseAuth?.signOut?.()}catch{}
-            }
-            currentUser=null;
-            currentProfile=null;
-            clearDailyLogin();
-            syncAuth();
-            lockAppForDailyLogin();
-            return;
+            markDailyLogin(currentUser);
           }
   
           try{
@@ -503,9 +494,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           unlockAppAfterDailyLogin();
         });
       }catch(e){
-        console.warn("[V118 firebase]",e);
+        console.warn("[V122 firebase]",e);
+        document.documentElement.classList.remove("cpDailyLoginRequired");
         syncAuth();
-        lockAppForDailyLogin();
       }
     }
     async function openAuth(){
