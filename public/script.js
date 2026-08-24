@@ -2489,13 +2489,13 @@
               label: "ESCANTEIOS",
               title: "⚑ ANÁLISE DE ESCANTEIOS",
               icon: "⚑",
-              lines: ["IA", "OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "UNDER 9.5", "1ºT OVER 4.5"]
+              lines: ["IA", "TODOS", "OVER 8.5", "OVER 9.5", "OVER 10.5", "OVER 11.5", "OVER 12.5"]
             },
             goals: {
               label: "GOLS",
               title: "⚽ ANÁLISE DE GOLS",
               icon: "⚽",
-              lines: ["IA", "OVER 1.5", "OVER 2.5", "OVER 3.5", "UNDER 2.5", "UNDER 3.5"]
+              lines: ["IA", "TODOS", "OVER 1.5", "OVER 2.5", "OVER 3.5", "OVER 4.5"]
             },
             btts: {
               label: "AMBAS MARCAM",
@@ -2513,7 +2513,7 @@
               label: "CARTÕES",
               title: "▯ ANÁLISE DE CARTÕES",
               icon: "▯",
-              lines: ["IA", "OVER 2.5", "OVER 3.5", "OVER 4.5", "OVER 5.5", "UNDER 4.5", "CASA 1.5+", "FORA 1.5+"]
+              lines: ["IA", "TODOS", "OVER 2.5", "OVER 3.5", "OVER 4.5", "OVER 5.5"]
             },
             combined: {
               label: "COMBINADAS",
@@ -4048,6 +4048,18 @@
                     $(".cpHandicapLines button.active", openMarketLayer)?.dataset?.handicapLine ||
                     "IA";
                   renderHandicapMarket(openMarketLayer, activeHandicapLine);
+                } else if (
+                  ["corners", "goals", "cards"].includes(state.activeMarket)
+                ) {
+                  const activeDetailedLine =
+                    $(".cpAnalysisLines button.active", openMarketLayer)
+                      ?.dataset?.analysisLine || "IA";
+
+                  renderDetailedMarket(
+                    openMarketLayer,
+                    state.activeMarket,
+                    activeDetailedLine
+                  );
                 }
               }
       
@@ -5554,7 +5566,15 @@
                     ${recommendationBadge}
                     <strong>${recommendation.updating ? "AGUARDANDO DADOS" : recommendation.skip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
                     <p>${recommendation.updating ? "A IA está concluindo a leitura deste confronto." : escapeHtml(rule.headline)}</p>
-                    <small>${escapeHtml(recommendation.reason)}</small>
+                    <small>${escapeHtml(
+                      isManualDesktopParity
+                        ? (
+                            manualAnalysis?.source === "server-line"
+                              ? "Probabilidade específica desta linha fornecida pelo mesmo motor usado no site."
+                              : "Linha calculada pela mesma projeção estatística usada no site."
+                          )
+                        : recommendation.reason
+                    )}</small>
                     <span class="cpSettlementSlot"></span>
                   </div>
         
@@ -6958,6 +6978,214 @@
             return "▯";
           }
         
+
+          /* =========================================================
+             MOBILE = DESKTOP — PARIDADE DAS LINHAS MANUAIS
+             Replica a mesma leitura usada pelo WEB V11:
+             1) probabilidade específica da linha vinda do servidor;
+             2) fallback Poisson pela projeção do MESMO motor;
+             3) confiança da IA apenas como moderador (78/22).
+             Assim 9.5, 10.5, 2.5, 3.5 etc. dão o mesmo resultado
+             no desktop e no celular.
+             ========================================================= */
+          function mobileDesktopParityClampPct(value) {
+            const n = Number(value);
+            return Number.isFinite(n) ? Math.max(1, Math.min(95, n)) : null;
+          }
+
+          function mobileDesktopParityProjection(game, marketType) {
+            const raw = game?.raw || game || {};
+            const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
+
+            if (marketType === "corners") {
+              return numberFrom(
+                decision?.projection,
+                raw?.proj_cantos,
+                raw?.corners_projection,
+                raw?.expected_corners,
+                raw?.total_corners_avg
+              );
+            }
+
+            if (marketType === "goals") {
+              return numberFrom(
+                decision?.projection,
+                raw?.expected_goals_total,
+                raw?.goals_projection,
+                raw?.total_goals_avg
+              );
+            }
+
+            if (marketType === "cards") {
+              return numberFrom(
+                decision?.projection,
+                raw?.cards_projection,
+                raw?.proj_cards,
+                raw?.avg_cards,
+                raw?.media_cartoes
+              );
+            }
+
+            return numberFrom(decision?.projection);
+          }
+
+          function mobileDesktopParityBaseConfidence(game, marketType) {
+            const raw = game?.raw || game || {};
+            const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
+            let value = numberFrom(decision?.confidence, game?.confidence, raw?.ai_score);
+
+            if (value !== null && value > 0 && value <= 1) value *= 100;
+            return value === null ? 0 : Math.max(0, Math.min(95, Math.round(value)));
+          }
+
+          function mobileDesktopParityDirectProbability(game, marketType, target) {
+            const raw = game?.raw || game || {};
+            const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
+            const plain = String(target).replace(".", "");
+            const candidates = [];
+
+            const push = value => {
+              if (value !== undefined && value !== null && value !== "") {
+                candidates.push(value);
+              }
+            };
+
+            if (marketType === "corners") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(decision?.[`p_over_${plain}`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+              push(raw?.[`p_over_${plain}`]);
+              push(raw?.[`over${plain}Rate`]);
+              push(raw?.[`over${plain}_rate`]);
+              push(raw?.prob?.[`corners${plain}`]);
+              push(raw?.probability?.[`corners${plain}`]);
+            } else if (marketType === "goals") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+              push(raw?.[`prob_over${plain}`]);
+              push(raw?.[`prob_over_${plain}`]);
+              push(raw?.prob?.[`over${plain}`]);
+            } else if (marketType === "cards") {
+              push(decision?.[`over${plain}_prob`]);
+              push(decision?.[`over_${plain}_prob`]);
+              push(raw?.[`over${plain}cards_prob`]);
+              push(raw?.[`over${plain}_cards_prob`]);
+              push(raw?.[`over${plain}_prob`]);
+              push(raw?.[`over_${plain}_prob`]);
+            }
+
+            for (const value of candidates) {
+              let n = numberFrom(value);
+              if (n === null) continue;
+              if (n > 0 && n <= 1) n *= 100;
+              if (Number.isFinite(n)) return mobileDesktopParityClampPct(n);
+            }
+
+            return null;
+          }
+
+          function mobileDesktopParityPoisson(lambda, line) {
+            if (!Number.isFinite(lambda) || lambda <= 0 || !Number.isFinite(line)) {
+              return null;
+            }
+
+            const threshold = Math.floor(line) + 1;
+            let term = Math.exp(-lambda);
+            let cdf = term;
+
+            for (let k = 1; k < threshold; k += 1) {
+              term *= lambda / k;
+              cdf += term;
+            }
+
+            return mobileDesktopParityClampPct((1 - cdf) * 100);
+          }
+
+          function mobileDesktopParityManualLine(game, marketType, selectedLine) {
+            const selectedText = String(selectedLine || "").toUpperCase();
+            const numericText = selectedText
+              .replace("OVER", "")
+              .replace("+", "")
+              .trim()
+              .replace(",", ".");
+
+            const target = Number(numericText);
+            const baseConf = mobileDesktopParityBaseConfidence(game, marketType);
+
+            if (!Number.isFinite(target)) {
+              return {
+                valid: false,
+                probability: baseConf,
+                projection: mobileDesktopParityProjection(game, marketType),
+                margin: null,
+                pick: selectedText,
+                source: "invalid-line"
+              };
+            }
+
+            const projection = mobileDesktopParityProjection(game, marketType);
+            let probability = mobileDesktopParityDirectProbability(
+              game,
+              marketType,
+              target
+            );
+            let source = "server-line";
+
+            if (probability === null) {
+              probability = mobileDesktopParityPoisson(
+                Number(projection),
+                target
+              );
+              source = "projection-line";
+            }
+
+            // MESMA moderação do desktop WEB V11.
+            if (probability !== null && baseConf > 0) {
+              probability = mobileDesktopParityClampPct(
+                probability * 0.78 + baseConf * 0.22
+              );
+            }
+
+            return {
+              valid: probability !== null,
+              probability: probability ?? Math.max(0, baseConf - 25),
+              projection,
+              margin: Number.isFinite(projection)
+                ? Number(projection) - target
+                : null,
+              pick: `OVER ${target.toFixed(1)}`,
+              source
+            };
+          }
+
+          function mobileDesktopParityScore(game, marketType, selectedLine) {
+            const analysis = mobileDesktopParityManualLine(
+              game,
+              marketType,
+              selectedLine
+            );
+
+            const projection = Number(analysis.projection);
+            const margin = Number.isFinite(analysis.margin)
+              ? analysis.margin
+              : 0;
+
+            return (
+              Number(analysis.probability || 0) * 2 +
+              margin * 6 +
+              (Number.isFinite(projection) ? projection : 0)
+            );
+          }
+
+          window.CornerProMobileDesktopParity = {
+            analyze: mobileDesktopParityManualLine,
+            score: mobileDesktopParityScore
+          };
+
           function analysisOdd(confidence, game = null, marketType = "") {
             const variation = game
               ? analysisFactor(game, marketType, "ODD") * .12
@@ -6980,12 +7208,43 @@
             const sourceGames = state[marketType] || [];
         
             let prepared = sourceGames
-              .map((game, originalIndex) => ({
-                game,
-                originalIndex,
-                recommendation: analysisProjection(game, marketType)
-              }))
+              .map((game, originalIndex) => {
+                const recommendation = analysisProjection(game, marketType);
+                const manualAnalysis = (
+                  requestedLine !== "IA" &&
+                  requestedLine !== "TODOS" &&
+                  ["corners", "goals", "cards"].includes(marketType)
+                )
+                  ? mobileDesktopParityManualLine(game, marketType, requestedLine)
+                  : null;
+
+                return {
+                  game,
+                  originalIndex,
+                  recommendation,
+                  manualAnalysis
+                };
+              })
               .sort((a, b) => {
+                if (
+                  requestedLine !== "IA" &&
+                  requestedLine !== "TODOS" &&
+                  ["corners", "goals", "cards"].includes(marketType)
+                ) {
+                  return (
+                    mobileDesktopParityScore(
+                      b.game,
+                      marketType,
+                      requestedLine
+                    ) -
+                    mobileDesktopParityScore(
+                      a.game,
+                      marketType,
+                      requestedLine
+                    )
+                  );
+                }
+
                 const projectionDiff =
                   Number(b.recommendation.projection) -
                   Number(a.recommendation.projection);
@@ -7004,7 +7263,7 @@
             const settlementEntries = [];
             const liveEntries = [];
         
-            const rows = prepared.map(({ game, originalIndex, recommendation }, rowIndex) => {
+            const rows = prepared.map(({ game, originalIndex, recommendation, manualAnalysis }, rowIndex) => {
               const line = requestedLine === "IA"
                 ? recommendation.line
                 : requestedLine;
