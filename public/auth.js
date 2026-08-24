@@ -209,6 +209,77 @@ function removerInterfaceAntigaDuplicada() {
 }
 
 
+
+function instalarEstabilidadeTopoAuth() {
+  if (document.getElementById("cpAuthTopbarStabilityStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "cpAuthTopbarStabilityStyle";
+  style.textContent = `
+    /* Mantém o topo no mesmo lugar ao alternar logado/deslogado */
+    #authAreaDesktop{
+      flex:0 0 auto !important;
+      min-width:210px !important;
+      width:210px !important;
+      max-width:210px !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:flex-end !important;
+      gap:10px !important;
+      overflow:visible !important;
+    }
+
+    #btnGoogleLogin.authLoginButton{
+      flex:0 0 168px !important;
+      width:168px !important;
+      min-width:168px !important;
+      max-width:168px !important;
+      height:34px !important;
+      margin:0 !important;
+      padding:0 10px !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+
+    #btnGoogleLogin.authLoginButton b{
+      white-space:nowrap !important;
+      font-size:10px !important;
+    }
+
+    #authUserProfile{
+      flex:0 0 168px !important;
+      width:168px !important;
+      min-width:168px !important;
+      max-width:168px !important;
+    }
+
+    /* A mensagem vira toast sobreposto; nunca participa do layout */
+    #authMessage.authMessage{
+      position:fixed !important;
+      top:76px !important;
+      right:18px !important;
+      z-index:999999 !important;
+      width:auto !important;
+      max-width:280px !important;
+      margin:0 !important;
+      padding:9px 12px !important;
+      border-radius:10px !important;
+      background:#0b1512 !important;
+      color:#dff7df !important;
+      box-shadow:0 12px 30px rgba(0,0,0,.36) !important;
+      font-size:10px !important;
+      line-height:1.25 !important;
+      pointer-events:none !important;
+    }
+
+    #authMessage.authMessage[hidden]{
+      display:none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function instalarVisualVisitanteBloqueado() {
   if (document.getElementById("cpGuestMarketLockStyle")) return;
 
@@ -778,7 +849,7 @@ async function realizarLogout() {
     renderizarDeslogado();
     limparCamposAutenticacao();
     fecharLoginAposLogout();
-    mostrarMensagem("Você saiu da conta.", "success");
+    mostrarMensagem("");
   } catch (erro) {
     console.error("Falha no logout Firebase:", erro);
     mostrarMensagem(erro?.message || "Não foi possível sair da conta.", "error");
@@ -920,6 +991,7 @@ function observarBarraAntiga() {
 }
 
 function iniciarAutenticacao() {
+  instalarEstabilidadeTopoAuth();
   instalarVisualVisitanteBloqueado();
   instalarEventos();
   observarBarraAntiga();
