@@ -19836,3 +19836,12 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     min-height:112px!important;
   }
 }
+
+/* CORNER PRO APP V109 — SOMENTE MOBILE. Espelho visual do layout de referência. */
+@media (max-width:980px){
+  #cpNewMobileV105{max-width:430px;background:#020504}
+  .v105Hero{border-radius:13px;border-color:#1c3135}
+  .v105Market{border-radius:11px;background:linear-gradient(180deg,#081116,#050b0e)}
+  .v109Featured,.v109Quick button{background:#071116;border-color:#172a30}
+  .v105Bottom{background:#040a08}
+}
