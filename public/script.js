@@ -27596,12 +27596,12 @@
     console.info("[CP MOBILE V92] Desktop é a fonte única das IAs de mercado.");
   })();
 /* =========================================================
-   CORNER PRO APP V100 — MOBILE NOVO DO ZERO
+   CORNER PRO APP V101 — MOBILE NOVO DO ZERO (HARD SWITCH)
    Desktop permanece intacto. Usa os mesmos endpoints/motores do site.
    ========================================================= */
 (() => {
   'use strict';
-  if (window.__CP_APP_V100__) return; window.__CP_APP_V100__ = true;
+  if (window.__CP_APP_V101__) return; window.__CP_APP_V101__ = true;
   const mobile=()=>matchMedia('(max-width:980px)').matches;
   const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const clean=(v,f='—')=>{const s=String(v??'').trim();return s&&s!=='undefined'&&s!=='null'?s:f};
@@ -27637,6 +27637,6 @@
   function openMatch(g){window.__cp100SelectedGame=g;const layer=$('#cp100Match');$('#cp100MatchTitle').textContent=`${home(g)} × ${away(g)}`;$('#cp100MatchBody').innerHTML=`<div class="cp100MatchHero"><small>${league(g)} • ${time(g)}</small><h2>${home(g)} <span>${score(g)}</span> ${away(g)}</h2><b>${status(g).txt}</b></div><div class="cp100MatchGrid"><div><small>Mercado</small><b>${M[S.market].label}</b></div><div><small>Recomendação</small><b>${pick(g)}</b></div><div><small>Projeção</small><b>${proj(g)??'—'}</b></div><div><small>Confiança</small><b>${conf(g)||'—'}${conf(g)?'%':''}</b></div></div><div class="cp100Explain"><h3>ANÁLISE DA IA</h3><p>${clean(decision(g)?.reason??decision(g)?.explanation??decision(g)?.analysis,'Análise baseada no motor oficial deste mercado no Corner Pro.')}</p></div>`;layer.classList.add('open');document.body.classList.add('cp100Locked')}
   function syncAuth(){const old=$('#mobileAuthName'),name=$('#cp100UserName');if(name)name.textContent=clean(old?.textContent,'Entrar com Google');}
   document.addEventListener('click',e=>{if(!mobile())return;const m=e.target.closest('[data-m]');if(m){S.market=m.dataset.m;S.line=M[S.market].lines[0];render();return}const l=e.target.closest('[data-line]');if(l){S.line=l.dataset.line;render();return}const g=e.target.closest('.cp100Game');if(g){const list=relevant(),game=list[Number(g.dataset.game)];if(game)openMatch(game);return}if(e.target.closest('#cp100CloseMatch')){$('#cp100Match').classList.remove('open');document.body.classList.remove('cp100Locked');return}if(e.target.closest('#cp100User')){$('#mobileAuthButton')?.click();return}if(e.target.closest('#cp100Refresh'))load();});
-  function start(){if(!mobile())return;document.documentElement.classList.add('cp100Mobile');S.date=ymd();const di=$('#date');if(di){if(!di.value)di.value=S.date;S.date=di.value;di.addEventListener('change',()=>{S.date=di.value;load()})}syncAuth();new MutationObserver(syncAuth).observe(document.body,{subtree:true,childList:true,characterData:true});load();setInterval(()=>{if(document.visibilityState==='visible')load()},60000)}
+  function start(){if(!mobile())return;document.documentElement.classList.add('cp100Mobile','cp101HardSwitch');const app=$('#cpAppV100');if(app){app.hidden=false;app.removeAttribute('hidden');app.style.display='block'}S.date=ymd();const di=$('#date');if(di){if(!di.value)di.value=S.date;S.date=di.value;di.addEventListener('change',()=>{S.date=di.value;load()})}syncAuth();new MutationObserver(syncAuth).observe(document.body,{subtree:true,childList:true,characterData:true});load();setInterval(()=>{if(document.visibilityState==='visible')load()},60000)}
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();

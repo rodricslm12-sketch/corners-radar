@@ -14,12 +14,19 @@
   <meta name="google" content="notranslate" />
   <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script id="cpAppV101EarlySwitch">
+    (function(){
+      if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
+        document.documentElement.classList.add("cp100Mobile","cp101HardSwitch");
+      }
+    })();
+  </script>
   <title>Corner Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260824-app-v100" />
-  <script src="script.js?v=cornerpro-app-v100-20260824" defer></script>
+  <link rel="stylesheet" href="style.css?v=20260824-app-v101-hard-switch" />
+  <script src="script.js?v=cornerpro-app-v101-hard-switch-20260824" defer></script>
 
   <style id="cpMobileV8Style">
     @media (max-width:980px){
@@ -855,7 +862,7 @@
 
 
 <!-- CORNER PRO APP V100 — MOBILE NOVO -->
-<section id="cpAppV100" hidden>
+<section id="cpAppV100">
   <header class="cp100Top"><div class="cp100Brand"><b>CORNER<span>PRO</span></b><small>ANÁLISES ESPORTIVAS</small></div><button id="cp100User" class="cp100User"><i>G</i><span id="cp100UserName">Entrar com Google</span></button></header>
   <div class="cp100Date"><div><b>Olá 👋</b><small>Análises do dia com IA</small></div><button id="cp100Refresh">↻</button></div>
   <section class="cp100Hero"><div class="cp100HeroTop"><b>⚡ MELHOR OPORTUNIDADE</b><span id="cp100HeroStatus">PRÉ-JOGO</span></div><h1 id="cp100HeroTeams">Carregando...</h1><h2 id="cp100HeroPick">IA DO CORNER PRO</h2><div class="cp100HeroFoot"><span id="cp100HeroConf">ANALISANDO</span><span>VER DETALHES ↓</span></div></section>
