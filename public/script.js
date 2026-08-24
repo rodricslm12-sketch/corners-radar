@@ -28162,4 +28162,281 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     
       console.info("[CP MOBILE V92] Desktop é a fonte única das IAs de mercado.");
     })();
+
+    /* =========================================================
+       SITE DESKTOP V121 — STATUS DA LISTA = MATCH CENTER REAL
+       Corrige casos em que a tabela fica "INTERVALO" enquanto
+       /match_center já informa 2º tempo / minuto atual.
+       SOMENTE DESKTOP (>=981px).
+       ========================================================= */
+    (function installDesktopMatchCenterStatusTruth(){
+      "use strict";
+
+      if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+      if (window.__cpDesktopMatchCenterStatusTruthV121) return;
+      window.__cpDesktopMatchCenterStatusTruthV121 = true;
+
+      const CACHE_TTL = 12000;
+      const POLL_MS = 20000;
+      const cache = new Map();
+      let syncing = false;
+
+      const clean = (v, fb="") => {
+        const s = String(v ?? "").trim();
+        return s && s !== "undefined" && s !== "null" && s !== "NaN" ? s : fb;
+      };
+
+      const number = (...vals) => {
+        for (const v of vals){
+          if (v === null || v === undefined || v === "") continue;
+          const m = String(v).match(/(\d{1,3})/);
+          if (!m) continue;
+          const n = Number(m[1]);
+          if (Number.isFinite(n)) return n;
+        }
+        return null;
+      };
+
+      function matchIdFromRow(row){
+        const value = clean(
+          row?.dataset?.cpd3Game ||
+          row?.getAttribute?.("data-cpd3-game"),
+          ""
+        );
+        // fallback visual "time|home|away" não serve para /match_center.
+        if (!value || value.includes("|")) return "";
+        return value;
+      }
+
+      function responseData(payload){
+        if (!payload || typeof payload !== "object") return null;
+        if (payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)) {
+          const d = payload.data;
+          if (
+            d.live !== undefined || d.finished !== undefined || d.minute !== undefined ||
+            d.status !== undefined || d.status_raw !== undefined || d.goals || d.score
+          ) return d;
+        }
+        return payload;
+      }
+
+      function realStatus(data){
+        const rawStatus = clean(
+          data?.status ?? data?.status_raw ?? data?.match_status ?? data?.event_status,
+          ""
+        ).toLowerCase();
+
+        const minute = number(
+          data?.minute, data?.match_minute, data?.elapsed,
+          data?.time_live, data?.match_live
+        );
+
+        const finished =
+          data?.finished === true ||
+          /finished|full.?time|\bft\b|encerr|finaliz|ended|after extra|after pen|aet/.test(rawStatus);
+
+        const explicitHalf =
+          /half.?time|\bht\b|intervalo|interval|break/.test(rawStatus) ||
+          data?.halftime === true || data?.half_time === true;
+
+        /*
+          A fonte real do Match Center vence o status antigo da lista.
+          Ex.: status_raw ainda "HT", mas live=true e minute=66.
+        */
+        const liveFlag =
+          data?.live === true ||
+          /live|ao vivo|1st|2nd|in.?play|playing|andamento/.test(rawStatus) ||
+          (minute !== null && minute > 0);
+
+        let halftime = false;
+        let live = false;
+
+        if (!finished){
+          if (liveFlag && minute !== null && minute > 45){
+            live = true;
+          }else if (explicitHalf){
+            halftime = true;
+            live = true;
+          }else if (liveFlag){
+            live = true;
+          }
+        }
+
+        let label = "PRÉ-JOGO";
+        if (finished) label = "FIM";
+        else if (halftime) label = "INTERVALO";
+        else if (live) label = minute !== null ? `AO VIVO • ${minute}'` : "AO VIVO";
+
+        const hs = clean(
+          data?.goals?.home ?? data?.score?.home ??
+          data?.home_score ?? data?.score_home ?? data?.match_hometeam_score,
+          ""
+        );
+        const as = clean(
+          data?.goals?.away ?? data?.score?.away ??
+          data?.away_score ?? data?.score_away ?? data?.match_awayteam_score,
+          ""
+        );
+
+        return { finished, halftime, live, minute, label, hs, as };
+      }
+
+      function updateBackingGames(matchId, data, info){
+        const pools = [
+          window.__cornerProAllGames,
+          window.__premiumFilteredGames,
+          window.__premiumMarketGames,
+          window.__lastRawGames,
+          window.__lastMarketGames
+        ];
+
+        for (const pool of pools){
+          if (!Array.isArray(pool)) continue;
+          for (const game of pool){
+            if (!game || typeof game !== "object") continue;
+            const raw = game.raw || game;
+            const id = clean(
+              game.match_id ?? game.event_id ?? game.event_key ?? game.fixture_id ?? game.id ??
+              raw.match_id ?? raw.event_id ?? raw.event_key ?? raw.fixture_id ?? raw.id,
+              ""
+            );
+            if (id !== matchId) continue;
+
+            game.live = info.live;
+            game.finished = info.finished;
+            game.halftime = info.halftime;
+            if (info.minute !== null) game.minute = info.minute;
+            game.match_status = info.finished ? "FT" : info.halftime ? "HT" : info.live ? "LIVE" : game.match_status;
+
+            if (game.raw && typeof game.raw === "object"){
+              game.raw.live = info.live;
+              game.raw.finished = info.finished;
+              game.raw.halftime = info.halftime;
+              if (info.minute !== null) game.raw.minute = info.minute;
+              game.raw.match_status = game.match_status;
+              if (info.hs !== "") game.raw.match_hometeam_score = info.hs;
+              if (info.as !== "") game.raw.match_awayteam_score = info.as;
+            }
+          }
+        }
+      }
+
+      function paintRow(row, data){
+        const cell = row?.querySelector?.(".cpd3Start");
+        if (!cell) return;
+
+        const info = realStatus(data);
+
+        cell.classList.toggle("is-live", info.live && !info.finished);
+        cell.classList.toggle("is-finished", info.finished);
+
+        const score =
+          info.hs !== "" && info.as !== ""
+            ? `${info.hs} × ${info.as}`
+            : "";
+
+        if (info.finished){
+          cell.innerHTML = `FIM${score ? `<br><b>${score}</b>` : ""}`;
+        }else if (info.halftime){
+          cell.innerHTML = `INTERVALO${score ? `<br><b>${score}</b>` : ""}`;
+        }else if (info.live){
+          cell.innerHTML = `${info.label}${score ? `<br><b>${score}</b>` : ""}`;
+        }else{
+          // Não modifica pré-jogo; mantém o horário renderizado pelo site.
+          return;
+        }
+
+        const matchId = matchIdFromRow(row);
+        if (matchId) updateBackingGames(matchId, data, info);
+      }
+
+      async function fetchReal(matchId){
+        const now = Date.now();
+        const old = cache.get(matchId);
+        if (old && (now - old.at) < CACHE_TTL) return old.data;
+
+        const res = await fetch(
+          `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&t=${now}`,
+          {
+            cache:"no-store",
+            headers:{
+              "Accept":"application/json",
+              "Cache-Control":"no-cache"
+            }
+          }
+        );
+
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload || payload?.error){
+          throw new Error(payload?.error || `HTTP ${res.status}`);
+        }
+
+        const data = responseData(payload);
+        cache.set(matchId, {at:now, data});
+        return data;
+      }
+
+      async function syncRow(row){
+        const matchId = matchIdFromRow(row);
+        if (!matchId) return;
+
+        try{
+          const data = await fetchReal(matchId);
+          if (data) paintRow(row, data);
+        }catch(error){
+          console.debug("[CP SITE V121 status]", matchId, error?.message || error);
+        }
+      }
+
+      async function syncRows(){
+        if (syncing || document.hidden) return;
+        syncing = true;
+
+        try{
+          const rows = [...document.querySelectorAll(".cpd3Row[data-cpd3-game]")];
+          // A tabela exibe poucos jogos; usa lotes de 3 para não sobrecarregar a rota.
+          for (let i=0; i<rows.length; i+=3){
+            await Promise.allSettled(rows.slice(i, i+3).map(syncRow));
+          }
+        }finally{
+          syncing = false;
+        }
+      }
+
+      let mutationTimer = null;
+      const observer = new MutationObserver(() => {
+        clearTimeout(mutationTimer);
+        mutationTimer = setTimeout(syncRows, 250);
+      });
+
+      function installObserver(){
+        const root =
+          document.getElementById("cpd3Rows") ||
+          document.getElementById("cpDesktopExperienceV3") ||
+          document.body;
+
+        observer.observe(root, {childList:true, subtree:true});
+      }
+
+      if (document.readyState === "loading"){
+        document.addEventListener("DOMContentLoaded", () => {
+          installObserver();
+          setTimeout(syncRows, 500);
+          setTimeout(syncRows, 1800);
+        }, {once:true});
+      }else{
+        installObserver();
+        setTimeout(syncRows, 300);
+        setTimeout(syncRows, 1500);
+      }
+
+      setInterval(syncRows, POLL_MS);
+      window.addEventListener("focus", syncRows);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) syncRows();
+      });
+
+      console.info("[CP SITE V121] Status da tabela sincronizado com /match_center.");
+    })();
+
   }
