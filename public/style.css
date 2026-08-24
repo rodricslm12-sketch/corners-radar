@@ -20113,3 +20113,335 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     font-size:6.2px!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO MOBILE V112 — MAIS COMPACTO
+   SOMENTE APP <= 980px
+   ========================================================= */
+@media(max-width:980px){
+
+  #cpNewMobileV110{
+    max-width:410px!important;
+    padding-bottom:68px!important;
+  }
+
+  /* Topo */
+  .v110Top{
+    height:58px!important;
+    padding:0 13px!important;
+  }
+  .v110TopBtn{
+    width:34px!important;
+    height:34px!important;
+    border-radius:10px!important;
+  }
+  .v110Brand b{
+    font-size:17px!important;
+  }
+  .v110Brand small{
+    font-size:5.3px!important;
+    letter-spacing:1.25px!important;
+  }
+
+  /* Datas */
+  .v110DateRow{
+    height:40px!important;
+    padding:4px 8px!important;
+    gap:4px!important;
+  }
+  .v110DateRow button{
+    height:29px!important;
+    padding:0 10px!important;
+    font-size:6.9px!important;
+    border-radius:8px!important;
+  }
+  .v110DateRow .v110DateFull{
+    min-width:110px!important;
+  }
+
+  /* Hero mais baixo */
+  .v110Hero{
+    margin:8px 8px 11px!important;
+    padding:9px 9px 9px!important;
+    border-radius:12px!important;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(0,5,8,.10) 0%,
+        rgba(0,4,6,.00) 30%,
+        rgba(0,0,0,.10) 52%,
+        rgba(0,0,0,.72) 100%
+      ),
+      url('/images/fundo.jpeg') center 39%/cover no-repeat!important;
+  }
+
+  .v110HeroTop{
+    min-height:24px!important;
+  }
+  .v110HeroTop b{
+    font-size:8.6px!important;
+  }
+  .v110HeroTop span{
+    padding:4px 7px!important;
+    font-size:5.3px!important;
+  }
+
+  .v110HeroMatch{
+    height:148px!important;
+    grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr)!important;
+    padding-top:3px!important;
+  }
+
+  .v110Logo{
+    width:64px!important;
+    height:64px!important;
+  }
+  .v110Logo img{
+    max-width:62px!important;
+    max-height:62px!important;
+  }
+  .v110Logo i{
+    width:54px!important;
+    height:54px!important;
+    font-size:15px!important;
+    border-radius:12px!important;
+  }
+
+  .v110HeroTeam strong{
+    max-width:120px!important;
+    margin-top:2px!important;
+    font-size:10px!important;
+  }
+
+  .v110HeroMid small{
+    max-width:72px!important;
+    font-size:5.8px!important;
+    line-height:1.3!important;
+  }
+  .v110HeroMid b{
+    margin-top:4px!important;
+    font-size:21px!important;
+  }
+
+  .v110Form{
+    margin-top:4px!important;
+    gap:2px!important;
+  }
+  .v110Form i{
+    width:14px!important;
+    height:14px!important;
+    font-size:5px!important;
+  }
+
+  .v110HeroPick{
+    min-height:52px!important;
+    padding:8px 9px!important;
+    margin-top:0!important;
+    grid-template-columns:1fr 76px!important;
+    border-radius:9px!important;
+  }
+  .v110HeroPick>div:first-child>b{
+    font-size:9.5px!important;
+  }
+  .v110HeroPick>div:first-child>small{
+    margin-top:3px!important;
+    font-size:5.8px!important;
+  }
+  .v110HeroPick>div:last-child small{
+    font-size:5.1px!important;
+  }
+  .v110HeroPick>div:last-child b{
+    font-size:8px!important;
+  }
+  .v110HeroPick>div:last-child i{
+    font-size:7px!important;
+  }
+
+  .v110HeroOpen{
+    height:36px!important;
+    margin-top:7px!important;
+    font-size:8px!important;
+    border-radius:7px!important;
+  }
+
+  /* Seções */
+  .v110SectionHead{
+    padding:0 11px 6px!important;
+  }
+  .v110SectionHead h2{
+    font-size:9.6px!important;
+  }
+  .v110SectionHead button{
+    font-size:6px!important;
+  }
+
+  /* Cards de mercados menores */
+  .v110Markets{
+    gap:5px!important;
+    padding:0 8px 4px!important;
+  }
+  .v110Market{
+    flex-basis:84px!important;
+    width:84px!important;
+    height:112px!important;
+    padding:8px 5px 6px!important;
+    border-radius:9px!important;
+  }
+  .v110Market>em{
+    left:4px!important;
+    top:4px!important;
+    padding:2px 4px!important;
+    font-size:4.8px!important;
+  }
+  .v110Market>span{
+    height:30px!important;
+    padding-top:5px!important;
+    font-size:21px!important;
+  }
+  .v110Market>b{
+    margin-top:4px!important;
+    font-size:6.6px!important;
+  }
+  .v110Market>small{
+    margin-top:4px!important;
+    font-size:5.3px!important;
+  }
+  .v110Market>p{
+    margin-top:4px!important;
+    font-size:5px!important;
+  }
+  .v110Spark{
+    height:11px!important;
+    margin-top:5px!important;
+    gap:5px!important;
+  }
+  .v110Spark i{
+    width:3px!important;
+  }
+  .v110Dots{
+    padding:3px 0 8px!important;
+  }
+  .v110Dots i{
+    width:5px!important;
+    height:5px!important;
+  }
+
+  /* Jogos em destaque mais compactos */
+  .v110GamesHead{
+    margin-top:0!important;
+  }
+  .v110Featured{
+    margin:0 8px 6px!important;
+    border-radius:8px!important;
+  }
+  .v110Feature{
+    height:43px!important;
+    grid-template-columns:1fr 38px 58px 28px 16px!important;
+    padding:4px 7px!important;
+    gap:3px!important;
+  }
+  .v110Feature .v110Logo{
+    width:23px!important;
+    height:23px!important;
+  }
+  .v110Feature .v110Logo img{
+    max-width:21px!important;
+    max-height:21px!important;
+  }
+  .v110Feature .v110Logo i{
+    width:20px!important;
+    height:20px!important;
+    font-size:5px!important;
+  }
+  .v110Feature b{
+    font-size:6.3px!important;
+  }
+  .v110Feature small{
+    font-size:5.3px!important;
+  }
+  .v110Feature em{
+    padding:4px 2px!important;
+    font-size:5.4px!important;
+  }
+  .v110Feature strong{
+    font-size:6.5px!important;
+  }
+  .v110Feature>i{
+    font-size:13px!important;
+  }
+
+  /* Atalhos menores */
+  .v110Quick{
+    gap:4px!important;
+    padding:0 8px 8px!important;
+  }
+  .v110Quick button{
+    height:48px!important;
+    padding:4px 2px!important;
+    border-radius:7px!important;
+  }
+  .v110Quick i{
+    font-size:15px!important;
+  }
+  .v110Quick b{
+    margin-top:3px!important;
+    font-size:5.3px!important;
+  }
+  .v110Quick small{
+    margin-top:2px!important;
+    font-size:4.7px!important;
+  }
+
+  /* Bottom nav mais baixa */
+  .v110Bottom{
+    height:60px!important;
+  }
+  .v110Bottom button{
+    height:60px!important;
+    gap:2px!important;
+  }
+  .v110Bottom i{
+    font-size:15px!important;
+  }
+  .v110Bottom b{
+    font-size:5.7px!important;
+  }
+
+  /* Mercado interno também compacto */
+  .v110Panel{
+    padding:9px 8px!important;
+  }
+  .v110PanelHead{
+    grid-template-columns:30px 1fr auto!important;
+  }
+  .v110PanelHead>button{
+    width:30px!important;
+    height:30px!important;
+  }
+  .v110PanelHead h2{
+    font-size:15px!important;
+  }
+  .v110PanelHead>b{
+    font-size:7px!important;
+  }
+  .v110Lines{
+    gap:5px!important;
+    padding:8px 0 10px!important;
+  }
+  .v110Lines button{
+    min-width:44px!important;
+    height:27px!important;
+    padding:0 8px!important;
+    font-size:6.8px!important;
+  }
+
+  .v110Games{
+    gap:6px!important;
+  }
+  .v110Game{
+    padding:9px!important;
+    border-radius:11px!important;
+  }
+}
