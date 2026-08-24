@@ -2456,7 +2456,7 @@
       
       
       /* =========================================================
-         CORNER PRO MOBILE CONTROLLER V70 — PARIDADE TOTAL SITE/MOBILE
+         CORNER PRO MOBILE CONTROLLER V80 — IAS DESKTOP ATIVAS NO MOBILE
          Home mobile, carrossel automático, mercados e Match Center.
          ========================================================= */
          (() => {
@@ -4042,7 +4042,10 @@
       
               if (marketLayerIsOpen) {
                 if (state.activeMarket === "btts" && bttsGames.length) {
-                  renderBttsMarket(openMarketLayer);
+                  const activeBttsLine =
+                    $(".cpBttsTabs button.active", openMarketLayer)
+                      ?.dataset?.bttsTab || "IA";
+                  renderBttsMarket(openMarketLayer, activeBttsLine);
                 } else if (state.activeMarket === "handicap" && handicapGames.length) {
                   const activeHandicapLine =
                     $(".cpHandicapLines button.active", openMarketLayer)?.dataset?.handicapLine ||
@@ -5463,11 +5466,13 @@
                     <strong>${recommendation.updating ? "AGUARDANDO DADOS" : effectiveSkip ? "SEM APOSTA" : `${sideLabel} ${escapeHtml(line)}`}</strong>
                     <p>${recommendation.updating ? "A IA está concluindo a leitura deste confronto." : escapeHtml(rule.headline)}</p>
                     <small>${escapeHtml(
-                      isManualDesktopParity
+                      isManualLine
                         ? (
                             manualAnalysis?.source === "server-line"
                               ? "Probabilidade específica desta linha fornecida pelo mesmo motor usado no site."
-                              : "Linha calculada pela mesma projeção estatística usada no site."
+                              : manualAnalysis?.source === "projection-line"
+                                ? "Linha calculada pela mesma projeção estatística usada no site."
+                                : "Linha analisada com a mesma regra do desktop."
                           )
                         : recommendation.reason
                     )}</small>
@@ -8569,6 +8574,22 @@
             if (!mobileMedia.matches) return;
             const best = activeList()[0];
             if (best) openMatch(best);
+          };
+
+          window.CornerProMobileOfficialV80 = {
+            version: "V80",
+            state,
+            markets: MARKET,
+            openMarket: openMarkets,
+            renderDetailed: renderDetailedMarket,
+            renderBtts: renderBttsMarket,
+            renderHandicap: renderHandicapMarket,
+            analyzeLine: mobileExactDesktopLineAnalysis,
+            reloadEngines: () =>
+              loadMarketEnginesInBackground(
+                state.date || todayManaus(),
+                Date.now()
+              )
           };
 
           function bind() {
@@ -26749,4 +26770,160 @@
   } else {
     start();
   }
+})();
+
+/* =========================================================
+   CORNER PRO MOBILE V80 — AUTORIDADE FINAL
+   Desktop IA -> Mobile, sem controlador paralelo.
+   Este bloco fica por último de propósito.
+   ========================================================= */
+(function installCornerProMobileDesktopIAAuthorityV80(){
+  "use strict";
+
+  if (window.__cpMobileDesktopIAAuthorityV80) return;
+  window.__cpMobileDesktopIAAuthorityV80 = true;
+
+  const mobile = () =>
+    Boolean(
+      window.matchMedia &&
+      window.matchMedia("(max-width:980px)").matches
+    );
+
+  const marketFromText = value => {
+    const text = String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    if (text.includes("escante")) return "corners";
+    if (text.includes("gol")) return "goals";
+    if (text.includes("cart")) return "cards";
+    if (text.includes("handicap")) return "handicap";
+    if (text.includes("ambas")) return "btts";
+    return "";
+  };
+
+  const api = () => window.CornerProMobileOfficialV80 || null;
+
+  function open(type){
+    const official = api();
+    if (!official || !type) return false;
+    official.openMarket(type);
+    return true;
+  }
+
+  // Captura no WINDOW: executa antes de listeners antigos no document/body.
+  window.addEventListener("click", event => {
+    if (!mobile()) return;
+
+    const official = api();
+    if (!official) return;
+
+    const analysisLine = event.target.closest?.("[data-analysis-line]");
+    if (analysisLine) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      official.renderDetailed(
+        document.getElementById("cpMobileMarketsLayer"),
+        analysisLine.dataset.analysisMarket,
+        analysisLine.dataset.analysisLine
+      );
+      return;
+    }
+
+    const handicapLine = event.target.closest?.("[data-handicap-line]");
+    if (handicapLine) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      official.renderHandicap(
+        document.getElementById("cpMobileMarketsLayer"),
+        handicapLine.dataset.handicapLine
+      );
+      return;
+    }
+
+    const bttsLine = event.target.closest?.("[data-btts-tab]");
+    if (bttsLine) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      official.renderBtts(
+        document.getElementById("cpMobileMarketsLayer"),
+        String(
+          bttsLine.dataset.bttsTab ||
+          bttsLine.textContent ||
+          "IA"
+        ).trim().toUpperCase()
+      );
+      return;
+    }
+
+    const explicit = event.target.closest?.(
+      "[data-home-market],[data-cp-market]"
+    );
+
+    if (explicit) {
+      const type =
+        explicit.dataset.homeMarket ||
+        explicit.dataset.cpMarket;
+
+      if (["corners","goals","cards","handicap","btts"].includes(type)) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        open(type);
+      }
+      return;
+    }
+
+    const marketTab = event.target.closest?.(".marketTabs .marketTab");
+    if (marketTab) {
+      const type = marketFromText(marketTab.textContent);
+      if (type) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        open(type);
+      }
+      return;
+    }
+
+    const sideItem = event.target.closest?.(".side-item");
+    if (sideItem) {
+      const type = marketFromText(sideItem.textContent);
+      if (type) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        open(type);
+      }
+    }
+  }, true);
+
+  // Se algum módulo antigo sobrescrever as funções públicas,
+  // restauramos a API oficial após toda a carga.
+  function restoreOfficialGlobals(){
+    const official = api();
+    if (!official) return;
+
+    window.cpMobileOpenMarket = type => {
+      if (!mobile()) return;
+      if (["corners","goals","cards","handicap","btts"].includes(type)) {
+        official.openMarket(type);
+      }
+    };
+  }
+
+  restoreOfficialGlobals();
+  window.addEventListener("load", restoreOfficialGlobals);
+  window.addEventListener("pageshow", restoreOfficialGlobals);
+  setTimeout(restoreOfficialGlobals, 0);
+  setTimeout(restoreOfficialGlobals, 250);
+  setTimeout(restoreOfficialGlobals, 1200);
+  setTimeout(restoreOfficialGlobals, 4000);
 })();
