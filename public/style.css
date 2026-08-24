@@ -19730,3 +19730,52 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
 #cpAuthEmail{
   text-transform:none !important;
 }
+
+/* =========================================================
+   CORNER PRO MOBILE V90 — TODOS OS MERCADOS DO DESKTOP
+   ========================================================= */
+@media (max-width:980px){
+  .cprMarkets{
+    display:flex!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    gap:10px!important;
+    scroll-snap-type:x proximity!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-right:16px!important;
+  }
+  .cprMarkets > button{
+    flex:0 0 142px!important;
+    min-width:142px!important;
+    display:flex!important;
+    scroll-snap-align:start!important;
+  }
+  .cprMarkets > button[data-home-market="result"] > span,
+  .cprMarkets > button[data-home-market="doublechance"] > span,
+  .cprMarkets > button[data-home-market="teamgoals"] > span,
+  .cprMarkets > button[data-home-market="builder"] > span{
+    color:#9aff00!important;
+  }
+  #cpMobileMarketsLayer .cpMobileMarketTypes{
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:8px!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #cpMobileMarketsLayer .cpMobileMarketTypes > button{
+    flex:0 0 auto!important;
+    min-width:94px!important;
+  }
+  .cpV90Empty{
+    width:100%;
+    padding:20px 14px;
+    border:1px solid #1e2b31;
+    border-radius:14px;
+    background:#081012;
+    text-align:center;
+  }
+  .cpV90Empty b{display:block;color:#fff;font-size:12px}
+  .cpV90Empty small{display:block;margin-top:6px;color:#8f9a97;font-size:10px;line-height:1.4}
+}

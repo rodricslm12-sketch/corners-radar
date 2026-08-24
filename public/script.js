@@ -26981,3 +26981,326 @@
   setTimeout(restoreOfficialGlobals, 1200);
   setTimeout(restoreOfficialGlobals, 4000);
 })();
+
+/* =========================================================
+   CORNER PRO MOBILE V90 — PARIDADE TOTAL COM O SITE DESKTOP
+   Ativa no app os mercados do WEB V11 sem criar um segundo motor.
+   Reusa state.all + decisões IA (goals_ai, corners_ai, cards_ai,
+   handicap_ai e btts_ai) já carregadas pela camada mobile oficial.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__cpMobileDesktopParityV90) return;
+  window.__cpMobileDesktopParityV90 = true;
+
+  const isMobile = () => !!window.matchMedia && window.matchMedia("(max-width:980px)").matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const clean = (v, fb = "") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined", "null", "NaN"].includes(s) ? s : fb;
+  };
+  const norm = v => String(v ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const num = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === "") continue;
+      const n = Number(String(value).replace("%", "").replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  };
+  const esc = v => String(v ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
+  function boot() {
+    if (!isMobile()) return;
+    const api = window.CornerProMobileOfficialV80;
+    if (!api?.state || !api?.markets || typeof api.openMarket !== "function") {
+      setTimeout(boot, 250);
+      return;
+    }
+    if (api.__desktopParityV90Ready) return;
+    api.__desktopParityV90Ready = true;
+
+    const state = api.state;
+    const markets = api.markets;
+
+    Object.assign(markets, {
+      result: {
+        label: "RESULTADO",
+        title: "🏆 RESULTADO",
+        icon: "🏆",
+        lines: ["TODOS", "CASA", "EMPATE", "FORA"]
+      },
+      doublechance: {
+        label: "DUPLA CHANCE",
+        title: "◈ DUPLA CHANCE",
+        icon: "◈",
+        lines: ["TODOS", "1X", "12", "X2"]
+      },
+      teamgoals: {
+        label: "GOLS DO TIME",
+        title: "⚽ GOLS DO TIME",
+        icon: "⚽",
+        lines: ["TODOS", "0.5", "1.5", "2.5"]
+      },
+      builder: {
+        label: "APOSTA PRONTA",
+        title: "⚡ APOSTA PRONTA",
+        icon: "⚡",
+        lines: ["TODOS"]
+      }
+    });
+
+    function rawGame(item) { return item?.raw || item || {}; }
+    function home(g) {
+      const r = rawGame(g);
+      return clean(g?.home ?? g?.casa ?? r?.casa ?? r?.home ?? r?.match_hometeam_name ?? r?.event_home_team, "Casa");
+    }
+    function away(g) {
+      const r = rawGame(g);
+      return clean(g?.away ?? g?.fora ?? r?.fora ?? r?.away ?? r?.match_awayteam_name ?? r?.event_away_team, "Fora");
+    }
+    function gameTime(g) {
+      const r = rawGame(g);
+      const s = clean(g?.time ?? g?.hora_manaus ?? g?.hora ?? r?.hora_manaus ?? r?.hora ?? r?.match_time ?? r?.event_time, "--:--");
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "--:--";
+    }
+    function gameId(g, index = 0) {
+      const r = rawGame(g);
+      return clean(g?.id ?? g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id,
+        `${norm(home(g))}|${norm(away(g))}|${gameTime(g)}|${index}`);
+    }
+    function confidence(g, type) {
+      const r = rawGame(g);
+      let x = null;
+      if (type === "teamgoals") {
+        x = num(r?.goals_ai?.confidence, r?.handicap_ai?.confidence, r?.confidence, r?.ai_score);
+      } else if (["result", "doublechance"].includes(type)) {
+        x = num(r?.handicap_ai?.confidence, r?.goals_ai?.confidence, r?.confidence, r?.ai_score);
+      } else if (type === "builder") {
+        x = Math.max(
+          num(r?.corners_ai?.confidence) || 0,
+          num(r?.goals_ai?.confidence) || 0,
+          num(r?.cards_ai?.confidence) || 0,
+          num(r?.btts_ai?.confidence) || 0,
+          num(r?.handicap_ai?.confidence) || 0
+        );
+      }
+      if (x !== null && x > 0 && x <= 1) x *= 100;
+      return x === null ? 0 : Math.max(0, Math.min(95, Math.round(x)));
+    }
+    function sideFromHandicap(g) {
+      const r = rawGame(g);
+      const s = norm(r?.handicap_ai?.side_key ?? r?.handicap_ai?.side ?? r?.oddsInfo?.fav?.side ?? "");
+      if (s.includes("away") || s.includes("fora")) return "away";
+      if (s.includes("home") || s.includes("casa")) return "home";
+      return "all";
+    }
+    function pick(g, type, requestedLine = "TODOS") {
+      const r = rawGame(g);
+      const side = sideFromHandicap(g);
+      if (type === "result") {
+        if (side === "away") return "FORA";
+        if (side === "home") return "CASA";
+        return "EMPATE";
+      }
+      if (type === "doublechance") {
+        if (side === "away") return "X2";
+        if (side === "home") return "1X";
+        return "12";
+      }
+      if (type === "teamgoals") {
+        const goalLine = requestedLine === "TODOS" ? "0.5" : requestedLine;
+        const team = side === "away" ? away(g) : home(g);
+        return `${team} OVER ${goalLine}`;
+      }
+      if (type === "builder") {
+        const candidates = [
+          [num(r?.corners_ai?.confidence) || 0, clean(r?.corners_ai?.line, "")],
+          [num(r?.goals_ai?.confidence) || 0, clean(r?.goals_ai?.line, "")],
+          [num(r?.btts_ai?.confidence) || 0, clean(r?.btts_ai?.line, "")],
+          [num(r?.handicap_ai?.confidence) || 0, clean(r?.handicap_ai?.line, "")]
+        ].filter(x => x[1] && !/SEM APOSTA|ATUALIZA|ANALISANDO/i.test(x[1]));
+        candidates.sort((a, b) => b[0] - a[0]);
+        return candidates[0]?.[1]?.toUpperCase() || "MELHOR COMBINAÇÃO";
+      }
+      return "—";
+    }
+
+    function build(type) {
+      const base = Array.isArray(state.all) ? state.all : [];
+      const seen = new Set();
+      return base.map((g, index) => ({
+        raw: g,
+        id: gameId(g, index),
+        match_id: gameId(g, index),
+        home: home(g),
+        away: away(g),
+        time: gameTime(g),
+        confidence: confidence(g, type),
+        line: pick(g, type, "TODOS"),
+        type,
+        status: clean(g?.status ?? g?.match_status ?? g?.event_status, "Pré-jogo")
+      })).filter(g => {
+        if (seen.has(g.id)) return false;
+        seen.add(g.id);
+        return true;
+      }).sort((a, b) => b.confidence - a.confidence);
+    }
+
+    function refreshDerivedMarkets() {
+      state.result = build("result");
+      state.doublechance = build("doublechance");
+      state.teamgoals = build("teamgoals");
+      state.builder = build("builder");
+    }
+
+    function ensureHomeCards() {
+      const row = $(".cprMarkets");
+      if (!row) return;
+      const cards = [
+        ["result", "🏆", "RESULTADO", "CASA • X • FORA"],
+        ["doublechance", "◈", "DUPLA CHANCE", "1X • 12 • X2"],
+        ["teamgoals", "⚽", "GOLS DO TIME", "0.5 • 1.5 • 2.5"],
+        ["builder", "⚡", "APOSTA PRONTA", "MAIOR CONFIANÇA"]
+      ];
+      for (const [key, icon, label, lines] of cards) {
+        if (row.querySelector(`[data-home-market="${key}"]`)) continue;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.homeMarket = key;
+        button.innerHTML = `<span>${icon}</span><b>${label}</b><small>${lines}</small><div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div><p>IA do site</p><strong>VER ANÁLISES</strong>`;
+        row.appendChild(button);
+      }
+    }
+
+    function ensureLayerTabs() {
+      const nav = $("#cpMobileMarketsLayer .cpMobileMarketTypes");
+      if (!nav) return;
+      const tabs = [
+        ["result", "🏆", "Resultado"],
+        ["doublechance", "◈", "Dupla Chance"],
+        ["teamgoals", "⚽", "Gols do Time"],
+        ["builder", "⚡", "Aposta Pronta"]
+      ];
+      for (const [key, icon, label] of tabs) {
+        if (nav.querySelector(`[data-cp-market="${key}"]`)) continue;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.cpMarket = key;
+        b.innerHTML = `<span>${icon}</span><b>${label}</b>`;
+        nav.appendChild(b);
+      }
+    }
+
+    function lineMatches(game, type, line) {
+      line = String(line || "TODOS").toUpperCase();
+      if (line === "TODOS") return true;
+      const p = pick(game, type, line).toUpperCase();
+      if (type === "teamgoals") return true;
+      return p === line || p.includes(` ${line}`) || p.endsWith(line);
+    }
+
+    function renderGenericLine(type, line) {
+      refreshDerivedMarkets();
+      state.activeMarket = type;
+      const source = Array.isArray(state[type]) ? state[type] : [];
+      const list = source
+        .filter(g => lineMatches(g, type, line))
+        .sort((a, b) => b.confidence - a.confidence)
+        .slice(0, 8);
+
+      const selected = $("#cpMobileSelectedLine");
+      if (selected) selected.textContent = line === "TODOS" ? markets[type].label : line;
+      const recommended = $("#cpMobileRecommended");
+      if (recommended) recommended.hidden = false;
+      const carousel = $("#cpMobileGameCarousel");
+      if (!carousel) return;
+
+      carousel.innerHTML = list.length ? list.map((g, index) => `
+        <button type="button" data-v90-generic-game="${index}" data-v90-market="${type}">
+          <b>${esc(g.home)} × ${esc(g.away)}</b>
+          <small>${esc(g.time)} • ${esc(pick(g, type, line))}</small>
+          <strong>${g.confidence || "—"}%</strong>
+        </button>`).join("") : `<div class="cpV90Empty"><b>NENHUM JOGO NESTA LINHA</b><small>A IA do site não encontrou partida compatível para ${esc(line)}.</small></div>`;
+      recommended?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    refreshDerivedMarkets();
+    ensureHomeCards();
+    ensureLayerTabs();
+
+    // Atualiza derivados quando as IAs oficiais terminarem de enriquecer state.all.
+    const oldReload = api.reloadEngines;
+    if (typeof oldReload === "function") {
+      api.reloadEngines = async (...args) => {
+        const result = await oldReload(...args);
+        refreshDerivedMarkets();
+        return result;
+      };
+    }
+
+    // Autoriza a API pública a abrir TODOS os mercados do desktop.
+    window.cpMobileOpenMarket = function(type) {
+      if (!isMobile()) return;
+      refreshDerivedMarkets();
+      if (markets[type]) api.openMarket(type);
+    };
+
+    document.addEventListener("click", event => {
+      if (!isMobile()) return;
+
+      const homeButton = event.target.closest("[data-home-market]");
+      if (homeButton && ["result", "doublechance", "teamgoals", "builder"].includes(homeButton.dataset.homeMarket)) {
+        event.preventDefault();
+        refreshDerivedMarkets();
+        api.openMarket(homeButton.dataset.homeMarket);
+        return;
+      }
+
+      const marketTab = event.target.closest("#cpMobileMarketsLayer [data-cp-market]");
+      if (marketTab && ["result", "doublechance", "teamgoals", "builder"].includes(marketTab.dataset.cpMarket)) {
+        refreshDerivedMarkets();
+      }
+    }, true);
+
+    // Intercepta as linhas dos mercados derivados para que cada clique realmente
+    // mude a lista de jogos, em vez de repetir a mesma relação.
+    document.addEventListener("click", event => {
+      if (!isMobile()) return;
+      const lineButton = event.target.closest("#cpMobileMarketsLayer [data-v9-line], #cpMobileMarketsLayer [data-v8-line]");
+      if (!lineButton) return;
+      const type = state.activeMarket;
+      if (!["result", "doublechance", "teamgoals", "builder"].includes(type)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const line = lineButton.dataset.v9Line || lineButton.dataset.v8Line || "TODOS";
+      $$("#cpMobileMarketsLayer [data-v9-line], #cpMobileMarketsLayer [data-v8-line]").forEach(b => b.classList.toggle("active", b === lineButton));
+      renderGenericLine(type, line);
+    }, true);
+
+    // Mantém os mercados derivados atualizados quando a data muda (hoje/amanhã/calendário).
+    $("#date")?.addEventListener("change", () => {
+      setTimeout(() => {
+        refreshDerivedMarkets();
+        ensureHomeCards();
+        ensureLayerTabs();
+      }, 900);
+    });
+
+    // Uma segunda sincronização curta cobre o carregamento assíncrono inicial.
+    setTimeout(refreshDerivedMarkets, 1200);
+    setTimeout(refreshDerivedMarkets, 3500);
+
+    console.info("[CP MOBILE V90] Paridade de mercados desktop ativa:", Object.keys(markets));
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
+})();
