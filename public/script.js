@@ -314,6 +314,48 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function render(){renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth()}
   
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
+  
+    const DAILY_LOGIN_KEY="cornerpro_daily_google_login_v1";
+    const DAILY_UID_KEY="cornerpro_daily_google_uid_v1";
+  
+    function manausToday(){
+      try{
+        const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+        const o=Object.fromEntries(p.map(x=>[x.type,x.value]));
+        return `${o.year}-${o.month}-${o.day}`;
+      }catch{
+        return new Date().toISOString().slice(0,10);
+      }
+    }
+    function dailyLoginValid(user){
+      if(!user)return false;
+      try{
+        return localStorage.getItem(DAILY_LOGIN_KEY)===manausToday()
+          && localStorage.getItem(DAILY_UID_KEY)===String(user.uid||"");
+      }catch{return false}
+    }
+    function markDailyLogin(user){
+      if(!user)return;
+      try{
+        localStorage.setItem(DAILY_LOGIN_KEY,manausToday());
+        localStorage.setItem(DAILY_UID_KEY,String(user.uid||""));
+      }catch{}
+    }
+    function clearDailyLogin(){
+      try{
+        localStorage.removeItem(DAILY_LOGIN_KEY);
+        localStorage.removeItem(DAILY_UID_KEY);
+      }catch{}
+    }
+    function lockAppForDailyLogin(){
+      document.documentElement.classList.add("cpDailyLoginRequired");
+      openLogin();
+    }
+    function unlockAppAfterDailyLogin(){
+      document.documentElement.classList.remove("cpDailyLoginRequired");
+      closeLogin();
+    }
+  
     async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch("/auth/firebase",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||"Falha ao autenticar");const m=await fetch("/auth/me",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||"Falha ao carregar perfil");return{...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
     function syncAuth(){
       const img=$("#cpV110UserImg"),dot=$("#cpV110User i"),btn=$("#cpV110User");
@@ -329,7 +371,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if(google){google.hidden=true;google.style.display="none"}
         if(li){li.src=photo||"";li.style.display=photo?"block":"none"}
         if(ln)ln.textContent=currentUser.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
-        if(le)le.textContent=currentUser.email||"";
+        if(le){
+          const email=String(currentUser.email||"");
+          // Invisible word-joiner blocks iOS mail-app action sheet while preserving appearance.
+          le.textContent=email.replace("@","⁠@⁠");
+        }
       }else{
         if(logged){logged.hidden=true;logged.style.display="none"}
         if(google){google.hidden=false;google.style.display="flex"}
@@ -340,30 +386,104 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(modal){modal.classList.add("open");modal.setAttribute("aria-hidden","false");syncAuth()}
     }
     function closeLogin(){
+      if(document.documentElement.classList.contains("cpDailyLoginRequired"))return;
       const modal=$("#cpV116Login");
       if(modal){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}
     }
-    async function initAuth(){try{firebaseApi=await import("./firebase-client.js");firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn("[V110 auth]",e)}syncAuth()})}catch(e){console.warn("[V110 firebase]",e);syncAuth()}}
+    async function initAuth(){
+      try{
+        firebaseApi=await import("./firebase-client.js");
+        firebaseApi.observarAutenticacao(async st=>{
+          currentUser=st?.usuario||null;
+  
+          if(!currentUser){
+            currentProfile=null;
+            syncAuth();
+            lockAppForDailyLogin();
+            return;
+          }
+  
+          // Mesmo que o Firebase tenha mantido a sessão, exigimos uma confirmação Google
+          // uma vez por dia no fuso de Manaus.
+          if(!dailyLoginValid(currentUser)){
+            try{
+              await firebaseApi.sair?.();
+            }catch(e){
+              try{await firebaseApi.firebaseAuth?.signOut?.()}catch{}
+            }
+            currentUser=null;
+            currentProfile=null;
+            clearDailyLogin();
+            syncAuth();
+            lockAppForDailyLogin();
+            return;
+          }
+  
+          try{
+            currentProfile=await serverProfile(currentUser);
+          }catch(e){
+            console.warn("[V118 auth]",e);
+          }
+          syncAuth();
+          unlockAppAfterDailyLogin();
+        });
+      }catch(e){
+        console.warn("[V118 firebase]",e);
+        syncAuth();
+        lockAppForDailyLogin();
+      }
+    }
     async function openAuth(){
       if(authBusy||!firebaseApi)return;
-      if(currentUser){syncAuth();return}
       authBusy=true;
+  
       const btn=$("#cpV116GoogleLogin");
       const oldLabel=btn?.innerHTML||"";
       const err=$("#cpV116Login .v116LoginError");
       if(err)err.textContent="";
-      if(btn){btn.disabled=true;btn.innerHTML='<span>G</span><b>Conectando...</b>'}
+      if(btn){
+        btn.disabled=true;
+        btn.innerHTML='<span>G</span><b>Conectando...</b>';
+      }
+  
       try{
+        // Se havia uma sessão persistida de outro momento, encerra antes do login diário.
+        try{
+          if(firebaseApi.firebaseAuth?.currentUser){
+            if(firebaseApi.sair) await firebaseApi.sair();
+            else if(firebaseApi.firebaseAuth?.signOut) await firebaseApi.firebaseAuth.signOut();
+          }
+        }catch(e){console.warn("[V118 pre-signout]",e)}
+  
         const r=await firebaseApi.entrarComGoogle();
         currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;
-        if(currentUser)currentProfile=await serverProfile(currentUser,true);
+  
+        if(!currentUser)throw new Error("O Google não retornou um usuário autenticado.");
+  
+        markDailyLogin(currentUser);
+  
+        try{
+          currentProfile=await serverProfile(currentUser,true);
+        }catch(e){
+          console.warn("[V118 profile]",e);
+        }
+  
+        syncAuth();
+        unlockAppAfterDailyLogin();
       }catch(e){
-        console.warn("[V117 login]",e);
+        console.warn("[V118 login]",e);
+        clearDailyLogin();
+        currentUser=null;
+        currentProfile=null;
+        syncAuth();
+        lockAppForDailyLogin();
         if(err)err.textContent=clean(e?.message,"Não foi possível entrar com Google.");
       }finally{
         authBusy=false;
-        if(btn){btn.disabled=false;btn.innerHTML=oldLabel||'<span>G</span><b>Entrar com Google</b>'}
-        syncAuth();
+        if(btn){
+          btn.disabled=false;
+          btn.innerHTML=oldLabel||'<span>G</span><b>Entrar com Google</b>';
+        }
       }
     }
     async function openGame(g){
@@ -389,7 +509,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(dateBtn){selectCalendarDate(dateBtn.dataset.v116Date);return}
       if(e.target.closest("[data-v116-today]")){selectCalendarDate(ymd());return}
       if(e.target.closest("[data-v116-close-calendar]")||e.target.id==="cpV116Calendar"){closeCalendar();return}
-      if(e.target.closest("[data-v116-close-login]")||e.target.id==="cpV116Login"){closeLogin();return}
+      if(e.target.closest("[data-v116-close-login]")||e.target.id==="cpV116Login"){
+        if(document.documentElement.classList.contains("cpDailyLoginRequired"))return;
+        closeLogin();return
+      }
       if(e.target.closest("#cpV116GoogleLogin")){openAuth();return}
   
       const fav=e.target.closest("[data-v110-fav-team]");
