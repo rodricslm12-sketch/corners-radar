@@ -24,6 +24,26 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     };
   
     const state={date:"",market:"corners",line:"IA",view:"home",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+    const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
+    let favoriteTeams=new Set();
+    try{
+      const saved=JSON.parse(localStorage.getItem(FAVORITES_KEY)||"[]");
+      if(Array.isArray(saved)) favoriteTeams=new Set(saved.map(norm).filter(Boolean));
+    }catch{}
+    function isFavoriteTeam(name){return favoriteTeams.has(norm(name))}
+    function saveFavorites(){try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favoriteTeams]))}catch{}}
+    function toggleFavoriteTeam(name){
+      const key=norm(name);
+      if(!key)return;
+      if(favoriteTeams.has(key)) favoriteTeams.delete(key); else favoriteTeams.add(key);
+      saveFavorites();
+      render();
+    }
+    function favButton(name,extraClass=""){
+      const active=isFavoriteTeam(name);
+      return `<button type="button" class="v110Fav ${extraClass} ${active?"active":""}" data-v110-fav-team="${esc(name)}" aria-label="${active?"Remover":"Adicionar"} ${esc(name)} dos favoritos" aria-pressed="${active?"true":"false"}">${active?"★":"☆"}</button>`;
+    }
+  
     const raw=g=>g?.raw||g||{};
     const home=g=>clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??raw(g)?.casa??raw(g)?.match_hometeam_name,"Casa");
     const away=g=>clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??raw(g)?.fora??raw(g)?.match_awayteam_name,"Fora");
@@ -60,13 +80,54 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(req===state.request){state.loading=false;render()}
     }
   
+    
+    const GAME_THEMES=["lime","cyan","amber","violet","coral","blue"];
+    function gameTheme(i){return GAME_THEMES[Math.abs(Number(i)||0)%GAME_THEMES.length]}
+  
     function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
     function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
-    function gameCard(g,i){const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g);return `<article class="v110Game" data-v110-game="${i}"><div class="v110GameTop"><span>${esc(league(g))} • ${esc(time(g))}</span><b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b></div><div class="v110GameTeams"><strong>${esc(home(g))}</strong><em>${esc(s.score)}</em><strong>${esc(away(g))}</strong></div><div class="v110Bet"><div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div><div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):"—"}</b></div><div><small>CONFIANÇA</small><b>${cf?cf+"%":"—"}</b></div></div><button type="button">VER ANÁLISE ›</button></article>`}
+    function gameCard(g,i){
+      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i);
+      return `<article class="v110Game theme-${theme}" data-v110-game="${i}">
+        <div class="v110GameTop">
+          <span>${esc(league(g))} • ${esc(time(g))}</span>
+          <b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b>
+        </div>
+        <div class="v110GameTeams">
+          <div class="v110TeamWithFav"><strong>${esc(home(g))}</strong>${favButton(home(g),"home")}</div>
+          <em>${esc(s.score)}</em>
+          <div class="v110TeamWithFav away"><strong>${esc(away(g))}</strong>${favButton(away(g),"away")}</div>
+        </div>
+        <div class="v110Bet">
+          <div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div>
+          <div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):"—"}</b></div>
+          <div><small>CONFIANÇA</small><b>${cf?cf+"%":"—"}</b></div>
+        </div>
+        <button type="button">VER ANÁLISE ›</button>
+      </article>`;
+    }
     function renderGames(){const el=$("#cpV110Games");if(!el)return;const list=filtered();$("#cpV110Count").textContent=`${list.length} ${list.length===1?"jogo":"jogos"}`;el.innerHTML=list.length?list.map(gameCard).join(""):`<div class="v110Empty">${state.loading?"Consultando IA...":"Sem jogos nesta seleção."}</div>`}
-    function renderFeatured(){const el=$("#cpV110Featured");if(!el)return;const list=filtered("corners","IA").slice(0,2);el.innerHTML=list.length?list.map((g,i)=>{const pr=projection(g,"corners");return `<button type="button" class="v110Feature" data-v110-feature="${i}"><span>${logo(g,"home")}<b>${esc(home(g))}<br>${esc(away(g))}</b></span><small>Hoje<br>${esc(time(g))}</small><em>${esc(pick(g,"corners"))}</em><strong>${pr!==null?pr.toFixed(1):"—"}</strong><i>☆</i></button>`}).join(""):`<div class="v110Empty">${state.loading?"Carregando destaques...":"Sem destaques aprovados."}</div>`}
-    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>HOJE • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
+    function renderFeatured(){
+      const el=$("#cpV110Featured");if(!el)return;
+      const list=filtered("corners","IA").slice(0,2);
+      el.innerHTML=list.length?list.map((g,i)=>{
+        const pr=projection(g,"corners"),theme=gameTheme(i+2);
+        return `<div class="v110Feature theme-${theme}">
+          <button type="button" class="v110FeatureMain" data-v110-feature="${i}">
+            <span>${logo(g,"home")}<b>${esc(home(g))}<br>${esc(away(g))}</b></span>
+            <small>Hoje<br>${esc(time(g))}</small>
+            <em>${esc(pick(g,"corners"))}</em>
+            <strong>${pr!==null?pr.toFixed(1):"—"}</strong>
+          </button>
+          <div class="v110FeatureFavs">
+            ${favButton(home(g),"mini")}
+            ${favButton(away(g),"mini")}
+          </div>
+        </div>`;
+      }).join(""):`<div class="v110Empty">${state.loading?"Carregando destaques...":"Sem destaques aprovados."}</div>`;
+    }
+    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>HOJE • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
     function applyView(){const root=$("#cpNewMobileV110");if(root)root.dataset.view=state.view;document.querySelectorAll(".v110Bottom button").forEach(b=>b.classList.toggle("active",b.dataset.v110Nav===state.view||(state.view==="market"&&b.dataset.v110Market===state.market)))}
     function render(){renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth()}
   
@@ -78,6 +139,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$("#cpV110MatchTitle").textContent=`${home(g)} × ${away(g)}`;$("#cpV110MatchBody").innerHTML=`<section class="v110MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v110MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):"—"}</b> &nbsp; Confiança: <b>${cf?cf+"%":"—"}</b></p></section><section class="v110MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,"Análise carregada pelos mesmos motores utilizados no site desktop."))}</p></section>`;document.documentElement.classList.add("cpV110MatchOpen")}
   
     document.addEventListener("click",e=>{
+      const fav=e.target.closest("[data-v110-fav-team]");
+      if(fav){
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFavoriteTeam(fav.dataset.v110FavTeam||"");
+        return;
+      }
+  
       const market=e.target.closest("[data-v110-market]");if(market){state.market=market.dataset.v110Market;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
