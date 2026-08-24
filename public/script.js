@@ -1,4 +1,4 @@
-/* APP V102: a interface mobile nova é controlada pelo HTML independente; evita o controlador V101 duplicado. */
+/* APP V103: safe boot mobile; a troca visual só ocorre após o controlador inline confirmar o novo root. */
 if (window.matchMedia?.("(max-width:980px)")?.matches) window.__CP_APP_V101__ = true;
 /* =========================================================
    CORNER PRO MOBILE V92 — FONTE ÚNICA DO DESKTOP
