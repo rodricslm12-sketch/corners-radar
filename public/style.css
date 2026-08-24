@@ -21322,3 +21322,18 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   #cpNewMobileV110 .theme-coral{--game-accent:#ff766d;--game-soft:rgba(255,118,109,.08);--game-line:rgba(255,118,109,.30)}
   #cpNewMobileV110 .theme-blue{--game-accent:#5ea8ff;--game-soft:rgba(94,168,255,.08);--game-line:rgba(94,168,255,.30)}
 }
+
+/* CORNER PRO MOBILE V121 — navegação funcional + menu lateral */
+@media (max-width:980px){
+  .v121Menu{position:fixed;inset:0;z-index:2147483600;display:none}
+  .v121Menu.open{display:block}
+  .v121MenuBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+  .v121Menu aside{position:absolute;left:0;top:0;bottom:0;width:min(82vw,330px);padding:18px 14px;background:linear-gradient(180deg,#07100d,#020504);border-right:1px solid #1d3528;box-shadow:18px 0 60px rgba(0,0,0,.6);overflow:auto}
+  .v121Menu header{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 12px;border-bottom:1px solid #17271f;margin-bottom:10px}
+  .v121Menu header b{font-size:19px;font-style:italic}.v121Menu header b span{color:#69ff2b}
+  .v121Menu header button{width:38px;height:38px;border:1px solid #21342a;border-radius:12px;color:#fff;font-size:24px}
+  .v121Menu aside>button{width:100%;height:48px;display:flex;align-items:center;gap:13px;padding:0 14px;margin:3px 0;border:1px solid transparent;border-radius:13px;color:#aab5af;text-align:left;font-weight:900}
+  .v121Menu aside>button:hover,.v121Menu aside>button:active{background:#0d1913;border-color:#24402f;color:#72ff34}
+  .v121Menu aside>button span{font-size:12px}
+  .v110Bottom button.active{color:#6cff2b!important}
+}

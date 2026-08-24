@@ -86,7 +86,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
     function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
-    function filtered(m=state.market,line=state.line){let a=source(m).slice();if(line==="IA")a=a.filter(g=>resolved(g,m));else if(line!=="TODOS"){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)}
+    function filtered(m=state.market,line=state.line){
+      let a=source(m).slice();
+
+      // A navegação inferior agora muda de verdade o conjunto exibido.
+      if(state.view==="pregame"){
+        a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
+      }else if(state.view==="live"){
+        a=a.filter(g=>{const s=status(g);return (s.live||s.ht)&&!s.finished});
+      }
+
+      if(line==="IA")a=a.filter(g=>resolved(g,m));
+      else if(line!=="TODOS"){
+        const q=norm(line);
+        a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))
+      }
+      return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)
+    }
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   
@@ -144,6 +160,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||"")))return;
       state.date=value;
       state.line="IA";
+      state.view="home";
+      state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};
       document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));
       if($("#date"))$("#date").value=value;
       closeCalendar();
@@ -257,18 +275,49 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(document.hidden)return;
       try{
         const stamp=Date.now();
-        const a=extract(await fetchJ(`/quentes?date=${encodeURIComponent(state.date||ymd())}&_mobile=1&ai=0&t=${stamp}`,12000));
-        if(a.length){
-          const current=new Map(state.base.map(g=>[id(g),g]));
-          state.base=a.map(g=>({...current.get(id(g)),...g}));
-          merge();render();
+        const date=state.date||ymd();
+
+        // Atualiza a base do dia e depois aplica a rota leve de status real.
+        const [basePayload,statusPayload]=await Promise.allSettled([
+          fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,12000),
+          fetchJ(`/market_live_status?date=${encodeURIComponent(date)}&_mobile=${stamp}`,12000)
+        ]);
+
+        if(basePayload.status==="fulfilled"){
+          const a=extract(basePayload.value);
+          if(a.length){
+            const current=new Map(state.base.map(g=>[id(g),g]));
+            state.base=a.map(g=>({...current.get(id(g)),...g}));
+          }
         }
-      }catch(e){console.warn("[V115 live status]",e)}
+
+        if(statusPayload.status==="fulfilled"){
+          const statuses=extract(statusPayload.value);
+          const statusMap=new Map(statuses.map(x=>[id(x),x]));
+          const apply=list=>(list||[]).map(g=>{
+            const st=statusMap.get(id(g));
+            return st?{...g,...st,raw:{...raw(g),...st}}:g;
+          });
+          state.base=apply(state.base);
+          for(const m of Object.keys(state.engines)) state.engines[m]=apply(state.engines[m]);
+        }
+
+        merge();render();
+      }catch(e){console.warn("[V121 live status]",e)}
     }
   
-    function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
+    function renderDates(){
+      const dt=$("#cpV110DateText"),selected=state.date||ymd();
+      if(dt)dt.textContent=`📅 ${selected===ymd()?"Hoje, ":selected===ymd(1)?"Amanhã, ":""}${dateLong(selected)}`;
+      for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}
+    }
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
-    function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
+    function renderLines(){
+      const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;
+      const title=state.view==="live"?"AO VIVO":state.view==="pregame"?"PRÉ-JOGO":m.label.toUpperCase();
+      $("#cpV110MarketTitle").textContent=title;
+      el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")
+    }
     
     function confidenceView(cf){
       const n=Number(cf||0);
@@ -527,7 +576,49 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       },45000);
     }
   
+    function ensureMobileMenu(){
+      if($("#cpV121Menu"))return;
+      const menu=document.createElement("section");
+      menu.id="cpV121Menu";
+      menu.className="v121Menu";
+      menu.setAttribute("aria-hidden","true");
+      menu.innerHTML=`
+        <button class="v121MenuBackdrop" type="button" data-v121-close-menu aria-label="Fechar menu"></button>
+        <aside>
+          <header><b>⚑ CORNER<span>PRO</span></b><button type="button" data-v121-close-menu>×</button></header>
+          <button type="button" data-v121-menu-nav="home">⌂ <span>Dashboard</span></button>
+          <button type="button" data-v121-menu-nav="pregame">⚽ <span>Pré-jogo</span></button>
+          <button type="button" data-v121-menu-nav="live">◎ <span>Ao vivo</span></button>
+          <button type="button" data-v121-menu-market="corners">⚑ <span>Escanteios</span></button>
+          <button type="button" data-v121-menu-market="goals">⚽ <span>Gols</span></button>
+          <button type="button" data-v121-menu-market="cards">▯ <span>Cartões</span></button>
+          <button type="button" data-v121-menu-market="handicap">⇆ <span>Handicap</span></button>
+          <button type="button" data-v121-menu-market="btts">◎ <span>Ambas marcam</span></button>
+          <button type="button" data-v121-menu-calendar>▦ <span>Calendário</span></button>
+          <button type="button" data-v121-menu-profile>♧ <span>Minha conta</span></button>
+        </aside>`;
+      document.body.appendChild(menu);
+    }
+    function openMobileMenu(){ensureMobileMenu();const m=$("#cpV121Menu");m?.classList.add("open");m?.setAttribute("aria-hidden","false")}
+    function closeMobileMenu(){const m=$("#cpV121Menu");m?.classList.remove("open");m?.setAttribute("aria-hidden","true")}
+    ensureMobileMenu();
+
     document.addEventListener("click",e=>{
+      if(e.target.closest("[data-v121-close-menu]")){closeMobileMenu();return}
+      if(e.target.closest(".v110Top > .v110TopBtn:not(.v110User)")){openMobileMenu();return}
+      const menuMarket=e.target.closest("[data-v121-menu-market]");
+      if(menuMarket){closeMobileMenu();state.market=menuMarket.dataset.v121MenuMarket;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
+      const menuNav=e.target.closest("[data-v121-menu-nav]");
+      if(menuNav){
+        closeMobileMenu();
+        const v=menuNav.dataset.v121MenuNav;
+        if(v==="home"){state.view="home";state.market="corners";state.line="IA"}
+        else if(v==="pregame"){state.view="pregame";state.market="corners";state.line="TODOS"}
+        else if(v==="live"){state.view="live";state.market="corners";state.line="TODOS";refreshBaseStatus()}
+        render();window.scrollTo(0,0);return
+      }
+      if(e.target.closest("[data-v121-menu-calendar]")){closeMobileMenu();openCalendar();return}
+      if(e.target.closest("[data-v121-menu-profile]")){closeMobileMenu();openLogin();return}
       if(e.target.closest("#cpV110DateText")){openCalendar();return}
       const monthBtn=e.target.closest("[data-v116-month]");
       if(monthBtn){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+Number(monthBtn.dataset.v116Month||0),1,12);renderCalendar();return}
@@ -552,11 +643,18 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const market=e.target.closest("[data-v110-market]");if(market){state.market=market.dataset.v110Market;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
-      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";load();return}
+      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.view="home";state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
-      const nav=e.target.closest("[data-v110-nav]");if(nav){const v=nav.dataset.v110Nav;if(v==="home"){state.view="home";render();window.scrollTo(0,0);return}if(v==="pregame"||v==="live"){state.market="corners";state.line="TODOS";state.view="market";render();window.scrollTo(0,0);return}return}
+      const nav=e.target.closest("[data-v110-nav]");if(nav){
+        const v=nav.dataset.v110Nav;
+        if(v==="home"){state.view="home";state.market="corners";state.line="IA";render();window.scrollTo(0,0);return}
+        if(v==="pregame"){state.market="corners";state.line="TODOS";state.view="pregame";render();window.scrollTo(0,0);return}
+        if(v==="live"){state.market="corners";state.line="TODOS";state.view="live";refreshBaseStatus();render();window.scrollTo(0,0);return}
+        if(v==="more"){openMobileMenu();return}
+        return
+      }
       if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
       if(e.target.closest("#cpV110User")){openLogin();return}
     },true);
