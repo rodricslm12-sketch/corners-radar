@@ -78,6 +78,7 @@ function mostrarMensagem(texto = "", tipo = "info") {
   }, 5000);
 }
 
+
 function limparCamposAutenticacao({ manterEmailValido = false } = {}) {
   const emailAtual = String(elementos.emailInput?.value || "").trim();
   const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAtual);
@@ -99,9 +100,6 @@ function limparCamposAutenticacao({ manterEmailValido = false } = {}) {
 function corrigirAutofillInvalido() {
   const email = String(elementos.emailInput?.value || "").trim();
 
-  // Alguns gerenciadores de senha reaproveitam o antigo "usuário"
-  // (ex.: RodrigoMartins) no campo de e-mail. Se não parecer e-mail,
-  // limpamos automaticamente em vez de deixar o formulário acusar erro.
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     elementos.emailInput.value = "";
     if (elementos.passwordInput) elementos.passwordInput.value = "";
@@ -485,8 +483,6 @@ function abrirModal(modo = "login", opcoes = {}) {
   }
 
   configurarModo(modo);
-
-  // Corrige credenciais antigas que o navegador possa tentar preencher.
   corrigirAutofillInvalido();
 
   // O modo é definido antes de exibir o modal para evitar flash de campos do cadastro.
@@ -522,7 +518,7 @@ function abrirModal(modo = "login", opcoes = {}) {
     alvo?.focus();
   }, 80);
 
-  // Chrome/gerenciadores de senha podem preencher alguns ms depois de abrir.
+  // Alguns gerenciadores de senha preenchem o campo alguns ms depois.
   window.setTimeout(corrigirAutofillInvalido, 250);
   window.setTimeout(corrigirAutofillInvalido, 700);
 }
@@ -676,14 +672,51 @@ async function realizarLogout() {
     await sairDaConta();
     renderizarDeslogado();
     limparCamposAutenticacao();
+    fecharModal({ forcar: true });
     mostrarMensagem("Você saiu da conta.", "success");
-    abrirModal("login", { obrigatorio: true });
   } catch (erro) {
     console.error("Falha no logout Firebase:", erro);
     mostrarMensagem(erro?.message || "Não foi possível sair da conta.", "error");
   } finally {
     definirOcupado(false);
   }
+}
+
+
+/* =========================================================
+   ACESSO VISITANTE / GATE DE AUTENTICAÇÃO
+   - Visitante vê o site e todos os nomes dos mercados.
+   - Abas principais (Escanteios, Gols, Cartões, Handicap etc.)
+     continuam livres.
+   - Ao clicar numa LINHA ou em "Ver análise", pede login.
+   ========================================================= */
+function mercadoProtegidoClicado(alvo) {
+  if (!alvo?.closest) return null;
+
+  return alvo.closest([
+    "[data-cpd3-line]",
+    "[data-cpd3-open]",
+    ".marketInlineItem",
+    "[data-market-line]",
+    "[data-premium-market]",
+    ".marketChipPremium[data-market-filter]",
+    ".marketHighlightCard[data-market-filter]"
+  ].join(","));
+}
+
+function bloquearMercadoParaVisitante(evento) {
+  if (estadoAuth.usuario || firebaseAuth.currentUser) return;
+
+  const protegido = mercadoProtegidoClicado(evento.target);
+  if (!protegido) return;
+
+  // Impede que o JS do mercado troque/abra a análise antes do login.
+  evento.preventDefault();
+  evento.stopPropagation();
+  evento.stopImmediatePropagation();
+
+  mostrarMensagemFormulario("");
+  abrirModal("login", { obrigatorio: false });
 }
 
 function acaoMobile() {
@@ -695,6 +728,10 @@ function acaoMobile() {
 }
 
 function instalarEventos() {
+  // Captura primeiro para bloquear somente o conteúdo protegido,
+  // sem esconder o site do visitante.
+  document.addEventListener("click", bloquearMercadoParaVisitante, true);
+
   elementos.loginDesktop?.addEventListener("click", () => abrirModal("login"));
   elementos.logoutDesktop?.addEventListener("click", realizarLogout);
   elementos.botaoMobile?.addEventListener("click", acaoMobile);
@@ -752,9 +789,11 @@ function iniciarAutenticacao() {
     const usuario = estado?.usuario || firebaseAuth.currentUser || null;
 
     if (!usuario) {
+      // Visitante pode conhecer o site e visualizar os mercados.
+      // O login só será solicitado quando tentar abrir uma linha/análise.
       renderizarDeslogado();
       limparCamposAutenticacao({ manterEmailValido: true });
-      abrirModal("login", { obrigatorio: true });
+      fecharModal({ forcar: true });
       return;
     }
 
