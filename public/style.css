@@ -20610,3 +20610,70 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     gap:4px!important;
   }
 }
+
+
+/* =========================================================
+   MOBILE V114 — SOMENTE "JOGOS EM DESTAQUE"
+   Mais espaço para os nomes dos times.
+   ========================================================= */
+@media(max-width:980px){
+  .v110Feature{
+    grid-template-columns:minmax(0,1fr) 38px!important;
+  }
+
+  .v110FeatureMain{
+    grid-template-columns:minmax(0,1fr) 42px 68px 32px!important;
+    gap:5px!important;
+    padding:5px 3px 5px 8px!important;
+  }
+
+  .v110FeatureMain > span{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:31px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:6px!important;
+  }
+
+  .v110FeatureMain > span b{
+    min-width:0!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+
+  .v110FeatureMain > span img,
+  .v110FeatureMain > span .v110Logo{
+    width:29px!important;
+    height:29px!important;
+    object-fit:contain!important;
+  }
+
+  .v110FeatureMain small{
+    font-size:8px!important;
+    line-height:1.25!important;
+  }
+
+  .v110FeatureMain em{
+    font-size:8px!important;
+    white-space:nowrap!important;
+    padding:5px 3px!important;
+  }
+
+  .v110FeatureMain strong{
+    font-size:9px!important;
+    text-align:center!important;
+  }
+
+  .v110FeatureFavs{
+    gap:1px!important;
+  }
+
+  .v110Fav.mini{
+    width:17px!important;
+    height:17px!important;
+    font-size:12px!important;
+  }
+}
