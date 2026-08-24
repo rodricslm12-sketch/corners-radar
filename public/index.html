@@ -515,10 +515,10 @@
   if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
   var css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="style.css?v=20260824-mobile-v116";
+  css.href="style.css?v=20260824-mobile-v117";
   document.head.appendChild(css);
   var js=document.createElement("script");
-  js.src="script.js?v=cornerpro-mobile-v116-20260824";
+  js.src="script.js?v=cornerpro-mobile-v117-20260824";
   js.defer=true;
   document.head.appendChild(js);
 })();
@@ -623,6 +623,7 @@
     <button class="v116Google" id="cpV116GoogleLogin" type="button">
       <span>G</span><b>Entrar com Google</b>
     </button>
+    <p class="v116LoginError" aria-live="polite"></p>
     <div class="v116Logged" id="cpV116Logged" hidden>
       <img id="cpV116LoggedImg" alt="">
       <div><strong id="cpV116LoggedName">Usuário</strong><small id="cpV116LoggedEmail"></small></div>

@@ -325,14 +325,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const logged=$("#cpV116Logged"),google=$("#cpV116GoogleLogin");
       const li=$("#cpV116LoggedImg"),ln=$("#cpV116LoggedName"),le=$("#cpV116LoggedEmail");
       if(currentUser){
-        if(logged)logged.hidden=false;
-        if(google)google.hidden=true;
+        if(logged){logged.hidden=false;logged.style.display="flex"}
+        if(google){google.hidden=true;google.style.display="none"}
         if(li){li.src=photo||"";li.style.display=photo?"block":"none"}
         if(ln)ln.textContent=currentUser.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
         if(le)le.textContent=currentUser.email||"";
       }else{
-        if(logged)logged.hidden=true;
-        if(google)google.hidden=false;
+        if(logged){logged.hidden=true;logged.style.display="none"}
+        if(google){google.hidden=false;google.style.display="flex"}
       }
     }
     function openLogin(){
@@ -344,7 +344,28 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(modal){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}
     }
     async function initAuth(){try{firebaseApi=await import("./firebase-client.js");firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn("[V110 auth]",e)}syncAuth()})}catch(e){console.warn("[V110 firebase]",e);syncAuth()}}
-    async function openAuth(){if(authBusy||!firebaseApi||currentUser)return;authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn("[V110 login]",e)}finally{authBusy=false;syncAuth();if(currentUser)closeLogin()}}
+    async function openAuth(){
+      if(authBusy||!firebaseApi)return;
+      if(currentUser){syncAuth();return}
+      authBusy=true;
+      const btn=$("#cpV116GoogleLogin");
+      const oldLabel=btn?.innerHTML||"";
+      const err=$("#cpV116Login .v116LoginError");
+      if(err)err.textContent="";
+      if(btn){btn.disabled=true;btn.innerHTML='<span>G</span><b>Conectando...</b>'}
+      try{
+        const r=await firebaseApi.entrarComGoogle();
+        currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;
+        if(currentUser)currentProfile=await serverProfile(currentUser,true);
+      }catch(e){
+        console.warn("[V117 login]",e);
+        if(err)err.textContent=clean(e?.message,"Não foi possível entrar com Google.");
+      }finally{
+        authBusy=false;
+        if(btn){btn.disabled=false;btn.innerHTML=oldLabel||'<span>G</span><b>Entrar com Google</b>'}
+        syncAuth();
+      }
+    }
     async function openGame(g){
       if(!g)return;
       selectedMatch=g;

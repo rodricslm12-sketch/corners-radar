@@ -20962,3 +20962,16 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
 @media(min-width:981px){
   #cpV116Calendar,#cpV116Login{display:none!important}
 }
+
+/* MOBILE V117 — correção funcional do login Google */
+@media(max-width:980px){
+  #cpV116Login [hidden]{display:none!important}
+  #cpV116GoogleLogin[disabled]{opacity:.65!important;pointer-events:none!important}
+  .v116LoginError{
+    min-height:0!important;
+    margin:8px 0 0!important;
+    color:#ff806c!important;
+    font-size:6.8px!important;
+    line-height:1.35!important;
+  }
+}
