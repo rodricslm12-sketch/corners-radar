@@ -28800,8 +28800,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       .sort((a,b)=>(rank[b.level]||0)-(rank[a.level]||0))[0] || null;
   }
 
-  function bell(a, extra=""){
-    return `<button type="button" class="cpPressureBell ${extra}" data-cp-pressure-market="${a.market}" aria-label="Abrir alerta de pressão">🔔</button>`;
+  function bell(a, extra="", market=""){
+    const active = Boolean(a);
+    const m = a?.market || market || "";
+    return `<button type="button" class="cpPressureBell ${extra} ${active?"is-active":"is-idle"}" data-cp-pressure-market="${m}" data-cp-pressure-active="${active?"1":"0"}" aria-label="${active?"Abrir alerta de pressão":"Monitorando pressão"}">🔔</button>`;
   }
 
   function ensureModal(){
@@ -28835,15 +28837,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     const cornerAlert = strongest("corners");
     const goalAlert = strongest("goals");
 
-    // Dashboard mobile: mostra o sino no card do mercado correspondente.
+    // Dashboard mobile: sino SEMPRE visível em Escanteios e Gols.
     document.querySelectorAll("#cpNewMobileV110 [data-v110-market]").forEach(card=>{
       card.querySelector(".cpPressureBell.dashboard")?.remove();
       const m = card.dataset.v110Market;
-      const a = m === "corners" ? cornerAlert : m === "goals" ? goalAlert : null;
-      if(a) card.insertAdjacentHTML("beforeend", bell(a,"dashboard"));
+      if(m!=="corners" && m!=="goals") return;
+      const a = m==="corners" ? cornerAlert : goalAlert;
+      card.insertAdjacentHTML("beforeend", bell(a,"dashboard",m));
     });
 
-    // Descobre o mercado atual pelo estado salvo/título.
+    // Descobre mercado atual.
     const title = (document.getElementById("cpV110MarketTitle")?.textContent || "").toLowerCase();
     let currentMarket = window.__cpCurrentMobileMarket || "";
     if(!currentMarket){
@@ -28853,33 +28856,30 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       title.includes("escante") || title.includes("ao vivo") ? "corners" : "";
     }
 
-    // Cards individuais: primeiro tenta casar pelo match-id.
-    let paintedAny = false;
+    // Dentro de Gols/Escanteios: sino SEMPRE visível em cada card.
     document.querySelectorAll("#cpNewMobileV110 .v110Game").forEach(card=>{
       card.querySelector(".cpPressureBell.game")?.remove();
+
+      if(currentMarket!=="corners" && currentMarket!=="goals") return;
 
       const matchId = String(card.dataset.matchId || "");
       let a = matchId ? (alerts.get(matchId)||[]).find(x=>x.market===currentMarket) : null;
 
-      // Fallback visual: se há alerta forte do mercado, mostra no primeiro card visível.
-      if(!a && !paintedAny){
-        if(currentMarket==="corners") a = cornerAlert;
-        if(currentMarket==="goals") a = goalAlert;
-      }
-
-      if(a){
-        card.insertAdjacentHTML("afterbegin", bell(a,"game"));
-        paintedAny = true;
-      }
+      // Só o jogo com alerta fica ativo; os demais continuam cinza/parados.
+      card.insertAdjacentHTML("afterbegin", bell(a,"game",currentMarket));
     });
 
-    // Desktop: sino discreto nos acessos dos mercados.
+    // Desktop: sino sempre visível apenas nos acessos de Escanteios/Gols.
     if(window.matchMedia?.("(min-width:981px)").matches){
       document.querySelectorAll(".marketTab,.side-item,.nav a").forEach(el=>{
         el.querySelector(".cpPressureBell.desktop")?.remove();
         const t = (el.textContent || "").toLowerCase();
-        const a = t.includes("escante") ? cornerAlert : t.includes("gol") ? goalAlert : null;
-        if(a) el.insertAdjacentHTML("beforeend", bell(a,"desktop"));
+        let market = "";
+        if(t.includes("escante")) market="corners";
+        else if(t.includes("gol")) market="goals";
+        if(!market) return;
+        const a = market==="corners" ? cornerAlert : goalAlert;
+        el.insertAdjacentHTML("beforeend", bell(a,"desktop",market));
       });
     }
   }
@@ -28936,7 +28936,24 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      showAlert(strongest(bellBtn.dataset.cpPressureMarket));
+
+      const market = bellBtn.dataset.cpPressureMarket;
+      const active = bellBtn.dataset.cpPressureActive === "1";
+      const found = strongest(market);
+
+      if(active && found){
+        showAlert(found);
+      }else{
+        showAlert({
+          market,
+          phase:"MONITORANDO",
+          level:"AGUARDANDO",
+          title: market==="goals" ? "ALERTA DE GOLS ATIVO" : "ALERTA DE ESCANTEIOS ATIVO",
+          text: market==="goals"
+            ? "Este jogo está sendo monitorado. O sino vai pulsar quando houver pressão suficiente para um alerta de gols no intervalo."
+            : "Este jogo está sendo monitorado. O sino vai pulsar quando houver pressão suficiente nas janelas de 32', intervalo ou 83'+."
+        });
+      }
       return;
     }
     if(e.target.closest?.(".cpPressureClose") || e.target.id === "cpPressureModal"){

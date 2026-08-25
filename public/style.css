@@ -21683,3 +21683,27 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     vertical-align:middle!important;
   }
 }
+
+
+
+/* =========================================================
+   CORNER PRO V138 — SINO SEMPRE VISÍVEL
+   Cinza/parado = monitorando | Verde/pulsando = alerta ativo
+   ========================================================= */
+.cpPressureBell.is-idle{
+  color:#7b8580!important;
+  background:#0b1210!important;
+  box-shadow:0 0 0 1px rgba(130,145,138,.28)!important;
+  opacity:.78!important;
+  animation:none!important;
+}
+.cpPressureBell.is-active{
+  color:#7cff38!important;
+  background:#101b13!important;
+  opacity:1!important;
+  animation:cpPressurePulse 1.1s ease-in-out infinite!important;
+}
+.cpPressureAlertSheet b#cpPressureAlertLevel,
+.cpPressureSheet #cpPressureLevel{
+  white-space:nowrap;
+}
