@@ -1,4 +1,4 @@
-/* CORNER PRO MOBILE V119 — visual forte em todos os mercados */
+/* CORNER PRO MOBILE V125 CLEAN — visual forte em todos os mercados */
 if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   (()=>{
     "use strict";
