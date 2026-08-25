@@ -1,4 +1,4 @@
-/* CORNER PRO MOBILE V119 — visual forte em todos os mercados */
+/* CORNER PRO MOBILE V125 CLEAN — visual forte em todos os mercados */
 if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   (()=>{
     "use strict";
@@ -23,7 +23,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       builder:{label:"Aposta Pronta",icon:"⚡",hint:"Maior confiança",field:null,lines:["IA","TODOS"]}
     };
   
-    const state={date:"",market:"corners",line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+    const state={date:"",market:"corners",line:"IA",view:"home",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
     const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
     try{
@@ -88,18 +88,82 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
     function filtered(m=state.market,line=state.line){
       let a=source(m).slice();
-      if(state.mode==="pregame") a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
-      if(state.mode==="live") a=a.filter(g=>{const s=status(g);return s.live||s.ht});
+
+      // A navegação inferior agora muda de verdade o conjunto exibido.
+      if(state.view==="pregame"){
+        a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
+      }else if(state.view==="live"){
+        a=a.filter(g=>{const s=status(g);return (s.live||s.ht)&&!s.finished});
+      }
+
       if(line==="IA")a=a.filter(g=>resolved(g,m));
-      else if(line!=="TODOS"){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}
+      else if(line!=="TODOS"){
+        const q=norm(line);
+        a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))
+      }
       return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)
     }
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   
-    async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn("[V110 quentes]",e)}if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn("[V110 mercados]",e)}}if(req!==state.request)return;state.base=base;merge();render();
-      const jobs=[["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]];
-      await Promise.allSettled(jobs.map(async([kind,url,to])=>{try{const p=await fetchJ(url,to);if(req!==state.request)return;if(kind==="corners"){const a=extract(p,"corners");if(a.length)state.engines.corners=a}else{for(const m of ["goals","cards","handicap","btts"]){const a=extract(p,m);if(a.length)state.engines[m]=a}}merge();render()}catch(e){console.warn("[V110 engine]",kind,e)}}));
+    async function load(){
+      const req=++state.request;
+      state.loading=true;
+      const date=state.date||ymd(),stamp=Date.now();
+
+      // V123: limpa imediatamente a data anterior.
+      state.base=[];
+      state.games=[];
+      state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};
+      render();
+
+      // V123: mesma data em TODAS as fontes. /prelive_best entra como fallback
+      // para dias futuros, quando /quentes ainda não tiver preenchido a base.
+      let base=[];
+      const baseSources=[
+        [`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,18000],
+        [`/mercados?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000],
+        [`/prelive_best?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000]
+      ];
+      for(const [url,to] of baseSources){
+        try{
+          const payload=await fetchJ(url,to);
+          if(req!==state.request)return;
+          const found=extract(payload);
+          if(found.length){base=found;break}
+        }catch(e){console.warn("[V123 base]",url,e)}
+      }
+
+      if(req!==state.request)return;
+      state.base=base;
+      merge();
+      render();
+
+      const jobs=[
+        ["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,40000],
+        ["all",`/market_engines?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,50000],
+        ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000]
+      ];
+
+      await Promise.allSettled(jobs.map(async([kind,url,to])=>{
+        try{
+          const p=await fetchJ(url,to);
+          if(req!==state.request)return;
+          if(kind==="corners"){
+            let a=extract(p,"corners");
+            if(!a.length)a=extract(p);
+            if(a.length)state.engines.corners=a;
+          }else{
+            for(const m of ["goals","cards","handicap","btts"]){
+              const a=extract(p,m);
+              if(a.length)state.engines[m]=a;
+            }
+          }
+          merge();
+          render();
+        }catch(e){console.warn("[V123 engine]",kind,e)}
+      }));
+
       if(req===state.request){state.loading=false;render()}
     }
   
@@ -151,6 +215,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||"")))return;
       state.date=value;
       state.line="IA";
+      state.view="home";
+      state.base=[];
+      state.games=[];
+      state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};
       document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));
       if($("#date"))$("#date").value=value;
       closeCalendar();
@@ -264,18 +332,49 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(document.hidden)return;
       try{
         const stamp=Date.now();
-        const a=extract(await fetchJ(`/quentes?date=${encodeURIComponent(state.date||ymd())}&_mobile=1&ai=0&t=${stamp}`,12000));
-        if(a.length){
-          const current=new Map(state.base.map(g=>[id(g),g]));
-          state.base=a.map(g=>({...current.get(id(g)),...g}));
-          merge();render();
+        const date=state.date||ymd();
+
+        // Atualiza a base do dia e depois aplica a rota leve de status real.
+        const [basePayload,statusPayload]=await Promise.allSettled([
+          fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,12000),
+          fetchJ(`/market_live_status?date=${encodeURIComponent(date)}&_mobile=${stamp}`,12000)
+        ]);
+
+        if(basePayload.status==="fulfilled"){
+          const a=extract(basePayload.value);
+          if(a.length){
+            const current=new Map(state.base.map(g=>[id(g),g]));
+            state.base=a.map(g=>({...current.get(id(g)),...g}));
+          }
         }
-      }catch(e){console.warn("[V115 live status]",e)}
+
+        if(statusPayload.status==="fulfilled"){
+          const statuses=extract(statusPayload.value);
+          const statusMap=new Map(statuses.map(x=>[id(x),x]));
+          const apply=list=>(list||[]).map(g=>{
+            const st=statusMap.get(id(g));
+            return st?{...g,...st,raw:{...raw(g),...st}}:g;
+          });
+          state.base=apply(state.base);
+          for(const m of Object.keys(state.engines)) state.engines[m]=apply(state.engines[m]);
+        }
+
+        merge();render();
+      }catch(e){console.warn("[V121 live status]",e)}
     }
   
-    function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
+    function renderDates(){
+      const dt=$("#cpV110DateText"),selected=state.date||ymd();
+      if(dt)dt.textContent=`📅 ${selected===ymd()?"Hoje, ":selected===ymd(1)?"Amanhã, ":""}${dateLong(selected)}`;
+      for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}
+    }
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
-    function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
+    function renderLines(){
+      const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;
+      const title=state.view==="live"?"AO VIVO":state.view==="pregame"?"PRÉ-JOGO":m.label.toUpperCase();
+      $("#cpV110MarketTitle").textContent=title;
+      el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")
+    }
     
     function confidenceView(cf){
       const n=Number(cf||0);
@@ -322,14 +421,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         <button class="v120AnalysisBtn" type="button">VER ANÁLISE ›</button>
       </article>`;
     }
-    function renderGames(){
-      const el=$("#cpV110Games");if(!el)return;
-      const title=$("#cpV110MarketTitle");
-      if(title) title.textContent=state.mode==="pregame"?"PRÉ-JOGO":state.mode==="live"?"AO VIVO":(MARKETS[state.market]?.title||"ESCANTEIOS");
-      const list=filtered();
-      $("#cpV110Count").textContent=`${list.length} ${list.length===1?"jogo":"jogos"}`;
-      el.innerHTML=list.length?list.map(gameCard).join(""):`<div class="v110Empty">${state.loading?"Consultando IA...":state.mode==="live"?"Nenhuma partida ao vivo agora.":"Sem jogos nesta seleção."}</div>`
-    }
+    function renderGames(){const el=$("#cpV110Games");if(!el)return;const list=filtered();$("#cpV110Count").textContent=`${list.length} ${list.length===1?"jogo":"jogos"}`;el.innerHTML=list.length?list.map(gameCard).join(""):`<div class="v110Empty">${state.loading?"Consultando IA...":"Sem jogos nesta seleção."}</div>`}
     function renderFeatured(){
       const el=$("#cpV110Featured");if(!el)return;
       const list=filtered("corners","IA").slice(0,2);
@@ -349,8 +441,19 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         </div>`;
       }).join(""):`<div class="v110Empty">${state.loading?"Carregando destaques...":"Sem destaques aprovados."}</div>`;
     }
-    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>HOJE • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
-    function applyView(){const root=$("#cpNewMobileV110");if(root)root.dataset.view=state.view;document.querySelectorAll(".v110Bottom button").forEach(b=>b.classList.toggle("active",b.dataset.v110Nav===state.view||(state.view==="market"&&b.dataset.v110Market===state.market)))}
+    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${state.date===ymd()?"HOJE":state.date===ymd(1)?"AMANHÃ":dateLong(state.date).toUpperCase()} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
+    function applyView(){
+      const root=$("#cpNewMobileV110");
+      if(root)root.dataset.view=state.view;
+      document.querySelectorAll(".v110Bottom button").forEach(b=>{
+        const active=
+          b.dataset.v110Nav===state.view ||
+          (state.view==="market"&&b.dataset.v110Market===state.market) ||
+          (state.view==="pregame"&&b.dataset.v110Nav==="pregame") ||
+          (state.view==="live"&&b.dataset.v110Nav==="live");
+        b.classList.toggle("active",active);
+      })
+    }
     function render(){renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth()}
   
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
@@ -388,8 +491,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }catch{}
     }
     function lockAppForDailyLogin(){
-      document.documentElement.classList.add("cpDailyLoginRequired");
-      openLogin();
+      // V122: login não pode bloquear a navegação inteira do app.
+      document.documentElement.classList.remove("cpDailyLoginRequired");
+      syncAuth();
     }
     function unlockAppAfterDailyLogin(){
       document.documentElement.classList.remove("cpDailyLoginRequired");
@@ -438,25 +542,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
           if(!currentUser){
             currentProfile=null;
+            document.documentElement.classList.remove("cpDailyLoginRequired");
             syncAuth();
-            lockAppForDailyLogin();
             return;
           }
   
-          // Mesmo que o Firebase tenha mantido a sessão, exigimos uma confirmação Google
-          // uma vez por dia no fuso de Manaus.
+          // V122: preserva a sessão Firebase já válida.
+          // O login continua disponível pelo perfil, mas não congela o app.
           if(!dailyLoginValid(currentUser)){
-            try{
-              await firebaseApi.sair?.();
-            }catch(e){
-              try{await firebaseApi.firebaseAuth?.signOut?.()}catch{}
-            }
-            currentUser=null;
-            currentProfile=null;
-            clearDailyLogin();
-            syncAuth();
-            lockAppForDailyLogin();
-            return;
+            markDailyLogin(currentUser);
           }
   
           try{
@@ -468,9 +562,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           unlockAppAfterDailyLogin();
         });
       }catch(e){
-        console.warn("[V118 firebase]",e);
+        console.warn("[V122 firebase]",e);
+        document.documentElement.classList.remove("cpDailyLoginRequired");
         syncAuth();
-        lockAppForDailyLogin();
       }
     }
     async function openAuth(){
@@ -541,7 +635,103 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       },45000);
     }
   
+    function ensureMobileMenu(){
+      if($("#cpV121Menu"))return;
+      const menu=document.createElement("section");
+      menu.id="cpV121Menu";
+      menu.className="v121Menu";
+      menu.setAttribute("aria-hidden","true");
+      menu.innerHTML=`
+        <button class="v121MenuBackdrop" type="button" data-v121-close-menu aria-label="Fechar menu"></button>
+        <aside>
+          <header><b>⚑ CORNER<span>PRO</span></b><button type="button" data-v121-close-menu>×</button></header>
+          <button type="button" data-v121-menu-nav="home">⌂ <span>Dashboard</span></button>
+          <button type="button" data-v121-menu-nav="pregame">⚽ <span>Pré-jogo</span></button>
+          <button type="button" data-v121-menu-nav="live">◎ <span>Ao vivo</span></button>
+          <button type="button" data-v121-menu-market="corners">⚑ <span>Escanteios</span></button>
+          <button type="button" data-v121-menu-market="goals">⚽ <span>Gols</span></button>
+          <button type="button" data-v121-menu-market="cards">▯ <span>Cartões</span></button>
+          <button type="button" data-v121-menu-market="handicap">⇆ <span>Handicap</span></button>
+          <button type="button" data-v121-menu-market="btts">◎ <span>Ambas marcam</span></button>
+          <button type="button" data-v121-menu-calendar>▦ <span>Calendário</span></button>
+          <button type="button" data-v121-menu-profile>♧ <span>Minha conta</span></button>
+        </aside>`;
+      document.body.appendChild(menu);
+    }
+    function openMobileMenu(){ensureMobileMenu();const m=$("#cpV121Menu");m?.classList.add("open");m?.setAttribute("aria-hidden","false")}
+    function closeMobileMenu(){const m=$("#cpV121Menu");m?.classList.remove("open");m?.setAttribute("aria-hidden","true")}
+    ensureMobileMenu();
+
+
+    function activateBottomV126(action){
+      if(action==="home"){
+        state.view="home";
+        state.market="corners";
+        state.line="IA";
+      }else if(action==="pregame"){
+        state.view="pregame";
+        state.market="corners";
+        state.line="TODOS";
+      }else if(action==="live"){
+        state.view="live";
+        state.market="corners";
+        state.line="TODOS";
+        refreshBaseStatus();
+      }else if(action==="corners"){
+        state.view="market";
+        state.market="corners";
+        state.line="IA";
+      }else if(action==="more"){
+        openMobileMenu();
+        return;
+      }else{
+        return;
+      }
+
+      render();
+      try{ window.scrollTo({top:0,behavior:"auto"}); }catch{ window.scrollTo(0,0); }
+    }
+
+    // V126: prioridade máxima para a barra inferior.
+    // Executa antes de listeners mobile antigos/legados.
+    window.addEventListener("click",e=>{
+      if(!window.matchMedia?.("(max-width:980px)")?.matches)return;
+
+      const root=e.target.closest?.("#cpNewMobileV110");
+      if(!root)return;
+
+      const bottom=e.target.closest?.(".v110Bottom button");
+      if(!bottom)return;
+
+      const action =
+        bottom.dataset.v110Nav ||
+        (bottom.dataset.v110Market==="corners" ? "corners" : "");
+
+      if(!action)return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      activateBottomV126(action);
+    },true);
+
     document.addEventListener("click",e=>{
+      if(e.target.closest("[data-v121-close-menu]")){closeMobileMenu();return}
+      if(e.target.closest(".v110Top > .v110TopBtn:not(.v110User)")){openMobileMenu();return}
+      const menuMarket=e.target.closest("[data-v121-menu-market]");
+      if(menuMarket){closeMobileMenu();state.market=menuMarket.dataset.v121MenuMarket;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
+      const menuNav=e.target.closest("[data-v121-menu-nav]");
+      if(menuNav){
+        closeMobileMenu();
+        const v=menuNav.dataset.v121MenuNav;
+        if(v==="home"){state.view="home";state.market="corners";state.line="IA"}
+        else if(v==="pregame"){state.view="pregame";state.market="corners";state.line="TODOS"}
+        else if(v==="live"){state.view="live";state.market="corners";state.line="TODOS";refreshBaseStatus()}
+        render();window.scrollTo(0,0);return
+      }
+      if(e.target.closest("[data-v121-menu-calendar]")){closeMobileMenu();openCalendar();return}
+      if(e.target.closest("[data-v121-menu-profile]")){closeMobileMenu();openLogin();return}
       if(e.target.closest("#cpV110DateText")){openCalendar();return}
       const monthBtn=e.target.closest("[data-v116-month]");
       if(monthBtn){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+Number(monthBtn.dataset.v116Month||0),1,12);renderCalendar();return}
@@ -563,43 +753,45 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         return;
       }
   
-      const market=e.target.closest("[data-v110-market]");if(market){
-        state.mode="all";
+      const quick=e.target.closest("[data-v110-quick]");
+      if(quick){
+        const type=quick.dataset.v110Quick;
+        if(type==="favorites"){
+          state.market="corners";state.line="TODOS";state.view="market";render();
+          const favs=filtered().filter(g=>isFavoriteTeam(home(g))||isFavoriteTeam(away(g)));
+          const box=$("#cpV110Games");
+          if(box)box.innerHTML=favs.length?favs.map((g,i)=>gameCard(g,i)).join(""):`<div class="v110Empty"><b>Nenhum favorito ainda</b><span>Toque na estrela de um time para adicioná-lo.</span></div>`;
+          window.scrollTo(0,0);return
+        }
+        if(type==="alerts"){openMobileMenu();return}
+        if(type==="reports"){openMobileMenu();return}
+      }
+
+      const market=e.target.closest("[data-v110-market]");
+      if(market){
+        if(market.closest(".v110Bottom") && market.dataset.v110Market==="corners"){
+          activateBottomV126("corners");
+          return;
+        }
         state.market=market.dataset.v110Market;
         state.line="IA";
         state.view="market";
         render();
         window.scrollTo(0,0);
-        return
+        return;
       }
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
-      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";load();return}
+      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.view="home";state.base=[];state.games=[];state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};render();load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
-      const nav=e.target.closest("[data-v110-nav]");if(nav){
-        const v=nav.dataset.v110Nav;
-        if(v==="home"){
-          state.mode="all";state.view="home";state.market="corners";state.line="IA";
-          render();window.scrollTo(0,0);return
-        }
-        if(v==="pregame"){
-          state.mode="pregame";state.market="corners";state.line="TODOS";state.view="market";
-          render();window.scrollTo(0,0);return
-        }
-        if(v==="live"){
-          state.mode="live";state.market="corners";state.line="TODOS";state.view="market";
-          refreshBaseStatus();render();window.scrollTo(0,0);return
-        }
-        if(v==="more"){
-          document.documentElement.classList.toggle("cpV127MoreOpen");
-          return
-        }
-        return
+      const nav=e.target.closest("[data-v110-nav]");
+      if(nav){
+        activateBottomV126(nav.dataset.v110Nav);
+        return;
       }
       if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
-      if(e.target.closest("#cpV127MoreLogin")){document.documentElement.classList.remove("cpV127MoreOpen");openLogin();return}
       if(e.target.closest("#cpV110User")){openLogin();return}
     },true);
   
