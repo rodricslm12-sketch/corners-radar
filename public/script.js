@@ -662,6 +662,60 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function closeMobileMenu(){const m=$("#cpV121Menu");m?.classList.remove("open");m?.setAttribute("aria-hidden","true")}
     ensureMobileMenu();
 
+
+    function activateBottomV126(action){
+      if(action==="home"){
+        state.view="home";
+        state.market="corners";
+        state.line="IA";
+      }else if(action==="pregame"){
+        state.view="pregame";
+        state.market="corners";
+        state.line="TODOS";
+      }else if(action==="live"){
+        state.view="live";
+        state.market="corners";
+        state.line="TODOS";
+        refreshBaseStatus();
+      }else if(action==="corners"){
+        state.view="market";
+        state.market="corners";
+        state.line="IA";
+      }else if(action==="more"){
+        openMobileMenu();
+        return;
+      }else{
+        return;
+      }
+
+      render();
+      try{ window.scrollTo({top:0,behavior:"auto"}); }catch{ window.scrollTo(0,0); }
+    }
+
+    // V126: prioridade máxima para a barra inferior.
+    // Executa antes de listeners mobile antigos/legados.
+    window.addEventListener("click",e=>{
+      if(!window.matchMedia?.("(max-width:980px)")?.matches)return;
+
+      const root=e.target.closest?.("#cpNewMobileV110");
+      if(!root)return;
+
+      const bottom=e.target.closest?.(".v110Bottom button");
+      if(!bottom)return;
+
+      const action =
+        bottom.dataset.v110Nav ||
+        (bottom.dataset.v110Market==="corners" ? "corners" : "");
+
+      if(!action)return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      activateBottomV126(action);
+    },true);
+
     document.addEventListener("click",e=>{
       if(e.target.closest("[data-v121-close-menu]")){closeMobileMenu();return}
       if(e.target.closest(".v110Top > .v110TopBtn:not(.v110User)")){openMobileMenu();return}
@@ -713,20 +767,29 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if(type==="reports"){openMobileMenu();return}
       }
 
-      const market=e.target.closest("[data-v110-market]");if(market){state.market=market.dataset.v110Market;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
+      const market=e.target.closest("[data-v110-market]");
+      if(market){
+        if(market.closest(".v110Bottom") && market.dataset.v110Market==="corners"){
+          activateBottomV126("corners");
+          return;
+        }
+        state.market=market.dataset.v110Market;
+        state.line="IA";
+        state.view="market";
+        render();
+        window.scrollTo(0,0);
+        return;
+      }
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
       const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.view="home";state.base=[];state.games=[];state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};render();load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
-      const nav=e.target.closest("[data-v110-nav]");if(nav){
-        const v=nav.dataset.v110Nav;
-        if(v==="home"){state.view="home";state.market="corners";state.line="IA";render();window.scrollTo(0,0);return}
-        if(v==="pregame"){state.market="corners";state.line="TODOS";state.view="pregame";render();window.scrollTo(0,0);return}
-        if(v==="live"){state.market="corners";state.line="TODOS";state.view="live";refreshBaseStatus();render();window.scrollTo(0,0);return}
-        if(v==="more"){openMobileMenu();return}
-        return
+      const nav=e.target.closest("[data-v110-nav]");
+      if(nav){
+        activateBottomV126(nav.dataset.v110Nav);
+        return;
       }
       if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
       if(e.target.closest("#cpV110User")){openLogin();return}
