@@ -28803,7 +28803,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   function bell(a, extra="", market=""){
     const active = Boolean(a);
     const m = a?.market || market || "";
-    return `<button type="button" class="cpPressureBell ${extra} ${active?"is-active":"is-idle"}" data-cp-pressure-market="${m}" data-cp-pressure-active="${active?"1":"0"}" aria-label="${active?"Abrir alerta de pressão":"Monitorando pressão"}">🔔</button>`;
+    return `<span role="button" tabindex="0" class="cpPressureBell ${extra} ${active?"is-active":"is-idle"}" data-cp-pressure-market="${m}" data-cp-pressure-active="${active?"1":"0"}" aria-label="${active?"Abrir alerta de pressão":"Monitorando pressão"}">🔔</span>`;
   }
 
   function ensureModal(){
@@ -28975,6 +28975,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
+
+
+  document.addEventListener("keydown", e=>{
+    if((e.key==="Enter" || e.key===" ") && e.target?.matches?.("[data-cp-pressure-market]")){
+      e.preventDefault();
+      e.target.click();
+    }
+  });
 
   window.CornerProPressureAlerts = {sync,paint,alerts};
 })();
