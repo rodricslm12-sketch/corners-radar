@@ -21504,3 +21504,22 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     transform:none!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO V132 — FIX DESKTOP
+   O menu "Mais" V127 pertence SOMENTE ao mobile.
+   ========================================================= */
+@media (min-width:981px){
+  #cpV127MoreSheet,
+  .v127MoreSheet{
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+    position:fixed!important;
+    width:0!important;
+    height:0!important;
+    overflow:hidden!important;
+  }
+}
