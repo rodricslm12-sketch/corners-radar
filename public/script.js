@@ -586,9 +586,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
       }
     }
+    function closeV110Match(){
+      document.documentElement.classList.remove("cpV110MatchOpen");
+      selectedMatch=null;
+      if(matchPollTimer){
+        clearInterval(matchPollTimer);
+        matchPollTimer=null;
+      }
+    }
+
     async function openGame(g){
       if(!g)return;
       selectedMatch=g;
+      const backBtn=$("#cpV110CloseMatch");
+      if(backBtn){
+        backBtn.textContent="←";
+        backBtn.setAttribute("aria-label","Voltar para a tela anterior");
+      }
       $("#cpV110MatchTitle").textContent=`${home(g)} × ${away(g)}`;
       document.documentElement.classList.add("cpV110MatchOpen");
       renderMatchCenter(g,null,true);
@@ -602,6 +616,61 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
   
     document.addEventListener("click",e=>{
+      const bottomButton=e.target.closest?.("#cpNewMobileV110 .v110Bottom button");
+      if(bottomButton && document.documentElement.classList.contains("cpV110MatchOpen")){
+        const nav=bottomButton.dataset.v110Nav||"";
+        const market=bottomButton.dataset.v110Market||"";
+
+        closeV110Match();
+
+        if(nav==="home"){
+          state.mode="all";
+          state.view="home";
+          state.market="corners";
+          state.line="IA";
+          render();
+          window.scrollTo(0,0);
+          return;
+        }
+
+        if(nav==="pregame"){
+          state.mode="pregame";
+          state.view="market";
+          state.market="corners";
+          state.line="TODOS";
+          render();
+          window.scrollTo(0,0);
+          return;
+        }
+
+        if(nav==="live"){
+          state.mode="live";
+          state.view="market";
+          state.market="corners";
+          state.line="TODOS";
+          refreshBaseStatus();
+          render();
+          window.scrollTo(0,0);
+          return;
+        }
+
+        if(market==="corners"){
+          state.mode="all";
+          state.view="market";
+          state.market="corners";
+          state.line="IA";
+          render();
+          window.scrollTo(0,0);
+          return;
+        }
+
+        if(nav==="more"){
+          document.documentElement.classList.add("cpV127MoreOpen");
+          applyView();
+          return;
+        }
+      }
+
       if(e.target.closest("#cpV110DateText")){openCalendar();return}
       const monthBtn=e.target.closest("[data-v116-month]");
       if(monthBtn){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+Number(monthBtn.dataset.v116Month||0),1,12);renderCalendar();return}
@@ -658,7 +727,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
         return
       }
-      if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
+      if(e.target.closest("#cpV110CloseMatch")){closeV110Match();return}
       if(e.target.closest("#cpV110MenuBtn")){
         document.documentElement.classList.toggle("cpV127MoreOpen");
         applyView();
