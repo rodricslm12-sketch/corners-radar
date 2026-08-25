@@ -21377,3 +21377,62 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     background:#0a1510!important;color:#eef4ef!important;text-align:left!important;font-weight:800!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO MOBILE V128 — NAV INFERIOR MAIOR + ACTIVE CORRETO
+   ========================================================= */
+@media(max-width:980px){
+  #cpNewMobileV110 .v110Bottom{
+    height:82px!important;
+    grid-template-columns:repeat(5,1fr)!important;
+    padding:4px 0 calc(6px + env(safe-area-inset-bottom))!important;
+    background:rgba(2,7,5,.99)!important;
+    border-top:1px solid #183025!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button{
+    min-width:0!important;
+    height:72px!important;
+    gap:6px!important;
+    padding:6px 2px!important;
+    color:#8d9993!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button i{
+    font-size:28px!important;
+    line-height:1!important;
+    min-height:30px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button b{
+    font-size:11px!important;
+    line-height:1!important;
+    font-weight:900!important;
+    letter-spacing:.1px!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button.active{
+    color:#6cff2b!important;
+    background:linear-gradient(180deg,rgba(91,255,40,.14),rgba(91,255,40,.035))!important;
+    box-shadow:inset 0 3px 0 rgba(108,255,43,.85)!important;
+  }
+
+  #cpNewMobileV110{
+    padding-bottom:96px!important;
+  }
+
+  /* Evita que Escanteios fique verde quando o modo for Ao Vivo ou Pré-jogo */
+  #cpNewMobileV110[data-mode="live"] .v110Bottom [data-v110-market="corners"],
+  #cpNewMobileV110[data-mode="pregame"] .v110Bottom [data-v110-market="corners"]{
+    color:#8d9993!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
