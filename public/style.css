@@ -21354,3 +21354,24 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     pointer-events:none!important;
   }
 }
+
+
+/* CORNER PRO MOBILE V123 — ativa navegação inferior e vistas Pré-jogo/Ao Vivo */
+@media (max-width:980px){
+  #cpNewMobileV110[data-view="pregame"] .v110Home,
+  #cpNewMobileV110[data-view="pregame"] .v110Hero,
+  #cpNewMobileV110[data-view="live"] .v110Home,
+  #cpNewMobileV110[data-view="live"] .v110Hero{
+    display:none!important;
+  }
+
+  #cpNewMobileV110[data-view="pregame"] .v110Panel,
+  #cpNewMobileV110[data-view="live"] .v110Panel{
+    display:block!important;
+  }
+
+  .v110Bottom button{
+    pointer-events:auto!important;
+    touch-action:manipulation;
+  }
+}

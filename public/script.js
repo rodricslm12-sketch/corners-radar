@@ -106,9 +106,64 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   
-    async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn("[V110 quentes]",e)}if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn("[V110 mercados]",e)}}if(req!==state.request)return;state.base=base;merge();render();
-      const jobs=[["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]];
-      await Promise.allSettled(jobs.map(async([kind,url,to])=>{try{const p=await fetchJ(url,to);if(req!==state.request)return;if(kind==="corners"){const a=extract(p,"corners");if(a.length)state.engines.corners=a}else{for(const m of ["goals","cards","handicap","btts"]){const a=extract(p,m);if(a.length)state.engines[m]=a}}merge();render()}catch(e){console.warn("[V110 engine]",kind,e)}}));
+    async function load(){
+      const req=++state.request;
+      state.loading=true;
+      const date=state.date||ymd(),stamp=Date.now();
+
+      // V123: limpa imediatamente a data anterior.
+      state.base=[];
+      state.games=[];
+      state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};
+      render();
+
+      // V123: mesma data em TODAS as fontes. /prelive_best entra como fallback
+      // para dias futuros, quando /quentes ainda não tiver preenchido a base.
+      let base=[];
+      const baseSources=[
+        [`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,18000],
+        [`/mercados?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000],
+        [`/prelive_best?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000]
+      ];
+      for(const [url,to] of baseSources){
+        try{
+          const payload=await fetchJ(url,to);
+          if(req!==state.request)return;
+          const found=extract(payload);
+          if(found.length){base=found;break}
+        }catch(e){console.warn("[V123 base]",url,e)}
+      }
+
+      if(req!==state.request)return;
+      state.base=base;
+      merge();
+      render();
+
+      const jobs=[
+        ["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,40000],
+        ["all",`/market_engines?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,50000],
+        ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&_mobile=1&t=${stamp}`,26000]
+      ];
+
+      await Promise.allSettled(jobs.map(async([kind,url,to])=>{
+        try{
+          const p=await fetchJ(url,to);
+          if(req!==state.request)return;
+          if(kind==="corners"){
+            let a=extract(p,"corners");
+            if(!a.length)a=extract(p);
+            if(a.length)state.engines.corners=a;
+          }else{
+            for(const m of ["goals","cards","handicap","btts"]){
+              const a=extract(p,m);
+              if(a.length)state.engines[m]=a;
+            }
+          }
+          merge();
+          render();
+        }catch(e){console.warn("[V123 engine]",kind,e)}
+      }));
+
       if(req===state.request){state.loading=false;render()}
     }
   
@@ -161,6 +216,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       state.date=value;
       state.line="IA";
       state.view="home";
+      state.base=[];
+      state.games=[];
       state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};
       document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));
       if($("#date"))$("#date").value=value;
@@ -384,8 +441,19 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         </div>`;
       }).join(""):`<div class="v110Empty">${state.loading?"Carregando destaques...":"Sem destaques aprovados."}</div>`;
     }
-    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>HOJE • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
-    function applyView(){const root=$("#cpNewMobileV110");if(root)root.dataset.view=state.view;document.querySelectorAll(".v110Bottom button").forEach(b=>b.classList.toggle("active",b.dataset.v110Nav===state.view||(state.view==="market"&&b.dataset.v110Market===state.market)))}
+    function renderHero(){const el=$("#cpV110Hero");if(!el)return;const list=filtered("corners","IA"),g=list[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rec=cornerRec(g),pr=rec.projection,cf=rec.confidence;el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${state.date===ymd()?"HOJE":state.date===ymd(1)?"AMANHÃ":dateLong(state.date).toUpperCase()} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
+    function applyView(){
+      const root=$("#cpNewMobileV110");
+      if(root)root.dataset.view=state.view;
+      document.querySelectorAll(".v110Bottom button").forEach(b=>{
+        const active=
+          b.dataset.v110Nav===state.view ||
+          (state.view==="market"&&b.dataset.v110Market===state.market) ||
+          (state.view==="pregame"&&b.dataset.v110Nav==="pregame") ||
+          (state.view==="live"&&b.dataset.v110Nav==="live");
+        b.classList.toggle("active",active);
+      })
+    }
     function render(){renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth()}
   
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
@@ -631,10 +699,24 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         return;
       }
   
+      const quick=e.target.closest("[data-v110-quick]");
+      if(quick){
+        const type=quick.dataset.v110Quick;
+        if(type==="favorites"){
+          state.market="corners";state.line="TODOS";state.view="market";render();
+          const favs=filtered().filter(g=>isFavoriteTeam(home(g))||isFavoriteTeam(away(g)));
+          const box=$("#cpV110Games");
+          if(box)box.innerHTML=favs.length?favs.map((g,i)=>gameCard(g,i)).join(""):`<div class="v110Empty"><b>Nenhum favorito ainda</b><span>Toque na estrela de um time para adicioná-lo.</span></div>`;
+          window.scrollTo(0,0);return
+        }
+        if(type==="alerts"){openMobileMenu();return}
+        if(type==="reports"){openMobileMenu();return}
+      }
+
       const market=e.target.closest("[data-v110-market]");if(market){state.market=market.dataset.v110Market;state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
-      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.view="home";state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};load();return}
+      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.view="home";state.base=[];state.games=[];state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};render();load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}

@@ -516,10 +516,10 @@
   if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
   var css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="style.css?v=20260824-mobile-v122";
+  css.href="style.css?v=20260824-mobile-v123";
   document.head.appendChild(css);
   var js=document.createElement("script");
-  js.src="script.js?v=cornerpro-mobile-v122-20260824";
+  js.src="script.js?v=cornerpro-mobile-v123-20260824";
   js.defer=true;
   document.head.appendChild(js);
 })();
@@ -572,9 +572,9 @@
 
     <section class="v110Quick">
       <button data-v110-nav="live"><i>◉</i><b>AO VIVO</b><small id="cpV110LiveCount">Partidas</small></button>
-      <button><i>☆</i><b>FAVORITOS</b><small>Seus jogos</small></button>
-      <button><i>♧</i><b>MEUS ALERTAS</b><small>Notificações</small></button>
-      <button><i>▥</i><b>RELATÓRIOS</b><small>Desempenho</small></button>
+      <button type="button" data-v110-quick="favorites"><i>☆</i><b>FAVORITOS</b><small>Seus jogos</small></button>
+      <button type="button" data-v110-quick="alerts"><i>♧</i><b>MEUS ALERTAS</b><small>Notificações</small></button>
+      <button type="button" data-v110-quick="reports"><i>▥</i><b>RELATÓRIOS</b><small>Desempenho</small></button>
     </section>
   </section>
 
