@@ -659,6 +659,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         return
       }
       if(e.target.closest("#cpV110CloseMatch")){document.documentElement.classList.remove("cpV110MatchOpen");selectedMatch=null;if(matchPollTimer){clearInterval(matchPollTimer);matchPollTimer=null}return}
+      if(e.target.closest("#cpV110MenuBtn")){
+        document.documentElement.classList.toggle("cpV127MoreOpen");
+        applyView();
+        return
+      }
       if(e.target.closest("#cpV127MoreLogin")){document.documentElement.classList.remove("cpV127MoreOpen");openLogin();return}
       if(e.target.closest("#cpV110User")){openLogin();return}
     },true);

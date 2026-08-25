@@ -21436,3 +21436,71 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     box-shadow:none!important;
   }
 }
+
+
+/* =========================================================
+   CORNER PRO MOBILE V129 — NAV INFERIOR COMPACTA
+   ========================================================= */
+@media(max-width:980px){
+  #cpNewMobileV110 .v110Bottom{
+    height:68px!important;
+    padding:2px 0 calc(3px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button{
+    height:62px!important;
+    gap:3px!important;
+    padding:4px 2px!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button i{
+    font-size:23px!important;
+    min-height:25px!important;
+  }
+
+  #cpNewMobileV110 .v110Bottom button b{
+    font-size:9.5px!important;
+    line-height:1.05!important;
+  }
+
+  #cpNewMobileV110{
+    padding-bottom:78px!important;
+  }
+}
+
+
+/* =========================================================
+   CORNER PRO MOBILE V130 — MENU ☰ DO TOPO ATIVO
+   ========================================================= */
+@media(max-width:980px){
+  #cpV110MenuBtn{
+    position:relative!important;
+    z-index:2147483001!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    cursor:pointer!important;
+  }
+}
+
+
+/* =========================================================
+   CORNER PRO MOBILE V131 — ☰ COMPACTO NO PADRÃO DO APP
+   ========================================================= */
+@media(max-width:980px){
+  #cpV110MenuBtn{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    padding:0!important;
+    border-radius:12px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:28px!important;
+    line-height:1!important;
+    font-weight:600!important;
+    letter-spacing:-2px!important;
+    transform:none!important;
+  }
+}
