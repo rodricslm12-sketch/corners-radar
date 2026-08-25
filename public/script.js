@@ -319,7 +319,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function gameCard(g,i){
       const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf);
       const isScore=s.live||s.ht||s.finished;
-      return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}">
+      return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}" data-match-id="${esc(id(g))}">
         <div class="v110GameTop v120GameTop">
           <span>${esc(league(g))} • ${esc(time(g))}</span>
           <b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b>
@@ -411,7 +411,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         b.classList.toggle("active",active);
       })
     }
-    function render(){renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth()}
+    function render(){window.__cpV110VisibleGames=state.games.slice();renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth();setTimeout(()=>window.CornerProPressureAlerts?.paint?.(),0)}
   
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
   
@@ -28616,3 +28616,313 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     })();
 
   }
+
+
+/* =========================================================
+   CORNER PRO V135 — ALERTA DE PRESSÃO
+   Refeito do zero.
+   - Cantos: 32'–39', intervalo e 83'–95'
+   - Gols: intervalo
+   - Sem critério forte = sem sino
+   ========================================================= */
+(function installCornerProPressureAlertsV135(){
+  "use strict";
+  if(window.__CP_PRESSURE_V135__) return;
+  window.__CP_PRESSURE_V135__ = true;
+
+  const alerts = new Map();
+  const cache = new Map();
+  let busy = false;
+
+  const N = (v, fb=0) => {
+    const x = Number(String(v ?? "").replace("%","").replace(",",".").replace(/[^\d.-]/g,""));
+    return Number.isFinite(x) ? x : fb;
+  };
+  const S = (v, fb="") => {
+    const s = String(v ?? "").trim();
+    return s && !["undefined","null","NaN"].includes(s) ? s : fb;
+  };
+
+  function matchId(g){
+    const r = g?.raw || g || {};
+    return S(r.match_id ?? r.event_id ?? r.event_key ?? r.fixture_id ?? r.id ?? g?.match_id ?? g?.id);
+  }
+
+  function pair(d, key){
+    const o = d?.[key] || {};
+    return { home:N(o.home), away:N(o.away) };
+  }
+
+  function isHalftime(d){
+    const s = S(d?.status_raw ?? d?.status).toLowerCase();
+    return Boolean(d?.halftime || d?.half_time) || /half.?time|\bht\b|intervalo|interval|break/.test(s);
+  }
+
+  function evaluate(d){
+    if(!d || d.finished || d.not_started || d.cancelled) return [];
+
+    const minute = N(d.minute);
+    const ht = isHalftime(d);
+    const score = pair(d,"score");
+    const corners = pair(d,"corners");
+    const shots = pair(d,"shots");
+    const onTarget = pair(d,"shots_on_target");
+    const danger = pair(d,"dangerous_attacks");
+    const attacks = pair(d,"attacks");
+
+    const C = corners.home + corners.away;
+    const SH = shots.home + shots.away;
+    const OT = onTarget.home + onTarget.away;
+    const DA = danger.home + danger.away;
+    const AT = attacks.home + attacks.away;
+
+    const trailing = score.home !== score.away;
+    const loserDanger = score.home < score.away ? danger.home : score.away < score.home ? danger.away : Math.max(danger.home,danger.away);
+    const loserShots  = score.home < score.away ? shots.home  : score.away < score.home ? shots.away  : Math.max(shots.home,shots.away);
+
+    const out = [];
+
+    // 32'–39': oportunidade de canto antes do intervalo.
+    if(minute >= 32 && minute <= 39){
+      let hits = 0;
+      if(DA >= 24 || AT >= 55) hits++;
+      if(SH >= 8) hits++;
+      if(OT >= 3) hits++;
+      if(C >= 3) hits++;
+
+      if(hits >= 3){
+        out.push({
+          market:"corners",
+          phase:`${minute}'`,
+          level:hits >= 4 ? "MUITO ALTA" : "ALTA",
+          title:"PRESSÃO PARA ESCANTEIOS",
+          text:`Jogo em alta intensidade aos ${minute}'. ${C} cantos, ${SH} finalizações e forte volume ofensivo. Pode haver novos escanteios antes do intervalo.`
+        });
+      }
+    }
+
+    // Intervalo: avaliação separada para cantos e gols.
+    if(ht){
+      let cornerHits = 0;
+      if(DA >= 32 || AT >= 70) cornerHits++;
+      if(SH >= 10) cornerHits++;
+      if(OT >= 4) cornerHits++;
+      if(C >= 4) cornerHits++;
+      if(trailing && loserDanger >= 18) cornerHits++;
+      if(trailing && loserShots >= 6) cornerHits++;
+
+      if(cornerHits >= 4){
+        out.push({
+          market:"corners",
+          phase:"INTERVALO",
+          level:cornerHits >= 5 ? "MUITO ALTA" : "ALTA",
+          title:"PRESSÃO PARA CANTOS NO 2º TEMPO",
+          text:`Intervalo em ${score.home}-${score.away}. A partida tem ${C} cantos e ${SH} finalizações${trailing ? ", com necessidade de reação do time que está atrás" : ""}. Cenário forte para novos escanteios no 2º tempo.`
+        });
+      }
+
+      let goalHits = 0;
+      if(DA >= 34 || AT >= 74) goalHits++;
+      if(SH >= 11) goalHits++;
+      if(OT >= 4) goalHits++;
+      if(trailing) goalHits++;
+      if(trailing && loserDanger >= 18) goalHits++;
+
+      if(goalHits >= 4){
+        out.push({
+          market:"goals",
+          phase:"INTERVALO",
+          level:goalHits >= 5 ? "MUITO ALTA" : "ALTA",
+          title:"PRESSÃO PARA GOLS NO 2º TEMPO",
+          text:`Intervalo em ${score.home}-${score.away}. Foram ${SH} finalizações e ${OT} no alvo${trailing ? ", com necessidade de reação" : ""}. O 2º tempo apresenta pressão para gols.`
+        });
+      }
+    }
+
+    // 83'–95': reta final com intensidade alta.
+    if(minute >= 83 && minute <= 95){
+      let hits = 0;
+      if(DA >= 68 || AT >= 135) hits++;
+      if(SH >= 18) hits++;
+      if(OT >= 6) hits++;
+      if(C >= 7) hits++;
+      if(trailing && loserDanger >= 34) hits++;
+      if(trailing && loserShots >= 10) hits++;
+
+      if(hits >= 4){
+        out.push({
+          market:"corners",
+          phase:`${minute}'`,
+          level:hits >= 5 ? "MUITO ALTA" : "ALTA",
+          title:"PRESSÃO NOS MINUTOS FINAIS",
+          text:`Aos ${minute}', a partida segue intensa: ${C} cantos e ${SH} finalizações. Ainda existe cenário para novos escanteios nos minutos finais.`
+        });
+      }
+    }
+
+    return out;
+  }
+
+  async function matchCenter(id){
+    const now = Date.now();
+    const old = cache.get(id);
+    if(old && now - old.at < 20000) return old.data;
+
+    const res = await fetch(`/match_center?match_id=${encodeURIComponent(id)}&fresh=1&_=${now}`, {cache:"no-store"});
+    if(!res.ok) throw new Error(`match_center ${res.status}`);
+    const data = await res.json();
+    cache.set(id,{at:now,data});
+    return data;
+  }
+
+  function allVisibleGames(){
+    const pools = [
+      window.__cpV110VisibleGames,
+      window.__cornerProAllGames,
+      window.__lastRawGames,
+      window.__lastRenderedTopGames
+    ];
+    const out = [], seen = new Set();
+    for(const pool of pools){
+      if(!Array.isArray(pool)) continue;
+      for(const g of pool){
+        const id = matchId(g);
+        if(id && !seen.has(id)){ seen.add(id); out.push(g); }
+      }
+    }
+    return out;
+  }
+
+  function strongest(market){
+    const rank = {"ALTA":1,"MUITO ALTA":2};
+    return [...alerts.values()].flat()
+      .filter(a => a.market === market)
+      .sort((a,b)=>(rank[b.level]||0)-(rank[a.level]||0))[0] || null;
+  }
+
+  function bell(a, extra=""){
+    return `<button type="button" class="cpPressureBell ${extra}" data-cp-pressure-market="${a.market}" aria-label="Abrir alerta de pressão">🔔</button>`;
+  }
+
+  function ensureModal(){
+    if(document.getElementById("cpPressureModal")) return;
+    const modal = document.createElement("div");
+    modal.id = "cpPressureModal";
+    modal.className = "cpPressureModal";
+    modal.innerHTML = `
+      <div class="cpPressureSheet" role="dialog" aria-modal="true">
+        <button type="button" class="cpPressureClose" aria-label="Fechar">×</button>
+        <div class="cpPressureBigBell">🔔</div>
+        <small id="cpPressurePhase"></small>
+        <h3 id="cpPressureTitle"></h3>
+        <p id="cpPressureText"></p>
+        <b id="cpPressureLevel"></b>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  function showAlert(a){
+    if(!a) return;
+    ensureModal();
+    document.getElementById("cpPressurePhase").textContent = a.phase;
+    document.getElementById("cpPressureTitle").textContent = a.title;
+    document.getElementById("cpPressureText").textContent = a.text;
+    document.getElementById("cpPressureLevel").textContent = `INTENSIDADE ${a.level}`;
+    document.getElementById("cpPressureModal").classList.add("open");
+  }
+
+  function paint(){
+    const cornerAlert = strongest("corners");
+    const goalAlert = strongest("goals");
+
+    // Dashboard mobile: sino somente no card do mercado.
+    document.querySelectorAll("#cpNewMobileV110 [data-v110-market]").forEach(card=>{
+      card.querySelector(".cpPressureBell")?.remove();
+      const m = card.dataset.v110Market;
+      const a = m === "corners" ? cornerAlert : m === "goals" ? goalAlert : null;
+      if(a) card.insertAdjacentHTML("beforeend", bell(a,"dashboard"));
+    });
+
+    // Cards de jogos no app.
+    const title = (document.getElementById("cpV110MarketTitle")?.textContent || "").toLowerCase();
+    const currentMarket = title.includes("gol") ? "goals" : (title.includes("escante") || title.includes("ao vivo")) ? "corners" : "";
+    document.querySelectorAll("#cpNewMobileV110 .v110Game[data-match-id]").forEach(card=>{
+      card.querySelector(".cpPressureBell.game")?.remove();
+      const a = (alerts.get(String(card.dataset.matchId)) || []).find(x=>x.market===currentMarket);
+      if(a) card.insertAdjacentHTML("afterbegin", bell(a,"game"));
+    });
+
+    // Desktop: sino discreto somente nos acessos dos mercados.
+    if(window.matchMedia?.("(min-width:981px)").matches){
+      document.querySelectorAll(".marketTab,.side-item,.nav a").forEach(el=>{
+        el.querySelector(".cpPressureBell.desktop")?.remove();
+        const t = (el.textContent || "").toLowerCase();
+        const a = t.includes("escante") ? cornerAlert : t.includes("gol") ? goalAlert : null;
+        if(a) el.insertAdjacentHTML("beforeend", bell(a,"desktop"));
+      });
+    }
+  }
+
+  async function sync(){
+    if(busy || document.hidden) return;
+    busy = true;
+    try{
+      const ids = [...new Set(allVisibleGames().map(matchId).filter(Boolean))].slice(0,18);
+      if(!ids.length){ alerts.clear(); paint(); return; }
+
+      const today = new Intl.DateTimeFormat("en-CA",{
+        timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"
+      }).format(new Date());
+
+      let liveIds = new Set();
+      try{
+        const statusPayload = await fetch(`/market_live_status?date=${encodeURIComponent(today)}&_=${Date.now()}`,{cache:"no-store"}).then(r=>r.json());
+        for(const g of (statusPayload?.games || [])){
+          if(g?.live || g?.halftime) liveIds.add(String(g.match_id));
+        }
+      }catch{}
+
+      const targets = ids.filter(id=>liveIds.has(String(id))).slice(0,10);
+      const rows = await Promise.allSettled(targets.map(async id => [String(id), evaluate(await matchCenter(id))]));
+
+      alerts.clear();
+      for(const row of rows){
+        if(row.status === "fulfilled" && row.value[1].length){
+          alerts.set(row.value[0], row.value[1]);
+        }
+      }
+      paint();
+    }catch(err){
+      console.warn("[CornerPro Pressure V135]", err);
+    }finally{
+      busy = false;
+    }
+  }
+
+  document.addEventListener("click", e=>{
+    const bellBtn = e.target.closest?.("[data-cp-pressure-market]");
+    if(bellBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      showAlert(strongest(bellBtn.dataset.cpPressureMarket));
+      return;
+    }
+    if(e.target.closest?.(".cpPressureClose") || e.target.id === "cpPressureModal"){
+      document.getElementById("cpPressureModal")?.classList.remove("open");
+    }
+  }, true);
+
+  const boot = ()=>{
+    ensureModal();
+    sync();
+    setInterval(sync,30000);
+    window.addEventListener("focus",sync);
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden) sync(); });
+  };
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+
+  window.CornerProPressureAlerts = {sync,paint,alerts};
+})();
