@@ -19732,6 +19732,113 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
 }
 
 /* =========================================================
+   CORNER PRO MOBILE V90 — TODOS OS MERCADOS DO DESKTOP
+   ========================================================= */
+@media (max-width:980px){
+  .cprMarkets{
+    display:flex!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    gap:10px!important;
+    scroll-snap-type:x proximity!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-right:16px!important;
+  }
+  .cprMarkets > button{
+    flex:0 0 142px!important;
+    min-width:142px!important;
+    display:flex!important;
+    scroll-snap-align:start!important;
+  }
+  .cprMarkets > button[data-home-market="result"] > span,
+  .cprMarkets > button[data-home-market="doublechance"] > span,
+  .cprMarkets > button[data-home-market="teamgoals"] > span,
+  .cprMarkets > button[data-home-market="builder"] > span{
+    color:#9aff00!important;
+  }
+  #cpMobileMarketsLayer .cpMobileMarketTypes{
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:8px!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #cpMobileMarketsLayer .cpMobileMarketTypes > button{
+    flex:0 0 auto!important;
+    min-width:94px!important;
+  }
+  .cpV90Empty{
+    width:100%;
+    padding:20px 14px;
+    border:1px solid #1e2b31;
+    border-radius:14px;
+    background:#081012;
+    text-align:center;
+  }
+  .cpV90Empty b{display:block;color:#fff;font-size:12px}
+  .cpV90Empty small{display:block;margin-top:6px;color:#8f9a97;font-size:10px;line-height:1.4}
+}
+
+
+
+/* =========================================================
+   CORNER PRO MOBILE V91 — CARDS DE MERCADOS COMPACTOS
+   ========================================================= */
+@media (max-width:980px){
+  .cprMarkets{
+    gap:6px!important;
+    padding-right:8px!important;
+  }
+  .cprMarkets > button{
+    flex:0 0 104px!important;
+    min-width:104px!important;
+    width:104px!important;
+    height:116px!important;
+    min-height:116px!important;
+    padding:6px 4px!important;
+    border-radius:9px!important;
+  }
+  .cprMarkets > button > span{
+    height:24px!important;
+    font-size:19px!important;
+  }
+  .cprMarkets > button > b{
+    font-size:7.8px!important;
+    line-height:1.05!important;
+    margin-top:1px!important;
+  }
+  .cprMarkets > button > small{
+    font-size:5.6px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets .cprSpark{
+    height:9px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets p{
+    font-size:5.6px!important;
+    margin-top:3px!important;
+  }
+  .cprMarkets > button > strong{
+    display:none!important;
+  }
+  .cprMarketsSection{
+    padding-bottom:7px!important;
+  }
+}
+@media (max-width:390px){
+  .cprMarkets > button{
+    flex-basis:98px!important;
+    min-width:98px!important;
+    width:98px!important;
+    height:112px!important;
+    min-height:112px!important;
+  }
+}
+
+
+/* =========================================================
    CORNER PRO MOBILE V110 — SOMENTE APP (<=980px)
    Layout fiel à imagem aprovada. Desktop não é alterado.
    ========================================================= */
@@ -21216,141 +21323,57 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   #cpNewMobileV110 .theme-blue{--game-accent:#5ea8ff;--game-soft:rgba(94,168,255,.08);--game-line:rgba(94,168,255,.30)}
 }
 
-/* CORNER PRO MOBILE V121 — navegação funcional + menu lateral */
-@media (max-width:980px){
-  .v121Menu{position:fixed;inset:0;z-index:2147483600;display:none}
-  .v121Menu.open{display:block}
-  .v121MenuBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
-  .v121Menu aside{position:absolute;left:0;top:0;bottom:0;width:min(82vw,330px);padding:18px 14px;background:linear-gradient(180deg,#07100d,#020504);border-right:1px solid #1d3528;box-shadow:18px 0 60px rgba(0,0,0,.6);overflow:auto}
-  .v121Menu header{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 12px;border-bottom:1px solid #17271f;margin-bottom:10px}
-  .v121Menu header b{font-size:19px;font-style:italic}.v121Menu header b span{color:#69ff2b}
-  .v121Menu header button{width:38px;height:38px;border:1px solid #21342a;border-radius:12px;color:#fff;font-size:24px}
-  .v121Menu aside>button{width:100%;height:48px;display:flex;align-items:center;gap:13px;padding:0 14px;margin:3px 0;border:1px solid transparent;border-radius:13px;color:#aab5af;text-align:left;font-weight:900}
-  .v121Menu aside>button:hover,.v121Menu aside>button:active{background:#0d1913;border-color:#24402f;color:#72ff34}
-  .v121Menu aside>button span{font-size:12px}
-  .v110Bottom button.active{color:#6cff2b!important}
-}
-
-
-/* CORNER PRO MOBILE V122 — HOTFIX: nunca congelar a tela por login diário */
-@media (max-width:980px){
-  html.cpDailyLoginRequired #cpNewMobileV110,
-  .cpDailyLoginRequired #cpNewMobileV110{
-    filter:none!important;
-    pointer-events:auto!important;
-    user-select:auto!important;
-  }
-  html.cpDailyLoginRequired #cpV116Login:not(.open),
-  .cpDailyLoginRequired #cpV116Login:not(.open){
-    display:none!important;
-    background:transparent!important;
-    pointer-events:none!important;
-  }
-}
-
-
-/* CORNER PRO MOBILE V123 — ativa navegação inferior e vistas Pré-jogo/Ao Vivo */
-@media (max-width:980px){
-  #cpNewMobileV110[data-view="pregame"] .v110Home,
-  #cpNewMobileV110[data-view="pregame"] .v110Hero,
-  #cpNewMobileV110[data-view="live"] .v110Home,
-  #cpNewMobileV110[data-view="live"] .v110Hero{
-    display:none!important;
-  }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Panel,
-  #cpNewMobileV110[data-view="live"] .v110Panel{
-    display:block!important;
-  }
-
-  .v110Bottom button{
-    pointer-events:auto!important;
-    touch-action:manipulation;
-  }
-}
-
-
-/* MOBILE CLEAN V125 — somente a camada V110 pode receber interação */
-@media (max-width:980px){
-  #cpNewMobileV105,#cpV105Match,
-  #cpMobileHome,.cpMobileHome,
-  .cpHomeBottom,.cpGlobalBottomNav,
-  .mobileHeader,.mobileBottomNav,.mobileOverlay,
-  .cpMobileLayer{
+/* =========================================================
+   CORNER PRO MOBILE V127 — BARRA INFERIOR REALMENTE CLICÁVEL
+   ========================================================= */
+@media(max-width:980px){
+  body > .cpHomeBottom.cpGlobalBottomNav,
+  body > .cpHomeBottom,
+  .cpGlobalBottomNav{
     display:none!important;
     visibility:hidden!important;
     pointer-events:none!important;
   }
 
-  #cpNewMobileV110{
-    display:block!important;
+  #cpNewMobileV110 .v110Bottom{
+    display:grid!important;
     visibility:visible!important;
     pointer-events:auto!important;
+    z-index:2147483647!important;
   }
-
-  .v110Bottom,
-  .v110Bottom button{
-    pointer-events:auto!important;
-    touch-action:manipulation!important;
-  }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Home,
-  #cpNewMobileV110[data-view="pregame"] .v110Hero,
-  #cpNewMobileV110[data-view="live"] .v110Home,
-  #cpNewMobileV110[data-view="live"] .v110Hero{
-    display:none!important;
-  }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Panel,
-  #cpNewMobileV110[data-view="live"] .v110Panel{
-    display:block!important;
-  }
-}
-
-
-/* MOBILE V126 — BARRA INFERIOR FUNCIONAL */
-@media (max-width:980px){
-  #cpNewMobileV110 .v110Bottom{
-    pointer-events:auto!important;
-    z-index:2147483000!important;
-  }
-
   #cpNewMobileV110 .v110Bottom button{
+    display:flex!important;
+    visibility:visible!important;
     pointer-events:auto!important;
+    cursor:pointer!important;
+    touch-action:manipulation!important;
     position:relative!important;
     z-index:2!important;
-    touch-action:manipulation!important;
   }
 
-  #cpNewMobileV110[data-view="home"] .v110Home,
-  #cpNewMobileV110[data-view="home"] .v110Hero{
-    display:block!important;
+  .v127MoreSheet{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:2147483646;
+    background:rgba(0,0,0,.72);
+    align-items:flex-end;
+    justify-content:center;
   }
-
-  #cpNewMobileV110[data-view="home"] .v110Panel{
-    display:none!important;
+  html.cpV127MoreOpen .v127MoreSheet{display:flex!important}
+  .v127MoreCard{
+    width:min(100%,430px);
+    padding:16px 14px calc(88px + env(safe-area-inset-bottom));
+    border-top:1px solid #203129;
+    border-radius:20px 20px 0 0;
+    background:#07100c;
   }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Home,
-  #cpNewMobileV110[data-view="pregame"] .v110Hero,
-  #cpNewMobileV110[data-view="live"] .v110Home,
-  #cpNewMobileV110[data-view="live"] .v110Hero,
-  #cpNewMobileV110[data-view="market"] .v110Home,
-  #cpNewMobileV110[data-view="market"] .v110Hero{
-    display:none!important;
-  }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Panel,
-  #cpNewMobileV110[data-view="live"] .v110Panel,
-  #cpNewMobileV110[data-view="market"] .v110Panel{
-    display:block!important;
-    min-height:calc(100dvh - 150px)!important;
-  }
-
-  #cpNewMobileV110[data-view="pregame"] .v110Bottom [data-v110-nav="pregame"],
-  #cpNewMobileV110[data-view="live"] .v110Bottom [data-v110-nav="live"],
-  #cpNewMobileV110[data-view="market"] .v110Bottom [data-v110-market="corners"],
-  #cpNewMobileV110[data-view="home"] .v110Bottom [data-v110-nav="home"]{
-    color:#6cff2b!important;
+  .v127MoreHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .v127MoreHead b{color:#70f331;font-size:16px}
+  .v127MoreHead button{font-size:25px!important}
+  .v127MoreCard>button{
+    display:block!important;width:100%!important;padding:14px!important;margin:6px 0!important;
+    border:1px solid #1b3025!important;border-radius:12px!important;
+    background:#0a1510!important;color:#eef4ef!important;text-align:left!important;font-weight:800!important;
   }
 }
