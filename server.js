@@ -1,4 +1,3 @@
-``` text
 // server.js (COMPLETO / ATUALIZADO — IA + FAVORITO FORA BLOQUEADO 100%)
 // ✅ Mantém suas regras e bloqueios
 // ✅ FAVORITO FORA: NUNCA entra (nem lista, nem Top6, nem IA)
@@ -11713,14 +11712,8 @@ function mcStatusInfo(event) {
     elapsedMinutes >= -5 &&
     elapsedMinutes < 195;
 
-  const halftime =
-    !finished &&
-    !cancelled &&
-    /half time|half-time|halftime|\bht\b|intervalo|interval|break/.test(s);
-
   const live = !finished && !cancelled && (
     explicitLive ||
-    halftime ||
     (Number.isFinite(minute) && minute > 0) ||
     (!explicitNotStarted && startedByClock)
   );
@@ -11743,7 +11736,6 @@ function mcStatusInfo(event) {
     original_raw: combinedStatus,
     finished,
     live,
-    halftime,
     not_started: notStarted,
     cancelled,
     minute: finished
@@ -12137,7 +12129,6 @@ app.get("/match_center", async (req, res) => {
       status: status.raw,
       status_raw: status.raw,
       live: status.live,
-      halftime: Boolean(status.halftime),
       finished: status.finished,
       not_started: status.not_started,
       cancelled: status.cancelled,
@@ -12318,4 +12309,3 @@ app.listen(PORT, () => {
   console.log(`- Debug leagues of day: /debug/leagues?date=YYYY-MM-DD`);
   console.log(`- Debug match base: /debug/match_base?match_id=XXXX`);
 });
-```
