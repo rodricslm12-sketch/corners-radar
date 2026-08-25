@@ -28838,7 +28838,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     const goalAlert = strongest("goals");
 
     // Dashboard mobile: sino SEMPRE visível em Escanteios e Gols.
-    document.querySelectorAll("#cpNewMobileV110 [data-v110-market]").forEach(card=>{
+    // Limpa qualquer sino que versões anteriores tenham colocado na navegação inferior.
+    document.querySelectorAll("#cpNewMobileV110 .v110Bottom .cpPressureBell").forEach(el=>el.remove());
+
+    // Dashboard mobile: sino SOMENTE nos cards de mercado, nunca na barra inferior.
+    document.querySelectorAll("#cpNewMobileV110 .v110Market[data-v110-market]").forEach(card=>{
       card.querySelector(".cpPressureBell.dashboard")?.remove();
       const m = card.dataset.v110Market;
       if(m!=="corners" && m!=="goals") return;
