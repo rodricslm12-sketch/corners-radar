@@ -29011,7 +29011,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   function apply(market){
     const el = document.getElementById("cpV110MarketTitle");
     if(!el || !MAP[market]) return;
-    el.textContent = MAP[market];
+    const next = MAP[market];
+    if(el.textContent !== next) el.textContent = next;
     window.__cpCurrentMobileMarket = market;
   }
 
@@ -29028,15 +29029,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
   }, true);
 
-  const obs = new MutationObserver(()=>{
-    const m = detectFromDom();
-    apply(m);
-  });
-
   const boot = ()=>{
-    const root = document.getElementById("cpNewMobileV110");
-    if(root) obs.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:["class","aria-selected"]});
     apply(detectFromDom());
+
+    // Reaplica apenas em momentos seguros, sem observar mutações do DOM.
+    window.addEventListener("pageshow",()=>setTimeout(()=>apply(detectFromDom()),80));
+    window.addEventListener("focus",()=>setTimeout(()=>apply(detectFromDom()),80));
   };
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
