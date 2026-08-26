@@ -25,7 +25,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
-    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:false,request:0};
     function rememberMarket(){try{localStorage.setItem(LAST_MARKET_KEY,state.market)}catch{}}
     const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
@@ -103,41 +103,85 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   
-    async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn("[V110 quentes]",e)}if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn("[V110 mercados]",e)}}if(req!==state.request)return;state.base=base;merge();render();
-      const jobs=[["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]];
-      await Promise.allSettled(jobs.map(async([kind,url,to])=>{try{
-        const p=await fetchJ(url,to);
-        if(req!==state.request)return;
-        if(kind==="corners"){
-          let a=extract(p,"corners");
-          if(!a.length)a=extract(p);
-          if(a.length)state.engines.corners=a
-        }else{
-          for(const m of ["goals","cards","handicap","btts"]){
-            const a=extract(p,m);
-            if(a.length)state.engines[m]=a
-          }
-        }
-        merge();render()
-      }catch(e){console.warn("[V128 engine]",kind,e)}}));
+    async function load(){
+      const req=++state.request;
+      state.loading=true;
 
-      // Para datas futuras, se ainda não houver Top 1 aprovado,
-      // usa /prelive_best como fallback do card principal.
-      if(req===state.request && !filtered("corners","IA").length){
+      // V122: uma única etapa visual no mobile.
+      // Mantém a tela atual enquanto busca a base + motores e só redesenha no final.
+      const date=state.date||ymd();
+      const stamp=Date.now();
+
+      let base=[];
+      try{
+        base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000));
+      }catch(e){
+        console.warn("[V122 quentes]",e);
+      }
+      if(req!==state.request)return;
+
+      if(!base.length){
+        try{
+          base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000));
+        }catch(e){
+          console.warn("[V122 mercados]",e);
+        }
+      }
+      if(req!==state.request)return;
+
+      state.base=base;
+      merge();
+
+      const jobs=[
+        ["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],
+        ["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],
+        ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
+      ];
+
+      await Promise.allSettled(jobs.map(async([kind,url,to])=>{
+        try{
+          const p=await fetchJ(url,to);
+          if(req!==state.request)return;
+
+          if(kind==="corners"){
+            let a=extract(p,"corners");
+            if(!a.length)a=extract(p);
+            if(a.length)state.engines.corners=a;
+          }else{
+            for(const market of ["goals","cards","handicap","btts"]){
+              const a=extract(p,market);
+              if(a.length)state.engines[market]=a;
+            }
+          }
+          // Sem render aqui: evita o primeiro/segundo "pulo" visual.
+          merge();
+        }catch(e){
+          console.warn("[V122 engine]",kind,e);
+        }
+      }));
+
+      if(req!==state.request)return;
+
+      // Fallback do Top 1 antes da única renderização final.
+      if(!filtered("corners","IA").length){
         try{
           const p=await fetchJ(`/prelive_best?date=${encodeURIComponent(date)}&_mobile=1&t=${Date.now()}`,26000);
           if(req!==state.request)return;
           let a=extract(p);
-          if(!a.length && p?.game && typeof p.game==="object") a=[p.game];
+          if(!a.length && p?.game && typeof p.game==="object")a=[p.game];
           if(a.length){
             state.base=[...state.base,...a];
             merge();
-            render();
           }
-        }catch(e){console.warn("[V128 prelive_best]",e)}
+        }catch(e){
+          console.warn("[V122 prelive_best]",e);
+        }
       }
 
-      if(req===state.request){state.loading=false;render()}
+      if(req===state.request){
+        state.loading=false;
+        render(); // única renderização final do carregamento
+      }
     }
   
     
@@ -407,7 +451,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           (confidence(b,"corners")-confidence(a,"corners")) ||
           ((projection(b,"corners")||0)-(projection(a,"corners")||0))
         );
-      const g=approved[0]||fallback[0]||null;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
+      const g=approved[0]||fallback[0]||null;state.heroGame=g;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
       const rec=rawRec.valid
         ? rawRec
         : {...rawRec,line:pr!==null?(pr>=10.75?"OVER 10.5":pr>=9.55?"OVER 9.5":"EM ANÁLISE"):"EM ANÁLISE"};
@@ -717,12 +761,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         window.scrollTo(0,0);
         return
       }
-      const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||state.market||"corners";rememberMarket();state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
+      const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){document.documentElement.classList.remove("cpV127MoreOpen");state.mode="all";state.market=openMarket.dataset.v110OpenMarket||state.market||"corners";rememberMarket();state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
-      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.mode="all";state.view="home";state.base=[];state.games=[];state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};render();load();return}
+      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.mode="all";state.view="home";state.base=[];state.games=[];state.heroGame=null;state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
-      if(e.target.closest("[data-v110-hero]")){const x=filtered("corners","IA")[0];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
+      if(e.target.closest("[data-v110-hero]")){const x=state.heroGame||filtered("corners","IA")[0]||state.games[0]||null;if(x){const prev=state.market;state.market="corners";openGame(x).finally(()=>{state.market=prev});}return}
       const nav=e.target.closest("[data-v110-nav]");if(nav){
         const v=nav.dataset.v110Nav;
         if(v==="home"){
@@ -749,6 +793,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         applyView();
         return
       }
+      if(e.target.closest("[data-v127-close-more]") || e.target.id==="cpV127MoreSheet"){document.documentElement.classList.remove("cpV127MoreOpen");applyView();return}
       if(e.target.closest("#cpV127MoreLogin")){document.documentElement.classList.remove("cpV127MoreOpen");openLogin();return}
       if(e.target.closest("#cpV110User")){openLogin();return}
     },true);

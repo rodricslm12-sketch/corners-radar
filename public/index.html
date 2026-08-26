@@ -54,13 +54,13 @@
     #cpAuthModal [hidden] { display: none !important; }
   </style>
 
-  <link rel="stylesheet" href="style.css?v=20260826-app-v121" media="(min-width:981px)">
+  <link rel="stylesheet" href="style.css?v=20260826-app-v122-mobile" media="(min-width:981px)">
   <script>
     (function(){
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260826-app-v121';
+          s.src='script.js?v=20260826-app-v122-mobile';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -516,10 +516,10 @@
   if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
   var css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="style.css?v=20260826-app-v121";
+  css.href="style.css?v=20260826-app-v122-mobile";
   document.head.appendChild(css);
   var js=document.createElement("script");
-  js.src="script.js?v=20260826-app-v121";
+  js.src="script.js?v=20260826-app-v122-mobile";
   js.defer=true;
   document.head.appendChild(js);
 })();
@@ -1547,13 +1547,46 @@
 
 </script>
 
-<section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Mais opções">
-  <div class="v127MoreCard">
-    <div class="v127MoreHead"><b>MAIS</b><button type="button" onclick="document.documentElement.classList.remove('cpV127MoreOpen')">×</button></div>
-    <button type="button" data-v110-open-market="goals">⚽ Gols</button>
-    <button type="button" data-v110-open-market="cards">▯ Cartões</button>
-    <button type="button" data-v110-open-market="handicap">⚡ Handicap</button>
-    <button type="button" id="cpV127MoreLogin">👤 Minha conta</button>
+<section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
+  <div class="v127MoreCard" role="dialog" aria-modal="true" aria-labelledby="cpV127MoreTitle">
+    <div class="v127MoreHandle" aria-hidden="true"></div>
+
+    <div class="v127MoreHead">
+      <div class="v127MoreTitleWrap">
+        <span class="v127MoreBadge">CORNERPRO</span>
+        <b id="cpV127MoreTitle">Central de mercados</b>
+        <small>Acesso rápido às análises e ferramentas</small>
+      </div>
+      <button type="button" class="v127MoreClose" data-v127-close-more aria-label="Fechar">×</button>
+    </div>
+
+    <div class="v127MorePulse">
+      <span class="v127MorePulseDot"></span>
+      <div><b>Motores de análise ativos</b><small>Dados e IA atualizados em tempo real</small></div>
+      <i>ONLINE</i>
+    </div>
+
+    <div class="v127MoreLabel">MERCADOS</div>
+    <div class="v127MoreGrid">
+      <button type="button" data-v110-open-market="goals"><i>⚽</i><span><b>Gols</b><small>Over, linhas e projeções</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="cards"><i>▯</i><span><b>Cartões</b><small>Linhas e intensidade</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="handicap"><i>⚡</i><span><b>Handicap</b><small>Leitura asiática</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="btts"><i>◎</i><span><b>Ambas marcam</b><small>Probabilidade BTTS</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="result"><i>🏆</i><span><b>Resultado</b><small>Casa, empate ou fora</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="builder"><i>✦</i><span><b>Aposta pronta</b><small>Maior confiança da IA</small></span><em>›</em></button>
+    </div>
+
+    <div class="v127MoreLabel">CONTA</div>
+    <button type="button" id="cpV127MoreLogin" class="v127MoreAccount">
+      <span class="v127MoreAccountIcon">♙</span>
+      <span><b>Minha conta</b><small>Perfil, acesso e preferências</small></span>
+      <em>›</em>
+    </button>
+
+    <div class="v127MoreFoot">
+      <span>● SISTEMA OPERACIONAL</span>
+      <small>CornerPro • análises esportivas</small>
+    </div>
   </div>
 </section>
 
