@@ -21846,3 +21846,16 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     line-height:26px!important;
   }
 }
+
+/* APP V120 — placar final, ida/agregado e mercado persistente */
+@media (max-width:980px){
+  #cpNewMobileV110 .v120Center .v120LegInfo,
+  #cpNewMobileV110 .v120Center .v120Aggregate{
+    margin-top:3px!important;
+    color:#9aa69f!important;
+    font-size:5.2px!important;
+    font-weight:900!important;
+    white-space:nowrap!important;
+  }
+  #cpNewMobileV110 .v120Center .v120Aggregate{color:var(--game-accent)!important;}
+}

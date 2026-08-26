@@ -23,7 +23,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       builder:{label:"Aposta Pronta",icon:"⚡",hint:"Maior confiança",field:null,lines:["IA","TODOS"]}
     };
   
-    const state={date:"",market:"corners",line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+    const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
+    const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
+    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+    function rememberMarket(){try{localStorage.setItem(LAST_MARKET_KEY,state.market)}catch{}}
     const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
     try{
@@ -65,8 +68,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const r=raw(g);
       const s=norm(r?.match_status??r?.status??r?.event_status??r?.status_raw??"");
       const minute=num(r?.minute,r?.match_minute,r?.elapsed,r?.match_live);
-      const hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home,r?.goals?.home,r?.score?.home);
-      const as=num(r?.match_awayteam_score,r?.away_score,r?.score_away,r?.goals?.away,r?.score?.away);
+      const hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home,r?.goals?.home,r?.score?.home,r?.event_raw?.match_hometeam_score,r?.event_raw?.home_score);
+      const as=num(r?.match_awayteam_score,r?.away_score,r?.score_away,r?.goals?.away,r?.score?.away,r?.event_raw?.match_awayteam_score,r?.event_raw?.away_score);
+      const hths=num(r?.match_hometeam_halftime_score,r?.home_halftime_score,r?.ht_home_score,r?.score?.halftime?.home,r?.event_raw?.match_hometeam_halftime_score);
+      const htas=num(r?.match_awayteam_halftime_score,r?.away_halftime_score,r?.ht_away_score,r?.score?.halftime?.away,r?.event_raw?.match_awayteam_halftime_score);
       const finished=Boolean(r?.finished)||/finished|full time|full-time|\bft\b|encerr|finaliz|ended|after extra|after pen/.test(s);
       const ht=!finished&&(Boolean(r?.halftime)||Boolean(r?.half_time)||/half time|half-time|halftime|\bht\b|interval|break/.test(s));
       const live=!finished&&(ht||Boolean(r?.live)||/live|ao vivo|1st|2nd|in play|in-play|playing|andamento/.test(s)||(minute!==null&&minute>0));
@@ -75,7 +80,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         finished,ht,live,
         label:finished?"ENCERRADO":ht?"INTERVALO":live?(liveMinute?`AO VIVO • ${liveMinute}`:"AO VIVO"):`INÍCIO • ${time(g)}`,
         short:finished?"FIM":ht?"INTERVALO":live?(liveMinute||"AO VIVO"):`INÍCIO ${time(g)}`,
-        score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:"VS"
+        score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:"VS",
+        halftimeScore:hths!==null&&htas!==null?`${hths} - ${htas}`:""
       };
     }
     function badgeUrl(g,side){const r=raw(g);const vals=side==="home"?[r.home_badge,r.team_home_badge,r.home_team_badge,r.home_logo,r.home_team_logo,r.hometeam_logo,r.event_raw?.team_home_badge,r.event_raw?.home_badge,r.event_raw?.home_team_logo]:[r.away_badge,r.team_away_badge,r.away_team_badge,r.away_logo,r.away_team_logo,r.awayteam_logo,r.event_raw?.team_away_badge,r.event_raw?.away_badge,r.event_raw?.away_team_logo];return clean(vals.find(v=>/^https?:\/\//i.test(String(v||""))),"")}
@@ -308,6 +314,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
     function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
     
+    function legInfo(g){
+      const r=raw(g), er=r?.event_raw||{};
+      const fh=num(r?.first_leg_home_score,r?.leg1_home_score,r?.firstLeg?.home,r?.aggregate?.first_leg?.home,er?.first_leg_home_score,er?.leg1_home_score);
+      const fa=num(r?.first_leg_away_score,r?.leg1_away_score,r?.firstLeg?.away,r?.aggregate?.first_leg?.away,er?.first_leg_away_score,er?.leg1_away_score);
+      const ah=num(r?.aggregate_home_score,r?.agg_home_score,r?.aggregate?.home,er?.aggregate_home_score,er?.agg_home_score);
+      const aa=num(r?.aggregate_away_score,r?.agg_away_score,r?.aggregate?.away,er?.aggregate_away_score,er?.agg_away_score);
+      return {first:fh!==null&&fa!==null?`${fh} - ${fa}`:"",aggregate:ah!==null&&aa!==null?`${ah} - ${aa}`:""};
+    }
+
     function confidenceView(cf){
       const n=Number(cf||0);
       if(!n)return {label:"—",bars:""};
@@ -317,8 +332,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function gameCard(g,i){
-      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf);
+      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
       const isScore=s.live||s.ht||s.finished;
+      const scoreNote=s.finished?(s.halftimeScore?`1º TEMPO ${s.halftimeScore}`:"FIM DE JOGO"):s.ht?"INTERVALO":s.live?"EM ANDAMENTO":"";
       return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}" data-match-id="${esc(id(g))}">
         <div class="v110GameTop v120GameTop">
           <span>${esc(league(g))} • ${esc(time(g))}</span>
@@ -334,7 +350,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
           <div class="v120Center ${isScore?"has-score":""}">
             <em>${esc(s.score)}</em>
-            ${isScore?`<small>${s.finished?"FIM DE JOGO":s.ht?"INTERVALO":s.live?"EM ANDAMENTO":""}</small>`:""}
+            ${isScore?`<small>${esc(scoreNote)}</small>`:""}
+            ${leg.first?`<small class="v120LegInfo">IDA: ${esc(leg.first)}</small>`:""}
+            ${leg.aggregate?`<small class="v120Aggregate">AGREGADO: ${esc(leg.aggregate)}</small>`:""}
           </div>
 
           <div class="v120Side away">
@@ -356,7 +374,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function renderGames(){
       const el=$("#cpV110Games");if(!el)return;
       const title=$("#cpV110MarketTitle");
-      if(title) title.textContent=state.mode==="pregame"?"PRÉ-JOGO":state.mode==="live"?"AO VIVO":(MARKETS[state.market]?.title||"ESCANTEIOS");
+      if(title) title.textContent=state.mode==="pregame"?`PRÉ-JOGO • ${MARKETS[state.market]?.label||"Mercado"}`.toUpperCase():state.mode==="live"?`AO VIVO • ${MARKETS[state.market]?.label||"Mercado"}`.toUpperCase():(MARKETS[state.market]?.label||"ESCANTEIOS").toUpperCase();
       const list=filtered();
       $("#cpV110Count").textContent=`${list.length} ${list.length===1?"jogo":"jogos"}`;
       el.innerHTML=list.length?list.map(gameCard).join(""):`<div class="v110Empty">${state.loading?"Consultando IA...":state.mode==="live"?"Nenhuma partida ao vivo agora.":"Sem jogos nesta seleção."}</div>`
@@ -626,7 +644,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if(nav==="home"){
           state.mode="all";
           state.view="home";
-          state.market="corners";
           state.line="IA";
           render();
           window.scrollTo(0,0);
@@ -636,7 +653,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if(nav==="pregame"){
           state.mode="pregame";
           state.view="market";
-          state.market="corners";
           state.line="TODOS";
           render();
           window.scrollTo(0,0);
@@ -646,7 +662,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if(nav==="live"){
           state.mode="live";
           state.view="market";
-          state.market="corners";
           state.line="TODOS";
           refreshBaseStatus();
           render();
@@ -695,13 +710,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const market=e.target.closest("[data-v110-market]");if(market){
         state.mode="all";
         state.market=market.dataset.v110Market;
+        rememberMarket();
         state.line="IA";
         state.view="market";
         render();
         window.scrollTo(0,0);
         return
       }
-      const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||"corners";state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
+      const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){state.market=openMarket.dataset.v110OpenMarket||state.market||"corners";rememberMarket();state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
       const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.mode="all";state.view="home";state.base=[];state.games=[];state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};render();load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
@@ -710,15 +726,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const nav=e.target.closest("[data-v110-nav]");if(nav){
         const v=nav.dataset.v110Nav;
         if(v==="home"){
-          state.mode="all";state.view="home";state.market="corners";state.line="IA";
+          state.mode="all";state.view="home";state.line="IA";
           render();window.scrollTo(0,0);return
         }
         if(v==="pregame"){
-          state.mode="pregame";state.market="corners";state.line="TODOS";state.view="market";
+          state.mode="pregame";state.line="TODOS";state.view="market";
           render();window.scrollTo(0,0);return
         }
         if(v==="live"){
-          state.mode="live";state.market="corners";state.line="TODOS";state.view="market";
+          state.mode="live";state.line="TODOS";state.view="market";
           refreshBaseStatus();render();window.scrollTo(0,0);return
         }
         if(v==="more"){
