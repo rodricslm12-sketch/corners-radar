@@ -1225,6 +1225,146 @@ function aiScoreFromMatch(x){
   return clamp(Math.round(s), 0, 100);
 }
 
+
+/* =========================================================
+   V61 — JOGO DE IDA / AGREGADO PARA APP
+   - Só marca como ida/volta quando houver evidência de mata-mata.
+   - Procura o confronto anterior na mesma competição.
+   - Não inventa "ida" em partidas de liga/pontos corridos.
+   ========================================================= */
+
+function v61ScoreNumber(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function v61SameTeam(a, b) {
+  const x = normTeamKey(a || "");
+  const y = normTeamKey(b || "");
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+}
+
+function v61RoundText(e) {
+  return [
+    e?.match_round, e?.round, e?.league_round, e?.stage, e?.match_stage,
+    e?.event_round, e?.match_name, e?.match_type, e?.league_name
+  ].map(normStr).join(" | ");
+}
+
+function v61KnockoutEvidence(e) {
+  const s = v61RoundText(e);
+  return looksLikeFirstLeg(e) || looksLikeSecondLeg(e) || looksLikeKnockout(e) ||
+    /qualif|classificat|play.?off|knockout|eliminat|round of|oitav|quart|semif|final/.test(s);
+}
+
+function v61FirstLegPayload(firstLeg, currentHome, currentAway) {
+  if (!firstLeg) return null;
+
+  const fh = teamFromEvent(firstLeg, "home");
+  const fa = teamFromEvent(firstLeg, "away");
+  const hs = v61ScoreNumber(firstLeg?.match_hometeam_score ?? firstLeg?.home_score);
+  const as = v61ScoreNumber(firstLeg?.match_awayteam_score ?? firstLeg?.away_score);
+  if (!fh || !fa || hs === null || as === null) return null;
+
+  const samePair =
+    (v61SameTeam(fh, currentHome) && v61SameTeam(fa, currentAway)) ||
+    (v61SameTeam(fh, currentAway) && v61SameTeam(fa, currentHome));
+  if (!samePair) return null;
+
+  // placar sempre orientado para os times do jogo ATUAL
+  let homeFirst = null, awayFirst = null;
+  if (v61SameTeam(fh, currentHome)) {
+    homeFirst = hs; awayFirst = as;
+  } else {
+    homeFirst = as; awayFirst = hs;
+  }
+
+  return {
+    has_first_leg: true,
+    first_leg_home: homeFirst,
+    first_leg_away: awayFirst,
+    first_leg_score: `${homeFirst}-${awayFirst}`,
+    first_leg_original_home: fh,
+    first_leg_original_away: fa,
+    first_leg_original_score: `${hs}-${as}`,
+    first_leg_match_id: String(firstLeg?.match_id ?? firstLeg?.event_key ?? firstLeg?.id ?? "") || null,
+    first_leg_date: cleanText(firstLeg?.match_date ?? firstLeg?.event_date ?? "") || null
+  };
+}
+
+async function v61FindFirstLegForEvent(e) {
+  try {
+    if (!e || !v61KnockoutEvidence(e)) return null;
+    if (looksLikeFirstLeg(e)) return null; // o próprio jogo é a ida
+
+    const currentHome = teamFromEvent(e, "home");
+    const currentAway = teamFromEvent(e, "away");
+    if (!currentHome || !currentAway) return null;
+
+    const currentDate = cleanText(e?.match_date ?? e?.event_date ?? "").slice(0, 10);
+    const leagueId = Number(e?.league_id ?? e?.match_league_id ?? e?.leagueId ?? 0) || null;
+
+    // Primeiro usa H2H, que já existe no servidor.
+    let h2h = null;
+    try { h2h = await getH2H(currentHome, currentAway); } catch {}
+
+    const pools = [];
+    if (h2h) {
+      if (Array.isArray(h2h.firstTeam_VS_secondTeam)) pools.push(...h2h.firstTeam_VS_secondTeam);
+      if (Array.isArray(h2h.firstTeam_lastResults)) pools.push(...h2h.firstTeam_lastResults);
+      if (Array.isArray(h2h.secondTeam_lastResults)) pools.push(...h2h.secondTeam_lastResults);
+    }
+
+    const currentId = String(e?.match_id ?? e?.event_key ?? e?.id ?? "");
+    const candidates = pools.filter(m => {
+      const mid = String(m?.match_id ?? m?.event_key ?? m?.id ?? "");
+      if (currentId && mid === currentId) return false;
+
+      const mh = teamFromEvent(m, "home");
+      const ma = teamFromEvent(m, "away");
+      const pair =
+        (v61SameTeam(mh, currentHome) && v61SameTeam(ma, currentAway)) ||
+        (v61SameTeam(mh, currentAway) && v61SameTeam(ma, currentHome));
+      if (!pair) return false;
+
+      const lid = Number(m?.league_id ?? m?.match_league_id ?? m?.leagueId ?? 0) || null;
+      if (leagueId && lid && leagueId !== lid) return false;
+
+      const md = cleanText(m?.match_date ?? m?.event_date ?? "").slice(0, 10);
+      if (currentDate && md && md >= currentDate) return false;
+
+      const hs = v61ScoreNumber(m?.match_hometeam_score ?? m?.home_score);
+      const as = v61ScoreNumber(m?.match_awayteam_score ?? m?.away_score);
+      return hs !== null && as !== null;
+    });
+
+    candidates.sort((a,b) =>
+      String(b?.match_date ?? b?.event_date ?? "").localeCompare(String(a?.match_date ?? a?.event_date ?? ""))
+    );
+
+    const firstLeg = candidates.find(m => looksLikeFirstLeg(m)) || candidates[0] || null;
+    return v61FirstLegPayload(firstLeg, currentHome, currentAway);
+  } catch {
+    return null;
+  }
+}
+
+function v61AttachAggregate(game, firstLeg) {
+  if (!game || !firstLeg?.has_first_leg) return game;
+
+  const sh = v61ScoreNumber(game?.score_home);
+  const sa = v61ScoreNumber(game?.score_away);
+  const out = { ...game, ...firstLeg, knockout_second_leg: true };
+
+  if (sh !== null && sa !== null) {
+    out.aggregate_home = firstLeg.first_leg_home + sh;
+    out.aggregate_away = firstLeg.first_leg_away + sa;
+    out.aggregate_score = `${out.aggregate_home}-${out.aggregate_away}`;
+  }
+  return out;
+}
+
 /* =========================================================
    ✅ BLOQUEIO Champions mata-mata (pré-jogo)
    ========================================================= */
@@ -9355,7 +9495,9 @@ function mobileFastGameFromEvent(e) {
     score_away: Number.isFinite(Number(e?.match_awayteam_score ?? e?.away_score))
       ? Number(e?.match_awayteam_score ?? e?.away_score)
       : null,
+    // V61: mantém metadados suficientes para enriquecer mata-mata depois.
     event_raw: e,
+    knockout_hint: v61KnockoutEvidence(e),
     pos_home: null,
     pos_away: null,
     proj_cantos,
@@ -9407,8 +9549,15 @@ async function buildMobileFastList(date) {
   const out = [];
 
   for (const e of Array.isArray(events) ? events : []) {
-    const game = mobileFastGameFromEvent(e);
+    let game = mobileFastGameFromEvent(e);
     if (!game) continue;
+
+    // V61: só consulta H2H quando o próprio evento dá sinal de mata-mata.
+    // Assim não pesa os campeonatos normais e não cria "jogo de ida" falso.
+    if (game.knockout_hint) {
+      const firstLeg = await v61FindFirstLegForEvent(e);
+      game = v61AttachAggregate(game, firstLeg);
+    }
 
     const key = String(game.match_id || `${game.league_id}|${game.casa}|${game.fora}`);
     if (seen.has(key)) continue;
@@ -12010,6 +12159,11 @@ app.get("/match_center", async (req, res) => {
 
     if (!event) return res.status(404).json({ error: "Partida não encontrada na API", match_id: matchId });
 
+    // V61 — dados da ida também ficam disponíveis no Match Center.
+    const firstLegInfo = v61KnockoutEvidence(event)
+      ? await v61FindFirstLegForEvent(event)
+      : null;
+
     const status = mcStatusInfo(event);
     const statsResult = await getMatchCenterStatsFresh(
       matchId,
@@ -12257,6 +12411,8 @@ app.get("/match_center", async (req, res) => {
     if (stored) {
       const { _firestore, ...storedPayload } = stored;
       return res.json({
+      // V61 — jogo de ida/agregado (quando realmente for mata-mata)
+      ...(firstLegInfo || {}),
         ...storedPayload,
         source: "firestore_fallback",
         stale: true,
