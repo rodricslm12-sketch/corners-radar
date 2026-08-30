@@ -115,10 +115,103 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
-    function projection(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners);if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection);if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);return num(d?.projection)}
-    function cornerRec(g){const d=dec(g,"corners"),line=clean(d?.line,"").toUpperCase(),p=projection(g,"corners"),c=confidence(g,"corners");if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};if(p!==null){if(p>=11.75)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};if(p>=10.75)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};if(p>=9.55)return{valid:true,line:"OVER 9.5",projection:p,confidence:c}}return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c}}
-    function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return cornerRec(g).line;if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;if(m==="builder"){let best={c:0,p:"ANALISANDO"};for(const x of ["corners","goals","cards","handicap","btts"]){const c=confidence(g,x),p=clean(dec(g,x)?.line,"");if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase()}
-    function resolved(g,m=state.market){if(m==="corners")return cornerRec(g).valid;if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;const d=dec(g,m),p=pick(g,m);return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p))}
+    /* V141 — MERCADOS MOBILE: uma única fonte de leitura, sem fallback cruzado */
+    function projection(g,m=state.market){
+      const r=raw(g),d=dec(g,m);
+      if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
+      if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
+      if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
+      if(m==="handicap")return num(d?.projection,d?.expected_handicap,r?.handicap_projection,r?.expected_handicap);
+      return num(d?.projection);
+    }
+
+    function decisionLine(g,m=state.market){
+      const d=dec(g,m);
+      return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"").toUpperCase();
+    }
+
+    function cornerRec(g){
+      const d=dec(g,"corners"),line=decisionLine(g,"corners"),p=projection(g,"corners"),c=confidence(g,"corners");
+      if(d?.updating||d?.skip)return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
+      if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};
+      /* Só deriva uma linha quando existe projeção REAL suficiente. Não transforma 6.5 em entrada. */
+      if(p!==null){
+        if(p>=12.15)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};
+        if(p>=11.15)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};
+        if(p>=10.15)return{valid:true,line:"OVER 9.5",projection:p,confidence:c};
+        if(p>=9.15)return{valid:true,line:"OVER 8.5",projection:p,confidence:c};
+      }
+      return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
+    }
+
+    function handicapSide(g){
+      const d=dec(g,"handicap");
+      const s=norm(d?.side_key??d?.side??d?.team??"");
+      if(s.includes("away")||s.includes("fora"))return"FORA";
+      if(s.includes("home")||s.includes("casa"))return"CASA";
+      return"";
+    }
+
+    function pick(g,m=state.market){
+      const r=raw(g),d=dec(g,m);
+      const manual=!["IA","TODOS"].includes(state.line);
+
+      if(manual&&["corners","goals","cards"].includes(m))return `OVER ${state.line}`;
+      if(manual&&m==="handicap"){
+        const side=handicapSide(g);
+        return `${side?side+" ":""}${state.line}`.trim();
+      }
+      if(manual&&m==="btts")return state.line;
+
+      if(m==="corners")return cornerRec(g).line;
+      if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}
+      if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}
+      if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;
+      if(m==="builder"){
+        let best={c:0,p:"ANALISANDO"};
+        for(const x of ["corners","goals","cards","handicap","btts"]){
+          const c=confidence(g,x),p=clean(dec(g,x)?.line,"");
+          if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p};
+        }
+        return best.p;
+      }
+      return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase();
+    }
+
+    function resolved(g,m=state.market){
+      if(m==="corners")return cornerRec(g).valid;
+      if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;
+      const d=dec(g,m),p=decisionLine(g,m);
+      return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA|SEM ENTRADA/.test(p));
+    }
+
+    function manualLineScore(g,m,line){
+      const target=num(String(line).replace("+",""));
+      const p=projection(g,m);
+      const c=confidence(g,m);
+
+      if(["corners","goals","cards"].includes(m)){
+        if(target===null||p===null)return -9999;
+        return c*1.25+(p-target)*24+p*2;
+      }
+
+      if(m==="handicap"){
+        const d=dec(g,m);
+        const direct=num(
+          d?.probability,d?.confidence,
+          d?.[`line_${String(line).replace("+","").replace(".","_")}_prob`]
+        );
+        return (direct??c)+(decisionLine(g,m)?10:0);
+      }
+
+      if(m==="btts"){
+        const t=decisionLine(g,m);
+        if(!t)return c-40;
+        const yes=/SIM|YES/.test(t)&&!/NAO|NÃO|NO/.test(t);
+        return c+((line==="SIM"&&yes)||(line==="NÃO"&&!yes)?70:-50);
+      }
+      return c;
+    }
     function status(g){
       const r=raw(g);
       const s=norm(r?.match_status??r?.status??r?.event_status??r?.status_raw??"");
@@ -146,14 +239,52 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
     function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
-    function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
+    /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
+       Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
+       parecerem iguais e fazia linhas manuais zerarem a tela. */
+    function source(m=state.market){
+      return Array.isArray(state.games)?state.games:[];
+    }
+
     function filtered(m=state.market,line=state.line){
       let a=source(m).slice();
-      if(state.mode==="pregame") a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
-      if(state.mode==="live") a=a.filter(g=>{const s=status(g);return s.live||s.ht});
-      if(line==="IA")a=a.filter(g=>resolved(g,m));
-      else if(line!=="TODOS"){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}
-      return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)
+
+      if(state.mode==="pregame")a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
+      if(state.mode==="live")a=a.filter(g=>{const s=status(g);return s.live||s.ht});
+
+      if(line==="IA"){
+        a=a.filter(g=>resolved(g,m));
+        return a.sort((a,b)=>
+          confidence(b,m)-confidence(a,m)||
+          ((projection(b,m)||0)-(projection(a,m)||0))||
+          time(a).localeCompare(time(b))
+        ).slice(0,30);
+      }
+
+      if(line==="TODOS"){
+        return a.sort((a,b)=>
+          confidence(b,m)-confidence(a,m)||
+          ((projection(b,m)||0)-(projection(a,m)||0))||
+          time(a).localeCompare(time(b))
+        ).slice(0,30);
+      }
+
+      /* Linha manual: não exige que a IA automática tenha escolhido exatamente a mesma linha.
+         Cada botão passa a recalcular/rankear a própria linha. */
+      if(["corners","goals","cards"].includes(m)){
+        a=a.filter(g=>projection(g,m)!==null);
+      }else if(m==="handicap"){
+        a=a.filter(g=>dec(g,m)&&typeof dec(g,m)==="object");
+      }else if(m==="btts"){
+        a=a.filter(g=>decisionLine(g,m));
+      }
+
+      return a
+        .map(g=>({g,score:manualLineScore(g,m,line)}))
+        .filter(x=>Number.isFinite(x.score)&&x.score>-9000)
+        .sort((x,y)=>y.score-x.score||time(x.g).localeCompare(time(y.g)))
+        .map(x=>x.g)
+        .slice(0,30);
     }
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
@@ -3717,6 +3848,59 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 officialCornerReason: "",
                 officialCornerBest: null
               };
+
+              /* V142 — CACHE DOS MERCADOS MOBILE */
+              const MOBILE_MARKETS_CACHE_PREFIX = "cornerpro_mobile_markets_v142:";
+              const MOBILE_MARKETS_CACHE_TTL = 30 * 60 * 1000;
+
+              function mobileMarketsCacheKey(date = state.date || todayManaus()) {
+                return MOBILE_MARKETS_CACHE_PREFIX + String(date || todayManaus());
+              }
+
+              function saveMobileMarketsCache(date = state.date || todayManaus()) {
+                try {
+                  const payload = {
+                    savedAt: Date.now(), date,
+                    all: Array.isArray(state.all) ? state.all : [],
+                    corners: Array.isArray(state.corners) ? state.corners : [],
+                    goals: Array.isArray(state.goals) ? state.goals : [],
+                    cards: Array.isArray(state.cards) ? state.cards : [],
+                    handicap: Array.isArray(state.handicap) ? state.handicap : [],
+                    btts: Array.isArray(state.btts) ? state.btts : [],
+                    pregame: Array.isArray(state.pregame) ? state.pregame : [],
+                    combined: Array.isArray(state.combined) ? state.combined : [],
+                    props: Array.isArray(state.props) ? state.props : [],
+                    engineDate: state.engineDate || date
+                  };
+                  if (!["corners","goals","cards","handicap","btts"].some(k => payload[k].length)) return false;
+                  localStorage.setItem(mobileMarketsCacheKey(date), JSON.stringify(payload));
+                  return true;
+                } catch (_) { return false; }
+              }
+
+              function hydrateMobileMarketsCache(date = state.date || todayManaus()) {
+                try {
+                  const parsed = JSON.parse(localStorage.getItem(mobileMarketsCacheKey(date)) || "null");
+                  if (!parsed || parsed.date !== date) return false;
+                  if (!Number.isFinite(parsed.savedAt) || Date.now() - parsed.savedAt > MOBILE_MARKETS_CACHE_TTL) {
+                    localStorage.removeItem(mobileMarketsCacheKey(date));
+                    return false;
+                  }
+                  if (!["corners","goals","cards","handicap","btts"].some(k => Array.isArray(parsed[k]) && parsed[k].length)) return false;
+
+                  for (const k of ["all","corners","goals","cards","handicap","btts","pregame","combined","props"]) {
+                    state[k] = Array.isArray(parsed[k]) ? parsed[k] : [];
+                  }
+                  state.engineDate = parsed.engineDate || date;
+                  state.loading = false;
+                  state.__marketCacheHydrated = true;
+                  if (state.all.length) window.__cornerProAllGames = state.all;
+                  window.__cpMobileDirectGames =
+                    state.corners.length ? state.corners :
+                    state.goals.length ? state.goals : state.all;
+                  return true;
+                } catch (_) { return false; }
+              }
             
               function clean(value, fallback = "") {
                 const text = String(value ?? "").trim();
@@ -5283,6 +5467,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
                   window.__cpMobileDirectGames = activeList();
                   renderActive({ animate: false });
+                  saveMobileMarketsCache(date);
           
                   // V54 — se o usuário já estiver dentro de Ambas/Handicap,
                   // atualiza a tela aberta assim que a IA chega. Antes o state mudava,
@@ -5346,6 +5531,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     
                     window.__cpMobileDirectGames = activeList();
                     renderActive({ animate: false });
+                  saveMobileMarketsCache(date);
     
                     const layer = $("#cpMobileMarketsLayer");
                     if (
@@ -5756,6 +5942,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   if (!state.handicap.length) state.handicap = buildMarket(raw, "pregame");
           
                   window.__cornerProAllGames = raw;
+                  saveMobileMarketsCache(date);
           
                   // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
                   cprRenderBaseGamesImmediately(raw);
@@ -8876,6 +9063,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   const rawGames = extract(payload?.[type]);
                   if (rawGames.length) {
                     state[type] = buildMarket(rawGames, type);
+                    saveMobileMarketsCache(date);
           
                     if (type === "btts") {
                       renderBttsMarket(layer);
@@ -8933,6 +9121,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
                   if (rawGames.length) {
                     state.handicap = buildMarket(rawGames, "handicap");
+                    saveMobileMarketsCache(date);
           
                     const activeLine =
                       $(".cpHandicapLines button.active", layer)?.dataset?.handicapLine ||
@@ -8989,10 +9178,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   if (marketType === "btts") {
                     renderBttsMarket(layer);
                     stopInstantMarketRetry();
-                    refreshInstantMarket("btts", true).catch(() => {});
+                    if (!state.__marketCacheHydrated || marketStillWaiting("btts")) {
+                      refreshInstantMarket("btts", true).catch(() => {});
+                    }
                   } else if (marketType === "handicap") {
                     renderHandicapMarket(layer, "IA");
-                    refreshHandicapOnlyV61().catch(() => {});
+                    if (!state.__marketCacheHydrated || marketStillWaiting("handicap")) {
+                      refreshHandicapOnlyV61().catch(() => {});
+                    }
                   } else if (["goals", "corners", "cards"].includes(marketType)) {
                     renderDetailedMarket(
                       layer,
@@ -10129,11 +10322,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 syncMobileSelectedDate(state.date);
                 setupDate();
                 bind();
-                try {
-                  await loadData();
-                } catch (error) {
-                  console.error("[Mobile V32]", error);
-                  showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
+
+                const hadMarketCache = hydrateMobileMarketsCache(state.date);
+                if (hadMarketCache) {
+                  state.activeMarket = "corners";
+                  renderActive({ animate: false });
+                  stopAutoSlide();
+                  console.info("[CP MOBILE V142] mercados restaurados do cache");
+                } else {
+                  try {
+                    await loadData();
+                  } catch (error) {
+                    console.error("[Mobile V32]", error);
+                    showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
+                  }
                 }
               }
             
@@ -28815,10 +29017,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         const lineBtn = event.target.closest('#cpMobileMarketsLayer [data-analysis-line]');
         if (lineBtn) {
           const type=lineBtn.dataset.analysisMarket || api()?.state?.activeMarket;
-          if (["corners","goals","cards"].includes(type)) {
+          if (["corners","goals","cards","handicap","btts"].includes(type)) {
             event.preventDefault(); event.stopImmediatePropagation();
             $$('#cpMobileMarketsLayer [data-analysis-line]').forEach(b=>b.classList.toggle('active',b===lineBtn));
-            renderParity(type,lineBtn.dataset.analysisLine||"IA"); return;
+            const selected=lineBtn.dataset.analysisLine||"IA";
+            if(api()?.state) api().state.__selectedParityLine=selected;
+            renderParity(type,selected); return;
           }
         }
       }, true);
@@ -28840,7 +29044,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         const arr=Array.isArray(a.state[type])?a.state[type]:[];
         const signature=`${type}:${arr.length}:${arr.filter(g=>resolved(g,type)).length}`;
         if(signature===last) return; last=signature;
-        if(l.classList.contains("is-open")||l.getAttribute("aria-hidden")==="false") renderParity(type,"IA");
+        if(l.classList.contains("is-open")||l.getAttribute("aria-hidden")==="false"){
+          const selected=a.state?.__selectedParityLine||"IA";
+          renderParity(type,selected);
+        }
       },700);
     
       console.info("[CP MOBILE V92] Desktop é a fonte única das IAs de mercado.");
