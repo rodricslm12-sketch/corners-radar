@@ -1475,21 +1475,82 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     
             target.innerHTML = `
               <section class="railCard matchRailCard railEmptyHero">
-                <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-                <div class="railEmptyText" style="text-align:center;padding:22px 10px">
+                <div class="railTitle">
+                  <span>▣ MATCH CENTER</span>
+                  <b>PRÉ-JOGO</b>
+                </div>
+
+                <div class="railEmptyRadar" aria-hidden="true">
+                  <span class="radarRing ring1"></span>
+                  <span class="radarRing ring2"></span>
+                  <span class="radarRing ring3"></span>
+                  <span class="radarSweep"></span>
+                  <span class="radarBall">⚽</span>
+                </div>
+
+                <div class="railEmptyText">
                   <strong>Aguardando partida</strong>
-                  <span style="display:block;margin-top:7px;color:#91a0a3">
-                    Selecione um jogo para iniciar o Match Center e ver todas as análises.
-                  </span>
+                  <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
                 </div>
               </section>
+
               <section class="railCard railEmptyStatsCard">
-                <h3>ESTATÍSTICAS DA PARTIDA</h3>
-                <div class="railEmptyHint">Selecione uma partida para carregar as estatísticas.</div>
+                <h3>ESTATÍSTICAS DO FILTRO</h3>
+
+                <div class="railEmptyStatsGrid">
+                  <div class="railEmptyStatBox">
+                    <i>🛡</i>
+                    <span>Força do filtro</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>🚩</i>
+                    <span>Proj. escanteios</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>🏠</i>
+                    <span>Casa média</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>✈</i>
+                    <span>Visitante média</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+                </div>
+
+                <div class="railEmptyHint">
+                  As estatísticas serão carregadas após a seleção de uma partida.
+                </div>
               </section>
+
               <section class="railCard railEmptyEventsCard">
                 <h3>EVENTOS / LEITURA</h3>
-                <div class="railEmptyHint">Aguardando partida.</div>
+
+                <div class="railEmptyEventIcons">
+                  <span><i>◎</i><b>Pressão</b><small>--</small></span>
+                  <span><i>◔</i><b>Posse</b><small>--</small></span>
+                  <span><i>▣</i><b>Cartões</b><small>--</small></span>
+                  <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+                  <span><i>⚽</i><b>Gols</b><small>--</small></span>
+                </div>
+
+                <div class="railEmptyTimeline">
+                  <i></i><i></i><i></i><i></i><i></i>
+                </div>
+
+                <div class="railEmptyReadBox">
+                  <b>📋</b>
+                  <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+                </div>
               </section>
             `;
           }
@@ -21023,13 +21084,85 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     const rail = document.getElementById("desktopMatchRail");
                     if (!rail) return;
                     rail.innerHTML = `
-                      <section class="railCard mcRailEmptyBox">
-                        <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-                        <div class="mcRailEmptyRadar"><b>⚽</b></div>
-                        <h3 style="margin:0;color:#fff;font-size:13px;text-transform:uppercase;">Aguardando partida</h3>
-                        <p>Selecione um jogo para abrir o placar, comparativo e gráfico de pressão no painel lateral.</p>
-                      </section>
-                      <button class="railFullBtn railFullBtnDisabled" type="button" disabled>INICIAR MATCH CENTER</button>`;
+              <section class="railCard matchRailCard railEmptyHero">
+                <div class="railTitle">
+                  <span>▣ MATCH CENTER</span>
+                  <b>PRÉ-JOGO</b>
+                </div>
+
+                <div class="railEmptyRadar" aria-hidden="true">
+                  <span class="radarRing ring1"></span>
+                  <span class="radarRing ring2"></span>
+                  <span class="radarRing ring3"></span>
+                  <span class="radarSweep"></span>
+                  <span class="radarBall">⚽</span>
+                </div>
+
+                <div class="railEmptyText">
+                  <strong>Aguardando partida</strong>
+                  <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
+                </div>
+              </section>
+
+              <section class="railCard railEmptyStatsCard">
+                <h3>ESTATÍSTICAS DO FILTRO</h3>
+
+                <div class="railEmptyStatsGrid">
+                  <div class="railEmptyStatBox">
+                    <i>🛡</i>
+                    <span>Força do filtro</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>🚩</i>
+                    <span>Proj. escanteios</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>🏠</i>
+                    <span>Casa média</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+
+                  <div class="railEmptyStatBox">
+                    <i>✈</i>
+                    <span>Visitante média</span>
+                    <b>--</b>
+                    <small>Aguardando</small>
+                  </div>
+                </div>
+
+                <div class="railEmptyHint">
+                  As estatísticas serão carregadas após a seleção de uma partida.
+                </div>
+              </section>
+
+              <section class="railCard railEmptyEventsCard">
+                <h3>EVENTOS / LEITURA</h3>
+
+                <div class="railEmptyEventIcons">
+                  <span><i>◎</i><b>Pressão</b><small>--</small></span>
+                  <span><i>◔</i><b>Posse</b><small>--</small></span>
+                  <span><i>▣</i><b>Cartões</b><small>--</small></span>
+                  <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+                  <span><i>⚽</i><b>Gols</b><small>--</small></span>
+                </div>
+
+                <div class="railEmptyTimeline">
+                  <i></i><i></i><i></i><i></i><i></i>
+                </div>
+
+                <div class="railEmptyReadBox">
+                  <b>📋</b>
+                  <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+                </div>
+              </section>
+                    `;
                   }
             
                   window.resetDesktopMatchRailToEmpty = emptyRail;
@@ -21255,8 +21388,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             
                   document.addEventListener("DOMContentLoaded", () => {
                     const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
-                    if (rail) obs.observe(rail, { childList:true, subtree:false });
-                    setTimeout(() => obs.disconnect(), 5000);
+                    if (rail) obs.observe(rail, { childList:true, subtree:true });
                   });
                 })();
             
@@ -29132,403 +29264,65 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 })();
 
 /* =========================================================
-   CORNER PRO — MATCH CENTER EMPTY GUARD / SOMENTE DESKTOP
-   Evita que renderizações antigas reduzam o painel vazio a um único card.
-   Não altera mobile/app.
+   CORNER PRO — ÍCONE DE USUÁRIO DESKTOP -> FIREBASE ORIGINAL
+   Somente desktop. Não altera mobile/app.
    ========================================================= */
-(function installDesktopMatchCenterEmptyGuardV1(){
+(function cpDesktopUserIconUsesOriginalFirebase(){
   if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__cpDesktopMatchCenterEmptyGuardV1) return;
-  window.__cpDesktopMatchCenterEmptyGuardV1 = true;
-
-  let fixing = false;
-  let timer = 0;
-
-  function hasSelectedMatch(rail){
-    if (window.__selectedMatchCenterGame) return true;
-    return !!rail.querySelector(
-      ".mcRailScoreCard, .mcProScoreCard, " +
-      "[data-open-match-center-table]:not(.railFullBtnDisabled)"
-    );
-  }
-
-  function needsFullEmptyState(rail){
-    if (!rail || hasSelectedMatch(rail)) return false;
-
-    const isEmptyState =
-      !!rail.querySelector(".mcRailEmptyBox") ||
-      /AGUARDANDO PARTIDA/i.test(rail.textContent || "");
-
-    if (!isEmptyState) return false;
-
-    const hasStats = /ESTATÍSTICAS DO FILTRO/i.test(rail.textContent || "");
-    const hasEvents = /EVENTOS\s*\/\s*LEITURA/i.test(rail.textContent || "");
-    return !hasStats || !hasEvents;
-  }
-
-  function repair(){
-    if (fixing) return;
-    const rail =
-      document.getElementById("desktopMatchRail") ||
-      document.querySelector(".dashboardRightRail");
-
-    if (!needsFullEmptyState(rail)) return;
-
-    fixing = true;
-    try{
-      if (typeof window.renderEmptyMatchCenter === "function"){
-        window.renderEmptyMatchCenter();
-      }
-    } finally {
-      setTimeout(() => { fixing = false; }, 0);
-    }
-  }
-
-  function scheduleRepair(delay=20){
-    clearTimeout(timer);
-    timer = setTimeout(repair, delay);
-  }
-
-  function boot(){
-    const rail =
-      document.getElementById("desktopMatchRail") ||
-      document.querySelector(".dashboardRightRail");
-
-    if (!rail) return;
-
-    scheduleRepair(0);
-    setTimeout(repair, 120);
-    setTimeout(repair, 500);
-    setTimeout(repair, 1400);
-
-    const observer = new MutationObserver(() => {
-      if (!fixing) scheduleRepair(25);
-    });
-
-    observer.observe(rail, {
-      childList:true,
-      subtree:true,
-      characterData:true
-    });
-
-    window.addEventListener("pageshow", () => scheduleRepair(50));
-    window.addEventListener("focus", () => scheduleRepair(80));
-  }
-
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", boot, {once:true});
-  }else{
-    boot();
-  }
-})();
-
-
-/* =========================================================
-   CORNER PRO — ÍCONE DESKTOP USA O FIREBASE ORIGINAL DO SITE
-   SOMENTE DESKTOP (>=981px)
-   - Não cria uma segunda instância de autenticação.
-   - Reaproveita window.firebaseLoginWithGoogle, já criado pelo
-     firebaseGoogleAuthBridge original deste arquivo.
-   - Não altera mobile/app.
-   ========================================================= */
-(function bindDesktopUserIconToExistingFirebase(){
-  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__cpDesktopUserFirebaseBridgeV2) return;
-  window.__cpDesktopUserFirebaseBridgeV2 = true;
-
-  let bindingTimer = null;
-
-  function setBusy(btn, busy){
-    if (!btn) return;
-    btn.disabled = !!busy;
-    if (busy) btn.setAttribute("aria-busy","true");
-    else btn.removeAttribute("aria-busy");
-  }
-
-  async function runOriginalFirebaseLogin(btn){
-    if (typeof window.firebaseLoginWithGoogle !== "function"){
-      console.warn("[CornerPro] Firebase original ainda inicializando.");
-      return;
-    }
-
-    setBusy(btn, true);
-    try{
-      await window.firebaseLoginWithGoogle();
-    }catch(err){
-      console.error("[CornerPro desktop login]", err);
-    }finally{
-      setBusy(btn, false);
-    }
-  }
+  if (window.__cpDesktopUserIconUsesOriginalFirebase) return;
+  window.__cpDesktopUserIconUsesOriginalFirebase = true;
 
   function bind(){
     const btn = document.getElementById("btnGoogleLogin");
-    if (!btn) return false;
-    if (btn.dataset.cpFirebaseOriginalReady === "1") return true;
+    if (!btn || btn.dataset.cpFirebaseBound === "1") return;
 
-    btn.dataset.cpFirebaseOriginalReady = "1";
+    btn.dataset.cpFirebaseBound = "1";
 
-    btn.addEventListener("click", function(ev){
-      ev.preventDefault();
-      ev.stopImmediatePropagation();
-      runOriginalFirebaseLogin(btn);
-    }, true);
+    btn.addEventListener("click", async function(event){
+      event.preventDefault();
+      event.stopImmediatePropagation();
 
-    return true;
-  }
-
-  function waitForFirebaseAndBind(){
-    let tries = 0;
-
-    clearInterval(bindingTimer);
-    bindingTimer = setInterval(() => {
-      tries++;
-
-      bind();
-
-      if (typeof window.firebaseLoginWithGoogle === "function"){
-        bind();
-        clearInterval(bindingTimer);
-        bindingTimer = null;
+      if (typeof window.firebaseLoginWithGoogle !== "function"){
+        console.error("[CornerPro] Firebase ainda não inicializou.");
         return;
       }
 
-      if (tries >= 120){ // até ~30s
-        clearInterval(bindingTimer);
-        bindingTimer = null;
-        console.error("[CornerPro] window.firebaseLoginWithGoogle não foi criado pelo Firebase original.");
+      btn.disabled = true;
+      btn.setAttribute("aria-busy","true");
+
+      try{
+        await window.firebaseLoginWithGoogle();
+      }catch(error){
+        console.error("[CornerPro desktop Firebase]", error);
+      }finally{
+        btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+      }
+    }, true);
+  }
+
+  function start(){
+    bind();
+
+    const observer = new MutationObserver(bind);
+    observer.observe(document.documentElement, {
+      childList:true,
+      subtree:true
+    });
+
+    let tries = 0;
+    const timer = setInterval(() => {
+      bind();
+      tries++;
+      if (typeof window.firebaseLoginWithGoogle === "function" || tries >= 120){
+        clearInterval(timer);
       }
     }, 250);
   }
 
   if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", waitForFirebaseAndBind, {once:true});
+    document.addEventListener("DOMContentLoaded", start, {once:true});
   }else{
-    waitForFirebaseAndBind();
-  }
-
-  // Caso o cabeçalho seja recriado.
-  const observer = new MutationObserver(() => {
-    const btn = document.getElementById("btnGoogleLogin");
-    if (btn && btn.dataset.cpFirebaseOriginalReady !== "1") bind();
-  });
-
-  if (document.documentElement){
-    observer.observe(document.documentElement,{childList:true,subtree:true});
-  }
-})();
-
-
-/* =========================================================
-   CORNER PRO — FIX FINAL DO MATCH CENTER VAZIO
-   SOMENTE DESKTOP (>=981px)
-   Força exatamente o estado completo quando nenhum jogo foi
-   selecionado: radar + estatísticas do filtro + eventos/leitura.
-   Não altera mobile/app nem partidas selecionadas.
-   ========================================================= */
-(function forceCompleteDesktopEmptyMatchCenter(){
-  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__cpForceCompleteEmptyRailV3) return;
-  window.__cpForceCompleteEmptyRailV3 = true;
-
-  let locked = false;
-  let timer = null;
-
-  function esc(v){
-    return String(v ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  function getRail(){
-    return document.getElementById("desktopMatchRail") ||
-           document.querySelector(".dashboardRightRail");
-  }
-
-  function hasRealSelectedGame(rail){
-    if (window.__selectedMatchCenterGame) return true;
-
-    if (!rail) return false;
-
-    // Estados reais de partida selecionada.
-    if (rail.querySelector(
-      ".mcRailScoreCard,.mcProScoreCard,.railScoreBlock," +
-      ".railSofaScore,.railLiveHeader,.railMatchHeader," +
-      "[data-match-id]:not([data-match-id=''])"
-    )) return true;
-
-    const txt = (rail.textContent || "").toUpperCase();
-
-    // Se existem dois times/placar real, não toca.
-    if (
-      /AO VIVO|INTERVALO|ENCERRADO|PLACAR|VER PARTIDA COMPLETA/.test(txt) &&
-      !/AGUARDANDO PARTIDA/.test(txt)
-    ) return true;
-
-    return false;
-  }
-
-  function isIncompleteEmpty(rail){
-    if (!rail || hasRealSelectedGame(rail)) return false;
-
-    const txt = (rail.textContent || "").toUpperCase();
-    const waiting = txt.includes("AGUARDANDO PARTIDA") ||
-                    txt.includes("SELECIONE UMA PARTIDA") ||
-                    txt.includes("AGUARDANDO PARTIDA.");
-
-    if (!waiting) return false;
-
-    return !txt.includes("ESTATÍSTICAS DO FILTRO") ||
-           !txt.includes("FORÇA DO FILTRO") ||
-           !txt.includes("EVENTOS / LEITURA") ||
-           !txt.includes("PRESSÃO") ||
-           !txt.includes("ESCANTEIOS");
-  }
-
-  function completeEmptyHTML(){
-    return `
-      <section class="railCard mcRailEmptyBox">
-        <div class="railTitle">
-          <span>▣ MATCH CENTER</span>
-          <b>PRÉ-JOGO</b>
-        </div>
-
-        <div class="railEmptyRadar">
-          <span class="radarRing ring1"></span>
-          <span class="radarRing ring2"></span>
-          <span class="radarRing ring3"></span>
-          <span class="radarSweep"></span>
-          <b class="radarBall">⚽</b>
-        </div>
-
-        <div class="railEmptyText">
-          <strong>Aguardando partida</strong>
-          <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
-        </div>
-      </section>
-
-      <section class="railCard">
-        <h3>ESTATÍSTICAS DO FILTRO</h3>
-
-        <div class="railEmptyStatsGrid">
-          <div class="railEmptyStatBox">
-            <i>🛡️</i>
-            <span>Força do filtro</span>
-            <b>--</b>
-            <small>Aguardando</small>
-          </div>
-
-          <div class="railEmptyStatBox">
-            <i>🚩</i>
-            <span>Proj. escanteios</span>
-            <b>--</b>
-            <small>Aguardando</small>
-          </div>
-
-          <div class="railEmptyStatBox">
-            <i>🏠</i>
-            <span>Casa média</span>
-            <b>--</b>
-            <small>Aguardando</small>
-          </div>
-
-          <div class="railEmptyStatBox">
-            <i>✈</i>
-            <span>Visitante média</span>
-            <b>--</b>
-            <small>Aguardando</small>
-          </div>
-        </div>
-
-        <p class="railEmptyHint">
-          As estatísticas serão carregadas após a seleção de uma partida.
-        </p>
-      </section>
-
-      <section class="railCard">
-        <h3>EVENTOS / LEITURA</h3>
-
-        <div class="railEmptyEventIcons">
-          <span><i>◎</i><b>Pressão</b></span>
-          <span><i>⌁</i><b>Posse</b></span>
-          <span><i>▣</i><b>Cartões</b></span>
-          <span><i>⚑</i><b>Escanteios</b></span>
-          <span><i>⚽</i><b>Gols</b></span>
-        </div>
-
-        <div class="railEmptyTimeline">
-          <i></i><i></i><i></i><i></i><i></i>
-        </div>
-
-        <div class="railEmptyReadBox">
-          <span>📋</span>
-          <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
-        </div>
-      </section>
-    `;
-  }
-
-  function repair(force=false){
-    if (locked) return;
-
-    const rail = getRail();
-    if (!rail || hasRealSelectedGame(rail)) return;
-
-    if (!force && !isIncompleteEmpty(rail)) return;
-
-    locked = true;
-    try{
-      rail.innerHTML = completeEmptyHTML();
-      rail.dataset.cpCompleteEmpty = "1";
-    } finally {
-      setTimeout(() => { locked = false; }, 0);
-    }
-  }
-
-  function schedule(delay=25, force=false){
-    clearTimeout(timer);
-    timer = setTimeout(() => repair(force), delay);
-  }
-
-  function boot(){
-    const rail = getRail();
-    if (!rail) return;
-
-    // Corrige imediatamente e novamente depois que os patches antigos terminarem.
-    schedule(0, true);
-    setTimeout(() => repair(true), 120);
-    setTimeout(() => repair(true), 450);
-    setTimeout(() => repair(true), 900);
-    setTimeout(() => repair(true), 1800);
-
-    const observer = new MutationObserver(() => {
-      if (locked) return;
-      if (isIncompleteEmpty(rail)) schedule(15, true);
-    });
-
-    observer.observe(rail, {
-      childList:true,
-      subtree:true,
-      characterData:true
-    });
-
-    document.addEventListener("click", function(ev){
-      // Depois de filtros/abas que redesenham a lateral, restaura somente se continuar sem jogo.
-      if (ev.target.closest(".marketTab,.marketChipPremium,.filterPills,.lineChip,.marketLineBtn")){
-        setTimeout(() => repair(false), 80);
-        setTimeout(() => repair(false), 220);
-      }
-    }, true);
-
-    window.addEventListener("pageshow", () => setTimeout(() => repair(false), 60));
-  }
-
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", boot, {once:true});
-  }else{
-    boot();
+    start();
   }
 })();

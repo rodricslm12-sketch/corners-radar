@@ -22187,10 +22187,13 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
 
 
 /* =========================================================
-   CORNER PRO — LOGIN COM ÍCONE DE USUÁRIO / SOMENTE DESKTOP
+   CORNER PRO — AJUSTE FINAL SOMENTE DESKTOP
+   Login com ícone + estado vazio completo do Match Center.
    Não altera mobile/app.
    ========================================================= */
 @media (min-width:981px){
+
+  /* LOGIN — ícone de usuário */
   #authAreaDesktop #btnGoogleLogin.authLoginButton{
     position:relative!important;
     width:42px!important;
@@ -22201,32 +22204,24 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     margin:0!important;
     display:grid!important;
     place-items:center!important;
-    border:1px solid #213129!important;
+    border:1px solid rgba(99,241,39,.38)!important;
     border-radius:13px!important;
     background:
-      radial-gradient(circle at 50% 28%,rgba(99,241,39,.12),transparent 55%),
+      radial-gradient(circle at 50% 30%,rgba(99,241,39,.12),transparent 58%),
       linear-gradient(180deg,#0b1216,#070c10)!important;
-    color:#e9f0ed!important;
+    color:#69ff2d!important;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.035),
-      0 8px 24px rgba(0,0,0,.22)!important;
+      0 0 18px rgba(99,241,39,.08)!important;
     transition:.16s ease!important;
-    overflow:visible!important;
   }
 
   #authAreaDesktop #btnGoogleLogin.authLoginButton:hover{
-    color:#6dff32!important;
-    border-color:rgba(99,241,39,.58)!important;
+    border-color:rgba(99,241,39,.72)!important;
     transform:translateY(-1px)!important;
     box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.045),
       0 0 0 3px rgba(99,241,39,.045),
-      0 10px 26px rgba(0,0,0,.3),
-      0 0 20px rgba(99,241,39,.09)!important;
-  }
-
-  #authAreaDesktop #btnGoogleLogin.authLoginButton:active{
-    transform:translateY(0)!important;
+      0 0 24px rgba(99,241,39,.14)!important;
   }
 
   #authAreaDesktop #btnGoogleLogin .cpDesktopUserIcon{
@@ -22234,8 +22229,8 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     height:21px!important;
     display:block!important;
     stroke:currentColor!important;
-    stroke-width:1.8!important;
     fill:none!important;
+    stroke-width:1.8!important;
   }
 
   #authAreaDesktop #btnGoogleLogin .cpDesktopAuthText{
@@ -22251,23 +22246,18 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   }
 
   #authAreaDesktop #btnGoogleLogin::after{
-    content:"Entrar / Criar conta";
+    content:"ENTRAR / CRIAR CONTA";
     position:absolute;
-    top:calc(100% + 9px);
+    top:calc(100% + 8px);
     right:0;
     width:max-content;
-    max-width:180px;
-    padding:7px 9px;
-    border:1px solid #22342c;
-    border-radius:8px;
-    background:#0a1115;
+    padding:6px 8px;
+    border:1px solid #1e3027;
+    border-radius:7px;
+    background:#09100d;
     color:#dce6e1;
     font-size:8px;
-    line-height:1;
     font-weight:900;
-    letter-spacing:.2px;
-    text-transform:uppercase;
-    box-shadow:0 10px 28px rgba(0,0,0,.36);
     opacity:0;
     visibility:hidden;
     transform:translateY(-3px);
@@ -22276,68 +22266,167 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     z-index:999999;
   }
 
-  #authAreaDesktop #btnGoogleLogin:hover::after,
-  #authAreaDesktop #btnGoogleLogin:focus-visible::after{
+  #authAreaDesktop #btnGoogleLogin:hover::after{
     opacity:1;
     visibility:visible;
     transform:translateY(0);
   }
 
-  #authAreaDesktop #btnGoogleLogin:focus-visible{
-    outline:2px solid rgba(99,241,39,.6)!important;
-    outline-offset:3px!important;
-  }
-}
-
-
-/* =========================================================
-   MATCH CENTER VAZIO COMPLETO — SOMENTE DESKTOP
-   Mantém o painel no formato: radar + estatísticas + eventos.
-   ========================================================= */
-@media (min-width:981px){
-  #desktopMatchRail .mcRailEmptyBox{
-    min-height:214px!important;
-    padding:12px 12px 13px!important;
+  /* MATCH CENTER — estado vazio bonito/completo */
+  #desktopMatchRail{
+    gap:10px!important;
   }
 
-  #desktopMatchRail .mcRailEmptyRadar{
-    width:76px!important;
-    height:76px!important;
-    margin:10px auto 6px!important;
+  #desktopMatchRail .railEmptyHero{
+    min-height:140px!important;
+    padding:12px!important;
   }
 
-  #desktopMatchRail .mcRailEmptyRadar b{
-    font-size:17px!important;
+  #desktopMatchRail .railEmptyRadar{
+    height:74px!important;
+    margin:4px auto 2px!important;
   }
 
-  #desktopMatchRail .mcRailEmptyBox h3{
-    margin:3px 0 5px!important;
+  #desktopMatchRail .railEmptyText{
+    text-align:center!important;
+  }
+
+  #desktopMatchRail .railEmptyText strong{
+    display:block!important;
+    margin-bottom:4px!important;
+    color:#fff!important;
     font-size:11px!important;
-    line-height:1.1!important;
+    font-weight:900!important;
   }
 
-  #desktopMatchRail .mcRailEmptyBox p{
+  #desktopMatchRail .railEmptyText span{
+    display:block!important;
     max-width:270px!important;
     margin:0 auto!important;
+    color:#91a0a3!important;
     font-size:9px!important;
     line-height:1.35!important;
   }
 
+  #desktopMatchRail .railEmptyStatsCard,
+  #desktopMatchRail .railEmptyEventsCard{
+    padding:11px!important;
+  }
+
+  #desktopMatchRail .railEmptyStatsCard h3,
+  #desktopMatchRail .railEmptyEventsCard h3{
+    margin:0 0 9px!important;
+    font-size:10px!important;
+  }
+
+  #desktopMatchRail .railEmptyStatsGrid{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:7px!important;
+  }
+
   #desktopMatchRail .railEmptyStatBox{
-    min-height:72px!important;
+    min-height:68px!important;
     padding:8px!important;
+    border-radius:7px!important;
+    background:#081015!important;
+    border:1px solid #15252d!important;
+  }
+
+  #desktopMatchRail .railEmptyStatBox i{
+    display:block!important;
+    margin-bottom:3px!important;
+    color:#63f127!important;
+    font-style:normal!important;
+    font-size:12px!important;
+  }
+
+  #desktopMatchRail .railEmptyStatBox span,
+  #desktopMatchRail .railEmptyStatBox small{
+    display:block!important;
+    color:#849296!important;
+    font-size:7px!important;
   }
 
   #desktopMatchRail .railEmptyStatBox b{
-    margin:4px 0 2px!important;
-    font-size:15px!important;
+    display:block!important;
+    margin:2px 0!important;
+    color:#fff!important;
+    font-size:14px!important;
+  }
+
+  #desktopMatchRail .railEmptyHint{
+    margin-top:7px!important;
+    color:#829094!important;
+    font-size:7.5px!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons{
+    display:grid!important;
+    grid-template-columns:repeat(5,1fr)!important;
+    gap:5px!important;
   }
 
   #desktopMatchRail .railEmptyEventIcons > span{
-    min-height:47px!important;
+    min-height:48px!important;
+    padding:6px 3px!important;
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
+    border-radius:6px!important;
+    background:#081015!important;
+    border:1px solid #15252d!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons i{
+    color:#63f127!important;
+    font-style:normal!important;
+    font-size:11px!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons b,
+  #desktopMatchRail .railEmptyEventIcons small{
+    display:block!important;
+    margin-top:2px!important;
+    font-size:7px!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons b{
+    color:#dbe4e0!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons small{
+    color:#748187!important;
+  }
+
+  #desktopMatchRail .railEmptyTimeline{
+    display:flex!important;
+    gap:5px!important;
+    margin:9px 0!important;
+  }
+
+  #desktopMatchRail .railEmptyTimeline i{
+    height:3px!important;
+    flex:1!important;
+    border-radius:99px!important;
+    background:#17272d!important;
+  }
+
+  #desktopMatchRail .railEmptyReadBox{
+    padding:8px!important;
+    display:flex!important;
+    align-items:flex-start!important;
+    gap:7px!important;
+    border-radius:7px!important;
+    background:#081015!important;
+    border:1px solid #15252d!important;
+  }
+
+  #desktopMatchRail .railEmptyReadBox p{
+    margin:0!important;
+    color:#8c999d!important;
+    font-size:7.5px!important;
+    line-height:1.35!important;
   }
 }
