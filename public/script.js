@@ -2815,6 +2815,96 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               });
             }
           
+            /* =========================================================
+               SITE/DESKTOP — TRAVA DO "OURO" DE ESCANTEIOS
+               O primeiro Top 1 válido da IA do dia vira a escolha oficial.
+               Renderizações posteriores, refresh de status e motores auxiliares
+               podem atualizar placar/minuto/dados, mas NÃO trocam o jogo.
+               Exclusivo do desktop e do mercado Escanteios + IA.
+               ========================================================= */
+            const CP_DESKTOP_GOLD_LOCK_PREFIX = "cornerProDesktopGold:v6:";
+
+            function cpDesktopGoldDate(){
+              const v = $("#date")?.value;
+              return /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? String(v) : todayManaus();
+            }
+
+            function cpDesktopGoldStorageKey(){
+              return CP_DESKTOP_GOLD_LOCK_PREFIX + cpDesktopGoldDate();
+            }
+
+            function cpReadDesktopGold(){
+              try{
+                const x = JSON.parse(localStorage.getItem(cpDesktopGoldStorageKey()) || "null");
+                return x && x.game ? x : null;
+              }catch(_){
+                return null;
+              }
+            }
+
+            function cpWriteDesktopGold(game){
+              if(!game) return;
+              try{
+                localStorage.setItem(cpDesktopGoldStorageKey(), JSON.stringify({
+                  date: cpDesktopGoldDate(),
+                  lockedAt: new Date().toISOString(),
+                  game
+                }));
+              }catch(e){
+                console.warn("[CornerPro Gold Lock] não foi possível salvar", e);
+              }
+            }
+
+            function cpGoldGameFromCurrentData(savedGame){
+              if(!savedGame) return null;
+              const savedKey = String(key(savedGame));
+              const pools = [
+                ...(Array.isArray(state.games) ? state.games : []),
+                ...(Array.isArray(state.engines?.corners) ? state.engines.corners : [])
+              ];
+              const current = pools.find(x => String(key(x)) === savedKey);
+              if(!current) return savedGame;
+
+              // Preserva a decisão inicial do Ouro, mas deixa status/placar atualizarem.
+              const savedRaw = raw(savedGame);
+              const currentRaw = raw(current);
+              return {
+                ...savedGame,
+                ...current,
+                corners_ai: savedGame?.corners_ai ?? savedRaw?.corners_ai ?? current?.corners_ai,
+                raw: {
+                  ...savedRaw,
+                  ...currentRaw,
+                  corners_ai: savedRaw?.corners_ai ?? savedGame?.corners_ai ?? currentRaw?.corners_ai
+                }
+              };
+            }
+
+            function cpResolveDesktopGold(candidate){
+              if(state.market !== "corners" || state.line !== "IA") return candidate;
+
+              const locked = cpReadDesktopGold();
+              if(locked?.game){
+                return cpGoldGameFromCurrentData(locked.game);
+              }
+
+              if(!candidate) return candidate;
+
+              // Só congela quando a IA realmente aprovou o jogo de escanteios.
+              let valid = false;
+              try{
+                valid = Boolean(desktopCornersAiRecommendation(candidate)?.valid);
+              }catch(_){
+                valid = false;
+              }
+
+              if(valid){
+                cpWriteDesktopGold(candidate);
+              }
+
+              return candidate;
+            }
+
             function setHero(g){
               if(!g){
                 const recommended=list()[0];
@@ -2824,6 +2914,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   g=recommended || source()[0] || state.games[0];
                 }
               }
+
+              // Aqui está a correção do bug: qualquer segundo/terceiro render
+              // recebe novamente o Ouro original do dia.
+              g = cpResolveDesktopGold(g);
+
               if(!g) return;
               state.hero=g;
           
