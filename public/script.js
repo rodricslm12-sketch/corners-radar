@@ -29224,104 +29224,311 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
 
 /* =========================================================
-   CORNER PRO — LOGIN FIREBASE NO ÍCONE / SOMENTE DESKTOP
-   Reativa o mesmo login Google via firebase-client.js.
-   Não altera mobile/app.
+   CORNER PRO — ÍCONE DESKTOP USA O FIREBASE ORIGINAL DO SITE
+   SOMENTE DESKTOP (>=981px)
+   - Não cria uma segunda instância de autenticação.
+   - Reaproveita window.firebaseLoginWithGoogle, já criado pelo
+     firebaseGoogleAuthBridge original deste arquivo.
+   - Não altera mobile/app.
    ========================================================= */
-(function installDesktopFirebaseLoginIcon(){
+(function bindDesktopUserIconToExistingFirebase(){
   if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__cpDesktopFirebaseLoginIconInstalled) return;
-  window.__cpDesktopFirebaseLoginIconInstalled = true;
+  if (window.__cpDesktopUserFirebaseBridgeV2) return;
+  window.__cpDesktopUserFirebaseBridgeV2 = true;
 
-  let busy = false;
-  let firebaseApi = null;
+  let bindingTimer = null;
 
-  async function getFirebaseApi(){
-    if (firebaseApi) return firebaseApi;
-    firebaseApi = await import("./firebase-client.js");
-    return firebaseApi;
+  function setBusy(btn, busy){
+    if (!btn) return;
+    btn.disabled = !!busy;
+    if (busy) btn.setAttribute("aria-busy","true");
+    else btn.removeAttribute("aria-busy");
   }
 
-  async function authenticateOnServer(user){
-    if (!user || typeof user.getIdToken !== "function") return;
-    try{
-      const token = await user.getIdToken(true);
-      await fetch("/auth/firebase", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({token})
-      });
-    }catch(err){
-      console.warn("[CornerPro desktop auth/server]", err);
-    }
-  }
-
-  async function login(){
-    if (busy) return;
-    busy = true;
-
-    const btn = document.getElementById("btnGoogleLogin");
-    if (btn){
-      btn.disabled = true;
-      btn.setAttribute("aria-busy","true");
+  async function runOriginalFirebaseLogin(btn){
+    if (typeof window.firebaseLoginWithGoogle !== "function"){
+      console.warn("[CornerPro] Firebase original ainda inicializando.");
+      return;
     }
 
+    setBusy(btn, true);
     try{
-      const api = await getFirebaseApi();
-
-      if (!api || typeof api.entrarComGoogle !== "function"){
-        throw new Error("entrarComGoogle não está disponível em firebase-client.js");
-      }
-
-      const result = await api.entrarComGoogle();
-      const user =
-        result?.usuario ||
-        result?.user ||
-        api?.firebaseAuth?.currentUser ||
-        null;
-
-      if (user){
-        await authenticateOnServer(user);
-
-        // Recarrega para o desktop aplicar o estado autenticado original.
-        window.location.reload();
-      }
+      await window.firebaseLoginWithGoogle();
     }catch(err){
-      console.error("[CornerPro desktop Google login]", err);
-
-      // Mantém compatibilidade com o modal antigo, caso ele ainda exista.
-      const fallback = document.getElementById("cpAuthGoogle");
-      if (fallback && fallback !== document.activeElement){
-        try{ fallback.click(); }catch(e){}
-      }
+      console.error("[CornerPro desktop login]", err);
     }finally{
-      busy = false;
-      if (btn){
-        btn.disabled = false;
-        btn.removeAttribute("aria-busy");
-      }
+      setBusy(btn, false);
     }
   }
 
   function bind(){
     const btn = document.getElementById("btnGoogleLogin");
-    if (!btn || btn.dataset.firebaseIconReady === "1") return;
+    if (!btn) return false;
+    if (btn.dataset.cpFirebaseOriginalReady === "1") return true;
 
-    btn.dataset.firebaseIconReady = "1";
+    btn.dataset.cpFirebaseOriginalReady = "1";
+
     btn.addEventListener("click", function(ev){
       ev.preventDefault();
-      ev.stopPropagation();
-      login();
+      ev.stopImmediatePropagation();
+      runOriginalFirebaseLogin(btn);
     }, true);
+
+    return true;
+  }
+
+  function waitForFirebaseAndBind(){
+    let tries = 0;
+
+    clearInterval(bindingTimer);
+    bindingTimer = setInterval(() => {
+      tries++;
+
+      bind();
+
+      if (typeof window.firebaseLoginWithGoogle === "function"){
+        bind();
+        clearInterval(bindingTimer);
+        bindingTimer = null;
+        return;
+      }
+
+      if (tries >= 120){ // até ~30s
+        clearInterval(bindingTimer);
+        bindingTimer = null;
+        console.error("[CornerPro] window.firebaseLoginWithGoogle não foi criado pelo Firebase original.");
+      }
+    }, 250);
   }
 
   if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", bind, {once:true});
+    document.addEventListener("DOMContentLoaded", waitForFirebaseAndBind, {once:true});
   }else{
-    bind();
+    waitForFirebaseAndBind();
   }
 
-  // Proteção caso o cabeçalho seja redesenhado.
-  const observer = new MutationObserver(bind);
-  observer.observe(document.documentElement, {childList:true, subtree:true});
+  // Caso o cabeçalho seja recriado.
+  const observer = new MutationObserver(() => {
+    const btn = document.getElementById("btnGoogleLogin");
+    if (btn && btn.dataset.cpFirebaseOriginalReady !== "1") bind();
+  });
+
+  if (document.documentElement){
+    observer.observe(document.documentElement,{childList:true,subtree:true});
+  }
+})();
+
+
+/* =========================================================
+   CORNER PRO — FIX FINAL DO MATCH CENTER VAZIO
+   SOMENTE DESKTOP (>=981px)
+   Força exatamente o estado completo quando nenhum jogo foi
+   selecionado: radar + estatísticas do filtro + eventos/leitura.
+   Não altera mobile/app nem partidas selecionadas.
+   ========================================================= */
+(function forceCompleteDesktopEmptyMatchCenter(){
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__cpForceCompleteEmptyRailV3) return;
+  window.__cpForceCompleteEmptyRailV3 = true;
+
+  let locked = false;
+  let timer = null;
+
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function getRail(){
+    return document.getElementById("desktopMatchRail") ||
+           document.querySelector(".dashboardRightRail");
+  }
+
+  function hasRealSelectedGame(rail){
+    if (window.__selectedMatchCenterGame) return true;
+
+    if (!rail) return false;
+
+    // Estados reais de partida selecionada.
+    if (rail.querySelector(
+      ".mcRailScoreCard,.mcProScoreCard,.railScoreBlock," +
+      ".railSofaScore,.railLiveHeader,.railMatchHeader," +
+      "[data-match-id]:not([data-match-id=''])"
+    )) return true;
+
+    const txt = (rail.textContent || "").toUpperCase();
+
+    // Se existem dois times/placar real, não toca.
+    if (
+      /AO VIVO|INTERVALO|ENCERRADO|PLACAR|VER PARTIDA COMPLETA/.test(txt) &&
+      !/AGUARDANDO PARTIDA/.test(txt)
+    ) return true;
+
+    return false;
+  }
+
+  function isIncompleteEmpty(rail){
+    if (!rail || hasRealSelectedGame(rail)) return false;
+
+    const txt = (rail.textContent || "").toUpperCase();
+    const waiting = txt.includes("AGUARDANDO PARTIDA") ||
+                    txt.includes("SELECIONE UMA PARTIDA") ||
+                    txt.includes("AGUARDANDO PARTIDA.");
+
+    if (!waiting) return false;
+
+    return !txt.includes("ESTATÍSTICAS DO FILTRO") ||
+           !txt.includes("FORÇA DO FILTRO") ||
+           !txt.includes("EVENTOS / LEITURA") ||
+           !txt.includes("PRESSÃO") ||
+           !txt.includes("ESCANTEIOS");
+  }
+
+  function completeEmptyHTML(){
+    return `
+      <section class="railCard mcRailEmptyBox">
+        <div class="railTitle">
+          <span>▣ MATCH CENTER</span>
+          <b>PRÉ-JOGO</b>
+        </div>
+
+        <div class="railEmptyRadar">
+          <span class="radarRing ring1"></span>
+          <span class="radarRing ring2"></span>
+          <span class="radarRing ring3"></span>
+          <span class="radarSweep"></span>
+          <b class="radarBall">⚽</b>
+        </div>
+
+        <div class="railEmptyText">
+          <strong>Aguardando partida</strong>
+          <span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span>
+        </div>
+      </section>
+
+      <section class="railCard">
+        <h3>ESTATÍSTICAS DO FILTRO</h3>
+
+        <div class="railEmptyStatsGrid">
+          <div class="railEmptyStatBox">
+            <i>🛡️</i>
+            <span>Força do filtro</span>
+            <b>--</b>
+            <small>Aguardando</small>
+          </div>
+
+          <div class="railEmptyStatBox">
+            <i>🚩</i>
+            <span>Proj. escanteios</span>
+            <b>--</b>
+            <small>Aguardando</small>
+          </div>
+
+          <div class="railEmptyStatBox">
+            <i>🏠</i>
+            <span>Casa média</span>
+            <b>--</b>
+            <small>Aguardando</small>
+          </div>
+
+          <div class="railEmptyStatBox">
+            <i>✈</i>
+            <span>Visitante média</span>
+            <b>--</b>
+            <small>Aguardando</small>
+          </div>
+        </div>
+
+        <p class="railEmptyHint">
+          As estatísticas serão carregadas após a seleção de uma partida.
+        </p>
+      </section>
+
+      <section class="railCard">
+        <h3>EVENTOS / LEITURA</h3>
+
+        <div class="railEmptyEventIcons">
+          <span><i>◎</i><b>Pressão</b></span>
+          <span><i>⌁</i><b>Posse</b></span>
+          <span><i>▣</i><b>Cartões</b></span>
+          <span><i>⚑</i><b>Escanteios</b></span>
+          <span><i>⚽</i><b>Gols</b></span>
+        </div>
+
+        <div class="railEmptyTimeline">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+
+        <div class="railEmptyReadBox">
+          <span>📋</span>
+          <p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function repair(force=false){
+    if (locked) return;
+
+    const rail = getRail();
+    if (!rail || hasRealSelectedGame(rail)) return;
+
+    if (!force && !isIncompleteEmpty(rail)) return;
+
+    locked = true;
+    try{
+      rail.innerHTML = completeEmptyHTML();
+      rail.dataset.cpCompleteEmpty = "1";
+    } finally {
+      setTimeout(() => { locked = false; }, 0);
+    }
+  }
+
+  function schedule(delay=25, force=false){
+    clearTimeout(timer);
+    timer = setTimeout(() => repair(force), delay);
+  }
+
+  function boot(){
+    const rail = getRail();
+    if (!rail) return;
+
+    // Corrige imediatamente e novamente depois que os patches antigos terminarem.
+    schedule(0, true);
+    setTimeout(() => repair(true), 120);
+    setTimeout(() => repair(true), 450);
+    setTimeout(() => repair(true), 900);
+    setTimeout(() => repair(true), 1800);
+
+    const observer = new MutationObserver(() => {
+      if (locked) return;
+      if (isIncompleteEmpty(rail)) schedule(15, true);
+    });
+
+    observer.observe(rail, {
+      childList:true,
+      subtree:true,
+      characterData:true
+    });
+
+    document.addEventListener("click", function(ev){
+      // Depois de filtros/abas que redesenham a lateral, restaura somente se continuar sem jogo.
+      if (ev.target.closest(".marketTab,.marketChipPremium,.filterPills,.lineChip,.marketLineBtn")){
+        setTimeout(() => repair(false), 80);
+        setTimeout(() => repair(false), 220);
+      }
+    }, true);
+
+    window.addEventListener("pageshow", () => setTimeout(() => repair(false), 60));
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot, {once:true});
+  }else{
+    boot();
+  }
 })();
