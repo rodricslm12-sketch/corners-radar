@@ -58,9 +58,43 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function dateLong(x){const [Y,M,D]=String(x).split("-").map(Number);if(!Y)return "Hoje";return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","")}
     function dayChip(offset){const x=ymd(offset),[Y,M,D]=x.split("-").map(Number);const w=new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","").toUpperCase();return `${w} ${D}`}
   
-    function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
+    // V123 APP: a decisão do motor dedicado precisa ter prioridade.
+    // Antes o app lia raw(g).corners_ai primeiro; esse raw pode vir da base /quentes
+    // com projeção genérica/antiga (ex.: 6.5), escondendo o corners_ai correto
+    // entregue por /web_corners_ai.
+    function dec(g,m=state.market){
+      const f=MARKETS[m]?.field;
+      if(!f)return {};
+      return g?.[f] || raw(g)?.[f] || {};
+    }
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
-    function projection(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners);if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection);if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);return num(d?.projection)}
+    function projection(g,m=state.market){
+      const r=raw(g),d=dec(g,m);
+
+      if(m==="corners"){
+        // V123 APP: a projeção específica do /web_corners_ai sempre vem primeiro.
+        // Só usa campos genéricos da base quando o motor dedicado não trouxe projeção.
+        return num(
+          g?.corners_ai?.projection,
+          d?.projection,
+          r?.corners_ai?.projection,
+          g?.proj_cantos,
+          r?.proj_cantos,
+          g?.corners_projection,
+          r?.corners_projection,
+          g?.expected_corners,
+          r?.expected_corners
+        );
+      }
+
+      if(m==="goals"||m==="teamgoals")
+        return num(d?.projection,r?.expected_goals_total,r?.goals_projection);
+
+      if(m==="cards")
+        return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);
+
+      return num(d?.projection);
+    }
     function cornerRec(g){const d=dec(g,"corners"),line=clean(d?.line,"").toUpperCase(),p=projection(g,"corners"),c=confidence(g,"corners");if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};if(p!==null){if(p>=11.75)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};if(p>=10.75)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};if(p>=9.55)return{valid:true,line:"OVER 9.5",projection:p,confidence:c}}return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c}}
     function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return cornerRec(g).line;if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;if(m==="builder"){let best={c:0,p:"ANALISANDO"};for(const x of ["corners","goals","cards","handicap","btts"]){const c=confidence(g,x),p=clean(dec(g,x)?.line,"");if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase()}
     function resolved(g,m=state.market){if(m==="corners")return cornerRec(g).valid;if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;const d=dec(g,m),p=pick(g,m);return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p))}
@@ -90,7 +124,48 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
+    function merge(){
+      const map=new Map();
+
+      const add=(g,m=null)=>{
+        if(!g||typeof g!=="object")return;
+
+        const k=id(g);
+        const old=map.get(k)||{};
+        const next={...old,...g};
+
+        if(m&&MARKETS[m]?.field){
+          const f=MARKETS[m].field;
+
+          // V123 APP: para um motor específico (principalmente /web_corners_ai),
+          // a decisão recebida por ele é a autoridade daquele mercado.
+          const d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;
+
+          if(d){
+            next[f]={...(old?.[f]||{}),...d};
+
+            // Mantém raw sincronizado para módulos antigos do app que ainda consultam raw().
+            next.raw={
+              ...(old?.raw||{}),
+              ...(g?.raw||{}),
+              [f]:{...(old?.raw?.[f]||{}),...d}
+            };
+          }
+        }
+
+        map.set(k,next);
+      };
+
+      state.base.forEach(g=>add(g));
+
+      // O motor dedicado de cantos entra depois da base e vence qualquer valor
+      // genérico de proj_cantos/corners_ai vindo de /quentes ou /mercados.
+      Object.entries(state.engines).forEach(([m,list])=>
+        (list||[]).forEach(g=>add(g,m))
+      );
+
+      state.games=[...map.values()];
+    }
     function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
     function filtered(m=state.market,line=state.line){
       let a=source(m).slice();
@@ -2815,96 +2890,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               });
             }
           
-            /* =========================================================
-               SITE/DESKTOP — TRAVA DO "OURO" DE ESCANTEIOS
-               O primeiro Top 1 válido da IA do dia vira a escolha oficial.
-               Renderizações posteriores, refresh de status e motores auxiliares
-               podem atualizar placar/minuto/dados, mas NÃO trocam o jogo.
-               Exclusivo do desktop e do mercado Escanteios + IA.
-               ========================================================= */
-            const CP_DESKTOP_GOLD_LOCK_PREFIX = "cornerProDesktopGold:v6:";
-
-            function cpDesktopGoldDate(){
-              const v = $("#date")?.value;
-              return /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? String(v) : todayManaus();
-            }
-
-            function cpDesktopGoldStorageKey(){
-              return CP_DESKTOP_GOLD_LOCK_PREFIX + cpDesktopGoldDate();
-            }
-
-            function cpReadDesktopGold(){
-              try{
-                const x = JSON.parse(localStorage.getItem(cpDesktopGoldStorageKey()) || "null");
-                return x && x.game ? x : null;
-              }catch(_){
-                return null;
-              }
-            }
-
-            function cpWriteDesktopGold(game){
-              if(!game) return;
-              try{
-                localStorage.setItem(cpDesktopGoldStorageKey(), JSON.stringify({
-                  date: cpDesktopGoldDate(),
-                  lockedAt: new Date().toISOString(),
-                  game
-                }));
-              }catch(e){
-                console.warn("[CornerPro Gold Lock] não foi possível salvar", e);
-              }
-            }
-
-            function cpGoldGameFromCurrentData(savedGame){
-              if(!savedGame) return null;
-              const savedKey = String(key(savedGame));
-              const pools = [
-                ...(Array.isArray(state.games) ? state.games : []),
-                ...(Array.isArray(state.engines?.corners) ? state.engines.corners : [])
-              ];
-              const current = pools.find(x => String(key(x)) === savedKey);
-              if(!current) return savedGame;
-
-              // Preserva a decisão inicial do Ouro, mas deixa status/placar atualizarem.
-              const savedRaw = raw(savedGame);
-              const currentRaw = raw(current);
-              return {
-                ...savedGame,
-                ...current,
-                corners_ai: savedGame?.corners_ai ?? savedRaw?.corners_ai ?? current?.corners_ai,
-                raw: {
-                  ...savedRaw,
-                  ...currentRaw,
-                  corners_ai: savedRaw?.corners_ai ?? savedGame?.corners_ai ?? currentRaw?.corners_ai
-                }
-              };
-            }
-
-            function cpResolveDesktopGold(candidate){
-              if(state.market !== "corners" || state.line !== "IA") return candidate;
-
-              const locked = cpReadDesktopGold();
-              if(locked?.game){
-                return cpGoldGameFromCurrentData(locked.game);
-              }
-
-              if(!candidate) return candidate;
-
-              // Só congela quando a IA realmente aprovou o jogo de escanteios.
-              let valid = false;
-              try{
-                valid = Boolean(desktopCornersAiRecommendation(candidate)?.valid);
-              }catch(_){
-                valid = false;
-              }
-
-              if(valid){
-                cpWriteDesktopGold(candidate);
-              }
-
-              return candidate;
-            }
-
             function setHero(g){
               if(!g){
                 const recommended=list()[0];
@@ -2914,11 +2899,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   g=recommended || source()[0] || state.games[0];
                 }
               }
-
-              // Aqui está a correção do bug: qualquer segundo/terceiro render
-              // recebe novamente o Ouro original do dia.
-              g = cpResolveDesktopGold(g);
-
               if(!g) return;
               state.hero=g;
           
