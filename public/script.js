@@ -29130,3 +29130,94 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
 })();
+
+/* =========================================================
+   CORNER PRO — MATCH CENTER EMPTY GUARD / SOMENTE DESKTOP
+   Evita que renderizações antigas reduzam o painel vazio a um único card.
+   Não altera mobile/app.
+   ========================================================= */
+(function installDesktopMatchCenterEmptyGuardV1(){
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__cpDesktopMatchCenterEmptyGuardV1) return;
+  window.__cpDesktopMatchCenterEmptyGuardV1 = true;
+
+  let fixing = false;
+  let timer = 0;
+
+  function hasSelectedMatch(rail){
+    if (window.__selectedMatchCenterGame) return true;
+    return !!rail.querySelector(
+      ".mcRailScoreCard, .mcProScoreCard, " +
+      "[data-open-match-center-table]:not(.railFullBtnDisabled)"
+    );
+  }
+
+  function needsFullEmptyState(rail){
+    if (!rail || hasSelectedMatch(rail)) return false;
+
+    const isEmptyState =
+      !!rail.querySelector(".mcRailEmptyBox") ||
+      /AGUARDANDO PARTIDA/i.test(rail.textContent || "");
+
+    if (!isEmptyState) return false;
+
+    const hasStats = /ESTATÍSTICAS DO FILTRO/i.test(rail.textContent || "");
+    const hasEvents = /EVENTOS\s*\/\s*LEITURA/i.test(rail.textContent || "");
+    return !hasStats || !hasEvents;
+  }
+
+  function repair(){
+    if (fixing) return;
+    const rail =
+      document.getElementById("desktopMatchRail") ||
+      document.querySelector(".dashboardRightRail");
+
+    if (!needsFullEmptyState(rail)) return;
+
+    fixing = true;
+    try{
+      if (typeof window.renderEmptyMatchCenter === "function"){
+        window.renderEmptyMatchCenter();
+      }
+    } finally {
+      setTimeout(() => { fixing = false; }, 0);
+    }
+  }
+
+  function scheduleRepair(delay=20){
+    clearTimeout(timer);
+    timer = setTimeout(repair, delay);
+  }
+
+  function boot(){
+    const rail =
+      document.getElementById("desktopMatchRail") ||
+      document.querySelector(".dashboardRightRail");
+
+    if (!rail) return;
+
+    scheduleRepair(0);
+    setTimeout(repair, 120);
+    setTimeout(repair, 500);
+    setTimeout(repair, 1400);
+
+    const observer = new MutationObserver(() => {
+      if (!fixing) scheduleRepair(25);
+    });
+
+    observer.observe(rail, {
+      childList:true,
+      subtree:true,
+      characterData:true
+    });
+
+    window.addEventListener("pageshow", () => scheduleRepair(50));
+    window.addEventListener("focus", () => scheduleRepair(80));
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot, {once:true});
+  }else{
+    boot();
+  }
+})();

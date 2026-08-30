@@ -22184,3 +22184,160 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     .v127MoreCard{max-height:86dvh!important}
   }
 }
+
+
+/* =========================================================
+   CORNER PRO — LOGIN COM ÍCONE DE USUÁRIO / SOMENTE DESKTOP
+   Não altera mobile/app.
+   ========================================================= */
+@media (min-width:981px){
+  #authAreaDesktop #btnGoogleLogin.authLoginButton{
+    position:relative!important;
+    width:42px!important;
+    min-width:42px!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:0!important;
+    margin:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid #213129!important;
+    border-radius:13px!important;
+    background:
+      radial-gradient(circle at 50% 28%,rgba(99,241,39,.12),transparent 55%),
+      linear-gradient(180deg,#0b1216,#070c10)!important;
+    color:#e9f0ed!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.035),
+      0 8px 24px rgba(0,0,0,.22)!important;
+    transition:.16s ease!important;
+    overflow:visible!important;
+  }
+
+  #authAreaDesktop #btnGoogleLogin.authLoginButton:hover{
+    color:#6dff32!important;
+    border-color:rgba(99,241,39,.58)!important;
+    transform:translateY(-1px)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.045),
+      0 0 0 3px rgba(99,241,39,.045),
+      0 10px 26px rgba(0,0,0,.3),
+      0 0 20px rgba(99,241,39,.09)!important;
+  }
+
+  #authAreaDesktop #btnGoogleLogin.authLoginButton:active{
+    transform:translateY(0)!important;
+  }
+
+  #authAreaDesktop #btnGoogleLogin .cpDesktopUserIcon{
+    width:21px!important;
+    height:21px!important;
+    display:block!important;
+    stroke:currentColor!important;
+    stroke-width:1.8!important;
+    fill:none!important;
+  }
+
+  #authAreaDesktop #btnGoogleLogin .cpDesktopAuthText{
+    position:absolute!important;
+    width:1px!important;
+    height:1px!important;
+    padding:0!important;
+    margin:-1px!important;
+    overflow:hidden!important;
+    clip:rect(0,0,0,0)!important;
+    white-space:nowrap!important;
+    border:0!important;
+  }
+
+  #authAreaDesktop #btnGoogleLogin::after{
+    content:"Entrar / Criar conta";
+    position:absolute;
+    top:calc(100% + 9px);
+    right:0;
+    width:max-content;
+    max-width:180px;
+    padding:7px 9px;
+    border:1px solid #22342c;
+    border-radius:8px;
+    background:#0a1115;
+    color:#dce6e1;
+    font-size:8px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.2px;
+    text-transform:uppercase;
+    box-shadow:0 10px 28px rgba(0,0,0,.36);
+    opacity:0;
+    visibility:hidden;
+    transform:translateY(-3px);
+    pointer-events:none;
+    transition:.14s ease;
+    z-index:999999;
+  }
+
+  #authAreaDesktop #btnGoogleLogin:hover::after,
+  #authAreaDesktop #btnGoogleLogin:focus-visible::after{
+    opacity:1;
+    visibility:visible;
+    transform:translateY(0);
+  }
+
+  #authAreaDesktop #btnGoogleLogin:focus-visible{
+    outline:2px solid rgba(99,241,39,.6)!important;
+    outline-offset:3px!important;
+  }
+}
+
+
+/* =========================================================
+   MATCH CENTER VAZIO COMPLETO — SOMENTE DESKTOP
+   Mantém o painel no formato: radar + estatísticas + eventos.
+   ========================================================= */
+@media (min-width:981px){
+  #desktopMatchRail .mcRailEmptyBox{
+    min-height:214px!important;
+    padding:12px 12px 13px!important;
+  }
+
+  #desktopMatchRail .mcRailEmptyRadar{
+    width:76px!important;
+    height:76px!important;
+    margin:10px auto 6px!important;
+  }
+
+  #desktopMatchRail .mcRailEmptyRadar b{
+    font-size:17px!important;
+  }
+
+  #desktopMatchRail .mcRailEmptyBox h3{
+    margin:3px 0 5px!important;
+    font-size:11px!important;
+    line-height:1.1!important;
+  }
+
+  #desktopMatchRail .mcRailEmptyBox p{
+    max-width:270px!important;
+    margin:0 auto!important;
+    font-size:9px!important;
+    line-height:1.35!important;
+  }
+
+  #desktopMatchRail .railEmptyStatBox{
+    min-height:72px!important;
+    padding:8px!important;
+  }
+
+  #desktopMatchRail .railEmptyStatBox b{
+    margin:4px 0 2px!important;
+    font-size:15px!important;
+  }
+
+  #desktopMatchRail .railEmptyEventIcons > span{
+    min-height:47px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+}
