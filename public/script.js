@@ -6759,9 +6759,13 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   : "IA";
           
                 const originalSourceGames =
-                  (Array.isArray(state.handicap) && state.handicap.length)
-                    ? state.handicap
-                    : (Array.isArray(state.pregame) ? state.pregame : []);
+                  requestedLine === "IA"
+                    ? (
+                        (Array.isArray(state.handicap) && state.handicap.length)
+                          ? state.handicap
+                          : []
+                      )
+                    : mobileAllGamesForMarket("handicap");
           
                 const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
                 const sourceGames = upcomingHandicapGames.length
@@ -6798,15 +6802,27 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 // V41 — decisão válida do servidor não é descartada apenas
                 // porque outros jogos receberam a mesma linha/confiança.
           
-                preparedGames = preparedGames
-                  .sort((a, b) => {
-                    if (a.recommendation.skip !== b.recommendation.skip) {
-                      return a.recommendation.skip ? 1 : -1;
-                    }
-            
-                    return b.recommendation.score - a.recommendation.score;
-                  })
-                  .slice(0, 7);
+                if (
+                  safeRequestedLine !== "IA" &&
+                  safeRequestedLine !== "TODOS"
+                ) {
+                  preparedGames = preparedGames
+                    .filter(entry => entry.manualAnalysis?.valid)
+                    .sort((a, b) =>
+                      Number(b.manualAnalysis?.probability || 0) -
+                      Number(a.manualAnalysis?.probability || 0)
+                    )
+                    .slice(0, 7);
+                } else {
+                  preparedGames = preparedGames
+                    .sort((a, b) => {
+                      if (a.recommendation.skip !== b.recommendation.skip) {
+                        return a.recommendation.skip ? 1 : -1;
+                      }
+                      return b.recommendation.score - a.recommendation.score;
+                    })
+                    .slice(0, 7);
+                }
             
                 const settlementEntries = [];
                 const liveEntries = [];
@@ -8597,7 +8613,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       value => Math.abs(value - target) < 0.001
                     );
     
-                    const fallbackSide = target > 0
+                    
+                    // V143: não inventa linhas. Se a linha não veio nas cotações/
+                    // available_lines, este jogo não pertence a esta aba.
+                    if (!lineExists) {
+                      return {
+                        valid: false,
+                        probability: 0,
+                        pick: "—",
+                        source: "line-unavailable",
+                        pickedSide: "all"
+                      };
+                    }
+
+const fallbackSide = target > 0
                       ? (
                           engineSide === "home"
                             ? "away"
@@ -8622,7 +8651,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       team: fallbackSide === "home" ? game.home : game.away,
                       line: target,
                       odd: null,
-                      estimated: !lineExists
+                      estimated: false
                     };
                   }
     
@@ -8709,6 +8738,75 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 ).toFixed(2);
               }
             
+              /* =========================================================
+                 V143 — LINHAS REAIS POR MERCADO
+                 IA = decisões oficiais.
+                 TODOS = base completa.
+                 Linha manual = somente jogos que sustentam a linha.
+                 ========================================================= */
+              function mobileMarketGameKey(game) {
+                const raw = game?.raw || game || {};
+                return String(
+                  game?.id ??
+                  raw?.match_id ??
+                  raw?.event_id ??
+                  raw?.event_key ??
+                  raw?.fixture_id ??
+                  `${game?.home || raw?.home || raw?.casa || ""}|${game?.away || raw?.away || raw?.fora || ""}|${game?.time || raw?.match_time || raw?.hora || ""}`
+                );
+              }
+
+              function mobileAllGamesForMarket(type) {
+                const map = new Map();
+                const add = (game, preferNew = false) => {
+                  if (!game || typeof game !== "object") return;
+                  const key = mobileMarketGameKey(game);
+                  if (!key) return;
+                  const old = map.get(key);
+                  if (!old) { map.set(key, game); return; }
+                  const oldRaw = old?.raw || old || {};
+                  const newRaw = game?.raw || game || {};
+                  map.set(
+                    key,
+                    preferNew
+                      ? { ...old, ...game, raw: { ...oldRaw, ...newRaw } }
+                      : { ...game, ...old, raw: { ...newRaw, ...oldRaw } }
+                  );
+                };
+                (Array.isArray(state.all) ? state.all : []).forEach(g => add(g, false));
+                (Array.isArray(state.pregame) ? state.pregame : []).forEach(g => add(g, false));
+                (Array.isArray(state[type]) ? state[type] : []).forEach(g => add(g, true));
+                return [...map.values()];
+              }
+
+              function mobileManualLineQualified(game, marketType, selectedLine, analysis) {
+                const a = analysis || mobileExactDesktopLineAnalysis(game, marketType, selectedLine);
+                if (!a || !a.valid) return false;
+                const target = Number(
+                  String(selectedLine || "")
+                    .toUpperCase()
+                    .replace("OVER", "")
+                    .replace("+", "")
+                    .trim()
+                    .replace(",", ".")
+                );
+                const projection = Number(a.projection);
+                const probability = Number(a.probability || 0);
+                if (!Number.isFinite(target) || !Number.isFinite(projection)) return false;
+
+                const margin =
+                  marketType === "corners" ? 0.20 :
+                  marketType === "goals" ? 0.10 :
+                  0.15;
+
+                const minProb =
+                  marketType === "corners" ? 50 :
+                  marketType === "goals" ? 50 :
+                  48;
+
+                return projection >= target + margin && probability >= minProb;
+              }
+
               function renderDetailedMarket(layer, marketType, selectedLine = "IA") {
                 const body = $(".cpMobileMarketsBody", layer);
                 if (!body) return;
@@ -8716,7 +8814,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const marketName = analysisMarketName(marketType);
                 const icon = analysisMarketIcon(marketType);
                 const requestedLine = clean(selectedLine, "IA");
-                const sourceGames = state[marketType] || [];
+                const sourceGames = requestedLine === "IA"
+                  ? (Array.isArray(state[marketType]) ? state[marketType] : [])
+                  : mobileAllGamesForMarket(marketType);
             
                 let prepared = sourceGames
                   .map((game, originalIndex) => {
@@ -8735,8 +8835,19 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       recommendation,
                       manualAnalysis
                     };
-                  })
-                  .sort((a, b) => {
+                  });
+
+                if (
+                  requestedLine !== "IA" &&
+                  requestedLine !== "TODOS" &&
+                  ["corners", "goals", "cards"].includes(marketType)
+                ) {
+                  prepared = prepared.filter(entry =>
+                    mobileManualLineQualified(entry.game, marketType, requestedLine, entry.manualAnalysis)
+                  );
+                }
+
+                prepared = prepared.sort((a, b) => {
                     if (
                       requestedLine !== "IA" &&
                       requestedLine !== "TODOS" &&
@@ -8765,7 +8876,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     return b.recommendation.confidence - a.recommendation.confidence;
                   });
     
-                if (marketType === "goals") {
+                if (marketType === "goals" && requestedLine === "IA") {
                   prepared = preserveGoalsPreparedList(prepared);
                 } else {
                   prepared = prepared.slice(0, 7);
@@ -8775,9 +8886,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const liveEntries = [];
             
                 const rows = prepared.map(({ game, originalIndex, recommendation, manualAnalysis }, rowIndex) => {
-                  const line = requestedLine === "IA"
-                    ? recommendation.line
-                    : requestedLine;
+                  const line =
+                    requestedLine === "IA"
+                      ? recommendation.line
+                      : requestedLine === "TODOS"
+                        ? (
+                            recommendation.line &&
+                            recommendation.line !== "DADOS EM ATUALIZAÇÃO"
+                              ? recommendation.line
+                              : "SEM DADOS"
+                          )
+                        : requestedLine;
             
                   const isUpdating =
                     requestedLine === "IA" &&
@@ -29000,6 +29119,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         a.state.activeMarket=type;
         // Abre estrutura/título original; em seguida repinta com a lista oficial filtrada.
         try { a.openMarket(type); } catch(_) {}
+        a.state.__selectedParityLine = "IA";
         setTimeout(()=>renderParity(type,"IA"),0);
       }
     
@@ -29014,6 +29134,24 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if (tab && ["corners","goals","cards","handicap","btts"].includes(tab.dataset.cpMarket)) {
           event.preventDefault(); event.stopImmediatePropagation(); openParity(tab.dataset.cpMarket); return;
         }
+        const handicapBtn = event.target.closest('#cpMobileMarketsLayer [data-handicap-line]');
+        if (handicapBtn) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          const selected = handicapBtn.dataset.handicapLine || "IA";
+          if (api()?.state) api().state.__selectedParityLine = selected;
+          renderParity("handicap", selected);
+          return;
+        }
+
+        const bttsBtn = event.target.closest('#cpMobileMarketsLayer [data-btts-tab]');
+        if (bttsBtn) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          const selected = bttsBtn.dataset.bttsTab || "IA";
+          if (api()?.state) api().state.__selectedParityLine = selected;
+          renderParity("btts", selected);
+          return;
+        }
+
         const lineBtn = event.target.closest('#cpMobileMarketsLayer [data-analysis-line]');
         if (lineBtn) {
           const type=lineBtn.dataset.analysisMarket || api()?.state?.activeMarket;
