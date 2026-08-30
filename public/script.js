@@ -25823,43 +25823,98 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   function renderLoggedOut(errorMessage = ""){
                     currentProfile = null;
                     syncLegacyPremiumState(null);
-            
-                    const host = authHost();
-                    host.innerHTML = `
-                      <button type="button" class="firebaseGoogleBtn" id="firebaseGoogleLoginBtn">
-                        ENTRAR COM GOOGLE
-                      </button>
-                      ${errorMessage ? `<span class="firebaseAuthError">${escapeAuthHtml(errorMessage)}</span>` : ""}
-                    `;
-            
-                    host.querySelector("#firebaseGoogleLoginBtn")?.addEventListener("click", loginWithGoogle);
+
+                    const loginButton = document.getElementById("btnGoogleLogin");
+                    const profileBox = document.getElementById("authUserProfile");
+                    const messageBox = document.getElementById("authMessage");
+
+                    if (profileBox) profileBox.hidden = true;
+
+                    if (loginButton){
+                      loginButton.hidden = false;
+                      loginButton.disabled = !firebaseApi;
+                      loginButton.removeAttribute("aria-busy");
+                      loginButton.setAttribute("aria-label", "Entrar ou criar conta com Google");
+                      loginButton.onclick = loginWithGoogle;
+                    }
+
+                    if (messageBox){
+                      if (errorMessage){
+                        messageBox.textContent = errorMessage;
+                        messageBox.hidden = false;
+                      }else{
+                        messageBox.textContent = "";
+                        messageBox.hidden = true;
+                      }
+                    }
+
+                    document.getElementById("firebaseAuthBar")?.remove();
                   }
-            
+
                   function renderLoggedIn(user, profile){
                     currentProfile = profile;
                     syncLegacyPremiumState(profile);
-            
+
                     const premium = profile?.premium === true;
-                    const displayName = user?.displayName || profile?.nome || user?.email || "Usuário";
-                    const photoURL = user?.photoURL || profile?.foto || "";
-            
-                    const host = authHost();
-                    host.innerHTML = `
-                      <div class="firebaseUserBox">
-                        ${photoURL
-                          ? `<img class="firebaseUserPhoto" src="${escapeAuthHtml(photoURL)}" alt="Foto do usuário">`
-                          : `<span class="firebaseUserPhoto" aria-hidden="true"></span>`}
-                        <span class="firebaseUserText">
-                          <strong>${escapeAuthHtml(displayName)}</strong>
-                          <small class="${premium ? "is-premium" : ""}">${premium ? "PREMIUM ATIVO" : "PLANO GRATUITO"}</small>
-                        </span>
-                      </div>
-                      <button type="button" class="firebaseLogoutBtn" id="firebaseLogoutBtn">SAIR</button>
-                    `;
-            
-                    host.querySelector("#firebaseLogoutBtn")?.addEventListener("click", logoutFirebase);
+                    const displayName =
+                      user?.displayName ||
+                      profile?.user?.nome ||
+                      profile?.nome ||
+                      user?.email ||
+                      "Usuário";
+
+                    const photoURL =
+                      user?.photoURL ||
+                      profile?.user?.foto ||
+                      profile?.foto ||
+                      "";
+
+                    const loginButton = document.getElementById("btnGoogleLogin");
+                    const profileBox = document.getElementById("authUserProfile");
+                    const photo = document.getElementById("authUserPhoto");
+                    const name = document.getElementById("authUserName");
+                    const plan = document.getElementById("authUserPlan");
+                    const logoutButton = document.getElementById("btnGoogleLogout");
+                    const messageBox = document.getElementById("authMessage");
+
+                    if (loginButton){
+                      loginButton.hidden = true;
+                      loginButton.disabled = false;
+                      loginButton.removeAttribute("aria-busy");
+                    }
+
+                    if (profileBox) profileBox.hidden = false;
+
+                    if (photo){
+                      if (photoURL){
+                        photo.src = photoURL;
+                        photo.hidden = false;
+                      }else{
+                        photo.removeAttribute("src");
+                        photo.hidden = true;
+                      }
+                    }
+
+                    if (name) name.textContent = displayName;
+
+                    if (plan){
+                      plan.textContent = premium ? "PREMIUM ATIVO" : "PLANO GRATUITO";
+                      plan.classList.toggle("is-premium", premium);
+                    }
+
+                    if (logoutButton){
+                      logoutButton.disabled = false;
+                      logoutButton.onclick = logoutFirebase;
+                    }
+
+                    if (messageBox){
+                      messageBox.textContent = "";
+                      messageBox.hidden = true;
+                    }
+
+                    document.getElementById("firebaseAuthBar")?.remove();
                   }
-            
+
                   async function serverProfile(user, forceTokenRefresh = false){
                     if (!user) return null;
             
@@ -25898,19 +25953,31 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     };
                   }
             
-                  async function loginWithGoogle(){
+                  async function loginWithGoogle(event){
+                    event?.preventDefault?.();
+                    event?.stopPropagation?.();
+
                     if (!firebaseApi || authBusy) return;
                     authBusy = true;
-            
-                    const button = document.getElementById("firebaseGoogleLoginBtn");
+
+                    const button = document.getElementById("btnGoogleLogin");
                     if (button){
                       button.disabled = true;
-                      button.textContent = "ENTRANDO...";
+                      button.setAttribute("aria-busy", "true");
                     }
-            
+
                     try {
                       const result = await firebaseApi.entrarComGoogle();
-                      const user = result?.usuario || firebaseApi.firebaseAuth?.currentUser;
+                      const user =
+                        result?.usuario ||
+                        result?.user ||
+                        firebaseApi.firebaseAuth?.currentUser ||
+                        null;
+
+                      if (!user){
+                        throw new Error("O Google não retornou um usuário autenticado.");
+                      }
+
                       const profile = await serverProfile(user, true);
                       renderLoggedIn(user, profile);
                     } catch (error){
@@ -25918,27 +25985,41 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       renderLoggedOut(error?.message || "Não foi possível entrar com o Google.");
                     } finally {
                       authBusy = false;
+
+                      if (button && !window.firebaseCurrentUser){
+                        button.disabled = false;
+                        button.removeAttribute("aria-busy");
+                      }
                     }
                   }
-            
-                  async function logoutFirebase(){
+
+                  async function logoutFirebase(event){
+                    event?.preventDefault?.();
+
                     if (!firebaseApi || authBusy) return;
                     authBusy = true;
-            
-                    const button = document.getElementById("firebaseLogoutBtn");
+
+                    const button = document.getElementById("btnGoogleLogout");
                     if (button) button.disabled = true;
-            
+
                     try {
-                      await firebaseApi.sairDaConta();
+                      if (typeof firebaseApi.sairDaConta === "function"){
+                        await firebaseApi.sairDaConta();
+                      }else if (typeof firebaseApi.sair === "function"){
+                        await firebaseApi.sair();
+                      }else if (firebaseApi.firebaseAuth?.signOut){
+                        await firebaseApi.firebaseAuth.signOut();
+                      }
                     } catch (error){
                       console.error("Firebase logout falhou:", error);
                     } finally {
                       safeStorageRemove(PREMIUM_KEY);
                       authBusy = false;
+                      if (button) button.disabled = false;
                       renderLoggedOut();
                     }
                   }
-            
+
                   async function authenticatedFetch(url, options = {}){
                     if (!firebaseApi) throw new Error("Firebase ainda não foi inicializado.");
                     return firebaseApi.fetchAutenticado(url, options);
@@ -25947,23 +26028,37 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   async function initializeFirebaseBridge(){
                     installAuthStyles();
                     removeDemoLogin();
+
+                    // Mantém o ícone real do cabeçalho e só o habilita
+                    // quando firebase-client.js estiver pronto.
                     renderLoggedOut();
-            
+
                     try {
                       firebaseApi = await import(FIREBASE_MODULE);
-            
+
                       window.firebaseAuthenticatedFetch = authenticatedFetch;
                       window.firebaseLoginWithGoogle = loginWithGoogle;
                       window.firebaseLogout = logoutFirebase;
-            
+
+                      // Agora o módulo existe: habilita o botão real.
+                      renderLoggedOut();
+
+                      if (typeof firebaseApi.observarAutenticacao !== "function"){
+                        throw new Error("observarAutenticacao não existe em firebase-client.js");
+                      }
+
                       firebaseApi.observarAutenticacao(async authState => {
-                        const user = authState?.usuario || null;
-            
+                        const user =
+                          authState?.usuario ||
+                          authState?.user ||
+                          firebaseApi.firebaseAuth?.currentUser ||
+                          null;
+
                         if (!user){
                           renderLoggedOut();
                           return;
                         }
-            
+
                         try {
                           const profile = await serverProfile(user);
                           renderLoggedIn(user, profile);
@@ -25974,10 +26069,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       });
                     } catch (error){
                       console.error("Não foi possível carregar firebase-client.js:", error);
-                      renderLoggedOut("Configure o arquivo firebase-client.js para ativar o login.");
+                      renderLoggedOut("Não foi possível carregar o login do Firebase.");
                     }
                   }
-            
+
                   if (document.readyState === "loading"){
                     document.addEventListener("DOMContentLoaded", initializeFirebaseBridge, { once:true });
                   } else {
@@ -29261,68 +29356,4 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
-})();
-
-/* =========================================================
-   CORNER PRO — ÍCONE DE USUÁRIO DESKTOP -> FIREBASE ORIGINAL
-   Somente desktop. Não altera mobile/app.
-   ========================================================= */
-(function cpDesktopUserIconUsesOriginalFirebase(){
-  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__cpDesktopUserIconUsesOriginalFirebase) return;
-  window.__cpDesktopUserIconUsesOriginalFirebase = true;
-
-  function bind(){
-    const btn = document.getElementById("btnGoogleLogin");
-    if (!btn || btn.dataset.cpFirebaseBound === "1") return;
-
-    btn.dataset.cpFirebaseBound = "1";
-
-    btn.addEventListener("click", async function(event){
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      if (typeof window.firebaseLoginWithGoogle !== "function"){
-        console.error("[CornerPro] Firebase ainda não inicializou.");
-        return;
-      }
-
-      btn.disabled = true;
-      btn.setAttribute("aria-busy","true");
-
-      try{
-        await window.firebaseLoginWithGoogle();
-      }catch(error){
-        console.error("[CornerPro desktop Firebase]", error);
-      }finally{
-        btn.disabled = false;
-        btn.removeAttribute("aria-busy");
-      }
-    }, true);
-  }
-
-  function start(){
-    bind();
-
-    const observer = new MutationObserver(bind);
-    observer.observe(document.documentElement, {
-      childList:true,
-      subtree:true
-    });
-
-    let tries = 0;
-    const timer = setInterval(() => {
-      bind();
-      tries++;
-      if (typeof window.firebaseLoginWithGoogle === "function" || tries >= 120){
-        clearInterval(timer);
-      }
-    }, 250);
-  }
-
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", start, {once:true});
-  }else{
-    start();
-  }
 })();
