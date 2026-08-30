@@ -459,6 +459,39 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
     function renderHero(){
       const el=$("#cpV110Hero");if(!el)return;
+
+      // V129 APP — durante o carregamento NUNCA mostra jogo parcial/fallback.
+      // Mantém uma tela visual de análise até a IA terminar e só então exibe
+      // o jogo principal definitivo.
+      if(state.loading){
+        state.heroGame=null;
+        el.innerHTML=`
+          <div class="v129LoadingVisual" aria-live="polite" aria-busy="true">
+            <div class="v129LoadingStadium" aria-hidden="true">
+              <span class="v129Light v129LightL"></span>
+              <span class="v129Light v129LightR"></span>
+              <span class="v129PitchLine"></span>
+              <div class="v129Radar">
+                <span class="v129RadarRing r1"></span>
+                <span class="v129RadarRing r2"></span>
+                <span class="v129RadarRing r3"></span>
+                <span class="v129RadarSweep"></span>
+                <b>⚽</b>
+              </div>
+            </div>
+
+            <div class="v129LoadingCopy">
+              <strong>IA ANALISANDO OS MELHORES JOGOS</strong>
+              <small>Projeções • forma recente • confiança • escanteios</small>
+              <div class="v129LoadingSteps" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <em>Aguarde alguns segundos...</em>
+            </div>
+          </div>`;
+        return;
+      }
+
       const approved=filtered("corners","IA");
       const fallback=state.games
         .filter(g=>{const s=status(g); return !s.finished;})
@@ -466,7 +499,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           (confidence(b,"corners")-confidence(a,"corners")) ||
           ((projection(b,"corners")||0)-(projection(a,"corners")||0))
         );
-      const g=approved[0]||fallback[0]||null;state.heroGame=g;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
+
+      const g=approved[0]||fallback[0]||null;
+      state.heroGame=g;
+
+      if(!g){
+        el.innerHTML=`<div class="v110HeroLoading"><b>Nenhuma oportunidade aprovada</b><small>Veja os mercados abaixo.</small></div>`;
+        return;
+      }
+
+      const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
       const rec=rawRec.valid
         ? rawRec
         : {...rawRec,line:pr!==null?(pr>=10.75?"OVER 10.5":pr>=9.55?"OVER 9.5":"EM ANÁLISE"):"EM ANÁLISE"};
