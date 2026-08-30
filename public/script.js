@@ -29221,3 +29221,107 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     boot();
   }
 })();
+
+
+/* =========================================================
+   CORNER PRO — LOGIN FIREBASE NO ÍCONE / SOMENTE DESKTOP
+   Reativa o mesmo login Google via firebase-client.js.
+   Não altera mobile/app.
+   ========================================================= */
+(function installDesktopFirebaseLoginIcon(){
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__cpDesktopFirebaseLoginIconInstalled) return;
+  window.__cpDesktopFirebaseLoginIconInstalled = true;
+
+  let busy = false;
+  let firebaseApi = null;
+
+  async function getFirebaseApi(){
+    if (firebaseApi) return firebaseApi;
+    firebaseApi = await import("./firebase-client.js");
+    return firebaseApi;
+  }
+
+  async function authenticateOnServer(user){
+    if (!user || typeof user.getIdToken !== "function") return;
+    try{
+      const token = await user.getIdToken(true);
+      await fetch("/auth/firebase", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({token})
+      });
+    }catch(err){
+      console.warn("[CornerPro desktop auth/server]", err);
+    }
+  }
+
+  async function login(){
+    if (busy) return;
+    busy = true;
+
+    const btn = document.getElementById("btnGoogleLogin");
+    if (btn){
+      btn.disabled = true;
+      btn.setAttribute("aria-busy","true");
+    }
+
+    try{
+      const api = await getFirebaseApi();
+
+      if (!api || typeof api.entrarComGoogle !== "function"){
+        throw new Error("entrarComGoogle não está disponível em firebase-client.js");
+      }
+
+      const result = await api.entrarComGoogle();
+      const user =
+        result?.usuario ||
+        result?.user ||
+        api?.firebaseAuth?.currentUser ||
+        null;
+
+      if (user){
+        await authenticateOnServer(user);
+
+        // Recarrega para o desktop aplicar o estado autenticado original.
+        window.location.reload();
+      }
+    }catch(err){
+      console.error("[CornerPro desktop Google login]", err);
+
+      // Mantém compatibilidade com o modal antigo, caso ele ainda exista.
+      const fallback = document.getElementById("cpAuthGoogle");
+      if (fallback && fallback !== document.activeElement){
+        try{ fallback.click(); }catch(e){}
+      }
+    }finally{
+      busy = false;
+      if (btn){
+        btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+      }
+    }
+  }
+
+  function bind(){
+    const btn = document.getElementById("btnGoogleLogin");
+    if (!btn || btn.dataset.firebaseIconReady === "1") return;
+
+    btn.dataset.firebaseIconReady = "1";
+    btn.addEventListener("click", function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      login();
+    }, true);
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", bind, {once:true});
+  }else{
+    bind();
+  }
+
+  // Proteção caso o cabeçalho seja redesenhado.
+  const observer = new MutationObserver(bind);
+  observer.observe(document.documentElement, {childList:true, subtree:true});
+})();
