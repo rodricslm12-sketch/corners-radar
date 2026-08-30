@@ -26,6 +26,61 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
     const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,request:0};
+    /* =========================================================
+       APP V130 — CACHE DO PRIMEIRO CARREGAMENTO
+       Primeiro acesso da data: mostra loading.
+       Próximos refreshes: hidrata jogos imediatamente e atualiza
+       em segundo plano sem voltar para a tela de loading.
+       ========================================================= */
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v130:";
+    const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
+
+    function mobileHomeCacheKey(date=state.date||ymd()){
+      return MOBILE_HOME_CACHE_PREFIX+String(date||ymd());
+    }
+
+    function saveMobileHomeSnapshot(date=state.date||ymd()){
+      try{
+        if(!Array.isArray(state.games)||!state.games.length)return;
+        localStorage.setItem(mobileHomeCacheKey(date),JSON.stringify({
+          savedAt:Date.now(),
+          date,
+          base:Array.isArray(state.base)?state.base:[],
+          engines:state.engines||{},
+          games:state.games
+        }));
+      }catch(e){
+        console.warn("[V130 mobile cache save]",e);
+      }
+    }
+
+    function hydrateMobileHomeSnapshot(date=state.date||ymd()){
+      try{
+        const parsed=JSON.parse(localStorage.getItem(mobileHomeCacheKey(date))||"null");
+        if(!parsed||parsed.date!==date)return false;
+        if(!Number.isFinite(parsed.savedAt)||Date.now()-parsed.savedAt>MOBILE_HOME_CACHE_TTL){
+          localStorage.removeItem(mobileHomeCacheKey(date));
+          return false;
+        }
+        if(!Array.isArray(parsed.games)||!parsed.games.length)return false;
+
+        state.base=Array.isArray(parsed.base)?parsed.base:[];
+        state.engines={
+          corners:Array.isArray(parsed.engines?.corners)?parsed.engines.corners:[],
+          goals:Array.isArray(parsed.engines?.goals)?parsed.engines.goals:[],
+          cards:Array.isArray(parsed.engines?.cards)?parsed.engines.cards:[],
+          handicap:Array.isArray(parsed.engines?.handicap)?parsed.engines.handicap:[],
+          btts:Array.isArray(parsed.engines?.btts)?parsed.engines.btts:[]
+        };
+        state.games=parsed.games;
+        state.loading=false;
+        state.__hydratedFromCache=true;
+        return true;
+      }catch(e){
+        return false;
+      }
+    }
+
     function rememberMarket(){try{localStorage.setItem(LAST_MARKET_KEY,state.market)}catch{}}
     const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
@@ -105,12 +160,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     async function load(){
       const req=++state.request;
-      state.loading=true;
+      const backgroundRefresh=state.__hydratedFromCache===true;
 
-      // V128 APP: pinta imediatamente o estado de carregamento.
-      // Antes a Home podia ficar com o HTML inicial "Nenhuma oportunidade aprovada"
-      // até algum clique chamar render() manualmente.
-      if(state.view==="home") render();
+      // Sem cache: loading visual.
+      // Com cache: mantém os times na tela e atualiza silenciosamente.
+      state.loading=!backgroundRefresh;
+      if(state.view==="home" && !backgroundRefresh) render();
 
       const date=state.date||ymd();
       const stamp=Date.now();
@@ -137,7 +192,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       // V128 APP: a base já chegou; atualiza contadores e mantém o hero
       // em "Carregando" enquanto as IAs específicas terminam.
-      if(req===state.request && state.view==="home"){
+      if(req===state.request && state.view==="home" && !backgroundRefresh){
         render();
       }
 
@@ -167,7 +222,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           // V128 APP: cada motor que termina atualiza a Home automaticamente.
           // Isso elimina a dependência do clique em "Escanteios/Gols/etc." para
           // o card principal aparecer. request protege contra respostas antigas.
-          if(req===state.request && state.view==="home"){
+          if(req===state.request && state.view==="home" && !backgroundRefresh){
             render();
           }
         }catch(e){
@@ -195,7 +250,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       if(req===state.request){
         state.loading=false;
-        render(); // única renderização final do carregamento
+        state.__hydratedFromCache=false;
+        saveMobileHomeSnapshot(date);
+        render();
       }
     }
   
@@ -459,6 +516,39 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
     function renderHero(){
       const el=$("#cpV110Hero");if(!el)return;
+
+      // V129 APP — durante o carregamento NUNCA mostra jogo parcial/fallback.
+      // Mantém uma tela visual de análise até a IA terminar e só então exibe
+      // o jogo principal definitivo.
+      if(state.loading){
+        state.heroGame=null;
+        el.innerHTML=`
+          <div class="v129LoadingVisual" aria-live="polite" aria-busy="true">
+            <div class="v129LoadingStadium" aria-hidden="true">
+              <span class="v129Light v129LightL"></span>
+              <span class="v129Light v129LightR"></span>
+              <span class="v129PitchLine"></span>
+              <div class="v129Radar">
+                <span class="v129RadarRing r1"></span>
+                <span class="v129RadarRing r2"></span>
+                <span class="v129RadarRing r3"></span>
+                <span class="v129RadarSweep"></span>
+                <b>⚽</b>
+              </div>
+            </div>
+
+            <div class="v129LoadingCopy">
+              <strong>IA ANALISANDO OS MELHORES JOGOS</strong>
+              <small>Projeções • forma recente • confiança • escanteios</small>
+              <div class="v129LoadingSteps" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <em>Aguarde alguns segundos...</em>
+            </div>
+          </div>`;
+        return;
+      }
+
       const approved=filtered("corners","IA");
       const fallback=state.games
         .filter(g=>{const s=status(g); return !s.finished;})
@@ -466,7 +556,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           (confidence(b,"corners")-confidence(a,"corners")) ||
           ((projection(b,"corners")||0)-(projection(a,"corners")||0))
         );
-      const g=approved[0]||fallback[0]||null;state.heroGame=g;if(!g){el.innerHTML=`<div class="v110HeroLoading">${state.loading?'<div class="v110Spinner"></div>':""}<b>${state.loading?"Carregando melhor aposta...":"Nenhuma oportunidade aprovada"}</b><small>${state.loading?"Buscando a mesma IA de escanteios do site.":"Veja os mercados abaixo."}</small></div>`;return}const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
+
+      const g=approved[0]||fallback[0]||null;
+      state.heroGame=g;
+
+      if(!g){
+        el.innerHTML=`<div class="v110HeroLoading"><b>Nenhuma oportunidade aprovada</b><small>Veja os mercados abaixo.</small></div>`;
+        return;
+      }
+
+      const s=status(g),rawRec=cornerRec(g),pr=rawRec.projection,cf=rawRec.confidence;
       const rec=rawRec.valid
         ? rawRec
         : {...rawRec,line:pr!==null?(pr>=10.75?"OVER 10.5":pr>=9.55?"OVER 9.5":"EM ANÁLISE"):"EM ANÁLISE"};
@@ -778,7 +877,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
       const openMarket=e.target.closest("[data-v110-open-market]");if(openMarket){document.documentElement.classList.remove("cpV127MoreOpen");state.mode="all";state.market=openMarket.dataset.v110OpenMarket||state.market||"corners";rememberMarket();state.line="IA";state.view="market";render();window.scrollTo(0,0);return}
       const line=e.target.closest("[data-v110-line]");if(line){state.line=line.dataset.v110Line;render();return}
-      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.mode="all";state.view="home";state.base=[];state.games=[];state.heroGame=null;state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};load();return}
+      const day=e.target.closest("[data-v110-day]");if(day){document.querySelectorAll("[data-v110-day]").forEach(x=>x.classList.remove("active"));day.classList.add("active");state.date=ymd(Number(day.dataset.v110Day||0));state.line="IA";state.mode="all";state.view="home";state.base=[];state.games=[];state.heroGame=null;state.engines={corners:[],goals:[],cards:[],handicap:[],btts:[]};state.__hydratedFromCache=false;if(hydrateMobileHomeSnapshot(state.date))render();load();return}
       const game=e.target.closest("[data-v110-game]");if(game){const x=filtered()[Number(game.dataset.v110Game)];if(x)openGame(x);return}
       const feature=e.target.closest("[data-v110-feature]");if(feature){const x=filtered("corners","IA")[Number(feature.dataset.v110Feature)];if(x){const prev=state.market;state.market="corners";openGame(x);state.market=prev}return}
       if(e.target.closest("[data-v110-hero]")){const x=state.heroGame||filtered("corners","IA")[0]||state.games[0]||null;if(x){const prev=state.market;state.market="corners";openGame(x).finally(()=>{state.market=prev});}return}
@@ -814,7 +913,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     },true);
   
     state.date=$("#date")?.value||ymd();if($("#date"))$("#date").value=state.date;
-    render();syncAuth();initAuth();load().catch(e=>{console.error("[CP V115]",e);state.loading=false;render()});if(!baseStatusPollTimer)baseStatusPollTimer=setInterval(refreshBaseStatus,45000);
+    const hadMobileCache=hydrateMobileHomeSnapshot(state.date);
+    if(!hadMobileCache) state.loading=true;
+    render();
+    syncAuth();
+    initAuth();
+    load().catch(e=>{
+      console.error("[CP V115]",e);
+      state.loading=false;
+      render();
+    });
+    if(!baseStatusPollTimer)baseStatusPollTimer=setInterval(refreshBaseStatus,45000);
   })();
   } else {
   /* =========================================================
