@@ -25,7 +25,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
-    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:false,request:0};
+    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,request:0};
     function rememberMarket(){try{localStorage.setItem(LAST_MARKET_KEY,state.market)}catch{}}
     const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
@@ -107,8 +107,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const req=++state.request;
       state.loading=true;
 
-      // V122: uma única etapa visual no mobile.
-      // Mantém a tela atual enquanto busca a base + motores e só redesenha no final.
+      // V128 APP: pinta imediatamente o estado de carregamento.
+      // Antes a Home podia ficar com o HTML inicial "Nenhuma oportunidade aprovada"
+      // até algum clique chamar render() manualmente.
+      if(state.view==="home") render();
+
       const date=state.date||ymd();
       const stamp=Date.now();
 
@@ -132,6 +135,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       state.base=base;
       merge();
 
+      // V128 APP: a base já chegou; atualiza contadores e mantém o hero
+      // em "Carregando" enquanto as IAs específicas terminam.
+      if(req===state.request && state.view==="home"){
+        render();
+      }
+
       const jobs=[
         ["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],
         ["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],
@@ -153,8 +162,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(a.length)state.engines[market]=a;
             }
           }
-          // Sem render aqui: evita o primeiro/segundo "pulo" visual.
           merge();
+
+          // V128 APP: cada motor que termina atualiza a Home automaticamente.
+          // Isso elimina a dependência do clique em "Escanteios/Gols/etc." para
+          // o card principal aparecer. request protege contra respostas antigas.
+          if(req===state.request && state.view==="home"){
+            render();
+          }
         }catch(e){
           console.warn("[V122 engine]",kind,e);
         }
@@ -29451,4 +29466,49 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
+})();
+
+/* =========================================================
+   CORNER PRO APP V128 — SINCRONIZAÇÃO DO PRIMEIRO CARREGAMENTO
+   Somente mobile <=980px.
+   Não cria outro motor e não toca no desktop.
+   ========================================================= */
+(function cpMobileInitialPaintGuardV128(){
+  if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
+  if(window.__cpMobileInitialPaintGuardV128) return;
+  window.__cpMobileInitialPaintGuardV128=true;
+
+  function homeVisible(){
+    const home=document.getElementById("cpMobileHome");
+    return !!home && !home.hidden && getComputedStyle(home).display!=="none";
+  }
+
+  function nudge(){
+    if(!homeVisible()) return;
+
+    // A V119 expõe a UI pelos próprios eventos. Se dados já chegaram mas uma
+    // camada antiga deixou o HTML inicial vazio, uma troca interna home->home
+    // dispara somente a renderização oficial, sem novo fetch.
+    const homeBtn=document.querySelector('[data-v110-nav="home"]');
+    const hero=document.getElementById("cpV110Hero");
+    const text=(hero?.textContent||"").toUpperCase();
+
+    if(
+      homeBtn &&
+      (
+        text.includes("NENHUMA OPORTUNIDADE APROVADA") ||
+        text.includes("CARREGANDO MELHOR APOSTA")
+      )
+    ){
+      homeBtn.click();
+    }
+  }
+
+  // Atua só durante a janela inicial; não fica interferindo no uso normal.
+  window.addEventListener("load",()=>{
+    setTimeout(nudge,900);
+    setTimeout(nudge,1800);
+    setTimeout(nudge,3200);
+    setTimeout(nudge,5500);
+  },{once:true});
 })();
