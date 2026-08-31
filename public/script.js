@@ -3483,11 +3483,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 rows.innerHTML='<div class="cpd3Loading">CARREGANDO JOGOS E ANÁLISE DA IA...</div>';
               }
         
-              // Semente de cache sem desenhar tabela antes da IA.
-              if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
-                state.games=mergeLists(state.games,window.__cornerProAllGames);
-              }
-        
               const inputDate=$("#date")?.value;
               const urlDate=new URLSearchParams(window.location.search).get("date");
               const date=/^\d{4}-\d{2}-\d{2}$/.test(String(inputDate||""))
@@ -3495,8 +3490,21 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 : /^\d{4}-\d{2}-\d{2}$/.test(String(urlDate||""))
                   ? String(urlDate)
                   : todayManaus();
-        
+
               if($("#date")) $("#date").value=date;
+
+              // DESKTOP DATA FIX — reaproveita cache somente da MESMA data.
+              if(
+                window.__cornerProAllGamesDate === date &&
+                Array.isArray(window.__cornerProAllGames) &&
+                window.__cornerProAllGames.length
+              ){
+                state.games=mergeLists(state.games,window.__cornerProAllGames);
+              }
+
+              const requestDate=date;
+              const requestToken=(state.__desktopDateRequestToken||0)+1;
+              state.__desktopDateRequestToken=requestToken;
               const stamp=Date.now();
         
               // 1) Jogos-base, silencioso.
@@ -3505,6 +3513,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   `/mercados?date=${encodeURIComponent(date)}&_webv22=${stamp}`,
                   24000
                 );
+                if(
+                  state.__desktopDateRequestToken!==requestToken ||
+                  ($("#date")?.value||"")!==requestDate
+                ) return;
                 applyBase(payload,false);
               }catch(err){
                 console.warn("[CP WEB V22 /mercados]",err?.message||err);
@@ -3516,6 +3528,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=39`,
                     16000
                   );
+                  if(
+                    state.__desktopDateRequestToken!==requestToken ||
+                    ($("#date")?.value||"")!==requestDate
+                  ) return;
                   applyBase(payload,false);
                 }catch(err){
                   console.warn("[CP WEB V22 /quentes]",err?.message||err);
@@ -3528,6 +3544,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,
                   33000
                 );
+                if(
+                  state.__desktopDateRequestToken!==requestToken ||
+                  ($("#date")?.value||"")!==requestDate
+                ) return;
                 applyWebEnginePayload(cornersPayload,"corners-web",false);
               }catch(err){
                 console.warn("[CP WEB V22 corners IA]",err?.message||err);
@@ -3543,11 +3563,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 webGetJson(
                   `/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
                   24000
-                ).then(payload=>applyWebEnginePayload(payload,"fast",false)),
+                ).then(payload=>{
+                  if(
+                    state.__desktopDateRequestToken!==requestToken ||
+                    ($("#date")?.value||"")!==requestDate
+                  ) return;
+                  applyWebEnginePayload(payload,"fast",false);
+                }),
                 webGetJson(
                   `/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
                   60000
-                ).then(payload=>applyWebEnginePayload(payload,"full",false))
+                ).then(payload=>{
+                  if(
+                    state.__desktopDateRequestToken!==requestToken ||
+                    ($("#date")?.value||"")!==requestDate
+                  ) return;
+                  applyWebEnginePayload(payload,"full",false);
+                })
               ]).then(()=>{
                 console.info("[Corner Pro WEB V22] motores secundários prontos");
               });
@@ -3562,8 +3594,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               const input=$("#date");
               if(input) input.value=ymd;
         
-              // Limpa somente o estado desktop da data anterior.
+              // Limpa somente o estado/cache DESKTOP da data anterior.
+              // Não toca no app/mobile nem nas imagens/escudos dos times.
               state.games=[];
+              window.__cornerProAllGames=[];
+              window.__cornerProAllGamesDate="";
+              state.__desktopDateRequestToken=(state.__desktopDateRequestToken||0)+1;
               state.engines={
                 corners:[],
                 goals:[],
@@ -3726,11 +3762,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               load();
               const refreshLiveStatus=async()=>{
                 try{
-                  const date=todayManaus();
+                  const selected=$("#date")?.value;
+                  const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selected||""))
+                    ? String(selected)
+                    : todayManaus();
                   const payload=await getJson(
                     `/market_live_status?date=${encodeURIComponent(date)}&_live=${Date.now()}`,
                     18000
                   );
+                  if(($("#date")?.value||date)!==date) return;
                   applyLiveStatus(payload);
                 }catch(err){
                   console.warn("[CP WEB V13 live status]",err?.message||err);
