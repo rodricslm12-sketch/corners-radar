@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v131_cornersfix:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v130:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -113,31 +113,105 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function dateLong(x){const [Y,M,D]=String(x).split("-").map(Number);if(!Y)return "Hoje";return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","")}
     function dayChip(offset){const x=ymd(offset),[Y,M,D]=x.split("-").map(Number);const w=new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","").toUpperCase();return `${w} ${D}`}
   
-    function dec(g,m=state.market){
-      const f=MARKETS[m]?.field;
-      if(!f)return {};
-      // APP: o motor dedicado do mercado é a fonte principal.
-      // Em cantos, evita que raw.corners_ai antigo/genérico sobrescreva /web_corners_ai.
-      return g?.[f] || raw(g)?.[f] || {};
-    }
+    function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
+    /* V141 — MERCADOS MOBILE: uma única fonte de leitura, sem fallback cruzado */
     function projection(g,m=state.market){
       const r=raw(g),d=dec(g,m);
-      if(m==="corners")return num(
-        g?.corners_ai?.projection,
-        d?.projection,
-        r?.corners_ai?.projection,
-        g?.proj_cantos,r?.proj_cantos,
-        g?.corners_projection,r?.corners_projection,
-        g?.expected_corners,r?.expected_corners
-      );
-      if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection);
-      if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);
+      if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
+      if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
+      if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
+      if(m==="handicap")return num(d?.projection,d?.expected_handicap,r?.handicap_projection,r?.expected_handicap);
       return num(d?.projection);
     }
-    function cornerRec(g){const d=dec(g,"corners"),line=clean(d?.line,"").toUpperCase(),p=projection(g,"corners"),c=confidence(g,"corners");if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};if(p!==null){if(p>=11.75)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};if(p>=10.75)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};if(p>=9.55)return{valid:true,line:"OVER 9.5",projection:p,confidence:c}}return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c}}
-    function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==="corners")return cornerRec(g).line;if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;if(m==="builder"){let best={c:0,p:"ANALISANDO"};for(const x of ["corners","goals","cards","handicap","btts"]){const c=confidence(g,x),p=clean(dec(g,x)?.line,"");if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase()}
-    function resolved(g,m=state.market){if(m==="corners")return cornerRec(g).valid;if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;const d=dec(g,m),p=pick(g,m);return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p))}
+
+    function decisionLine(g,m=state.market){
+      const d=dec(g,m);
+      return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"").toUpperCase();
+    }
+
+    function cornerRec(g){
+      const d=dec(g,"corners"),line=decisionLine(g,"corners"),p=projection(g,"corners"),c=confidence(g,"corners");
+      if(d?.updating||d?.skip)return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
+      if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};
+      /* Só deriva uma linha quando existe projeção REAL suficiente. Não transforma 6.5 em entrada. */
+      if(p!==null){
+        if(p>=12.15)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};
+        if(p>=11.15)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};
+        if(p>=10.15)return{valid:true,line:"OVER 9.5",projection:p,confidence:c};
+        if(p>=9.15)return{valid:true,line:"OVER 8.5",projection:p,confidence:c};
+      }
+      return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
+    }
+
+    function handicapSide(g){
+      const d=dec(g,"handicap");
+      const s=norm(d?.side_key??d?.side??d?.team??"");
+      if(s.includes("away")||s.includes("fora"))return"FORA";
+      if(s.includes("home")||s.includes("casa"))return"CASA";
+      return"";
+    }
+
+    function pick(g,m=state.market){
+      const r=raw(g),d=dec(g,m);
+      const manual=!["IA","TODOS"].includes(state.line);
+
+      if(manual&&["corners","goals","cards"].includes(m))return `OVER ${state.line}`;
+      if(manual&&m==="handicap"){
+        const side=handicapSide(g);
+        return `${side?side+" ":""}${state.line}`.trim();
+      }
+      if(manual&&m==="btts")return state.line;
+
+      if(m==="corners")return cornerRec(g).line;
+      if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}
+      if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}
+      if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;
+      if(m==="builder"){
+        let best={c:0,p:"ANALISANDO"};
+        for(const x of ["corners","goals","cards","handicap","btts"]){
+          const c=confidence(g,x),p=clean(dec(g,x)?.line,"");
+          if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p};
+        }
+        return best.p;
+      }
+      return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase();
+    }
+
+    function resolved(g,m=state.market){
+      if(m==="corners")return cornerRec(g).valid;
+      if(["result","doublechance","teamgoals","builder"].includes(m))return confidence(g,m)>0;
+      const d=dec(g,m),p=decisionLine(g,m);
+      return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA|SEM ENTRADA/.test(p));
+    }
+
+    function manualLineScore(g,m,line){
+      const target=num(String(line).replace("+",""));
+      const p=projection(g,m);
+      const c=confidence(g,m);
+
+      if(["corners","goals","cards"].includes(m)){
+        if(target===null||p===null)return -9999;
+        return c*1.25+(p-target)*24+p*2;
+      }
+
+      if(m==="handicap"){
+        const d=dec(g,m);
+        const direct=num(
+          d?.probability,d?.confidence,
+          d?.[`line_${String(line).replace("+","").replace(".","_")}_prob`]
+        );
+        return (direct??c)+(decisionLine(g,m)?10:0);
+      }
+
+      if(m==="btts"){
+        const t=decisionLine(g,m);
+        if(!t)return c-40;
+        const yes=/SIM|YES/.test(t)&&!/NAO|NÃO|NO/.test(t);
+        return c+((line==="SIM"&&yes)||(line==="NÃO"&&!yes)?70:-50);
+      }
+      return c;
+    }
     function status(g){
       const r=raw(g);
       const s=norm(r?.match_status??r?.status??r?.event_status??r?.status_raw??"");
@@ -164,38 +238,53 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){
-      const map=new Map();
-      const add=(g,m=null)=>{
-        if(!g||typeof g!=="object")return;
-        const k=id(g),old=map.get(k)||{},next={...old,...g};
-
-        if(m&&MARKETS[m]?.field){
-          const f=MARKETS[m].field;
-          const d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;
-          if(d){
-            next[f]={...(old?.[f]||{}),...d};
-            next.raw={
-              ...(old?.raw||{}),
-              ...(g?.raw||{}),
-              [f]:{...(old?.raw?.[f]||{}),...d}
-            };
-          }
-        }
-        map.set(k,next);
-      };
-      state.base.forEach(g=>add(g));
-      Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));
-      state.games=[...map.values()];
+    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
+    /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
+       Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
+       parecerem iguais e fazia linhas manuais zerarem a tela. */
+    function source(m=state.market){
+      return Array.isArray(state.games)?state.games:[];
     }
-    function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
+
     function filtered(m=state.market,line=state.line){
       let a=source(m).slice();
-      if(state.mode==="pregame") a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
-      if(state.mode==="live") a=a.filter(g=>{const s=status(g);return s.live||s.ht});
-      if(line==="IA")a=a.filter(g=>resolved(g,m));
-      else if(line!=="TODOS"){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}
-      return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)
+
+      if(state.mode==="pregame")a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
+      if(state.mode==="live")a=a.filter(g=>{const s=status(g);return s.live||s.ht});
+
+      if(line==="IA"){
+        a=a.filter(g=>resolved(g,m));
+        return a.sort((a,b)=>
+          confidence(b,m)-confidence(a,m)||
+          ((projection(b,m)||0)-(projection(a,m)||0))||
+          time(a).localeCompare(time(b))
+        ).slice(0,30);
+      }
+
+      if(line==="TODOS"){
+        return a.sort((a,b)=>
+          confidence(b,m)-confidence(a,m)||
+          ((projection(b,m)||0)-(projection(a,m)||0))||
+          time(a).localeCompare(time(b))
+        ).slice(0,30);
+      }
+
+      /* Linha manual: não exige que a IA automática tenha escolhido exatamente a mesma linha.
+         Cada botão passa a recalcular/rankear a própria linha. */
+      if(["corners","goals","cards"].includes(m)){
+        a=a.filter(g=>projection(g,m)!==null);
+      }else if(m==="handicap"){
+        a=a.filter(g=>dec(g,m)&&typeof dec(g,m)==="object");
+      }else if(m==="btts"){
+        a=a.filter(g=>decisionLine(g,m));
+      }
+
+      return a
+        .map(g=>({g,score:manualLineScore(g,m,line)}))
+        .filter(x=>Number.isFinite(x.score)&&x.score>-9000)
+        .sort((x,y)=>y.score-x.score||time(x.g).localeCompare(time(y.g)))
+        .map(x=>x.g)
+        .slice(0,30);
     }
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
@@ -3290,52 +3379,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               }
             }
           
-            function cpDesktopSelectedDate(){
-              const input=$("#date")?.value;
-              const urlDate=new URLSearchParams(window.location.search).get("date");
-              return /^\d{4}-\d{2}-\d{2}$/.test(String(input||""))
-                ? String(input)
-                : /^\d{4}-\d{2}-\d{2}$/.test(String(urlDate||""))
-                  ? String(urlDate)
-                  : todayManaus();
-            }
-
-            function cpDesktopGameDate(game){
-              const r=raw(game);
-              const candidates=[
-                game?.date,game?.match_date,game?.fixture_date,game?.event_date,game?.start_date,
-                r?.date,r?.match_date,r?.fixture_date,r?.event_date,r?.start_date,
-                r?.event_raw?.match_date,r?.event_raw?.date,r?.event_raw?.fixture_date
-              ];
-              for(const value of candidates){
-                const s=String(value??"").trim();
-                const m=s.match(/(20\d{2})[-\/]([01]?\d)[-\/]([0-3]?\d)/);
-                if(m)return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
-              }
-              return "";
-            }
-
-            function cpDesktopFilterForDate(list,date,{strictUnknown=false}={}){
-              const safe=Array.isArray(list)?list:[];
-              return safe.filter(game=>{
-                const gd=cpDesktopGameDate(game);
-                if(gd)return gd===date;
-                return !strictUnknown;
-              });
-            }
-
             function applyBase(payload, renderNow=true){
-              const requested=cpDesktopSelectedDate();
-              const arr=cpDesktopFilterForDate(extract(payload),requested);
+              const arr=extract(payload);
               if(!arr.length) return false;
-
+        
               state.games=mergeLists(state.games,arr);
-              state.games=cpDesktopFilterForDate(state.games,requested);
               window.__cornerProAllGames=state.games.slice();
               if(renderNow) render();
               return true;
             }
-
+          
             function applyLiveStatus(payload){
               const liveRows=Array.isArray(payload?.games) ? payload.games : [];
               if(!liveRows.length) return false;
@@ -3430,33 +3483,28 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 rows.innerHTML='<div class="cpd3Loading">CARREGANDO JOGOS E ANÁLISE DA IA...</div>';
               }
         
-              const date=cpDesktopSelectedDate();
-              if($("#date")) $("#date").value=date;
-
-              // DESKTOP V27: cache só pode reaproveitar jogos da mesma data.
-              // Em data futura, item sem data explícita é rejeitado para não vazar jogo de hoje.
+              // Semente de cache sem desenhar tabela antes da IA.
               if(Array.isArray(window.__cornerProAllGames) && window.__cornerProAllGames.length){
-                const isToday=date===todayManaus();
-                const cached=cpDesktopFilterForDate(
-                  window.__cornerProAllGames,
-                  date,
-                  {strictUnknown:!isToday}
-                );
-                if(cached.length) state.games=mergeLists(state.games,cached);
+                state.games=mergeLists(state.games,window.__cornerProAllGames);
               }
-
-              const requestDate=date;
-              const requestToken=(state.__dateRequestToken||0)+1;
-              state.__dateRequestToken=requestToken;
+        
+              const inputDate=$("#date")?.value;
+              const urlDate=new URLSearchParams(window.location.search).get("date");
+              const date=/^\d{4}-\d{2}-\d{2}$/.test(String(inputDate||""))
+                ? String(inputDate)
+                : /^\d{4}-\d{2}-\d{2}$/.test(String(urlDate||""))
+                  ? String(urlDate)
+                  : todayManaus();
+        
+              if($("#date")) $("#date").value=date;
               const stamp=Date.now();
-
+        
               // 1) Jogos-base, silencioso.
               try{
                 const payload=await getJson(
                   `/mercados?date=${encodeURIComponent(date)}&_webv22=${stamp}`,
                   24000
                 );
-                if(state.__dateRequestToken!==requestToken || cpDesktopSelectedDate()!==requestDate) return;
                 applyBase(payload,false);
               }catch(err){
                 console.warn("[CP WEB V22 /mercados]",err?.message||err);
@@ -3468,7 +3516,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     `/quentes?date=${encodeURIComponent(date)}&mobile=1&_mobile=${stamp}&ai=0&onlyTop=0&v=39`,
                     16000
                   );
-                  if(state.__dateRequestToken!==requestToken || cpDesktopSelectedDate()!==requestDate) return;
                   applyBase(payload,false);
                 }catch(err){
                   console.warn("[CP WEB V22 /quentes]",err?.message||err);
@@ -3481,9 +3528,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   `/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`,
                   33000
                 );
-                if(state.__dateRequestToken!==requestToken || cpDesktopSelectedDate()!==requestDate) return;
                 applyWebEnginePayload(cornersPayload,"corners-web",false);
-                state.games=cpDesktopFilterForDate(state.games,requestDate);
               }catch(err){
                 console.warn("[CP WEB V22 corners IA]",err?.message||err);
               }
@@ -3498,17 +3543,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 webGetJson(
                   `/market_engines_fast?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
                   24000
-                ).then(payload=>{
-                  if(state.__dateRequestToken!==requestToken || cpDesktopSelectedDate()!==requestDate) return;
-                  applyWebEnginePayload(payload,"fast",false);
-                }),
+                ).then(payload=>applyWebEnginePayload(payload,"fast",false)),
                 webGetJson(
                   `/market_engines?date=${encodeURIComponent(date)}&_web=${stamp}&v=60`,
                   60000
-                ).then(payload=>{
-                  if(state.__dateRequestToken!==requestToken || cpDesktopSelectedDate()!==requestDate) return;
-                  applyWebEnginePayload(payload,"full",false);
-                })
+                ).then(payload=>applyWebEnginePayload(payload,"full",false))
               ]).then(()=>{
                 console.info("[Corner Pro WEB V22] motores secundários prontos");
               });
@@ -3523,13 +3562,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               const input=$("#date");
               if(input) input.value=ymd;
         
-              // Limpa totalmente a data anterior para não misturar partidas.
+              // Limpa somente o estado desktop da data anterior.
               state.games=[];
-              window.__cornerProAllGames=[];
-              window.__lastRawGames=[];
-              window.__selectedMatchCenterGame=null;
-              window.__selectedMatchCenterKey=null;
-              state.__dateRequestToken=(state.__dateRequestToken||0)+1;
               state.engines={
                 corners:[],
                 goals:[],
@@ -3692,12 +3726,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               load();
               const refreshLiveStatus=async()=>{
                 try{
-                  const date=cpDesktopSelectedDate();
+                  const date=todayManaus();
                   const payload=await getJson(
                     `/market_live_status?date=${encodeURIComponent(date)}&_live=${Date.now()}`,
                     18000
                   );
-                  if(cpDesktopSelectedDate()!==date) return;
                   applyLiveStatus(payload);
                 }catch(err){
                   console.warn("[CP WEB V13 live status]",err?.message||err);
@@ -3815,6 +3848,59 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 officialCornerReason: "",
                 officialCornerBest: null
               };
+
+              /* V142 — CACHE DOS MERCADOS MOBILE */
+              const MOBILE_MARKETS_CACHE_PREFIX = "cornerpro_mobile_markets_v142:";
+              const MOBILE_MARKETS_CACHE_TTL = 30 * 60 * 1000;
+
+              function mobileMarketsCacheKey(date = state.date || todayManaus()) {
+                return MOBILE_MARKETS_CACHE_PREFIX + String(date || todayManaus());
+              }
+
+              function saveMobileMarketsCache(date = state.date || todayManaus()) {
+                try {
+                  const payload = {
+                    savedAt: Date.now(), date,
+                    all: Array.isArray(state.all) ? state.all : [],
+                    corners: Array.isArray(state.corners) ? state.corners : [],
+                    goals: Array.isArray(state.goals) ? state.goals : [],
+                    cards: Array.isArray(state.cards) ? state.cards : [],
+                    handicap: Array.isArray(state.handicap) ? state.handicap : [],
+                    btts: Array.isArray(state.btts) ? state.btts : [],
+                    pregame: Array.isArray(state.pregame) ? state.pregame : [],
+                    combined: Array.isArray(state.combined) ? state.combined : [],
+                    props: Array.isArray(state.props) ? state.props : [],
+                    engineDate: state.engineDate || date
+                  };
+                  if (!["corners","goals","cards","handicap","btts"].some(k => payload[k].length)) return false;
+                  localStorage.setItem(mobileMarketsCacheKey(date), JSON.stringify(payload));
+                  return true;
+                } catch (_) { return false; }
+              }
+
+              function hydrateMobileMarketsCache(date = state.date || todayManaus()) {
+                try {
+                  const parsed = JSON.parse(localStorage.getItem(mobileMarketsCacheKey(date)) || "null");
+                  if (!parsed || parsed.date !== date) return false;
+                  if (!Number.isFinite(parsed.savedAt) || Date.now() - parsed.savedAt > MOBILE_MARKETS_CACHE_TTL) {
+                    localStorage.removeItem(mobileMarketsCacheKey(date));
+                    return false;
+                  }
+                  if (!["corners","goals","cards","handicap","btts"].some(k => Array.isArray(parsed[k]) && parsed[k].length)) return false;
+
+                  for (const k of ["all","corners","goals","cards","handicap","btts","pregame","combined","props"]) {
+                    state[k] = Array.isArray(parsed[k]) ? parsed[k] : [];
+                  }
+                  state.engineDate = parsed.engineDate || date;
+                  state.loading = false;
+                  state.__marketCacheHydrated = true;
+                  if (state.all.length) window.__cornerProAllGames = state.all;
+                  window.__cpMobileDirectGames =
+                    state.corners.length ? state.corners :
+                    state.goals.length ? state.goals : state.all;
+                  return true;
+                } catch (_) { return false; }
+              }
             
               function clean(value, fallback = "") {
                 const text = String(value ?? "").trim();
@@ -5381,6 +5467,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
                   window.__cpMobileDirectGames = activeList();
                   renderActive({ animate: false });
+                  saveMobileMarketsCache(date);
           
                   // V54 — se o usuário já estiver dentro de Ambas/Handicap,
                   // atualiza a tela aberta assim que a IA chega. Antes o state mudava,
@@ -5444,6 +5531,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     
                     window.__cpMobileDirectGames = activeList();
                     renderActive({ animate: false });
+                  saveMobileMarketsCache(date);
     
                     const layer = $("#cpMobileMarketsLayer");
                     if (
@@ -5854,6 +5942,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   if (!state.handicap.length) state.handicap = buildMarket(raw, "pregame");
           
                   window.__cornerProAllGames = raw;
+                  saveMobileMarketsCache(date);
           
                   // PASSO CRÍTICO: mostra nomes e jogos imediatamente.
                   cprRenderBaseGamesImmediately(raw);
@@ -6670,9 +6759,13 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   : "IA";
           
                 const originalSourceGames =
-                  (Array.isArray(state.handicap) && state.handicap.length)
-                    ? state.handicap
-                    : (Array.isArray(state.pregame) ? state.pregame : []);
+                  requestedLine === "IA"
+                    ? (
+                        (Array.isArray(state.handicap) && state.handicap.length)
+                          ? state.handicap
+                          : []
+                      )
+                    : mobileAllGamesForMarket("handicap");
           
                 const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
                 const sourceGames = upcomingHandicapGames.length
@@ -6709,15 +6802,27 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 // V41 — decisão válida do servidor não é descartada apenas
                 // porque outros jogos receberam a mesma linha/confiança.
           
-                preparedGames = preparedGames
-                  .sort((a, b) => {
-                    if (a.recommendation.skip !== b.recommendation.skip) {
-                      return a.recommendation.skip ? 1 : -1;
-                    }
-            
-                    return b.recommendation.score - a.recommendation.score;
-                  })
-                  .slice(0, 7);
+                if (
+                  safeRequestedLine !== "IA" &&
+                  safeRequestedLine !== "TODOS"
+                ) {
+                  preparedGames = preparedGames
+                    .filter(entry => entry.manualAnalysis?.valid)
+                    .sort((a, b) =>
+                      Number(b.manualAnalysis?.probability || 0) -
+                      Number(a.manualAnalysis?.probability || 0)
+                    )
+                    .slice(0, 7);
+                } else {
+                  preparedGames = preparedGames
+                    .sort((a, b) => {
+                      if (a.recommendation.skip !== b.recommendation.skip) {
+                        return a.recommendation.skip ? 1 : -1;
+                      }
+                      return b.recommendation.score - a.recommendation.score;
+                    })
+                    .slice(0, 7);
+                }
             
                 const settlementEntries = [];
                 const liveEntries = [];
@@ -8508,7 +8613,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       value => Math.abs(value - target) < 0.001
                     );
     
-                    const fallbackSide = target > 0
+                    
+                    // V143: não inventa linhas. Se a linha não veio nas cotações/
+                    // available_lines, este jogo não pertence a esta aba.
+                    if (!lineExists) {
+                      return {
+                        valid: false,
+                        probability: 0,
+                        pick: "—",
+                        source: "line-unavailable",
+                        pickedSide: "all"
+                      };
+                    }
+
+const fallbackSide = target > 0
                       ? (
                           engineSide === "home"
                             ? "away"
@@ -8533,7 +8651,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       team: fallbackSide === "home" ? game.home : game.away,
                       line: target,
                       odd: null,
-                      estimated: !lineExists
+                      estimated: false
                     };
                   }
     
@@ -8620,6 +8738,75 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 ).toFixed(2);
               }
             
+              /* =========================================================
+                 V143 — LINHAS REAIS POR MERCADO
+                 IA = decisões oficiais.
+                 TODOS = base completa.
+                 Linha manual = somente jogos que sustentam a linha.
+                 ========================================================= */
+              function mobileMarketGameKey(game) {
+                const raw = game?.raw || game || {};
+                return String(
+                  game?.id ??
+                  raw?.match_id ??
+                  raw?.event_id ??
+                  raw?.event_key ??
+                  raw?.fixture_id ??
+                  `${game?.home || raw?.home || raw?.casa || ""}|${game?.away || raw?.away || raw?.fora || ""}|${game?.time || raw?.match_time || raw?.hora || ""}`
+                );
+              }
+
+              function mobileAllGamesForMarket(type) {
+                const map = new Map();
+                const add = (game, preferNew = false) => {
+                  if (!game || typeof game !== "object") return;
+                  const key = mobileMarketGameKey(game);
+                  if (!key) return;
+                  const old = map.get(key);
+                  if (!old) { map.set(key, game); return; }
+                  const oldRaw = old?.raw || old || {};
+                  const newRaw = game?.raw || game || {};
+                  map.set(
+                    key,
+                    preferNew
+                      ? { ...old, ...game, raw: { ...oldRaw, ...newRaw } }
+                      : { ...game, ...old, raw: { ...newRaw, ...oldRaw } }
+                  );
+                };
+                (Array.isArray(state.all) ? state.all : []).forEach(g => add(g, false));
+                (Array.isArray(state.pregame) ? state.pregame : []).forEach(g => add(g, false));
+                (Array.isArray(state[type]) ? state[type] : []).forEach(g => add(g, true));
+                return [...map.values()];
+              }
+
+              function mobileManualLineQualified(game, marketType, selectedLine, analysis) {
+                const a = analysis || mobileExactDesktopLineAnalysis(game, marketType, selectedLine);
+                if (!a || !a.valid) return false;
+                const target = Number(
+                  String(selectedLine || "")
+                    .toUpperCase()
+                    .replace("OVER", "")
+                    .replace("+", "")
+                    .trim()
+                    .replace(",", ".")
+                );
+                const projection = Number(a.projection);
+                const probability = Number(a.probability || 0);
+                if (!Number.isFinite(target) || !Number.isFinite(projection)) return false;
+
+                const margin =
+                  marketType === "corners" ? 0.20 :
+                  marketType === "goals" ? 0.10 :
+                  0.15;
+
+                const minProb =
+                  marketType === "corners" ? 50 :
+                  marketType === "goals" ? 50 :
+                  48;
+
+                return projection >= target + margin && probability >= minProb;
+              }
+
               function renderDetailedMarket(layer, marketType, selectedLine = "IA") {
                 const body = $(".cpMobileMarketsBody", layer);
                 if (!body) return;
@@ -8627,7 +8814,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const marketName = analysisMarketName(marketType);
                 const icon = analysisMarketIcon(marketType);
                 const requestedLine = clean(selectedLine, "IA");
-                const sourceGames = state[marketType] || [];
+                const sourceGames = requestedLine === "IA"
+                  ? (Array.isArray(state[marketType]) ? state[marketType] : [])
+                  : mobileAllGamesForMarket(marketType);
             
                 let prepared = sourceGames
                   .map((game, originalIndex) => {
@@ -8646,8 +8835,19 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       recommendation,
                       manualAnalysis
                     };
-                  })
-                  .sort((a, b) => {
+                  });
+
+                if (
+                  requestedLine !== "IA" &&
+                  requestedLine !== "TODOS" &&
+                  ["corners", "goals", "cards"].includes(marketType)
+                ) {
+                  prepared = prepared.filter(entry =>
+                    mobileManualLineQualified(entry.game, marketType, requestedLine, entry.manualAnalysis)
+                  );
+                }
+
+                prepared = prepared.sort((a, b) => {
                     if (
                       requestedLine !== "IA" &&
                       requestedLine !== "TODOS" &&
@@ -8676,7 +8876,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     return b.recommendation.confidence - a.recommendation.confidence;
                   });
     
-                if (marketType === "goals") {
+                if (marketType === "goals" && requestedLine === "IA") {
                   prepared = preserveGoalsPreparedList(prepared);
                 } else {
                   prepared = prepared.slice(0, 7);
@@ -8686,9 +8886,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const liveEntries = [];
             
                 const rows = prepared.map(({ game, originalIndex, recommendation, manualAnalysis }, rowIndex) => {
-                  const line = requestedLine === "IA"
-                    ? recommendation.line
-                    : requestedLine;
+                  const line =
+                    requestedLine === "IA"
+                      ? recommendation.line
+                      : requestedLine === "TODOS"
+                        ? (
+                            recommendation.line &&
+                            recommendation.line !== "DADOS EM ATUALIZAÇÃO"
+                              ? recommendation.line
+                              : "SEM DADOS"
+                          )
+                        : requestedLine;
             
                   const isUpdating =
                     requestedLine === "IA" &&
@@ -8974,6 +9182,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   const rawGames = extract(payload?.[type]);
                   if (rawGames.length) {
                     state[type] = buildMarket(rawGames, type);
+                    saveMobileMarketsCache(date);
           
                     if (type === "btts") {
                       renderBttsMarket(layer);
@@ -9031,6 +9240,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
                   if (rawGames.length) {
                     state.handicap = buildMarket(rawGames, "handicap");
+                    saveMobileMarketsCache(date);
           
                     const activeLine =
                       $(".cpHandicapLines button.active", layer)?.dataset?.handicapLine ||
@@ -9087,10 +9297,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   if (marketType === "btts") {
                     renderBttsMarket(layer);
                     stopInstantMarketRetry();
-                    refreshInstantMarket("btts", true).catch(() => {});
+                    if (!state.__marketCacheHydrated || marketStillWaiting("btts")) {
+                      refreshInstantMarket("btts", true).catch(() => {});
+                    }
                   } else if (marketType === "handicap") {
                     renderHandicapMarket(layer, "IA");
-                    refreshHandicapOnlyV61().catch(() => {});
+                    if (!state.__marketCacheHydrated || marketStillWaiting("handicap")) {
+                      refreshHandicapOnlyV61().catch(() => {});
+                    }
                   } else if (["goals", "corners", "cards"].includes(marketType)) {
                     renderDetailedMarket(
                       layer,
@@ -10227,11 +10441,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 syncMobileSelectedDate(state.date);
                 setupDate();
                 bind();
-                try {
-                  await loadData();
-                } catch (error) {
-                  console.error("[Mobile V32]", error);
-                  showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
+
+                const hadMarketCache = hydrateMobileMarketsCache(state.date);
+                if (hadMarketCache) {
+                  state.activeMarket = "corners";
+                  renderActive({ animate: false });
+                  stopAutoSlide();
+                  console.info("[CP MOBILE V142] mercados restaurados do cache");
+                } else {
+                  try {
+                    await loadData();
+                  } catch (error) {
+                    console.error("[Mobile V32]", error);
+                    showEmpty("FALHA AO CARREGAR", "O servidor não devolveu jogos válidos.");
+                  }
                 }
               }
             
@@ -28896,6 +29119,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         a.state.activeMarket=type;
         // Abre estrutura/título original; em seguida repinta com a lista oficial filtrada.
         try { a.openMarket(type); } catch(_) {}
+        a.state.__selectedParityLine = "IA";
         setTimeout(()=>renderParity(type,"IA"),0);
       }
     
@@ -28910,13 +29134,33 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         if (tab && ["corners","goals","cards","handicap","btts"].includes(tab.dataset.cpMarket)) {
           event.preventDefault(); event.stopImmediatePropagation(); openParity(tab.dataset.cpMarket); return;
         }
+        const handicapBtn = event.target.closest('#cpMobileMarketsLayer [data-handicap-line]');
+        if (handicapBtn) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          const selected = handicapBtn.dataset.handicapLine || "IA";
+          if (api()?.state) api().state.__selectedParityLine = selected;
+          renderParity("handicap", selected);
+          return;
+        }
+
+        const bttsBtn = event.target.closest('#cpMobileMarketsLayer [data-btts-tab]');
+        if (bttsBtn) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          const selected = bttsBtn.dataset.bttsTab || "IA";
+          if (api()?.state) api().state.__selectedParityLine = selected;
+          renderParity("btts", selected);
+          return;
+        }
+
         const lineBtn = event.target.closest('#cpMobileMarketsLayer [data-analysis-line]');
         if (lineBtn) {
           const type=lineBtn.dataset.analysisMarket || api()?.state?.activeMarket;
-          if (["corners","goals","cards"].includes(type)) {
+          if (["corners","goals","cards","handicap","btts"].includes(type)) {
             event.preventDefault(); event.stopImmediatePropagation();
             $$('#cpMobileMarketsLayer [data-analysis-line]').forEach(b=>b.classList.toggle('active',b===lineBtn));
-            renderParity(type,lineBtn.dataset.analysisLine||"IA"); return;
+            const selected=lineBtn.dataset.analysisLine||"IA";
+            if(api()?.state) api().state.__selectedParityLine=selected;
+            renderParity(type,selected); return;
           }
         }
       }, true);
@@ -28938,7 +29182,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         const arr=Array.isArray(a.state[type])?a.state[type]:[];
         const signature=`${type}:${arr.length}:${arr.filter(g=>resolved(g,type)).length}`;
         if(signature===last) return; last=signature;
-        if(l.classList.contains("is-open")||l.getAttribute("aria-hidden")==="false") renderParity(type,"IA");
+        if(l.classList.contains("is-open")||l.getAttribute("aria-hidden")==="false"){
+          const selected=a.state?.__selectedParityLine||"IA";
+          renderParity(type,selected);
+        }
       },700);
     
       console.info("[CP MOBILE V92] Desktop é a fonte única das IAs de mercado.");
