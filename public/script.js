@@ -108,6 +108,45 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     const time=g=>clean(g?.hora??g?.time??g?.match_time??raw(g)?.hora??raw(g)?.match_time,"--:--");
     const league=g=>clean(g?.liga??g?.league_name??g?.league??raw(g)?.liga??raw(g)?.league_name,"Liga");
     const id=g=>clean(g?.match_id??g?.event_id??g?.event_key??g?.fixture_id??g?.id??raw(g)?.match_id,"")||`${norm(home(g))}|${norm(away(g))}`;
+
+    /* V142 — FILTRO DE LIGAS PRINCIPAIS (APP/MOBILE)
+       Remove ligas pequenas/desconhecidas antes de IA, TODOS e linhas manuais. */
+    function mainLeagueCountry(g){
+      const r=raw(g),er=r?.event_raw||{};
+      return norm(r?.country_name??r?.country??r?.league_country??g?.country_name??g?.country??er?.country_name??er?.country??"");
+    }
+    function isMainLeagueGame(g){
+      const l=norm(league(g));
+      const c=mainLeagueCountry(g);
+      if(!l)return false;
+
+      // Competições internacionais grandes.
+      if(/champions league|europa league|conference league|uefa nations league|world cup|copa libertadores|copa sudamericana/.test(l))return true;
+
+      // Inglaterra.
+      if(/premier league/.test(l))return !c||/england|inglaterra/.test(c);
+      if(/championship/.test(l))return !c||/england|inglaterra/.test(c);
+
+      // Espanha, Alemanha, Itália e França.
+      if(/la liga|laliga/.test(l))return true;
+      if(/bundesliga/.test(l))return !/2 bundesliga|3 liga/.test(l);
+      if(/^serie a$|serie a tim|serie a enilive/.test(l))return !c||/italy|italia|brazil|brasil/.test(c);
+      if(/ligue 1/.test(l))return true;
+
+      // Portugal, Holanda, Bélgica, Escócia e Turquia.
+      if(/liga portugal|primeira liga/.test(l))return true;
+      if(/eredivisie/.test(l))return true;
+      if(/jupiler pro league|pro league/.test(l))return !c||/belgium|belgica/.test(c);
+      if(/scottish premiership|premiership/.test(l))return /scotland|escocia/.test(c);
+      if(/super lig|super lig/.test(l))return !c||/turkey|turquia/.test(c);
+
+      // Brasil, Argentina e EUA — primeiras divisões conhecidas.
+      if(/brasileirao serie a|brasileirao|serie a/.test(l) && /brazil|brasil/.test(c))return true;
+      if(/liga profesional|primera division/.test(l) && /argentina/.test(c))return true;
+      if(/major league soccer|mls/.test(l))return true;
+
+      return false;
+    }
   
     function ymd(offset=0){const d=new Date();d.setDate(d.getDate()+offset);try{const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return d.toISOString().slice(0,10)}}
     function dateLong(x){const [Y,M,D]=String(x).split("-").map(Number);if(!Y)return "Hoje";return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","")}
@@ -247,7 +286,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function filtered(m=state.market,line=state.line){
-      let a=source(m).slice();
+      let a=source(m).filter(isMainLeagueGame);
 
       if(state.mode==="pregame")a=a.filter(g=>{const s=status(g);return !s.live&&!s.ht&&!s.finished});
       if(state.mode==="live")a=a.filter(g=>{const s=status(g);return s.live||s.ht});
@@ -11278,8 +11317,49 @@ const fallbackSide = target > 0
                     return isTopGroupPosition(getPosHome(j)) && isTopGroupPosition(getPosAway(j));
                   }
             
+                  /* V142 — FILTRO DE LIGAS PRINCIPAIS (SITE/DESKTOP)
+                     Bloqueia ligas pequenas/desconhecidas em todas as listas do desktop. */
+                  function normalizeLeagueV142(v){
+                    return String(v ?? "")
+                      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                      .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+                  }
+
+                  function mainLeagueCountryV142(j){
+                    return normalizeLeagueV142(
+                      j?.country_name ?? j?.country ?? j?.league_country ??
+                      j?.raw?.country_name ?? j?.raw?.country ?? j?.raw?.league_country ??
+                      j?.event_raw?.country_name ?? j?.event_raw?.country ?? ""
+                    );
+                  }
+
+                  function isMainLeagueGameV142(j){
+                    const l = normalizeLeagueV142(j?.liga ?? j?.league_name ?? j?.league?.name ?? j?.competition ?? j?.campeonato ?? "");
+                    const c = mainLeagueCountryV142(j);
+                    if (!l) return false;
+
+                    if (/champions league|europa league|conference league|uefa nations league|world cup|copa libertadores|copa sudamericana/.test(l)) return true;
+                    if (/premier league/.test(l)) return !c || /england|inglaterra/.test(c);
+                    if (/championship/.test(l)) return !c || /england|inglaterra/.test(c);
+                    if (/la liga|laliga/.test(l)) return true;
+                    if (/bundesliga/.test(l)) return !/2 bundesliga|3 liga/.test(l);
+                    if (/^serie a$|serie a tim|serie a enilive/.test(l)) return !c || /italy|italia|brazil|brasil/.test(c);
+                    if (/ligue 1/.test(l)) return true;
+                    if (/liga portugal|primeira liga/.test(l)) return true;
+                    if (/eredivisie/.test(l)) return true;
+                    if (/jupiler pro league|pro league/.test(l)) return !c || /belgium|belgica/.test(c);
+                    if (/scottish premiership|premiership/.test(l)) return /scotland|escocia/.test(c);
+                    if (/super lig/.test(l)) return !c || /turkey|turquia/.test(c);
+                    if (/brasileirao serie a|brasileirao|serie a/.test(l) && /brazil|brasil/.test(c)) return true;
+                    if (/liga profesional|primera division/.test(l) && /argentina/.test(c)) return true;
+                    if (/major league soccer|mls/.test(l)) return true;
+
+                    return false;
+                  }
+
                   function isServerCompatibleGame(j){
                     if (!j || typeof j !== "object") return false;
+                    if (!isMainLeagueGameV142(j)) return false;
                     if (j?.blocked === true || j?.is_blocked === true || j?.server_blocked === true) return false;
                     if (String(j?.status || "").toLowerCase() === "blocked") return false;
                     if (isBlockedTop5DirectClash(j)) return false;
