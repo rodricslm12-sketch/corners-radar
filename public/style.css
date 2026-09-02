@@ -22765,3 +22765,52 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     45%{opacity:1;transform:translateY(-2px) scale(1);}
   }
 }
+
+/* =========================================================
+   CORNER PRO V145 — FAVORITOS + ALERTA DE MANDANTE
+   Desktop + App/Mobile
+   ========================================================= */
+[data-cp-favorites-open]{position:relative}
+.cpFavMenuBadge{
+  margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:#ffcf39;color:#160f00;font-size:10px;font-weight:950;font-style:normal;
+  box-shadow:0 0 0 1px rgba(255,207,57,.24),0 0 14px rgba(255,207,57,.28);
+  line-height:1;flex:0 0 auto
+}
+.cpFavMenuBadge[hidden]{display:none!important}
+.cpFavMenuBadge.is-today{background:#67ff2c;color:#061106}
+.cpFavMenuBadge.is-today::before,.cpFavMenuBadge.is-tomorrow::before{
+  content:"";width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:4px;
+  animation:cpFavBadgePulse 1.3s ease-in-out infinite
+}
+@keyframes cpFavBadgePulse{0%,100%{opacity:.35;transform:scale(.75)}50%{opacity:1;transform:scale(1.25)}}
+
+.cpFavoritesV145Overlay{
+  position:fixed;inset:0;z-index:2147483605;display:none;align-items:center;justify-content:center;
+  padding:22px;background:rgba(0,0,0,.78);backdrop-filter:blur(12px)
+}
+.cpFavoritesV145Overlay.open{display:flex}
+.cpFavoritesV145Modal{
+  width:min(860px,calc(100vw - 36px));max-height:min(760px,calc(100dvh - 36px));overflow:hidden;
+  border:1px solid #20342b;border-radius:18px;background:linear-gradient(180deg,#10191e,#070c0f 74%,#05080a);
+  box-shadow:0 34px 100px rgba(0,0,0,.68);color:#f5f8f6;display:flex;flex-direction:column
+}
+.cpFavoritesV145Head{display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid #1b2a30}
+.cpFavoritesV145Head .star{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#102316;color:#74ff37;font-size:23px}
+.cpFavoritesV145Head div{min-width:0;flex:1}.cpFavoritesV145Head small{display:block;color:#74ff37;font-size:8px;font-weight:950;letter-spacing:1px}.cpFavoritesV145Head h2{margin:3px 0 0;font-size:19px}.cpFavoritesV145Close{width:38px;height:38px;border-radius:11px;border:1px solid #24332f!important;background:#0b1215!important;color:#fff!important;font-size:22px!important}
+.cpFavoritesV145Summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:14px 20px 0}.cpFavoritesV145Summary div{padding:11px 12px;border-radius:11px;background:#0a1215;border:1px solid #18292d}.cpFavoritesV145Summary small{display:block;color:#788782;font-size:7px;font-weight:900}.cpFavoritesV145Summary b{display:block;margin-top:4px;font-size:16px;color:#fff}.cpFavoritesV145Summary .alert b{color:#ffcf39}
+.cpFavoritesV145Body{overflow:auto;padding:14px 20px 20px}.cpFavoritesV145Empty{padding:28px 16px;text-align:center;border:1px dashed #263731;border-radius:13px;color:#899892}.cpFavoritesV145Empty b{display:block;color:#e7eeeb;margin-bottom:6px}
+.cpFavoritesV145Day{margin:0 0 15px}.cpFavoritesV145DayTitle{display:flex;align-items:center;justify-content:space-between;margin:0 0 7px;padding:0 3px}.cpFavoritesV145DayTitle b{font-size:10px;color:#75ff39}.cpFavoritesV145DayTitle span{font-size:8px;color:#7d8a86}
+.cpFavoritesV145Game{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(105px,.65fr) minmax(0,1fr);gap:12px;align-items:center;padding:11px 12px;margin-bottom:7px;border-radius:12px;background:#0a1215;border:1px solid #19292e}
+.cpFavoritesV145Game .teams{min-width:0}.cpFavoritesV145Game .teams strong,.cpFavoritesV145Game .teams span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cpFavoritesV145Game .teams strong{font-size:11px;color:#fff}.cpFavoritesV145Game .teams strong::before{content:"★ ";color:#73ff35}.cpFavoritesV145Game .teams span{font-size:9px;color:#9aa7a2;margin-top:3px}.cpFavoritesV145Game .when{text-align:center}.cpFavoritesV145Game .when b{display:block;color:#ffcf39;font-size:11px}.cpFavoritesV145Game .when small{display:block;margin-top:3px;color:#768580;font-size:7px}.cpFavoritesV145Game .league{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#899792;font-size:8px}
+.cpFavoritesV145Teams{display:flex;gap:7px;flex-wrap:wrap;margin:3px 0 17px}.cpFavoritesV145TeamChip{padding:7px 9px;border-radius:999px;background:#0b1612;border:1px solid #1e3528;color:#b9c8c0;font-size:8px;font-weight:850}.cpFavoritesV145TeamChip::before{content:"★ ";color:#6cff2b}
+
+@media(max-width:980px){
+  .v110Quick [data-cp-favorites-open="mobile"]{position:relative!important}
+  .v110Quick [data-cp-favorites-open="mobile"] .cpFavMenuBadge{position:absolute;right:8px;top:7px;margin:0;min-width:18px;height:18px;font-size:8px;padding:0 5px}
+  .cpFavoritesV145Overlay{padding:0;align-items:flex-end;background:rgba(0,0,0,.72)}
+  .cpFavoritesV145Modal{width:100%;max-width:520px;max-height:92dvh;border-radius:22px 22px 0 0;border-bottom:0}
+  .cpFavoritesV145Head{padding:16px}.cpFavoritesV145Summary{padding:12px 14px 0;gap:7px}.cpFavoritesV145Summary div{padding:9px}.cpFavoritesV145Body{padding:12px 14px 22px}
+  .cpFavoritesV145Game{grid-template-columns:1fr 82px;gap:8px}.cpFavoritesV145Game .league{grid-column:1/-1;text-align:left;padding-top:4px;border-top:1px solid #17252a}
+}

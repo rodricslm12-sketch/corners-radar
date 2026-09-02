@@ -30428,3 +30428,137 @@ const fallbackSide = target > 0
     refresh({force:true});
   },15*60*1000);
 })();
+
+/* =========================================================
+   CORNER PRO V145 — FAVORITOS ATIVOS + ALERTA DE JOGO EM CASA
+   Desktop + App/Mobile
+   ========================================================= */
+(()=>{
+  "use strict";
+  if(window.__CP_FAVORITES_CENTER_V145__) return;
+  window.__CP_FAVORITES_CENTER_V145__=true;
+
+  const KEYS=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
+  const CACHE="cornerpro_favorites_center_v145_cache";
+  const TTL=10*60*1000;
+  const DAYS=7;
+  let busy=false,timer=null;
+
+  const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const clean=v=>{const s=String(v??"").trim();return s&&!/^(undefined|null|nan)$/i.test(s)?s:""};
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+
+  function readFavorites(){
+    const out=new Map();
+    for(const key of KEYS){
+      try{
+        const arr=JSON.parse(localStorage.getItem(key)||"[]");
+        if(!Array.isArray(arr)) continue;
+        for(const raw of arr){
+          const name=clean(typeof raw==="string"?raw:(raw?.name??raw?.team??raw?.team_name));
+          const k=norm(name); if(k&&!out.has(k)) out.set(k,name);
+        }
+      }catch{}
+    }
+    return out;
+  }
+
+  function ymd(offset=0){
+    const d=new Date(); d.setDate(d.getDate()+offset);
+    try{const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return d.toISOString().slice(0,10)}
+  }
+  function dayText(offset){
+    if(offset===0)return"HOJE"; if(offset===1)return"AMANHÃ";
+    const [Y,M,D]=ymd(offset).split("-").map(Number);
+    try{return new Intl.DateTimeFormat("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).toUpperCase()}catch{return ymd(offset)}
+  }
+  function raw(g){return g?.raw||g||{}}
+  function home(g){const r=raw(g);return clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??r?.casa??r?.home??r?.match_hometeam_name)}
+  function away(g){const r=raw(g);return clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??r?.fora??r?.away??r?.match_awayteam_name)}
+  function time(g){const r=raw(g);return clean(g?.hora??g?.time??g?.match_time??r?.hora??r?.time??r?.match_time)||"--:--"}
+  function league(g){const r=raw(g);const x=g?.liga??g?.league_name??g?.league??r?.liga??r?.league_name??r?.league;return clean(typeof x==="object"?(x?.name??x?.league_name):x)||"Liga"}
+  function extract(p,seen=new Set()){
+    if(Array.isArray(p))return p.filter(x=>x&&typeof x==="object");
+    if(!p||typeof p!=="object"||seen.has(p))return[];seen.add(p);
+    for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","mercados"]){const v=p[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}
+    for(const v of Object.values(p)){if(v&&typeof v==="object"){const a=extract(v,seen);if(a.length)return a}}
+    return[];
+  }
+  function sameFav(name,map){
+    const n=norm(name); if(!n)return false;if(map.has(n))return true;
+    for(const k of map.keys())if(k.length>=5&&n.length>=5&&(n.includes(k)||k.includes(n)))return true;
+    return false;
+  }
+
+  async function getDay(date){
+    for(const url of [`/mercados?date=${encodeURIComponent(date)}&_fav145=1&t=${Date.now()}`,`/quentes?date=${encodeURIComponent(date)}&_fav145=1&ai=0&t=${Date.now()}`]){
+      try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)continue;const a=extract(await r.json());if(a.length)return a}catch{}
+    }
+    return[];
+  }
+  function cached(){try{const c=JSON.parse(localStorage.getItem(CACHE)||"null");return c&&Date.now()-Number(c.at||0)<TTL&&Array.isArray(c.alerts)?c:null}catch{return null}}
+  function save(data){try{localStorage.setItem(CACHE,JSON.stringify({at:Date.now(),...data}))}catch{}}
+
+  function badgeHosts(){return [...document.querySelectorAll('[data-cp-favorites-open]')]}
+  function paintBadges(alerts=[]){
+    const today=alerts.filter(x=>x.offset===0).length;
+    const tomorrow=alerts.filter(x=>x.offset===1).length;
+    for(const host of badgeHosts()){
+      let b=host.querySelector('.cpFavMenuBadge');
+      if(!b){b=document.createElement(host.tagName==='A'?'em':'span');b.className='cpFavMenuBadge';host.appendChild(b)}
+      if(!alerts.length){b.hidden=true;b.textContent='0';host.removeAttribute('data-cp-favorites-alert');continue}
+      b.hidden=false;b.textContent=String(alerts.length);b.classList.toggle('is-today',today>0);b.classList.toggle('is-tomorrow',today===0&&tomorrow>0);
+      const first=alerts[0];host.title=`${alerts.length} favorito(s) joga(m) em casa. Próximo: ${first.home} x ${first.away} • ${dayText(first.offset)} ${first.time}`;
+      host.dataset.cpFavoritesAlert='1';
+    }
+    // remove o badge antigo V144 para não duplicar visualmente
+    document.querySelectorAll('.cpFavHomeAlertBadgeV144').forEach(x=>x.remove());
+  }
+
+  function ensureModal(){
+    let ov=document.getElementById('cpFavoritesV145Overlay');if(ov)return ov;
+    ov=document.createElement('section');ov.id='cpFavoritesV145Overlay';ov.className='cpFavoritesV145Overlay';ov.setAttribute('aria-hidden','true');
+    ov.innerHTML=`<div class="cpFavoritesV145Modal" role="dialog" aria-modal="true" aria-labelledby="cpFavoritesV145Title"><header class="cpFavoritesV145Head"><span class="star">☆</span><div><small>SEUS TIMES</small><h2 id="cpFavoritesV145Title">Favoritos</h2></div><button type="button" class="cpFavoritesV145Close" data-cp-favorites-close>×</button></header><div id="cpFavoritesV145Content"></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-cp-favorites-close]'))closeModal()});
+    return ov;
+  }
+  function closeModal(){const ov=document.getElementById('cpFavoritesV145Overlay');if(!ov)return;ov.classList.remove('open');ov.setAttribute('aria-hidden','true')}
+  function renderModal(data){
+    const ov=ensureModal(),body=ov.querySelector('#cpFavoritesV145Content');if(!body)return;
+    const favs=[...readFavorites().values()];const alerts=Array.isArray(data?.alerts)?data.alerts:[];
+    const today=alerts.filter(x=>x.offset===0).length,tomorrow=alerts.filter(x=>x.offset===1).length;
+    const groups=new Map();for(const a of alerts){if(!groups.has(a.offset))groups.set(a.offset,[]);groups.get(a.offset).push(a)}
+    body.innerHTML=`<div class="cpFavoritesV145Summary"><div><small>TIMES FAVORITOS</small><b>${favs.length}</b></div><div class="alert"><small>EM CASA HOJE</small><b>${today}</b></div><div class="alert"><small>EM CASA AMANHÃ</small><b>${tomorrow}</b></div></div><div class="cpFavoritesV145Body">${favs.length?`<div class="cpFavoritesV145Teams">${favs.map(n=>`<span class="cpFavoritesV145TeamChip">${esc(n)}</span>`).join('')}</div>`:''}${!favs.length?'<div class="cpFavoritesV145Empty"><b>Você ainda não favoritou nenhum time.</b>Toque ou clique na estrela de um clube para adicioná-lo aqui.</div>':!alerts.length?'<div class="cpFavoritesV145Empty"><b>Nenhum favorito joga em casa nos próximos dias.</b>O alerta aparecerá automaticamente quando houver partida como mandante.</div>':[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([off,list])=>`<section class="cpFavoritesV145Day"><div class="cpFavoritesV145DayTitle"><b>${esc(dayText(Number(off)))}</b><span>${list.length} jogo(s)</span></div>${list.map(x=>`<article class="cpFavoritesV145Game"><div class="teams"><strong>${esc(x.home)}</strong><span>x ${esc(x.away)}</span></div><div class="when"><b>${esc(x.time)}</b><small>JOGA EM CASA</small></div><div class="league">${esc(x.league)}</div></article>`).join('')}</section>`).join('')}</div>`;
+  }
+  function openModal(){
+    const ov=ensureModal();ov.classList.add('open');ov.setAttribute('aria-hidden','false');
+    const c=cached();renderModal(c||{alerts:window.__cpFavoriteHomeAlertsV145||[]});refresh({force:false,rerender:true});
+  }
+
+  async function refresh({force=false,rerender=false}={}){
+    if(busy)return;const fav=readFavorites();
+    if(!fav.size){const d={alerts:[]};save(d);paintBadges([]);window.__cpFavoriteHomeAlertsV145=[];if(rerender)renderModal(d);return}
+    if(!force){const c=cached();if(c){paintBadges(c.alerts);window.__cpFavoriteHomeAlertsV145=c.alerts;if(rerender)renderModal(c);return}}
+    busy=true;
+    try{
+      const days=await Promise.all(Array.from({length:DAYS},(_,offset)=>getDay(ymd(offset)).then(games=>({offset,games}))));
+      const alerts=[],seen=new Set();
+      for(const {offset,games} of days)for(const g of games){const h=home(g);if(!sameFav(h,fav))continue;const a=away(g);const k=`${offset}|${norm(h)}|${norm(a)}|${time(g)}`;if(seen.has(k))continue;seen.add(k);alerts.push({offset,home:h,away:a,time:time(g),league:league(g)})}
+      alerts.sort((a,b)=>a.offset-b.offset||String(a.time).localeCompare(String(b.time)));
+      const d={alerts};save(d);paintBadges(alerts);window.__cpFavoriteHomeAlertsV145=alerts;if(rerender||document.getElementById('cpFavoritesV145Overlay')?.classList.contains('open'))renderModal(d);
+    }finally{busy=false}
+  }
+
+  document.addEventListener('click',e=>{
+    const open=e.target.closest?.('[data-cp-favorites-open]');if(open){e.preventDefault();e.stopPropagation();openModal();return}
+    if(e.target.closest?.('[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav')){
+      try{localStorage.removeItem(CACHE)}catch{};clearTimeout(timer);timer=setTimeout(()=>refresh({force:true,rerender:true}),350)
+    }
+  },true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+  window.addEventListener('storage',e=>{if(KEYS.includes(e.key)){try{localStorage.removeItem(CACHE)}catch{};refresh({force:true,rerender:true})}});
+
+  const mo=new MutationObserver(()=>{const c=cached();paintBadges(c?.alerts||window.__cpFavoriteHomeAlertsV145||[])});mo.observe(document.documentElement,{subtree:true,childList:true});
+  const c=cached();if(c)paintBadges(c.alerts);setTimeout(()=>refresh({force:false}),300);setInterval(()=>{try{localStorage.removeItem(CACHE)}catch{};refresh({force:true})},15*60*1000);
+})();
