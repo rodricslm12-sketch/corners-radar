@@ -1,1597 +1,1597 @@
-    <!-- Corner Pro V11 -->
-    <!DOCTYPE html>
-    <html lang="pt-BR" translate="no" class="notranslate">
-    <head>
-      <script>
-        (function(){
-          if (window.matchMedia && window.matchMedia("(min-width:981px)").matches) {
-            document.documentElement.classList.add("cpDesktopBoot");
-          }
-        })();
-      </script>
-
-      <meta charset="UTF-8" />
-      <meta name="google" content="notranslate" />
-      <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
-      <meta name="format-detection" content="telephone=no,email=no,address=no,date=no">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Corner Pro</title>
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="(min-width:981px)">
-
-      <style id="cpMobileV8Style">
-        @media (max-width:980px){
-          .cpMobileLayer.is-open{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
-          body.cpMobileLayerOpen{overflow:hidden!important}
-          .cpV8MatchHero{padding:24px 18px;text-align:center;background:linear-gradient(145deg,#06110f,#071b12);border:1px solid rgba(105,255,42,.28);border-radius:18px}
-          .cpV8MatchHero time,.cpV8MatchHero span{display:block;color:#78ff2d;font-weight:900}
-          .cpV8MatchHero div{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;font-size:20px}
-          .cpV8MatchHero b{display:block;margin-top:10px;font-size:13px}
-          .cpV8MatchTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
-          .cpV8MatchTabs button{padding:12px;border-radius:12px;border:1px solid #26332f;background:#0a1112;color:#8c9995;font-weight:900}
-          .cpV8MatchTabs button.active{border-color:#64ff20;color:#64ff20}
-          .cpV8MatchStats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-          .cpV8MatchStats div,.cpV8MatchRead{padding:14px;border:1px solid #1f302b;border-radius:14px;background:#081012}
-          .cpV8MatchStats small{display:block;color:#7f8c89;font-size:10px}
-          .cpV8MatchStats strong{display:block;margin-top:5px;color:#fff}
-          .cpV8MatchRead{margin-top:12px}.cpV8MatchRead h3{color:#70ff28}.cpV8MatchRead p{color:#aab5b2;line-height:1.5}
-        }
-      </style>
-
-
-    <style id="cpHideHeroMetricsOnly">
-      /* APP V85 — remove somente o painel Projeção/Confiança/Tendência do card principal */
-      .cpHomeBestCard .cpHomeMetrics,
-      .cpHomeHero .cpHomeMetrics,
-      #cpHomeBest .cpHomeMetrics {
-        display: none !important;
-      }
-    </style>
-
-
-      <style id="cpAuthHiddenSafety">
-        #cpAuthModal [hidden] { display: none !important; }
-      </style>
-
-      <link rel="stylesheet" href="style.css?v=20260902-desktop-menu-v27" media="(min-width:981px)">
-      <script>
-        (function(){
-          if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
-            window.addEventListener('DOMContentLoaded', function(){
-              var s=document.createElement('script');
-              s.src='script.js?v=20260902-desktop-menu-v27';
-              s.async=false;
-              document.body.appendChild(s);
-            }, {once:true});
-          }
-        })();
-      </script>
-      <style id="cpNewMobileV105Style">
-      *{box-sizing:border-box}
-
-    @media (max-width:980px){
-      html,body{margin:0!important;min-height:100%!important;background:#020504!important;color:#f5f7f6!important;overflow-x:hidden!important;font-family:Inter,system-ui,Arial,sans-serif!important}
-      body>.sidebar,body>.mobileOverlay,body>.mobileHeader,body>.main,body>.mobileBottomNav,body>#cpMobileHome,body>.cpMobileHome,body>.cpHomeBottom,body>.cpGlobalBottomNav,body>.cpMobileLayer,body>#cpMobileMarketLayer,body>#cpMobileMatchLayer,body>#cpDesktopBootScreen{display:none!important;visibility:hidden!important;pointer-events:none!important}
-      #cpNewMobileV105{display:block!important;position:relative!important;z-index:10!important;width:100%!important;max-width:520px!important;min-height:100dvh!important;margin:0 auto!important;padding:0 0 86px!important;background:radial-gradient(circle at 50% -70px,rgba(98,255,38,.11),transparent 260px),#020504!important;color:#f7faf8!important}
-      .v105Top{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:44px 1fr 46px;align-items:center;gap:10px;height:76px;padding:0 16px;background:rgba(2,5,4,.94);backdrop-filter:blur(18px);border-bottom:1px solid #13231b}
-      .v105IconBtn{height:42px;border:1px solid #1a2c23;border-radius:13px;background:#08100d;color:#fff;font-size:20px}.v105Brand{text-align:center}.v105Brand b{font-size:22px;font-style:italic;letter-spacing:-1.2px}.v105Brand b span{color:#69ff2b}.v105Brand small{display:block;margin-top:2px;color:#9aa69f;font-size:7px;font-weight:900;letter-spacing:1.5px}.v105User{position:relative}.v105User img{width:30px;height:30px;border-radius:50%;object-fit:cover}.v105User i{position:absolute;right:6px;bottom:6px;width:8px;height:8px;border-radius:50%;background:#66ff2a;box-shadow:0 0 10px #66ff2a}
-      .v105DateRow{display:flex;align-items:center;gap:8px;padding:12px 16px 4px;overflow:auto;scrollbar-width:none}.v105DateRow::-webkit-scrollbar{display:none}.v105DateRow button{flex:0 0 auto;height:37px;padding:0 15px;border-radius:12px;border:1px solid #1d3026;background:#07100c;color:#97a39d;font-weight:900;font-size:10px}.v105DateRow button.active{background:#153a18;border-color:#62f529;color:#74ff36}.v105DateRow .v105DateFull{padding:0 13px;color:#d8e0dc}
-      .v105Intro{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px}.v105Intro small{display:block;color:#6cff2b;font-size:8px;font-weight:950;letter-spacing:1px}.v105Intro h1{margin:4px 0 0;font-size:24px;letter-spacing:-.8px}.v105Refresh{width:42px;height:42px;border-radius:13px;border:1px solid #1b2e24;background:#08110d;color:#69ff2b;font-size:20px}
-      .v105Hero{margin:0 14px 18px;padding:15px;border:1px solid #1b3428;border-radius:22px;background:radial-gradient(circle at 50% 100%,rgba(64,191,33,.17),transparent 50%),linear-gradient(180deg,#07120d,#041009);box-shadow:0 16px 50px rgba(0,0,0,.28)}.v105HeroTop{display:flex;justify-content:space-between;align-items:center;gap:8px}.v105HeroTop b{color:#72ff34;font-size:11px}.v105Status{padding:6px 9px;border-radius:999px;background:#11261a;color:#7cff3d;font-size:8px;font-weight:950;white-space:nowrap}.v105Status.live{background:#331210;color:#ff704d}.v105Status.finished{background:#1a2020;color:#aeb9b4}.v105HeroMatch{display:grid;grid-template-columns:1fr 70px 1fr;gap:10px;align-items:center;margin:18px 0}.v105HeroTeam{text-align:center;min-width:0}.v105Logo{width:62px;height:62px;margin:auto;display:grid;place-items:center}.v105Logo img{max-width:62px;max-height:62px}.v105Logo i{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:#102018;color:#6cff2b;font-style:normal;font-weight:950}.v105HeroTeam strong{display:block;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.v105HeroMid{text-align:center}.v105HeroMid small{color:#7f8d86;font-size:8px}.v105HeroMid b{display:block;margin-top:8px;font-size:24px}.v105HeroPick{display:grid;grid-template-columns:1.5fr .7fr .7fr;gap:7px;padding:11px;border:1px solid #20462d;border-radius:14px;background:#07110c}.v105HeroPick div{min-width:0}.v105HeroPick small{display:block;color:#728078;font-size:7px;font-weight:900}.v105HeroPick b{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.v105HeroPick div:first-child b{color:#72ff34;font-size:13px}.v105HeroOpen{width:100%;height:45px;margin-top:11px;border-radius:13px;background:linear-gradient(90deg,#63f127,#93ff00);color:#061005;font-weight:950;font-size:10px}.v105HeroLoading{padding:25px 8px;text-align:center}.v105Spinner{width:34px;height:34px;margin:0 auto 12px;border:4px solid rgba(99,241,39,.14);border-top-color:#63f127;border-radius:50%;animation:v105spin .8s linear infinite}@keyframes v105spin{to{transform:rotate(360deg)}}
-      .v105SectionHead{display:flex;align-items:end;justify-content:space-between;padding:0 16px 10px}.v105SectionHead h2{margin:0;font-size:18px}.v105SectionHead span{color:#6d7b74;font-size:8px}.v105SectionHead button{color:#70ff32;font-size:8px;font-weight:950}
-      .v105Markets{display:flex;gap:9px;overflow-x:auto;padding:0 14px 18px;scrollbar-width:none}.v105Markets::-webkit-scrollbar{display:none}.v105Market{flex:0 0 105px;height:103px;border:1px solid #1b2b24;border-radius:16px;background:linear-gradient(180deg,#0a1210,#060b09);padding:10px;text-align:left}.v105Market i{display:block;color:#6cff2b;font-size:22px;font-style:normal}.v105Market b{display:block;margin-top:8px;font-size:9px}.v105Market small{display:block;margin-top:5px;color:#78de4d;font-size:7px;font-weight:900}.v105Market em{display:block;margin-top:6px;color:#69766f;font-size:7px;font-style:normal}.v105Market.active{border-color:#6cff2b;box-shadow:inset 0 0 0 1px rgba(108,255,43,.14)}
-      .v105Panel{margin:0 14px}.v105PanelTop{display:flex;align-items:end;justify-content:space-between}.v105PanelTop small{color:#6f7b75;font-size:7px;letter-spacing:1px}.v105PanelTop h2{margin:3px 0 0;font-size:19px}.v105Count{color:#70ff31;font-size:10px;font-weight:950}.v105Lines{display:flex;gap:7px;overflow:auto;padding:12px 0 14px;scrollbar-width:none}.v105Lines::-webkit-scrollbar{display:none}.v105Lines button{flex:0 0 auto;min-width:52px;height:32px;padding:0 12px;border:1px solid #23342c;border-radius:10px;background:#07100c;color:#9aa69f;font-size:9px;font-weight:900}.v105Lines button.active{background:#63f127;border-color:#63f127;color:#061005}
-      .v105Games{display:flex;flex-direction:column;gap:10px}.v105Game{padding:13px;border:1px solid #1c2b25;border-radius:17px;background:linear-gradient(180deg,#0a1210,#060b09)}.v105GameTop{display:flex;align-items:center;justify-content:space-between}.v105GameTop span{max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#829088;font-size:8px}.v105GameTeams{display:grid;grid-template-columns:1fr 60px 1fr;align-items:center;gap:7px;margin:12px 0}.v105GameTeams div{min-width:0}.v105GameTeams div:last-child{text-align:right}.v105GameTeams b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.v105GameTeams em{text-align:center;color:#73ff35;font-style:normal;font-weight:950}.v105Bet{display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:6px}.v105Bet div{min-width:0;padding:8px;border-radius:10px;background:#0d1612}.v105Bet small{display:block;color:#6e7b74;font-size:6px;font-weight:900}.v105Bet b{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}.v105Bet div:first-child b{color:#6cff2b}.v105GameOpen{width:100%;height:32px;margin-top:8px;border-top:1px solid #15231d;color:#71ff34;text-align:right;font-size:8px;font-weight:950}.v105Empty{padding:30px 15px;border:1px dashed #24352d;border-radius:16px;background:#07100c;text-align:center;color:#839087}.v105Empty b{display:block;color:#dfe5e2;margin-bottom:6px}
-      .v105Bottom{position:fixed;left:0;right:0;bottom:0;z-index:70;max-width:520px;margin:auto;height:72px;padding-bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(5,1fr);background:rgba(3,8,6,.97);backdrop-filter:blur(16px);border-top:1px solid #192820}.v105Bottom button{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;color:#75817b;font-size:7px;font-weight:900}.v105Bottom i{font-size:18px;font-style:normal}.v105Bottom button.active{color:#6cff2b}
-      #cpV105Match{display:none;position:fixed;inset:0;z-index:2147483000;background:#020504;overflow:auto;color:#fff}.cpV105MatchOpen #cpV105Match{display:block}.v105MatchHead{position:sticky;top:0;height:60px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#07100d;border-bottom:1px solid #1a2922}.v105MatchHead button{width:38px;height:38px;border:1px solid #21332a;border-radius:11px;color:#fff}.v105MatchBody{padding:15px}.v105MatchCard{padding:16px;border:1px solid #1b2b24;border-radius:18px;background:#08100d;margin-bottom:10px}.v105MatchCard h2{margin:8px 0;color:#6cff2b}.v105MatchCard p{color:#a6b0ab;line-height:1.55}
-      #cpAuthModal{z-index:2147483600!important}
-    }
-    @media (min-width:981px){#cpNewMobileV105,#cpV105Match{display:none!important}}
-
-      </style>
-
-    <style id="cpMobileV107VisualPatch">
-    @media (max-width:980px){
-      #cpNewMobileV105 button,
-      #cpV105Match button{
-        -webkit-appearance:none!important;
-        appearance:none!important;
-        font:inherit!important;
-        box-shadow:none;
-      }
-
-      .v105Top{height:70px;padding:0 17px;background:rgba(2,6,4,.96)}
-      .v105Brand b{font-size:23px}
-      .v105DateRow{padding:10px 16px 5px}
-      .v105Intro{padding:14px 18px 11px}
-      .v105Intro h1{font-size:22px}
-
-      .v105Hero{
-        margin:0 15px 18px;
-        padding:16px;
-        border-radius:20px;
-        border-color:#244232;
-        background:
-          radial-gradient(circle at 50% 72%,rgba(89,255,38,.10),transparent 37%),
-          linear-gradient(180deg,#07130e,#030a07);
-      }
-      .v105HeroTop b{font-size:10px;letter-spacing:.1px}
-      .v105HeroMatch{margin:15px 0;grid-template-columns:1fr 66px 1fr}
-      .v105Logo{width:56px;height:56px}
-      .v105Logo img{max-width:56px;max-height:56px}
-      .v105HeroTeam strong{font-size:12px}
-      .v105HeroMid b{font-size:22px}
-      .v105HeroPick{padding:10px;border-radius:13px}
-      .v105HeroOpen{
-        border:0!important;
-        background:linear-gradient(90deg,#5df323,#91ff00)!important;
-        color:#061005!important;
-        height:43px;
-      }
-
-      .v105SectionHead button{
-        border:0!important;
-        background:transparent!important;
-        color:#70ff32!important;
-        padding:5px!important;
-      }
-
-      .v105Markets{gap:8px;padding:0 15px 16px}
-      .v105Market{
-        flex:0 0 98px;
-        width:98px;
-        height:94px;
-        padding:10px;
-        border-radius:15px;
-        background:linear-gradient(180deg,#08110d,#050a08)!important;
-        color:#fff!important;
-      }
-      .v105Market i{font-size:20px}
-      .v105Market b{margin-top:7px;font-size:8px}
-      .v105Market small{font-size:6.5px}
-      .v105Market em{margin-top:5px;font-size:6.5px}
-
-      .v105Lines button{
-        border:1px solid #23342c!important;
-        background:#07100c!important;
-        color:#9aa69f!important;
-      }
-      .v105Lines button.active{
-        background:#63f127!important;
-        border-color:#63f127!important;
-        color:#061005!important;
-      }
-
-      .v105Games{gap:9px}
-      .v105Game{
-        padding:13px 13px 10px;
-        border-radius:16px;
-        background:linear-gradient(180deg,#08110e,#050a08);
-      }
-      .v105GameTeams{margin:10px 0}
-      .v105Bet div{padding:8px}
-      .v105GameOpen{
-        -webkit-appearance:none!important;
-        appearance:none!important;
-        display:block!important;
-        width:100%!important;
-        height:28px!important;
-        margin-top:7px!important;
-        padding:0!important;
-        border:0!important;
-        border-top:1px solid #15231d!important;
-        border-radius:0!important;
-        background:transparent!important;
-        color:#71ff34!important;
-        text-align:right!important;
-      }
-
-      .v105Bottom{
-        left:50%!important;
-        right:auto!important;
-        transform:translateX(-50%)!important;
-        width:min(100%,520px)!important;
-        height:68px!important;
-        background:rgba(3,8,6,.985)!important;
-        border-top:1px solid #1b2a23!important;
-      }
-      .v105Bottom button{
-        -webkit-appearance:none!important;
-        appearance:none!important;
-        border:0!important;
-        border-radius:0!important;
-        background:transparent!important;
-        color:#7b8781!important;
-        padding:0!important;
-      }
-      .v105Bottom button.active{color:#6cff2b!important}
-      .v105Bottom i{font-size:17px}
-
-      .v105IconBtn,.v105Refresh{
-        -webkit-appearance:none!important;
-        appearance:none!important;
-        background:#08100d!important;
-        border:1px solid #1a2c23!important;
-        color:#fff!important;
-      }
-      .v105Refresh{color:#69ff2b!important}
-    }
-    </style>
-
-
-    <style id="cpMobileV107Polish">
-    @media (max-width:980px){
-      html,body,#cpNewMobileV105{
-        -webkit-text-size-adjust:100%!important;
-        text-size-adjust:100%!important;
-      }
-
-      #cpNewMobileV105{
-        max-width:440px!important;
-        margin:0 auto!important;
-        background:
-          radial-gradient(circle at 50% -8%,rgba(96,255,38,.08),transparent 27%),
-          #020604!important;
-        padding-bottom:84px!important;
-      }
-
-      .v105Top{
-        height:64px!important;
-        grid-template-columns:38px 1fr 40px!important;
-        padding:0 14px!important;
-        border-bottom:1px solid rgba(113,255,52,.10)!important;
-      }
-      .v105IconBtn{
-        width:38px!important;
-        height:38px!important;
-        border-radius:12px!important;
-        font-size:18px!important;
-      }
-      .v105Brand b{
-        font-size:20px!important;
-        line-height:1!important;
-      }
-      .v105Brand small{
-        margin-top:4px!important;
-        font-size:6.5px!important;
-        letter-spacing:1.8px!important;
-      }
-
-      .v105DateRow{
-        gap:7px!important;
-        padding:10px 14px 5px!important;
-      }
-      .v105DateRow button{
-        height:34px!important;
-        padding:0 12px!important;
-        border-radius:11px!important;
-        font-size:9px!important;
-        line-height:1!important;
-      }
-
-      .v105Intro{
-        padding:14px 16px 10px!important;
-      }
-      .v105Intro small{font-size:7px!important}
-      .v105Intro h1{
-        margin-top:5px!important;
-        font-size:21px!important;
-        line-height:1.06!important;
-        letter-spacing:-.55px!important;
-      }
-      .v105Refresh{
-        width:38px!important;
-        height:38px!important;
-        border-radius:12px!important;
-        font-size:18px!important;
-      }
-
-      .v105Hero{
-        margin:0 14px 17px!important;
-        padding:14px!important;
-        border-radius:19px!important;
-        box-shadow:none!important;
-      }
-      .v105HeroTop b{
-        max-width:72%!important;
-        overflow:hidden!important;
-        text-overflow:ellipsis!important;
-        white-space:nowrap!important;
-        font-size:9px!important;
-      }
-      .v105Status{
-        padding:5px 8px!important;
-        font-size:7px!important;
-      }
-      .v105HeroMatch{
-        grid-template-columns:1fr 62px 1fr!important;
-        gap:7px!important;
-        margin:14px 0!important;
-      }
-      .v105Logo{
-        width:48px!important;
-        height:48px!important;
-      }
-      .v105Logo img{
-        max-width:48px!important;
-        max-height:48px!important;
-      }
-      .v105Logo i{
-        width:44px!important;
-        height:44px!important;
-        font-size:15px!important;
-        background:linear-gradient(180deg,#102319,#0b1812)!important;
-        border:1px solid #1a3325!important;
-      }
-      .v105HeroTeam strong{
-        margin-top:6px!important;
-        font-size:11px!important;
-      }
-      .v105HeroMid small{
-        font-size:7px!important;
-        line-height:1.45!important;
-      }
-      .v105HeroMid b{
-        margin-top:6px!important;
-        font-size:21px!important;
-      }
-      .v105HeroPick{
-        grid-template-columns:1.35fr .72fr .72fr!important;
-        gap:5px!important;
-        padding:9px!important;
-        border-radius:12px!important;
-      }
-      .v105HeroPick small{font-size:6px!important}
-      .v105HeroPick b{font-size:9px!important}
-      .v105HeroPick div:first-child b{font-size:11px!important}
-      .v105HeroOpen{
-        height:40px!important;
-        margin-top:9px!important;
-        border-radius:11px!important;
-        font-size:9px!important;
-        letter-spacing:.1px!important;
-      }
-
-      .v105SectionHead{
-        align-items:center!important;
-        padding:0 15px 9px!important;
-      }
-      .v105SectionHead h2{font-size:17px!important}
-      .v105SectionHead span{font-size:7px!important}
-      .v105SectionHead button{
-        font-size:7px!important;
-        line-height:1!important;
-      }
-
-      .v105Markets{
-        gap:7px!important;
-        padding:0 14px 16px!important;
-      }
-      .v105Market{
-        flex:0 0 91px!important;
-        width:91px!important;
-        height:88px!important;
-        padding:9px!important;
-        border-radius:14px!important;
-      }
-      .v105Market i{font-size:18px!important}
-      .v105Market b{
-        margin-top:6px!important;
-        font-size:7.5px!important;
-        line-height:1.1!important;
-      }
-      .v105Market small{
-        margin-top:4px!important;
-        font-size:6px!important;
-      }
-      .v105Market em{
-        margin-top:4px!important;
-        font-size:6px!important;
-      }
-
-      .v105Panel{
-        margin:0 14px!important;
-      }
-      .v105PanelTop{
-        align-items:center!important;
-      }
-      .v105PanelTop small{font-size:6px!important}
-      .v105PanelTop h2{
-        margin-top:4px!important;
-        font-size:17px!important;
-      }
-      .v105Count{font-size:9px!important}
-      .v105Lines{
-        gap:6px!important;
-        padding:10px 0 12px!important;
-      }
-      .v105Lines button{
-        min-width:48px!important;
-        height:30px!important;
-        padding:0 10px!important;
-        border-radius:9px!important;
-        font-size:8px!important;
-        line-height:1!important;
-      }
-
-      .v105Games{
-        gap:8px!important;
-      }
-      .v105Game{
-        padding:11px 12px 9px!important;
-        border-radius:15px!important;
-      }
-      .v105GameTop span{font-size:7px!important}
-      .v105GameTeams{
-        grid-template-columns:1fr 48px 1fr!important;
-        margin:9px 0!important;
-      }
-      .v105GameTeams b{
-        font-size:9px!important;
-      }
-      .v105GameTeams em{
-        font-size:11px!important;
-      }
-      .v105Bet{
-        grid-template-columns:1.25fr .7fr .7fr!important;
-        gap:5px!important;
-      }
-      .v105Bet div{
-        padding:7px!important;
-        border-radius:9px!important;
-      }
-      .v105Bet small{font-size:5.5px!important}
-      .v105Bet b{
-        margin-top:3px!important;
-        font-size:8px!important;
-      }
-      .v105GameOpen{
-        height:26px!important;
-        margin-top:6px!important;
-        font-size:7px!important;
-        line-height:26px!important;
-      }
-
-      .v105Bottom{
-        height:62px!important;
-        padding:0 6px env(safe-area-inset-bottom)!important;
-        grid-template-columns:repeat(5,1fr)!important;
-        background:rgba(2,7,5,.985)!important;
-      }
-      .v105Bottom button{
-        min-width:0!important;
-        width:auto!important;
-        height:62px!important;
-        display:flex!important;
-        flex-direction:column!important;
-        align-items:center!important;
-        justify-content:center!important;
-        gap:3px!important;
-        padding:0!important;
-        margin:0!important;
-        border:0!important;
-        border-radius:0!important;
-        background:transparent!important;
-        color:#77837d!important;
-        font-size:8px!important;
-        line-height:1!important;
-        font-weight:800!important;
-        white-space:nowrap!important;
-      }
-      .v105Bottom button.active{
-        color:#6cff2b!important;
-      }
-      .v105Bottom i{
-        display:block!important;
-        margin:0!important;
-        font-size:16px!important;
-        line-height:1!important;
-      }
-
-      .v105User span{
-        font-size:13px!important;
-        line-height:1!important;
-      }
-
-      .v105MatchCard h2{font-size:16px!important}
-      .v105MatchCard h3{font-size:11px!important}
-      .v105MatchCard p{font-size:10px!important;line-height:1.45!important}
-    }
-    </style>
-
-
-    <style id="cpMobileV110Critical">
-    @media(max-width:980px){
-      body>.sidebar,body>.mobileOverlay,body>.mobileHeader,body>.main,body>#cpDesktopBootScreen{display:none!important}
-      #cpNewMobileV105,#cpV105Match{display:none!important}
-      #cpNewMobileV110{display:block;min-height:100dvh;background:#000;color:#fff}
-    }
-    @media(min-width:981px){#cpNewMobileV110,#cpV110Match{display:none!important}}
-    </style>
-
-
-    <script id="cpV110MobileAssets">
+<!-- Corner Pro V11 -->
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no" class="notranslate">
+<head>
+  <script>
     (function(){
-      if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
-      var css=document.createElement("link");
-      css.rel="stylesheet";
-      css.href="style.css?v=20260902-desktop-menu-v27";
-      document.head.appendChild(css);
-      var js=document.createElement("script");
-      js.src="script.js?v=20260902-desktop-menu-v27";
-      js.defer=true;
-      document.head.appendChild(js);
+      if (window.matchMedia && window.matchMedia("(min-width:981px)").matches) {
+        document.documentElement.classList.add("cpDesktopBoot");
+      }
     })();
-    </script>
+  </script>
 
-    </head>
-    <body class="dashboard notranslate" translate="no">
-    <section id="cpNewMobileV110" aria-label="Corner Pro Mobile">
-      <header class="v110Top">
-        <button class="v110TopBtn" id="cpV110MenuBtn" type="button" aria-label="Abrir menu">☰</button>
-        <div class="v110Brand">
-          <b><i>⚑</i> CORNER<span>PRO</span></b>
-          <small>ANÁLISES ESPORTIVAS</small>
-        </div>
-        <button class="v110TopBtn v110User" id="cpV110User" type="button" aria-label="Perfil e notificações">
-          <span>♧</span><img id="cpV110UserImg" alt="" hidden><i></i>
-        </button>
-      </header>
+  <meta charset="UTF-8" />
+  <meta name="google" content="notranslate" />
+  <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
+  <meta name="format-detection" content="telephone=no,email=no,address=no,date=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corner Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="(min-width:981px)">
 
-      <nav class="v110DateRow" aria-label="Datas">
-        <button class="v110DateFull" id="cpV110DateText">📅 Hoje</button>
-        <button class="active" data-v110-day="0">HOJE</button>
-        <button data-v110-day="1">AMANHÃ</button>
-        <button data-v110-day="2" id="cpV110Day2">TER 25</button>
-        <button data-v110-day="3" id="cpV110Day3">QUA 26</button>
-        <button data-v110-day="4" id="cpV110Day4">QUI 27</button>
-      </nav>
+  <style id="cpMobileV8Style">
+    @media (max-width:980px){
+      .cpMobileLayer.is-open{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+      body.cpMobileLayerOpen{overflow:hidden!important}
+      .cpV8MatchHero{padding:24px 18px;text-align:center;background:linear-gradient(145deg,#06110f,#071b12);border:1px solid rgba(105,255,42,.28);border-radius:18px}
+      .cpV8MatchHero time,.cpV8MatchHero span{display:block;color:#78ff2d;font-weight:900}
+      .cpV8MatchHero div{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;font-size:20px}
+      .cpV8MatchHero b{display:block;margin-top:10px;font-size:13px}
+      .cpV8MatchTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+      .cpV8MatchTabs button{padding:12px;border-radius:12px;border:1px solid #26332f;background:#0a1112;color:#8c9995;font-weight:900}
+      .cpV8MatchTabs button.active{border-color:#64ff20;color:#64ff20}
+      .cpV8MatchStats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .cpV8MatchStats div,.cpV8MatchRead{padding:14px;border:1px solid #1f302b;border-radius:14px;background:#081012}
+      .cpV8MatchStats small{display:block;color:#7f8c89;font-size:10px}
+      .cpV8MatchStats strong{display:block;margin-top:5px;color:#fff}
+      .cpV8MatchRead{margin-top:12px}.cpV8MatchRead h3{color:#70ff28}.cpV8MatchRead p{color:#aab5b2;line-height:1.5}
+    }
+  </style>
 
-      <section class="v110Hero" id="cpV110Hero">
-        <div class="v110HeroLoading">
-          <div class="v110Spinner"></div>
-          <b>Carregando melhor aposta...</b>
-          <small>Buscando a mesma IA de escanteios do site.</small>
-        </div>
-      </section>
 
-      <section class="v110Home">
-        <div class="v110SectionHead">
-          <h2>◎ MERCADOS EM DESTAQUE</h2>
-          <button type="button" data-v110-open-market="corners">VER TODOS ›</button>
-        </div>
-        <section class="v110Markets" id="cpV110Markets"></section>
-        <div class="v110Dots" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i></div>
+<style id="cpHideHeroMetricsOnly">
+  /* APP V85 — remove somente o painel Projeção/Confiança/Tendência do card principal */
+  .cpHomeBestCard .cpHomeMetrics,
+  .cpHomeHero .cpHomeMetrics,
+  #cpHomeBest .cpHomeMetrics {
+    display: none !important;
+  }
+</style>
 
-        <div class="v110SectionHead v110GamesHead">
-          <h2>☆ JOGOS EM DESTAQUE</h2>
-          <button type="button" data-v110-open-market="corners">VER TODOS ›</button>
-        </div>
-        <section class="v110Featured" id="cpV110Featured"></section>
 
-        <section class="v110Quick">
-          <button data-v110-nav="live"><i>◉</i><b>AO VIVO</b><small id="cpV110LiveCount">Partidas</small></button>
-          <button><i>☆</i><b>FAVORITOS</b><small>Seus jogos</small></button>
-          <button><i>♧</i><b>MEUS ALERTAS</b><small>Notificações</small></button>
-          <button><i>▥</i><b>RELATÓRIOS</b><small>Desempenho</small></button>
-        </section>
-      </section>
+  <style id="cpAuthHiddenSafety">
+    #cpAuthModal [hidden] { display: none !important; }
+  </style>
 
-      <section class="v110Panel" id="cpV110Panel">
-        <div class="v110PanelHead">
-          <button type="button" data-v110-nav="home">‹</button>
-          <div><small>MERCADO</small><h2 id="cpV110MarketTitle">ESCANTEIOS</h2></div>
-          <b id="cpV110Count">0 jogos</b>
-        </div>
-        <div class="v110Lines" id="cpV110Lines"></div>
-        <div class="v110Games" id="cpV110Games"></div>
-      </section>
+  <link rel="stylesheet" href="style.css?v=20260826-app-v122-mobile" media="(min-width:981px)">
+  <script>
+    (function(){
+      if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
+        window.addEventListener('DOMContentLoaded', function(){
+          var s=document.createElement('script');
+          s.src='script.js?v=20260826-app-v122-mobile';
+          s.async=false;
+          document.body.appendChild(s);
+        }, {once:true});
+      }
+    })();
+  </script>
+  <style id="cpNewMobileV105Style">
+  *{box-sizing:border-box}
 
-      <nav class="v110Bottom">
-        <button class="active" data-v110-nav="home"><i>⌂</i><b>Dashboard</b></button>
-        <button data-v110-nav="pregame"><i>⚽</i><b>Pré-jogo</b></button>
-        <button data-v110-nav="live"><i>◎</i><b>Ao Vivo</b></button>
-        <button data-v110-market="corners"><i>⚑</i><b>Escanteios</b></button>
-        <button data-v110-nav="more"><i>•••</i><b>Mais</b></button>
-      </nav>
+@media (max-width:980px){
+  html,body{margin:0!important;min-height:100%!important;background:#020504!important;color:#f5f7f6!important;overflow-x:hidden!important;font-family:Inter,system-ui,Arial,sans-serif!important}
+  body>.sidebar,body>.mobileOverlay,body>.mobileHeader,body>.main,body>.mobileBottomNav,body>#cpMobileHome,body>.cpMobileHome,body>.cpHomeBottom,body>.cpGlobalBottomNav,body>.cpMobileLayer,body>#cpMobileMarketLayer,body>#cpMobileMatchLayer,body>#cpDesktopBootScreen{display:none!important;visibility:hidden!important;pointer-events:none!important}
+  #cpNewMobileV105{display:block!important;position:relative!important;z-index:10!important;width:100%!important;max-width:520px!important;min-height:100dvh!important;margin:0 auto!important;padding:0 0 86px!important;background:radial-gradient(circle at 50% -70px,rgba(98,255,38,.11),transparent 260px),#020504!important;color:#f7faf8!important}
+  .v105Top{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:44px 1fr 46px;align-items:center;gap:10px;height:76px;padding:0 16px;background:rgba(2,5,4,.94);backdrop-filter:blur(18px);border-bottom:1px solid #13231b}
+  .v105IconBtn{height:42px;border:1px solid #1a2c23;border-radius:13px;background:#08100d;color:#fff;font-size:20px}.v105Brand{text-align:center}.v105Brand b{font-size:22px;font-style:italic;letter-spacing:-1.2px}.v105Brand b span{color:#69ff2b}.v105Brand small{display:block;margin-top:2px;color:#9aa69f;font-size:7px;font-weight:900;letter-spacing:1.5px}.v105User{position:relative}.v105User img{width:30px;height:30px;border-radius:50%;object-fit:cover}.v105User i{position:absolute;right:6px;bottom:6px;width:8px;height:8px;border-radius:50%;background:#66ff2a;box-shadow:0 0 10px #66ff2a}
+  .v105DateRow{display:flex;align-items:center;gap:8px;padding:12px 16px 4px;overflow:auto;scrollbar-width:none}.v105DateRow::-webkit-scrollbar{display:none}.v105DateRow button{flex:0 0 auto;height:37px;padding:0 15px;border-radius:12px;border:1px solid #1d3026;background:#07100c;color:#97a39d;font-weight:900;font-size:10px}.v105DateRow button.active{background:#153a18;border-color:#62f529;color:#74ff36}.v105DateRow .v105DateFull{padding:0 13px;color:#d8e0dc}
+  .v105Intro{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px}.v105Intro small{display:block;color:#6cff2b;font-size:8px;font-weight:950;letter-spacing:1px}.v105Intro h1{margin:4px 0 0;font-size:24px;letter-spacing:-.8px}.v105Refresh{width:42px;height:42px;border-radius:13px;border:1px solid #1b2e24;background:#08110d;color:#69ff2b;font-size:20px}
+  .v105Hero{margin:0 14px 18px;padding:15px;border:1px solid #1b3428;border-radius:22px;background:radial-gradient(circle at 50% 100%,rgba(64,191,33,.17),transparent 50%),linear-gradient(180deg,#07120d,#041009);box-shadow:0 16px 50px rgba(0,0,0,.28)}.v105HeroTop{display:flex;justify-content:space-between;align-items:center;gap:8px}.v105HeroTop b{color:#72ff34;font-size:11px}.v105Status{padding:6px 9px;border-radius:999px;background:#11261a;color:#7cff3d;font-size:8px;font-weight:950;white-space:nowrap}.v105Status.live{background:#331210;color:#ff704d}.v105Status.finished{background:#1a2020;color:#aeb9b4}.v105HeroMatch{display:grid;grid-template-columns:1fr 70px 1fr;gap:10px;align-items:center;margin:18px 0}.v105HeroTeam{text-align:center;min-width:0}.v105Logo{width:62px;height:62px;margin:auto;display:grid;place-items:center}.v105Logo img{max-width:62px;max-height:62px}.v105Logo i{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:#102018;color:#6cff2b;font-style:normal;font-weight:950}.v105HeroTeam strong{display:block;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.v105HeroMid{text-align:center}.v105HeroMid small{color:#7f8d86;font-size:8px}.v105HeroMid b{display:block;margin-top:8px;font-size:24px}.v105HeroPick{display:grid;grid-template-columns:1.5fr .7fr .7fr;gap:7px;padding:11px;border:1px solid #20462d;border-radius:14px;background:#07110c}.v105HeroPick div{min-width:0}.v105HeroPick small{display:block;color:#728078;font-size:7px;font-weight:900}.v105HeroPick b{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.v105HeroPick div:first-child b{color:#72ff34;font-size:13px}.v105HeroOpen{width:100%;height:45px;margin-top:11px;border-radius:13px;background:linear-gradient(90deg,#63f127,#93ff00);color:#061005;font-weight:950;font-size:10px}.v105HeroLoading{padding:25px 8px;text-align:center}.v105Spinner{width:34px;height:34px;margin:0 auto 12px;border:4px solid rgba(99,241,39,.14);border-top-color:#63f127;border-radius:50%;animation:v105spin .8s linear infinite}@keyframes v105spin{to{transform:rotate(360deg)}}
+  .v105SectionHead{display:flex;align-items:end;justify-content:space-between;padding:0 16px 10px}.v105SectionHead h2{margin:0;font-size:18px}.v105SectionHead span{color:#6d7b74;font-size:8px}.v105SectionHead button{color:#70ff32;font-size:8px;font-weight:950}
+  .v105Markets{display:flex;gap:9px;overflow-x:auto;padding:0 14px 18px;scrollbar-width:none}.v105Markets::-webkit-scrollbar{display:none}.v105Market{flex:0 0 105px;height:103px;border:1px solid #1b2b24;border-radius:16px;background:linear-gradient(180deg,#0a1210,#060b09);padding:10px;text-align:left}.v105Market i{display:block;color:#6cff2b;font-size:22px;font-style:normal}.v105Market b{display:block;margin-top:8px;font-size:9px}.v105Market small{display:block;margin-top:5px;color:#78de4d;font-size:7px;font-weight:900}.v105Market em{display:block;margin-top:6px;color:#69766f;font-size:7px;font-style:normal}.v105Market.active{border-color:#6cff2b;box-shadow:inset 0 0 0 1px rgba(108,255,43,.14)}
+  .v105Panel{margin:0 14px}.v105PanelTop{display:flex;align-items:end;justify-content:space-between}.v105PanelTop small{color:#6f7b75;font-size:7px;letter-spacing:1px}.v105PanelTop h2{margin:3px 0 0;font-size:19px}.v105Count{color:#70ff31;font-size:10px;font-weight:950}.v105Lines{display:flex;gap:7px;overflow:auto;padding:12px 0 14px;scrollbar-width:none}.v105Lines::-webkit-scrollbar{display:none}.v105Lines button{flex:0 0 auto;min-width:52px;height:32px;padding:0 12px;border:1px solid #23342c;border-radius:10px;background:#07100c;color:#9aa69f;font-size:9px;font-weight:900}.v105Lines button.active{background:#63f127;border-color:#63f127;color:#061005}
+  .v105Games{display:flex;flex-direction:column;gap:10px}.v105Game{padding:13px;border:1px solid #1c2b25;border-radius:17px;background:linear-gradient(180deg,#0a1210,#060b09)}.v105GameTop{display:flex;align-items:center;justify-content:space-between}.v105GameTop span{max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#829088;font-size:8px}.v105GameTeams{display:grid;grid-template-columns:1fr 60px 1fr;align-items:center;gap:7px;margin:12px 0}.v105GameTeams div{min-width:0}.v105GameTeams div:last-child{text-align:right}.v105GameTeams b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.v105GameTeams em{text-align:center;color:#73ff35;font-style:normal;font-weight:950}.v105Bet{display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:6px}.v105Bet div{min-width:0;padding:8px;border-radius:10px;background:#0d1612}.v105Bet small{display:block;color:#6e7b74;font-size:6px;font-weight:900}.v105Bet b{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}.v105Bet div:first-child b{color:#6cff2b}.v105GameOpen{width:100%;height:32px;margin-top:8px;border-top:1px solid #15231d;color:#71ff34;text-align:right;font-size:8px;font-weight:950}.v105Empty{padding:30px 15px;border:1px dashed #24352d;border-radius:16px;background:#07100c;text-align:center;color:#839087}.v105Empty b{display:block;color:#dfe5e2;margin-bottom:6px}
+  .v105Bottom{position:fixed;left:0;right:0;bottom:0;z-index:70;max-width:520px;margin:auto;height:72px;padding-bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(5,1fr);background:rgba(3,8,6,.97);backdrop-filter:blur(16px);border-top:1px solid #192820}.v105Bottom button{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;color:#75817b;font-size:7px;font-weight:900}.v105Bottom i{font-size:18px;font-style:normal}.v105Bottom button.active{color:#6cff2b}
+  #cpV105Match{display:none;position:fixed;inset:0;z-index:2147483000;background:#020504;overflow:auto;color:#fff}.cpV105MatchOpen #cpV105Match{display:block}.v105MatchHead{position:sticky;top:0;height:60px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#07100d;border-bottom:1px solid #1a2922}.v105MatchHead button{width:38px;height:38px;border:1px solid #21332a;border-radius:11px;color:#fff}.v105MatchBody{padding:15px}.v105MatchCard{padding:16px;border:1px solid #1b2b24;border-radius:18px;background:#08100d;margin-bottom:10px}.v105MatchCard h2{margin:8px 0;color:#6cff2b}.v105MatchCard p{color:#a6b0ab;line-height:1.55}
+  #cpAuthModal{z-index:2147483600!important}
+}
+@media (min-width:981px){#cpNewMobileV105,#cpV105Match{display:none!important}}
+
+  </style>
+
+<style id="cpMobileV107VisualPatch">
+@media (max-width:980px){
+  #cpNewMobileV105 button,
+  #cpV105Match button{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    font:inherit!important;
+    box-shadow:none;
+  }
+
+  .v105Top{height:70px;padding:0 17px;background:rgba(2,6,4,.96)}
+  .v105Brand b{font-size:23px}
+  .v105DateRow{padding:10px 16px 5px}
+  .v105Intro{padding:14px 18px 11px}
+  .v105Intro h1{font-size:22px}
+
+  .v105Hero{
+    margin:0 15px 18px;
+    padding:16px;
+    border-radius:20px;
+    border-color:#244232;
+    background:
+      radial-gradient(circle at 50% 72%,rgba(89,255,38,.10),transparent 37%),
+      linear-gradient(180deg,#07130e,#030a07);
+  }
+  .v105HeroTop b{font-size:10px;letter-spacing:.1px}
+  .v105HeroMatch{margin:15px 0;grid-template-columns:1fr 66px 1fr}
+  .v105Logo{width:56px;height:56px}
+  .v105Logo img{max-width:56px;max-height:56px}
+  .v105HeroTeam strong{font-size:12px}
+  .v105HeroMid b{font-size:22px}
+  .v105HeroPick{padding:10px;border-radius:13px}
+  .v105HeroOpen{
+    border:0!important;
+    background:linear-gradient(90deg,#5df323,#91ff00)!important;
+    color:#061005!important;
+    height:43px;
+  }
+
+  .v105SectionHead button{
+    border:0!important;
+    background:transparent!important;
+    color:#70ff32!important;
+    padding:5px!important;
+  }
+
+  .v105Markets{gap:8px;padding:0 15px 16px}
+  .v105Market{
+    flex:0 0 98px;
+    width:98px;
+    height:94px;
+    padding:10px;
+    border-radius:15px;
+    background:linear-gradient(180deg,#08110d,#050a08)!important;
+    color:#fff!important;
+  }
+  .v105Market i{font-size:20px}
+  .v105Market b{margin-top:7px;font-size:8px}
+  .v105Market small{font-size:6.5px}
+  .v105Market em{margin-top:5px;font-size:6.5px}
+
+  .v105Lines button{
+    border:1px solid #23342c!important;
+    background:#07100c!important;
+    color:#9aa69f!important;
+  }
+  .v105Lines button.active{
+    background:#63f127!important;
+    border-color:#63f127!important;
+    color:#061005!important;
+  }
+
+  .v105Games{gap:9px}
+  .v105Game{
+    padding:13px 13px 10px;
+    border-radius:16px;
+    background:linear-gradient(180deg,#08110e,#050a08);
+  }
+  .v105GameTeams{margin:10px 0}
+  .v105Bet div{padding:8px}
+  .v105GameOpen{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    display:block!important;
+    width:100%!important;
+    height:28px!important;
+    margin-top:7px!important;
+    padding:0!important;
+    border:0!important;
+    border-top:1px solid #15231d!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#71ff34!important;
+    text-align:right!important;
+  }
+
+  .v105Bottom{
+    left:50%!important;
+    right:auto!important;
+    transform:translateX(-50%)!important;
+    width:min(100%,520px)!important;
+    height:68px!important;
+    background:rgba(3,8,6,.985)!important;
+    border-top:1px solid #1b2a23!important;
+  }
+  .v105Bottom button{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#7b8781!important;
+    padding:0!important;
+  }
+  .v105Bottom button.active{color:#6cff2b!important}
+  .v105Bottom i{font-size:17px}
+
+  .v105IconBtn,.v105Refresh{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    background:#08100d!important;
+    border:1px solid #1a2c23!important;
+    color:#fff!important;
+  }
+  .v105Refresh{color:#69ff2b!important}
+}
+</style>
+
+
+<style id="cpMobileV107Polish">
+@media (max-width:980px){
+  html,body,#cpNewMobileV105{
+    -webkit-text-size-adjust:100%!important;
+    text-size-adjust:100%!important;
+  }
+
+  #cpNewMobileV105{
+    max-width:440px!important;
+    margin:0 auto!important;
+    background:
+      radial-gradient(circle at 50% -8%,rgba(96,255,38,.08),transparent 27%),
+      #020604!important;
+    padding-bottom:84px!important;
+  }
+
+  .v105Top{
+    height:64px!important;
+    grid-template-columns:38px 1fr 40px!important;
+    padding:0 14px!important;
+    border-bottom:1px solid rgba(113,255,52,.10)!important;
+  }
+  .v105IconBtn{
+    width:38px!important;
+    height:38px!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+  }
+  .v105Brand b{
+    font-size:20px!important;
+    line-height:1!important;
+  }
+  .v105Brand small{
+    margin-top:4px!important;
+    font-size:6.5px!important;
+    letter-spacing:1.8px!important;
+  }
+
+  .v105DateRow{
+    gap:7px!important;
+    padding:10px 14px 5px!important;
+  }
+  .v105DateRow button{
+    height:34px!important;
+    padding:0 12px!important;
+    border-radius:11px!important;
+    font-size:9px!important;
+    line-height:1!important;
+  }
+
+  .v105Intro{
+    padding:14px 16px 10px!important;
+  }
+  .v105Intro small{font-size:7px!important}
+  .v105Intro h1{
+    margin-top:5px!important;
+    font-size:21px!important;
+    line-height:1.06!important;
+    letter-spacing:-.55px!important;
+  }
+  .v105Refresh{
+    width:38px!important;
+    height:38px!important;
+    border-radius:12px!important;
+    font-size:18px!important;
+  }
+
+  .v105Hero{
+    margin:0 14px 17px!important;
+    padding:14px!important;
+    border-radius:19px!important;
+    box-shadow:none!important;
+  }
+  .v105HeroTop b{
+    max-width:72%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+  }
+  .v105Status{
+    padding:5px 8px!important;
+    font-size:7px!important;
+  }
+  .v105HeroMatch{
+    grid-template-columns:1fr 62px 1fr!important;
+    gap:7px!important;
+    margin:14px 0!important;
+  }
+  .v105Logo{
+    width:48px!important;
+    height:48px!important;
+  }
+  .v105Logo img{
+    max-width:48px!important;
+    max-height:48px!important;
+  }
+  .v105Logo i{
+    width:44px!important;
+    height:44px!important;
+    font-size:15px!important;
+    background:linear-gradient(180deg,#102319,#0b1812)!important;
+    border:1px solid #1a3325!important;
+  }
+  .v105HeroTeam strong{
+    margin-top:6px!important;
+    font-size:11px!important;
+  }
+  .v105HeroMid small{
+    font-size:7px!important;
+    line-height:1.45!important;
+  }
+  .v105HeroMid b{
+    margin-top:6px!important;
+    font-size:21px!important;
+  }
+  .v105HeroPick{
+    grid-template-columns:1.35fr .72fr .72fr!important;
+    gap:5px!important;
+    padding:9px!important;
+    border-radius:12px!important;
+  }
+  .v105HeroPick small{font-size:6px!important}
+  .v105HeroPick b{font-size:9px!important}
+  .v105HeroPick div:first-child b{font-size:11px!important}
+  .v105HeroOpen{
+    height:40px!important;
+    margin-top:9px!important;
+    border-radius:11px!important;
+    font-size:9px!important;
+    letter-spacing:.1px!important;
+  }
+
+  .v105SectionHead{
+    align-items:center!important;
+    padding:0 15px 9px!important;
+  }
+  .v105SectionHead h2{font-size:17px!important}
+  .v105SectionHead span{font-size:7px!important}
+  .v105SectionHead button{
+    font-size:7px!important;
+    line-height:1!important;
+  }
+
+  .v105Markets{
+    gap:7px!important;
+    padding:0 14px 16px!important;
+  }
+  .v105Market{
+    flex:0 0 91px!important;
+    width:91px!important;
+    height:88px!important;
+    padding:9px!important;
+    border-radius:14px!important;
+  }
+  .v105Market i{font-size:18px!important}
+  .v105Market b{
+    margin-top:6px!important;
+    font-size:7.5px!important;
+    line-height:1.1!important;
+  }
+  .v105Market small{
+    margin-top:4px!important;
+    font-size:6px!important;
+  }
+  .v105Market em{
+    margin-top:4px!important;
+    font-size:6px!important;
+  }
+
+  .v105Panel{
+    margin:0 14px!important;
+  }
+  .v105PanelTop{
+    align-items:center!important;
+  }
+  .v105PanelTop small{font-size:6px!important}
+  .v105PanelTop h2{
+    margin-top:4px!important;
+    font-size:17px!important;
+  }
+  .v105Count{font-size:9px!important}
+  .v105Lines{
+    gap:6px!important;
+    padding:10px 0 12px!important;
+  }
+  .v105Lines button{
+    min-width:48px!important;
+    height:30px!important;
+    padding:0 10px!important;
+    border-radius:9px!important;
+    font-size:8px!important;
+    line-height:1!important;
+  }
+
+  .v105Games{
+    gap:8px!important;
+  }
+  .v105Game{
+    padding:11px 12px 9px!important;
+    border-radius:15px!important;
+  }
+  .v105GameTop span{font-size:7px!important}
+  .v105GameTeams{
+    grid-template-columns:1fr 48px 1fr!important;
+    margin:9px 0!important;
+  }
+  .v105GameTeams b{
+    font-size:9px!important;
+  }
+  .v105GameTeams em{
+    font-size:11px!important;
+  }
+  .v105Bet{
+    grid-template-columns:1.25fr .7fr .7fr!important;
+    gap:5px!important;
+  }
+  .v105Bet div{
+    padding:7px!important;
+    border-radius:9px!important;
+  }
+  .v105Bet small{font-size:5.5px!important}
+  .v105Bet b{
+    margin-top:3px!important;
+    font-size:8px!important;
+  }
+  .v105GameOpen{
+    height:26px!important;
+    margin-top:6px!important;
+    font-size:7px!important;
+    line-height:26px!important;
+  }
+
+  .v105Bottom{
+    height:62px!important;
+    padding:0 6px env(safe-area-inset-bottom)!important;
+    grid-template-columns:repeat(5,1fr)!important;
+    background:rgba(2,7,5,.985)!important;
+  }
+  .v105Bottom button{
+    min-width:0!important;
+    width:auto!important;
+    height:62px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:3px!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#77837d!important;
+    font-size:8px!important;
+    line-height:1!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+  .v105Bottom button.active{
+    color:#6cff2b!important;
+  }
+  .v105Bottom i{
+    display:block!important;
+    margin:0!important;
+    font-size:16px!important;
+    line-height:1!important;
+  }
+
+  .v105User span{
+    font-size:13px!important;
+    line-height:1!important;
+  }
+
+  .v105MatchCard h2{font-size:16px!important}
+  .v105MatchCard h3{font-size:11px!important}
+  .v105MatchCard p{font-size:10px!important;line-height:1.45!important}
+}
+</style>
+
+
+<style id="cpMobileV110Critical">
+@media(max-width:980px){
+  body>.sidebar,body>.mobileOverlay,body>.mobileHeader,body>.main,body>#cpDesktopBootScreen{display:none!important}
+  #cpNewMobileV105,#cpV105Match{display:none!important}
+  #cpNewMobileV110{display:block;min-height:100dvh;background:#000;color:#fff}
+}
+@media(min-width:981px){#cpNewMobileV110,#cpV110Match{display:none!important}}
+</style>
+
+
+<script id="cpV110MobileAssets">
+(function(){
+  if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
+  var css=document.createElement("link");
+  css.rel="stylesheet";
+  css.href="style.css?v=20260826-app-v122-mobile";
+  document.head.appendChild(css);
+  var js=document.createElement("script");
+  js.src="script.js?v=20260826-app-v122-mobile";
+  js.defer=true;
+  document.head.appendChild(js);
+})();
+</script>
+
+</head>
+<body class="dashboard notranslate" translate="no">
+<section id="cpNewMobileV110" aria-label="Corner Pro Mobile">
+  <header class="v110Top">
+    <button class="v110TopBtn" id="cpV110MenuBtn" type="button" aria-label="Abrir menu">☰</button>
+    <div class="v110Brand">
+      <b><i>⚑</i> CORNER<span>PRO</span></b>
+      <small>ANÁLISES ESPORTIVAS</small>
+    </div>
+    <button class="v110TopBtn v110User" id="cpV110User" type="button" aria-label="Perfil e notificações">
+      <span>♧</span><img id="cpV110UserImg" alt="" hidden><i></i>
+    </button>
+  </header>
+
+  <nav class="v110DateRow" aria-label="Datas">
+    <button class="v110DateFull" id="cpV110DateText">📅 Hoje</button>
+    <button class="active" data-v110-day="0">HOJE</button>
+    <button data-v110-day="1">AMANHÃ</button>
+    <button data-v110-day="2" id="cpV110Day2">TER 25</button>
+    <button data-v110-day="3" id="cpV110Day3">QUA 26</button>
+    <button data-v110-day="4" id="cpV110Day4">QUI 27</button>
+  </nav>
+
+  <section class="v110Hero" id="cpV110Hero">
+    <div class="v110HeroLoading">
+      <div class="v110Spinner"></div>
+      <b>Carregando melhor aposta...</b>
+      <small>Buscando a mesma IA de escanteios do site.</small>
+    </div>
+  </section>
+
+  <section class="v110Home">
+    <div class="v110SectionHead">
+      <h2>◎ MERCADOS EM DESTAQUE</h2>
+      <button type="button" data-v110-open-market="corners">VER TODOS ›</button>
+    </div>
+    <section class="v110Markets" id="cpV110Markets"></section>
+    <div class="v110Dots" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i></div>
+
+    <div class="v110SectionHead v110GamesHead">
+      <h2>☆ JOGOS EM DESTAQUE</h2>
+      <button type="button" data-v110-open-market="corners">VER TODOS ›</button>
+    </div>
+    <section class="v110Featured" id="cpV110Featured"></section>
+
+    <section class="v110Quick">
+      <button data-v110-nav="live"><i>◉</i><b>AO VIVO</b><small id="cpV110LiveCount">Partidas</small></button>
+      <button><i>☆</i><b>FAVORITOS</b><small>Seus jogos</small></button>
+      <button><i>♧</i><b>MEUS ALERTAS</b><small>Notificações</small></button>
+      <button><i>▥</i><b>RELATÓRIOS</b><small>Desempenho</small></button>
     </section>
+  </section>
+
+  <section class="v110Panel" id="cpV110Panel">
+    <div class="v110PanelHead">
+      <button type="button" data-v110-nav="home">‹</button>
+      <div><small>MERCADO</small><h2 id="cpV110MarketTitle">ESCANTEIOS</h2></div>
+      <b id="cpV110Count">0 jogos</b>
+    </div>
+    <div class="v110Lines" id="cpV110Lines"></div>
+    <div class="v110Games" id="cpV110Games"></div>
+  </section>
+
+  <nav class="v110Bottom">
+    <button class="active" data-v110-nav="home"><i>⌂</i><b>Dashboard</b></button>
+    <button data-v110-nav="pregame"><i>⚽</i><b>Pré-jogo</b></button>
+    <button data-v110-nav="live"><i>◎</i><b>Ao Vivo</b></button>
+    <button data-v110-market="corners"><i>⚑</i><b>Escanteios</b></button>
+    <button data-v110-nav="more"><i>•••</i><b>Mais</b></button>
+  </nav>
+</section>
 
 
-    <section id="cpV116Calendar" class="v116Overlay" aria-hidden="true">
-      <div class="v116Modal v116CalendarModal" role="dialog" aria-modal="true" aria-labelledby="cpV116CalendarTitle">
-        <header>
-          <div><small>CALENDÁRIO</small><h2 id="cpV116CalendarTitle">Escolha uma data</h2></div>
-          <button type="button" data-v116-close-calendar>×</button>
-        </header>
-        <div class="v116MonthNav">
-          <button type="button" data-v116-month="-1">‹</button>
-          <strong id="cpV116MonthLabel">—</strong>
-          <button type="button" data-v116-month="1">›</button>
-        </div>
-        <div class="v116Week"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
-        <div class="v116Days" id="cpV116Days"></div>
-        <button class="v116Today" type="button" data-v116-today>IR PARA HOJE</button>
-      </div>
-    </section>
+<section id="cpV116Calendar" class="v116Overlay" aria-hidden="true">
+  <div class="v116Modal v116CalendarModal" role="dialog" aria-modal="true" aria-labelledby="cpV116CalendarTitle">
+    <header>
+      <div><small>CALENDÁRIO</small><h2 id="cpV116CalendarTitle">Escolha uma data</h2></div>
+      <button type="button" data-v116-close-calendar>×</button>
+    </header>
+    <div class="v116MonthNav">
+      <button type="button" data-v116-month="-1">‹</button>
+      <strong id="cpV116MonthLabel">—</strong>
+      <button type="button" data-v116-month="1">›</button>
+    </div>
+    <div class="v116Week"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+    <div class="v116Days" id="cpV116Days"></div>
+    <button class="v116Today" type="button" data-v116-today>IR PARA HOJE</button>
+  </div>
+</section>
 
-    <section id="cpV116Login" class="v116Overlay" aria-hidden="true">
-      <div class="v116Modal v116LoginModal" role="dialog" aria-modal="true" aria-labelledby="cpV116LoginTitle">
-        <button class="v116Close" type="button" data-v116-close-login>×</button>
-        <div class="v116LoginBrand">⚑ <b>CORNER<span>PRO</span></b></div>
-        <h2 id="cpV116LoginTitle">Entrar no CornerPro</h2>
-        <p>Acesse sua conta para manter favoritos, alertas e recursos do seu plano.</p>
-        <button class="v116Google" id="cpV116GoogleLogin" type="button">
-          <span>G</span><b>Entrar com Google</b>
-        </button>
-        <p class="v116LoginError" aria-live="polite"></p>
-        <div class="v116Logged" id="cpV116Logged" hidden>
-          <img id="cpV116LoggedImg" alt="">
-          <div><strong id="cpV116LoggedName">Usuário</strong><small id="cpV116LoggedEmail"></small></div>
-        </div>
-      </div>
-    </section>
+<section id="cpV116Login" class="v116Overlay" aria-hidden="true">
+  <div class="v116Modal v116LoginModal" role="dialog" aria-modal="true" aria-labelledby="cpV116LoginTitle">
+    <button class="v116Close" type="button" data-v116-close-login>×</button>
+    <div class="v116LoginBrand">⚑ <b>CORNER<span>PRO</span></b></div>
+    <h2 id="cpV116LoginTitle">Entrar no CornerPro</h2>
+    <p>Acesse sua conta para manter favoritos, alertas e recursos do seu plano.</p>
+    <button class="v116Google" id="cpV116GoogleLogin" type="button">
+      <span>G</span><b>Entrar com Google</b>
+    </button>
+    <p class="v116LoginError" aria-live="polite"></p>
+    <div class="v116Logged" id="cpV116Logged" hidden>
+      <img id="cpV116LoggedImg" alt="">
+      <div><strong id="cpV116LoggedName">Usuário</strong><small id="cpV116LoggedEmail"></small></div>
+    </div>
+  </div>
+</section>
 
-    <section id="cpV110Match">
-      <header class="v110MatchHead">
-        <button id="cpV110CloseMatch" type="button" aria-label="Voltar para a tela anterior">←</button>
-        <b id="cpV110MatchTitle">MATCH CENTER</b>
-      </header>
-      <div class="v110MatchBody" id="cpV110MatchBody"></div>
-    </section>
+<section id="cpV110Match">
+  <header class="v110MatchHead">
+    <button id="cpV110CloseMatch" type="button" aria-label="Voltar para a tela anterior">←</button>
+    <b id="cpV110MatchTitle">MATCH CENTER</b>
+  </header>
+  <div class="v110MatchBody" id="cpV110MatchBody"></div>
+</section>
 
-      <div id="cpDesktopBootScreen" aria-hidden="true">
-        <div class="cpBootBox">
-          <div class="cpBootBrand"><i>⚑</i><b>CORNER<span>PRO</span></b></div>
-          <div class="cpBootDots"><i></i><i></i><i></i></div>
-          <small>CARREGANDO PAINEL</small>
-        </div>
-      </div>
+  <div id="cpDesktopBootScreen" aria-hidden="true">
+    <div class="cpBootBox">
+      <div class="cpBootBrand"><i>⚑</i><b>CORNER<span>PRO</span></b></div>
+      <div class="cpBootDots"><i></i><i></i><i></i></div>
+      <small>CARREGANDO PAINEL</small>
+    </div>
+  </div>
 
-      <input type="hidden" id="date" name="date" value="">
+  <input type="hidden" id="date" name="date" value="">
 
-      <aside class="sidebar">
-        <div class="brandBlock">
-          <div class="brandLogo">
-            <span class="brandMark">⚑</span>
-            <div>
-              <strong>CORNER<span>PRO</span></strong>
-              <small>ANÁLISES ESPORTIVAS</small>
-            </div>
-          </div>
-        </div>
-
-        <nav class="sidebar-nav" aria-label="Menu lateral">
-          <a class="side-item active" href="#dashboard" data-cp-nav="dashboard"><span>⌂</span><b>Dashboard</b></a>
-          <a class="side-item" href="#pregame" data-cp-nav="pregame" data-view="pregame"><span>⚽</span><b>Pré-Jogo</b></a>
-          <a class="side-item" href="#live" data-cp-nav="live"><span>◎</span><b>Ao Vivo</b></a>
-          <a class="side-item" href="#corners" data-cp-nav="corners"><span>⚑</span><b>Escanteios</b></a>
-          <a class="side-item" href="#goals" data-cp-nav="goals"><span>◌</span><b>Gols</b></a>
-          <a class="side-item" href="#cards" data-cp-nav="cards"><span>▯</span><b>Cartões</b></a>
-          <a class="side-item cpDesktopOnlyNav" href="#handicap" data-cp-nav="handicap" data-cpd3-nav="handicap"><span>⇆</span><b>Handicap</b></a>
-          <a class="side-item cpDesktopOnlyNav" href="#btts" data-cp-nav="btts" data-cpd3-nav="btts"><span>◉</span><b>Ambas Marcam</b></a>
-          <a class="side-item" href="#props" data-cp-nav="props"><span>♞</span><b>Player Props</b></a>
-          <a class="side-item" href="#leagues" data-cp-nav="leagues"><span>◉</span><b>Ligas</b></a>
-          <a class="side-item" href="#favorites" data-cp-nav="favorites"><span>☆</span><b>Favoritos</b></a>
-          <a class="side-item" href="#alerts" data-cp-nav="alerts"><span>♧</span><b>Meus Alertas</b></a>
-          <a class="side-item" href="#reports" data-cp-nav="reports"><span>▤</span><b>Relatórios</b></a>
-          <a class="side-item cp-nav-disabled" aria-disabled="true" data-cp-nav="lives"><span>◈</span><b>Lives & Vídeos</b></a>
-          <a class="side-item" href="#support" data-cp-nav="support"><span>ⓘ</span><b>Suporte</b></a>
-        </nav>
-
-        <div class="proBox">
-          <h3>SEJA PRO</h3>
-          <p>Tenha acesso a ferramentas exclusivas e aumente seus lucros!</p>
-          <div class="crown">♛</div>
-          <button>ASSINAR AGORA</button>
-        </div>
-      </aside>
-
-      <div class="mobileOverlay" id="mobileOverlay" aria-hidden="true"></div>
-
-      <header class="mobileHeader">
-        <button class="mobileMenuBtn" id="mobileMenuBtn" type="button" aria-label="Abrir menu">☰</button>
-        <div class="mobileBrand">
+  <aside class="sidebar">
+    <div class="brandBlock">
+      <div class="brandLogo">
+        <span class="brandMark">⚑</span>
+        <div>
           <strong>CORNER<span>PRO</span></strong>
           <small>ANÁLISES ESPORTIVAS</small>
         </div>
-        <button type="button" class="mobileCalendarBtn" id="mobileCalendarBtn" aria-label="Calendário">📅</button>
-      </header>
+      </div>
+    </div>
 
-      <main class="main">
-        <div class="mobileGreeting" id="mobileAuthArea">
-          <span class="mobileGreetingIcon">♧</span>
-          <strong id="mobileAuthName">Entrar com Google</strong>
-          <button type="button" id="mobileAuthButton" class="mobileGreetingChev" aria-label="Entrar com Google">⌄</button>
-        </div>
+    <nav class="sidebar-nav" aria-label="Menu lateral">
+      <a class="side-item active"><span>⌂</span><b>Dashboard</b></a>
+      <a class="side-item"><span>⚽</span><b>Pré-Jogo</b></a>
+      <a class="side-item"><span>◎</span><b>Ao Vivo</b></a>
+      <a class="side-item"><span>⚑</span><b>Escanteios</b></a>
+      <a class="side-item"><span>◌</span><b>Gols</b></a>
+      <a class="side-item"><span>▯</span><b>Cartões</b></a>
+      <a class="side-item cpDesktopOnlyNav" data-cpd3-nav="handicap"><span>⇆</span><b>Handicap</b></a>
+      <a class="side-item cpDesktopOnlyNav" data-cpd3-nav="btts"><span>◉</span><b>Ambas Marcam</b></a>
+      <a class="side-item"><span>♞</span><b>Player Props</b></a>
+      <a class="side-item"><span>◉</span><b>Ligas</b></a>
+      <a class="side-item"><span>☆</span><b>Favoritos</b></a>
+      <a class="side-item"><span>♧</span><b>Meus Alertas</b></a>
+      <a class="side-item"><span>▤</span><b>Relatórios</b></a>
+      <a class="side-item"><span>◈</span><b>Lives & Vídeos</b></a>
+      <a class="side-item"><span>ⓘ</span><b>Suporte</b></a>
+    </nav>
 
-        <header class="topbar">
-          <nav class="nav">
-            <a href="#pregame" data-cp-nav="pregame" data-view="pregame">PRÉ-JOGO</a>
-            <a href="#live" data-cp-nav="live">AO VIVO</a>
-            <a href="#corners" data-cp-nav="corners">ESCANTEIOS</a>
-            <a href="#goals" data-cp-nav="goals">GOLS</a>
-            <a href="#cards" data-cp-nav="cards">CARTÕES</a>
-            <a href="#props" data-cp-nav="props">PLAYER PROPS</a>
-            <a href="#stats" data-cp-nav="stats">ESTATÍSTICAS</a>
-            <a href="#bots" data-cp-nav="bots">BOTS</a>
-            <button type="button" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</button>
-          </nav>
-          <div class="topUser" id="authAreaDesktop">
-            <button class="bell" type="button" aria-label="Notificações">♧</button>
+    <div class="proBox">
+      <h3>SEJA PRO</h3>
+      <p>Tenha acesso a ferramentas exclusivas e aumente seus lucros!</p>
+      <div class="crown">♛</div>
+      <button>ASSINAR AGORA</button>
+    </div>
+  </aside>
 
-            <button type="button" id="btnGoogleLogin" class="authLoginButton" aria-label="Entrar ou criar conta" title="Entrar / Criar conta">
-              <svg class="cpDesktopUserIcon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 21a8 8 0 0 0-16 0"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-              <span class="cpDesktopAuthText">Entrar / Criar conta</span>
-            </button>
+  <div class="mobileOverlay" id="mobileOverlay" aria-hidden="true"></div>
 
-            <div class="authUserProfile" id="authUserProfile" hidden>
-              <img id="authUserPhoto" class="authUserPhoto" src="" alt="Foto do usuário" referrerpolicy="no-referrer" />
-              <div class="userText">
-                <strong id="authUserName">Usuário</strong>
-                <small id="authUserPlan">PLANO GRATUITO</small>
-              </div>
-              <button type="button" id="btnGoogleLogout" class="authLogoutButton" aria-label="Sair da conta">SAIR</button>
-            </div>
-          </div>
-        </header>
+  <header class="mobileHeader">
+    <button class="mobileMenuBtn" id="mobileMenuBtn" type="button" aria-label="Abrir menu">☰</button>
+    <div class="mobileBrand">
+      <strong>CORNER<span>PRO</span></strong>
+      <small>ANÁLISES ESPORTIVAS</small>
+    </div>
+    <button type="button" class="mobileCalendarBtn" id="mobileCalendarBtn" aria-label="Calendário">📅</button>
+  </header>
 
-        <div class="topCalendarDropdown" id="topCalendarDropdown" aria-hidden="true">
-          <div class="topCalendarBox">
-            <div class="topCalendarHeader">
-              <button class="topCalNav" type="button" id="topCalPrev" aria-label="Mês anterior">‹</button>
-              <strong id="topCalTitle">Calendário</strong>
-              <button class="topCalNav" type="button" id="topCalNext" aria-label="Próximo mês">›</button>
-            </div>
+  <main class="main">
+    <div class="mobileGreeting" id="mobileAuthArea">
+      <span class="mobileGreetingIcon">♧</span>
+      <strong id="mobileAuthName">Entrar com Google</strong>
+      <button type="button" id="mobileAuthButton" class="mobileGreetingChev" aria-label="Entrar com Google">⌄</button>
+    </div>
 
-            <div class="topCalendarWeek">
-              <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
-            </div>
-
-            <div class="topCalendarDays" id="topCalendarDays"></div>
-
-            <div class="topCalendarFooter">
-              <button type="button" id="topCalToday">HOJE</button>
-            </div>
-          </div>
-        </div>
-
-        <section class="content">
-          <div class="dashboardGrid">
-            <section class="dashboardMainColumn">
-              <!-- =====================================================
-                   CORNER PRO WEB DESKTOP V3 — estrutura fixa no HTML.
-                   O mobile/app continua usando os blocos antigos abaixo.
-                   O Match Center da coluna direita NÃO é alterado.
-                   ===================================================== -->
-              <section class="cpd3Experience" id="cpDesktopExperienceV3" aria-label="Mercados desktop">
-                <div class="cpd3Topline">
-                  <div class="cpd3TopTitle"><span>🔥</span><strong id="cpd3TopTitle">MELHOR APOSTA • ESCANTEIOS</strong><small class="cpWebVersion">WEB V26 • CALENDÁRIO OK</small></div>
-                  <div class="cpd3TopActions">
-                    <button type="button" id="cpd3TodayBtn">HOJE</button>
-                    <button type="button" id="cpd3FilterBtn">☷ FILTROS</button>
-                  </div>
-                </div>
-
-                <section class="cpd3Hero" id="cpd3Hero">
-                  <div class="cpd3HeroShade"></div>
-                  <div class="cpd3HeroTeam cpd3HeroHome">
-                    <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="home" aria-label="Favoritar time da casa">☆</button>
-                    <div class="cpd3HeroBadge" id="cpd3HomeBadge"><i>CP</i></div>
-                    <strong id="cpd3HomeName">Carregando...</strong>
-                    <div class="cpd3Form" id="cpd3HomeForm"><span>V</span><span>V</span><span>E</span><span>D</span><span>V</span></div>
-                  </div>
-                  <div class="cpd3HeroCenter">
-                    <small id="cpd3KickLabel">HOJE • --:--</small>
-                    <b id="cpd3Clock">PRÉ-JOGO</b>
-                    <em>VS</em>
-                  </div>
-                  <div class="cpd3HeroTeam cpd3HeroAway">
-                    <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="away" aria-label="Favoritar time visitante">☆</button>
-                    <div class="cpd3HeroBadge" id="cpd3AwayBadge"><i>CP</i></div>
-                    <strong id="cpd3AwayName">Carregando...</strong>
-                    <div class="cpd3Form" id="cpd3AwayForm"><span>V</span><span>E</span><span>V</span><span>D</span><span>V</span></div>
-                  </div>
-                </section>
-
-                <nav class="cpd3MarketNav" aria-label="Mercados">
-                  <button type="button" class="active" data-cpd3-market="corners">ESCANTEIOS</button>
-                  <button type="button" data-cpd3-market="goals">GOLS</button>
-                  <button type="button" data-cpd3-market="cards">CARTÕES</button>
-                  <button type="button" data-cpd3-market="handicap">HANDICAP</button>
-                  <button type="button" data-cpd3-market="btts">AMBAS MARCAM</button>
-                  <button type="button" data-cpd3-market="result">RESULTADO</button>
-                  <button type="button" data-cpd3-market="doublechance">DUPLA CHANCE</button>
-                  <button type="button" data-cpd3-market="teamgoals">GOLS DO TIME</button>
-                  <button type="button" class="cpd3BuilderTab" data-cpd3-market="builder">⚡ APOSTA PRONTA</button>
-                </nav>
-
-                <div class="cpd3SubNav" id="cpd3SubNav"></div>
-                <div class="cpd3LineNav" id="cpd3LineNav"></div>
-
-                <section class="cpd3ResultsPanel">
-                  <header class="cpd3ResultsHead">
-                    <div><span>★</span><strong id="cpd3ResultsTitle">OVER 10.5 ESCANTEIOS • TODOS OS JOGOS</strong></div>
-                    <button type="button" id="cpd3AdvancedFilter">⚲ Exibir filtros</button>
-                  </header>
-                  <div class="cpd3TableHead" id="cpd3TableHead">
-                    <span>JOGO</span><span>LIGA</span><span>INÍCIO</span><span>PROJEÇÃO</span><span>MÉDIA</span><span>CONFIANÇA</span><span>TENDÊNCIA</span><span>ANÁLISE</span>
-                  </div>
-                  <div class="cpd3Rows" id="cpd3Rows">
-                    <div class="cpd3Loading">CARREGANDO JOGOS REAIS DO DIA...</div>
-                  </div>
-                </section>
-              </section>
-
-              <section class="heroPanel">
-                <div class="heroCopy">
-                  <h1>ANÁLISE. ESTATÍSTICA.<br><span>VANTAGEM!</span></h1>
-                  <p>Pré-jogo completo, escanteios, gols e muito mais. Informação que gera lucro!</p>
-                  <div class="heroStats"></div>
-                </div>
-                <div class="heroPlayer" aria-hidden="true"></div>
-              </section>
-
-              <section class="marketTabs">
-                <button class="marketTab active" type="button"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
-                <button class="marketTab" type="button"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
-                <button class="marketTab" type="button"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
-                <button class="marketTab" type="button"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
-                <button class="marketTab" type="button"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
-              </section>
-
-              <section class="gamesPanel">
-                <div class="sectionHead">
-                  <h2>Jogos em Destaque</h2>
-                  <div class="cornerOrderSwitch" aria-label="Ordenar jogos">
-                    <button type="button" class="active" data-corner-order="strength" aria-pressed="true">🔥 Força de cantos</button>
-                    <button type="button" data-corner-order="time" aria-pressed="false">🕒 Horário</button>
-                  </div>
-                  <div class="filterPills">
-                    <button type="button">Todos</button>
-                    <button type="button" class="active">Hoje</button>
-                    <button type="button">Amanhã</button>
-                  </div>
-                  <a>Ver todos ›</a>
-                </div>
-                <div class="cornerProStatus" id="initialGamesLoading" role="status" aria-live="polite">Carregando jogos reais do dia...</div>
-              </section>
-            </section>
-
-            <aside class="dashboardRightRail" id="desktopMatchRail">
-              <section class="railCard matchRailCard railEmptyHero">
-                <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-                <div class="railEmptyRadar" aria-hidden="true">
-                  <span class="radarRing ring1"></span>
-                  <span class="radarRing ring2"></span>
-                  <span class="radarRing ring3"></span>
-                  <span class="radarSweep"></span>
-                  <span class="radarBall">⚽</span>
-                </div>
-                <div class="railEmptyText"><strong>Aguardando partida</strong><span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span></div>
-              </section>
-              <section class="railCard railEmptyStatsCard">
-                <h3>ESTATÍSTICAS DO FILTRO</h3>
-                <div class="railEmptyStatsGrid">
-                  <div class="railEmptyStatBox"><i>🛡</i><span>Força do filtro</span><b>--</b><small>Aguardando</small></div>
-                  <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Aguardando</small></div>
-                  <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Aguardando</small></div>
-                  <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Aguardando</small></div>
-                </div>
-                <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
-              </section>
-              <section class="railCard railEmptyEventsCard">
-                <h3>EVENTOS / LEITURA</h3>
-                <div class="railEmptyEventIcons">
-                  <span><i>◎</i><b>Pressão</b><small>--</small></span>
-                  <span><i>◔</i><b>Posse</b><small>--</small></span>
-                  <span><i>▣</i><b>Cartões</b><small>--</small></span>
-                  <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
-                  <span><i>⚽</i><b>Gols</b><small>--</small></span>
-                </div>
-                <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
-                <div class="railEmptyReadBox"><b>📋</b><p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p></div>
-              </section>
-              <button class="railFullBtn railFullBtnDisabled" type="button" disabled><span>▶ INICIAR MATCH CENTER</span><small>Selecione um jogo para continuar</small></button>
-            </aside>
-          </div>
-
-          <footer class="bottomStrip">
-            <div><b>◎ ANÁLISES 24H</b><span>Conteúdo atualizado diariamente</span></div>
-            <div><b>♧ SUPORTE PREMIUM</b><span>Suporte rápido e especializado</span></div>
-            <div><b>◉ FERRAMENTAS EXCLUSIVAS</b><span>Tenha acesso a ferramentas que realmente funcionam</span></div>
-            <div><b>♚ COMUNIDADE PRO</b><span>Participe da nossa comunidade de vencedores</span></div>
-          </footer>
-        </section>
-      </main>
-
-      <nav class="mobileBottomNav" aria-label="Navegação mobile">
-        <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
-        <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
-        <button type="button"><span>◎</span><b>Ao Vivo</b></button>
-        <button type="button"><span>⚑</span><b>Escanteios</b></button>
-        <button type="button"><span>•••</span><b>Mais</b></button>
+    <header class="topbar">
+      <nav class="nav">
+        <a>PRÉ-JOGO</a>
+        <a>AO VIVO</a>
+        <a>ESCANTEIOS</a>
+        <a>GOLS</a>
+        <a>CARTÕES</a>
+        <a>PLAYER PROPS</a>
+        <a>ESTATÍSTICAS</a>
+        <a>BOTS</a>
+        <button type="button" class="navCalendar" id="btnCalendario" aria-label="Calendário">📅</button>
       </nav>
-
-
-      <!-- DASHBOARD MOBILE NOVO — não interfere no desktop -->
-      <section class="cpMobileHome" id="cpMobileHome" aria-label="Dashboard mobile">
-        <header class="cpHomeHeader">
-          <button class="cpHomeMenu" type="button" aria-label="Menu">☰</button>
-          <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
-          <button class="cpHomeCalendar" type="button" aria-label="Calendário"><span class="cpHomeCalendarMonth">JUL</span><b class="cpHomeCalendarDay">28</b></button>
-          <div class="cpHomeHeaderAuth" id="cpHomeAuthArea">
-            <div class="cpHomeAuthText">
-              <strong id="cpHomeAuthName">Entrar</strong>
-              <small id="cpHomeAuthPlan">COM GOOGLE</small>
-            </div>
-            <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">
-              <img id="cpHomeAuthPhoto" src="" alt="" referrerpolicy="no-referrer" hidden>
-              <span class="cpHomeAuthFallback" aria-hidden="true">●</span>
-              <i></i>
-            </button>
-          </div>
-        </header>
-
-        <main class="cpHomeScroll">
-
-          <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
-            <div class="cpHomeBestTop">
-              <b id="cpHomeBestTitle">🔥 MELHOR APOSTA • GOLS</b>
-              <span id="cpHomeBestMarket">ANALISANDO</span>
-            </div>
-
-            <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
-              <div class="cpRefLoadingDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-            </div>
-
-            <div class="cpHomeBestStatusBar" id="cpHomeBestStatusBar" hidden>
-              <i aria-hidden="true"></i><b id="cpHomeBestStatusText">PRÉ-JOGO</b><span id="cpHomeBestStatusExtra"></span>
-            </div>
-
-            <div class="cpRefTimeRow">
-              <time id="cpHomeBestTime">--:--</time>
-              <span id="cpHomeBestDayLabel">HOJE</span>
-            </div>
-
-            <div class="cpRefMatchStage">
-              <div class="cpRefTeam cpRefTeamHome">
-                <div class="cpRefShieldWrap">
-                  <img id="cpHomeBestHomeBadge" class="cpRefShield" alt="Escudo do time mandante" hidden>
-                  <span id="cpHomeBestHomeFallback" class="cpRefShieldFallback">CA</span>
-                  <button type="button" class="cpRefFavorite" data-ref-fav="home" aria-label="Favoritar mandante">☆</button>
-                </div>
-                <strong id="cpHomeBestHome">Aguardando</strong>
-                <div class="cpRefForm" id="cpHomeBestHomeForm"><i>V</i><i>V</i><i>E</i><i>D</i><i>V</i></div>
-              </div>
-
-              <div class="cpRefVersus">VS</div>
-
-              <div class="cpRefTeam cpRefTeamAway">
-                <div class="cpRefShieldWrap">
-                  <img id="cpHomeBestAwayBadge" class="cpRefShield" alt="Escudo do time visitante" hidden>
-                  <span id="cpHomeBestAwayFallback" class="cpRefShieldFallback">FO</span>
-                  <button type="button" class="cpRefFavorite" data-ref-fav="away" aria-label="Favoritar visitante">☆</button>
-                </div>
-                <strong id="cpHomeBestAway">partidas</strong>
-                <div class="cpRefForm" id="cpHomeBestAwayForm"><i>V</i><i>E</i><i>V</i><i>D</i><i>V</i></div>
-              </div>
-            </div>
-
-            <div class="cpRefStatsPanel">
-              <div class="cpRefStatsCol">
-                <small id="cpRefProjectionLabel">PROJEÇÃO</small>
-                <b id="cpRefProjection">—</b>
-                <hr>
-                <small>MÉDIA DE CANTOS</small>
-                <b id="cpRefCornersAvg">—</b>
-              </div>
-
-              <div class="cpRefConfidenceCol">
-                <small>CONFIANÇA</small>
-                <div class="cpRefGauge" id="cpRefGauge" style="--ref-confidence:0">
-                  <strong id="cpHomeBestConfidence">—%</strong>
-                </div>
-                <span id="cpRefConfidenceLabel">ANALISANDO</span>
-              </div>
-
-              <div class="cpRefStatsCol cpRefStatsRight">
-                <small>TENDÊNCIA</small>
-                <b id="cpRefTrend">—</b>
-                <hr>
-                <small>MÉDIA DE GOLS</small>
-                <b id="cpRefGoalsAvg">—</b>
-              </div>
-            </div>
-
-            <div class="cpHomeBestLiveStats" id="cpHomeBestLiveStats" hidden>
-              <div><i>⚽</i><small>GOLS</small><b><span id="cpHomeBestHomeGoals">0</span> × <span id="cpHomeBestAwayGoals">0</span></b></div>
-              <div><i>⚑</i><small>ESCANTEIOS</small><b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b></div>
-              <div><i>▯</i><small>CARTÕES</small><b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b></div>
-            </div>
-
-            <button type="button" id="cpHomeBestOpen" disabled>
-              <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
-              <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
-              <i aria-hidden="true">›</i>
-            </button>
-
-            <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
-              <b id="cpHomeBestHomeScore">0</b><i>×</i><b id="cpHomeBestAwayScore">0</b>
-            </div>
-            <i class="cpHomeBestVersus" hidden>×</i>
-            <div class="cpHomeBestTeams" hidden></div>
-            <div class="cpHomeMarketDots" hidden></div>
-          </section>
-
-          <section class="cpHomeSection cpHomeMarketsSection">
-            <div class="cpHomeSectionHead">
-              <div>
-                <h2>Mercados em destaque</h2>
-                <small>Escolha o mercado e veja as melhores análises</small>
-              </div>
-              <button type="button">VER TODOS ›</button>
-            </div>
-
-            <div class="cpHomeMarkets">
-              <button type="button" data-home-market="corners">
-                <span>⚑</span><b>ESCANTEIOS</b><small>9.5 • 10.5 • 11.5</small>
-                <em>18 jogos hoje</em>
-              </button>
-              <button type="button" data-home-market="goals">
-                <span>⚽</span><b>GOLS</b><small>2.5 • 3.5 • 4.5</small>
-                <em>24 jogos hoje</em>
-              </button>
-              <button type="button" data-home-market="cards">
-                <span>▯</span><b>CARTÕES</b><small>2.5 • 3.5 • 4.5</small>
-                <em>31 jogos hoje</em>
-              </button>
-              <button type="button" data-home-market="handicap">
-                <span>⚖</span><b>HANDICAP</b><small>-1.0 • +1.0 • 0.0</small>
-                <em>16 jogos hoje</em>
-              </button>
-              <button type="button" data-home-market="btts">
-                <span>◎</span><b>AMBAS MARCAM</b><small>SIM • NÃO</small>
-                <em>22 jogos hoje</em>
-              </button>
-            </div>
-
-            <div class="cpHomeCarouselDots" aria-hidden="true">
-              <i class="active"></i><i></i><i></i><i></i><i></i>
-            </div>
-          </section>
-
-          <section class="cpHomeSection cpHomeFeaturedGamesSection" id="cpHomeFeaturedGamesSection">
-            <div class="cpHomeSectionHead"><h2>Jogos em destaque</h2><button type="button">VER TODOS ›</button></div>
-            <div class="cpHomeOrderSwitch" aria-label="Ordenar jogos em destaque">
-              <button type="button" class="active" data-corner-order="strength" aria-pressed="true"><span>🔥</span> FORÇA DE CANTOS</button>
-              <button type="button" data-corner-order="time" aria-pressed="false"><span>🕒</span> HORÁRIO</button>
-            </div>
-            <small class="cpHomeOrderHint">Em força de cantos, o melhor jogo do dia fica sempre em primeiro.</small>
-            <div class="cpHomeGames" id="cpHomeGames"><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div></div>
-          </section>
-
-          <section class="cpHomeMatchMini" id="cpHomeMatchMini">
-            <div class="cpHomeSectionHead"><h2>Match Center</h2><span>TOQUE PARA ABRIR</span></div>
-            <button type="button" id="cpHomeMatchOpen"><div><small>PARTIDA EM DESTAQUE</small><strong id="cpHomeMatchTeams">Selecione um jogo</strong></div><b>›</b></button>
-          </section>
-
-          <section class="cpHomeSection cpHomeLast">
-            <div class="cpHomeSectionHead"><h2>Próximos jogos</h2><button type="button">VER TODOS ›</button></div>
-            <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
-          </section>
-
-        </main>
-
-        <!-- HOME VISUAL V31 — isolada dos estilos antigos -->
-        <main class="cprHome" id="cpReferenceHome" aria-label="Corner Pro Dashboard">
-          <section class="cprHero" id="cprHero">
-            <div class="cprHeroTop">
-              <strong id="cprTitle">🔥 MELHOR APOSTA • GOLS</strong>
-              <span id="cprMarket">ANALISANDO</span>
-            </div>
-
-            <div class="cprTime">
-              <b id="cprTime">--:--</b>
-              <span id="cprDay">HOJE</span>
-            </div>
-
-            <div class="cprMatch">
-              <article class="cprTeam">
-                <div class="cprBadgeBox">
-                  <img id="cprHomeBadge" alt="Escudo mandante" hidden>
-                  <span id="cprHomeBadgeFallback">CA</span>
-                  <button type="button" class="cprFav" data-cpr-fav="home" aria-label="Favoritar mandante">☆</button>
-                </div>
-                <h2 id="cprHomeName">Aguardando</h2>
-                <div class="cprForm" id="cprHomeForm">
-                  <i>V</i><i>V</i><i>E</i><i>D</i><i>V</i>
-                </div>
-              </article>
-
-              <div class="cprVs">VS</div>
-
-              <article class="cprTeam">
-                <div class="cprBadgeBox">
-                  <img id="cprAwayBadge" alt="Escudo visitante" hidden>
-                  <span id="cprAwayBadgeFallback">FO</span>
-                  <button type="button" class="cprFav" data-cpr-fav="away" aria-label="Favoritar visitante">☆</button>
-                </div>
-                <h2 id="cprAwayName">partidas</h2>
-                <div class="cprForm" id="cprAwayForm">
-                  <i>V</i><i>E</i><i>V</i><i>D</i><i>V</i>
-                </div>
-              </article>
-            </div>
-
-            <div class="cprStats">
-              <article>
-                <small id="cprProjectionLabel">PROJEÇÃO DE GOLS</small>
-                <b id="cprProjection">—</b>
-                <div class="cprMiniBars"><i></i><i></i><i></i><i></i></div>
-                <hr>
-                <small>MÉDIA DE CANTOS</small>
-                <b><span class="cprFlag">⚑</span> <span id="cprCornersAvg">—</span></b>
-              </article>
-
-              <article class="cprConfidence">
-                <small>CONFIANÇA</small>
-                <div class="cprGauge" id="cprGauge" style="--p:0">
-                  <b id="cprConfidence">0%</b>
-                </div>
-                <span id="cprConfidenceLabel">ANALISANDO</span>
-              </article>
-
-              <article>
-                <small>TENDÊNCIA</small>
-                <b id="cprTrend">↗ —</b>
-                <hr>
-                <small>MÉDIA DE GOLS</small>
-                <b><span>⚽</span> <span id="cprGoalsAvg">—</span></b>
-              </article>
-            </div>
-
-            <button type="button" class="cprOpen" id="cprOpen">
-              <span>▥</span>
-              <b>VER ANÁLISE COMPLETA</b>
-              <i>›</i>
-            </button>
-
-            <div class="cprLoading" id="cprLoading">
-              <div><i></i><i></i><i></i><i></i><i></i></div>
-            </div>
-          </section>
-
-          <section class="cprSection cprMarketsSection">
-            <header>
-              <h2>◎ MERCADOS EM DESTAQUE</h2>
-              <button type="button">VER TODOS ›</button>
-            </header>
-
-            <div class="cprMarkets">
-              <button type="button" class="is-hot" data-home-market="corners">
-                <em>HOT</em><span>⚑</span><b>ESCANTEIOS</b>
-                <small>9.5 • 10.5 • 11.5</small>
-                <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
-                <p>18 jogos hoje</p><strong>VER ANÁLISES</strong>
-              </button>
-
-              <button type="button" data-home-market="goals">
-                <span>⚽</span><b>GOLS</b>
-                <small>2.5 • 3.5 • 4.5</small>
-                <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
-                <p>24 jogos hoje</p><strong>VER ANÁLISES</strong>
-              </button>
-
-              <button type="button" data-home-market="cards">
-                <span>▯</span><b>CARTÕES</b>
-                <small>2.5 • 3.5 • 4.5</small>
-                <div class="cprSpark is-yellow"><i></i><i></i><i></i><i></i><i></i></div>
-                <p>31 jogos hoje</p><strong>VER ANÁLISES</strong>
-              </button>
-
-              <button type="button" data-home-market="handicap">
-                <span>⌁</span><b>HANDICAP</b>
-                <small>-1.0 • +1.0 • 0.0</small>
-                <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
-                <p>16 jogos hoje</p><strong>VER ANÁLISES</strong>
-              </button>
-
-              <button type="button" data-home-market="btts">
-                <span>◎</span><b>AMBAS MARCAM</b>
-                <small>SIM • NÃO</small>
-                <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
-                <p>22 jogos hoje</p><strong>VER ANÁLISES</strong>
-              </button>
-            </div>
-
-            <div class="cprDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
-          </section>
-
-          <section class="cprSection cprFeatured">
-            <header>
-              <h2>☆ JOGOS EM DESTAQUE</h2>
-              <button type="button">VER TODOS ›</button>
-            </header>
-            <div class="cprFeaturedGames" id="cprFeaturedGames">
-              <div class="cprEmpty">Carregando jogos...</div>
-            </div>
-          </section>
-        </main>
-    </section>
-
-      <!-- CORNER PRO MOBILE APP SHELL — exclusivo para telas pequenas -->
-      <section class="cpMobileLayer" id="cpMobileMarketsLayer" aria-hidden="true">
-        <header class="cpMobileLayerHeader">
-          <button class="cpMobileBack" type="button" data-cp-close="markets" aria-label="Voltar">‹</button>
-          <div>
-            <strong id="cpMobileMarketsTitle">MERCADOS</strong>
-            <small>Escolha uma linha para ver os melhores jogos</small>
-          </div>
-          <button class="cpMobileFavorite" type="button" aria-label="Favoritar">☆</button>
-        </header>
-
-        <div class="cpMobileMarketKinds" id="cpMobileMarketKinds">
-          <button type="button" data-cp-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
-          <button type="button" data-cp-market="corners"><span>⚑</span><b>Escanteios</b></button>
-          <button type="button" data-cp-market="goals"><span>◎</span><b>Gols</b></button>
-          <button type="button" data-cp-market="cards"><span>▯</span><b>Cartões</b></button>
-          <button type="button" data-cp-market="combined"><span>▦</span><b>Combinadas</b></button>
-          <button type="button" data-cp-market="props"><span>♞</span><b>Props</b></button>
-        </div>
-
-        <div class="cpMobileSubTabs" id="cpMobileSubTabs">
-          <button type="button" class="active">Totais</button>
-          <button type="button">1º tempo</button>
-          <button type="button">2º tempo</button>
-          <button type="button">Por equipe</button>
-        </div>
-
-        <main class="cpMobileMarketsBody">
-          <div class="cpMobileMarketHeading">
-            <div><span id="cpMobileMarketIcon">⚑</span><strong id="cpMobileMarketHeading">Totais de escanteios</strong></div>
-            <small>Toque em uma opção</small>
-          </div>
-          <div class="cpMobileOddsGrid" id="cpMobileOddsGrid"></div>
-
-          <section class="cpMobileRecommended" id="cpMobileRecommended" hidden>
-            <div class="cpMobileRecommendedHead">
-              <div><small>MELHORES JOGOS PARA</small><strong id="cpMobileSelectedLine">OVER 10.5</strong></div>
-              <span>POR CONFIANÇA</span>
-            </div>
-            <div class="cpMobileGameCarousel" id="cpMobileGameCarousel"></div>
-          </section>
-        </main>
-      </section>
-
-      <section class="cpMobileLayer cpMobileMatchLayer" id="cpMobileMatchLayer" aria-hidden="true">
-        <header class="cpMobileLayerHeader">
-          <button class="cpMobileBack" type="button" data-cp-close="match" aria-label="Voltar">‹</button>
-          <div><strong id="cpMobileMatchTitle">ANÁLISE PRÉ-JOGO</strong><small id="cpMobileMatchSubtitle">Central de inteligência da partida</small></div>
-          <button class="cpMobileFavorite" type="button" aria-label="Compartilhar">↗</button>
-        </header>
-        <div class="cpMobileMatchContent" id="cpMobileMatchContent">
-          <div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>
-        </div>
-      </section>
-
-
-      <!-- CORNER PRO — AUTENTICAÇÃO / CADASTRO -->
-      <section class="cpAuthModal" id="cpAuthModal" hidden aria-hidden="true" aria-labelledby="cpAuthModalTitle">
-        <button class="cpAuthModalBackdrop" id="cpAuthModalBackdrop" type="button" aria-label="Fechar autenticação"></button>
-
-        <div class="cpAuthCard" role="dialog" aria-modal="true">
-          <button class="cpAuthClose" id="cpAuthModalClose" type="button" aria-label="Fechar">×</button>
-
-          <div class="cpAuthBrand">
-            <span class="cpAuthBrandMark">⚑</span>
-            <div>
-              <strong>CORNER<span>PRO</span></strong>
-              <small>SUA CONTA</small>
-            </div>
-          </div>
-
-          <div class="cpAuthHeading">
-            <h2 id="cpAuthModalTitle">Entre no CornerPro</h2>
-            <p id="cpAuthModalSubtitle">Entre para continuar. O acesso com Google é rápido e seguro.</p>
-          </div>
-
-          <div class="cpAuthTabs" role="tablist" aria-label="Entrar ou criar conta">
-            <button type="button" id="cpAuthTabLogin" class="active">ENTRAR</button>
-            <button type="button" id="cpAuthTabRegister">CRIAR CONTA</button>
-          </div>
-
-          <button type="button" class="cpAuthGoogle" id="cpAuthGoogle">
-            <span>G</span>
-            <b>CONTINUAR COM GOOGLE</b>
-          </button>
-
-          <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
-
-          <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
-            <label id="cpAuthNameWrap" hidden>
-              <span>Nome</span>
-              <input id="cpAuthName" name="name" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
-            </label>
-
-            <label>
-              <span>E-mail</span>
-              <input id="cpAuthEmail" name="email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="seu@email.com">
-            </label>
-
-            <label>
-              <span>Senha</span>
-              <input id="cpAuthPassword" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
-            </label>
-
-            <label id="cpAuthConfirmWrap" hidden>
-              <span>Confirmar senha</span>
-              <input id="cpAuthPasswordConfirm" name="password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
-            </label>
-
-            <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
-
-            <div class="cpAuthFormMessage" id="cpAuthFormMessage" hidden role="status" aria-live="polite"></div>
-
-            <button type="submit" class="cpAuthSubmit" id="cpAuthSubmit">
-              <span>ENTRAR</span>
-              <i>›</i>
-            </button>
-          </form>
-
-          <div class="cpAuthSwitch">
-            <span id="cpAuthSwitchText">Ainda não possui conta?</span>
-            <button type="button" id="cpAuthSwitchButton">Criar conta</button>
-          </div>
-
-          <small class="cpAuthPrivacy">
-            Ao continuar, você concorda com o uso da conta para autenticação e preferências do Corner Pro.
-          </small>
-        </div>
-      </section>
-
-      <!-- auth.js é carregado apenas no desktop; o mobile usa firebase-client.js diretamente. -->
-
-      <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
-
-
-      <!-- Barra original global: Dashboard, mercados e Match Center -->
-    <nav class="cpHomeBottom cpGlobalBottomNav">
-          <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
-          <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
-          <button type="button"><span>◎</span><b>Ao Vivo</b></button>
-          <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
-          <button type="button"><span>•••</span><b>Mais</b></button>
-        </nav>
-
-
-    <script id="cpDesktopStableBoot">
-    (function(){
-      "use strict";
-
-      if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) {
-        document.documentElement.classList.remove("cpDesktopBoot");
-        return;
-      }
-
-      let released = false;
-      const started = performance.now();
-
-      function layoutLooksReady(){
-        const main = document.querySelector(".main");
-        const grid = document.querySelector(".dashboardGrid");
-        const experience = document.getElementById("cpDesktopExperienceV3");
-        const hero = document.getElementById("cpd3Hero");
-
-        if (!main || !grid || !experience || !hero) return false;
-
-        const mr = main.getBoundingClientRect();
-        const gr = grid.getBoundingClientRect();
-        const er = experience.getBoundingClientRect();
-
-        // O estado quebrado mostrado no carregamento fica estreito.
-        // Só libera quando o dashboard já ocupou a largura real do desktop.
-        if (mr.width < 700 || gr.width < 700 || er.width < 500) return false;
-
-        const style = getComputedStyle(experience);
-        if (style.display === "none" || style.visibility === "hidden") return false;
-
-        return true;
-      }
-
-      function release(){
-        if (released) return;
-        released = true;
-        document.documentElement.classList.remove("cpDesktopBoot");
-        document.documentElement.classList.add("cpDesktopReady");
-      }
-
-      function check(){
-        if (released) return;
-
-        if (layoutLooksReady()) {
-          // Dois frames extras evitam mostrar o meio da reorganização do grid.
-          requestAnimationFrame(() => requestAnimationFrame(release));
-          return;
-        }
-
-        // Segurança: nunca deixa a página presa caso alguma API falhe.
-        if (performance.now() - started > 2600) {
-          release();
-          return;
-        }
-
-        requestAnimationFrame(check);
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", check, {once:true});
-      } else {
-        check();
-      }
-
-      window.addEventListener("load", check, {once:true});
-      setTimeout(release, 2800);
-    })();
-    </script>
-
-    <script id="cpNewMobileV106Controller">
-
-    (()=>{
-      'use strict';
-      if(!window.matchMedia?.('(max-width:980px)').matches)return;
-      if(window.__CP_NEW_MOBILE_V107__)return; window.__CP_NEW_MOBILE_V107__=true;
-      const $=(s,r=document)=>r.querySelector(s); const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
-      const clean=(v,f='')=>{const s=String(v??'').trim();return s&&!['undefined','null','NaN'].includes(s)?s:f};
-      const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-      const num=(...xs)=>{for(const x of xs){if(x===null||x===undefined||x==='')continue;const n=Number(String(x).replace('%','').replace(',','.'));if(Number.isFinite(n))return n}return null};
-      const MARKETS={
-        corners:{label:'Escanteios',icon:'⚑',hint:'8.5 • 9.5 • 10.5',field:'corners_ai',lines:['IA','TODOS','8.5','9.5','10.5','11.5','12.5']},
-        goals:{label:'Gols',icon:'⚽',hint:'1.5 • 2.5 • 3.5',field:'goals_ai',lines:['IA','TODOS','1.5','2.5','3.5','4.5']},
-        cards:{label:'Cartões',icon:'▯',hint:'2.5 • 3.5 • 4.5',field:'cards_ai',lines:['IA','TODOS','2.5','3.5','4.5','5.5']},
-        handicap:{label:'Handicap',icon:'⇆',hint:'-1.0 • 0.0 • +1.0',field:'handicap_ai',lines:['IA','TODOS','-2.0','-1.5','-1.0','-0.5','0.0','+0.5','+1.0','+1.5','+2.0']},
-        btts:{label:'Ambas Marcam',icon:'◎',hint:'SIM • NÃO',field:'btts_ai',lines:['IA','TODOS','SIM','NÃO']},
-        result:{label:'Resultado',icon:'🏆',hint:'CASA • X • FORA',field:null,lines:['IA','TODOS','CASA','EMPATE','FORA']},
-        doublechance:{label:'Dupla Chance',icon:'◇',hint:'1X • 12 • X2',field:null,lines:['IA','TODOS','1X','12','X2']},
-        teamgoals:{label:'Gols do Time',icon:'◉',hint:'0.5 • 1.5 • 2.5',field:null,lines:['IA','TODOS','0.5','1.5','2.5']},
-        builder:{label:'Aposta Pronta',icon:'⚡',hint:'Maior confiança',field:null,lines:['IA','TODOS']}
-      };
-      const state={date:'',market:'corners',line:'IA',base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
-      function ymd(offset=0){const now=new Date();now.setDate(now.getDate()+offset);try{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return now.toISOString().slice(0,10)}}
-      function dateLabel(x){const [Y,M,D]=String(x).split('-').map(Number);return Number.isFinite(D)?`${String(D).padStart(2,'0')}/${String(M).padStart(2,'0')}`:'Hoje'}
-      function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==='object');if(!payload||typeof payload!=='object'||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ['games','jogos','matches','fixtures','events','data','items','results','response','quentes','list','top','top6','recommendations','opportunities','corners']){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==='object')}return[]}
-      const raw=g=>g?.raw||g||{};
-      const home=g=>clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??raw(g)?.casa??raw(g)?.match_hometeam_name,'Casa');
-      const away=g=>clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??raw(g)?.fora??raw(g)?.match_awayteam_name,'Fora');
-      const time=g=>clean(g?.hora??g?.time??g?.match_time??raw(g)?.hora??raw(g)?.match_time,'--:--');
-      const league=g=>clean(g?.liga??g?.league_name??g?.league??raw(g)?.liga??raw(g)?.league_name,'Liga');
-      const id=g=>clean(g?.match_id??g?.event_id??g?.event_key??g?.fixture_id??g?.id??raw(g)?.match_id,'')||`${norm(home(g))}|${norm(away(g))}`;
-      function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
-      function confidence(g,m=state.market){let n;if(m==='builder')n=Math.max(...['corners','goals','cards','handicap','btts'].map(x=>confidence(g,x)),0);else if(['result','doublechance','teamgoals'].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
-      function projection(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==='corners')return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners);if(m==='goals'||m==='teamgoals')return num(d?.projection,r?.expected_goals_total,r?.goals_projection);if(m==='cards')return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);return num(d?.projection)}
-      function cornerRecommendation(g){
-        const d=dec(g,'corners');
-        const serverLine=clean(d?.line,'').toUpperCase();
-        const p=projection(g,'corners');
-        const c=confidence(g,'corners');
-        if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(serverLine)){
-          return {valid:true,line:serverLine,projection:p,confidence:c,source:'server'};
-        }
-        if(p!==null && Number.isFinite(Number(p))){
-          const proj=Number(p);
-          if(proj>=11.75)return {valid:true,line:'OVER 11.5',projection:proj,confidence:c,source:'projection'};
-          if(proj>=10.75)return {valid:true,line:'OVER 10.5',projection:proj,confidence:c,source:'projection'};
-          if(proj>=9.55)return {valid:true,line:'OVER 9.5',projection:proj,confidence:c,source:'projection'};
-        }
-        return {valid:false,line:'SEM ENTRADA',projection:p,confidence:c,source:'none'};
-      }
-      function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==='corners'){const cr=cornerRecommendation(g);return cr.valid?cr.line:clean(d?.line,'SEM ENTRADA').toUpperCase()}if(m==='result'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??'');return s.includes('away')?'FORA':s.includes('home')?'CASA':'1X2'}if(m==='doublechance'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??'');return s.includes('away')?'X2':s.includes('home')?'1X':'12'}if(m==='teamgoals')return `OVER ${state.line==='IA'||state.line==='TODOS'?'0.5':state.line}`;if(m==='builder'){let best={c:0,p:'ANALISANDO'};for(const x of ['corners','goals','cards','handicap','btts']){const c=confidence(g,x),p=clean(dec(g,x)?.line,'');if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,'ANALISANDO').toUpperCase()}
-      function resolved(g,m=state.market){
-        if(m==='corners') return cornerRecommendation(g).valid;
-        if(['result','doublechance','teamgoals','builder'].includes(m))return confidence(g,m)>0;
-        const d=dec(g,m),p=pick(g,m);
-        return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p));
-      }
-      function status(g){const r=raw(g),s=norm(r?.match_status??r?.status??r?.event_status??'');const minute=num(r?.minute,r?.match_minute,r?.elapsed);const hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home),as=num(r?.match_awayteam_score,r?.away_score,r?.score_away);const finished=/finished|full time|\bft\b|encerr|final|ended/.test(s);const ht=!finished&&(/half time|\bht\b|interval/.test(s));const live=!finished&&(ht||/live|ao vivo|1st|2nd/.test(s)||(minute!==null&&minute>0));return{finished,ht,live,label:finished?'ENCERRADO':ht?'INTERVALO':live?(minute?`AO VIVO • ${Math.round(minute)}'`:'AO VIVO'):'PRÉ-JOGO',score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:'VS'}}
-      function logo(g,side){const r=raw(g),src=side==='home'?(r.home_badge||r.team_home_badge||r.home_team_badge||r.home_logo):(r.away_badge||r.team_away_badge||r.away_team_badge||r.away_logo);const n=side==='home'?home(g):away(g);return `<span class="v105Logo">${src?`<img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none">${esc(n.slice(0,2).toUpperCase())}</i>`:`<i>${esc(n.slice(0,2).toUpperCase())}</i>`}</span>`}
-      function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=='object')return;const k=id(g),old=map.get(k)||{};const next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field;const d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
-      function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
-      function filtered(m=state.market,line=state.line){let a=source(m).slice();if(line==='IA')a=a.filter(g=>resolved(g,m));else if(line!=='TODOS'){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)}
-      async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
-      async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();
-        // Base primeiro: não espera IA pesada para mostrar o app.
-        let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn('[V107 quentes fast]',e)}
-        if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn('[V107 mercados fallback]',e)}}
-        if(req!==state.request)return;state.base=base;merge();render();
-        // Motores em paralelo e atualizações independentes.
-        const jobs=[
-          ['corners',`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],
-          ['all',`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],
-          ['fast',`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
-        ];
-        await Promise.allSettled(jobs.map(async([kind,url,to])=>{
-          try{
-            const p=await fetchJ(url,to);
-            if(req!==state.request)return;
-            if(kind==='corners'){
-              const a=extract(p,'corners');
-              if(a.length)state.engines.corners=a;
-            }else{
-              // Escanteios NÃO é sobrescrito pelos motores gerais.
-              for(const m of ['goals','cards','handicap','btts']){
-                const a=extract(p,m);
-                if(a.length)state.engines[m]=a;
-              }
-            }
-            merge();render();
-          }catch(e){console.warn('[V107 engine]',kind,e)}
-        }));
-        if(req===state.request){state.loading=false;render()}
-      }
-      function renderMarkets(){const el=$('#cpV105Markets');if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m])=>`<button class="v105Market ${state.market===k?'active':''}" data-v105-market="${k}"><i>${m.icon}</i><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><em>${filtered(k,'IA').length||source(k).length} jogos</em></button>`).join('')}
-      function renderLines(){const m=MARKETS[state.market],el=$('#cpV105Lines');if(!el)return;$('#cpV105MarketTitle').textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?'active':''}" data-v105-line="${x}">${x==='IA'?'✦ IA':x}</button>`).join('')}
-      function card(g,i){const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g);return `<article class="v105Game" data-v105-game="${i}"><div class="v105GameTop"><span>${esc(league(g))} • ${esc(time(g))}</span><b class="v105Status ${s.live?'live':''} ${s.finished?'finished':''}">${esc(s.label)}</b></div><div class="v105GameTeams"><div><b>${esc(home(g))}</b></div><em>${esc(s.score)}</em><div><b>${esc(away(g))}</b></div></div><div class="v105Bet"><div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div><div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):'—'}</b></div><div><small>CONFIANÇA</small><b>${cf?cf+'%':'—'}</b></div></div><button class="v105GameOpen" type="button">VER ANÁLISE ›</button></article>`}
-      function renderHero(){const el=$('#cpV105Hero');if(!el)return;const iaList=filtered();const g=iaList[0]||null;if(!g){el.innerHTML=`<div class="v105HeroLoading">${state.loading?'<div class="v105Spinner"></div>':''}<b>${state.loading?'Carregando análises...':'Nenhuma oportunidade aprovada'}</b><p>${state.loading?'Buscando os mesmos motores do site.':'Escolha TODOS ou outra linha.'}</p></div>`;return}const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g);el.innerHTML=`<div class="v105HeroTop"><b>🔥 MELHOR OPORTUNIDADE • ${esc(MARKETS[state.market].label.toUpperCase())}</b><span class="v105Status ${s.live?'live':''} ${s.finished?'finished':''}">${esc(s.label)}</span></div><div class="v105HeroMatch"><div class="v105HeroTeam">${logo(g,'home')}<strong>${esc(home(g))}</strong></div><div class="v105HeroMid"><small>${esc(league(g))}<br>${esc(time(g))}</small><b>${esc(s.score)}</b></div><div class="v105HeroTeam">${logo(g,'away')}<strong>${esc(away(g))}</strong></div></div><div class="v105HeroPick"><div><small>IA RECOMENDA</small><b>${esc(p)}</b></div><div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):'—'}</b></div><div><small>CONFIANÇA</small><b>${cf?cf+'%':'—'}</b></div></div><button class="v105HeroOpen" type="button" data-v105-hero>VER ANÁLISE COMPLETA ›</button>`}
-      function renderGames(){const list=filtered(),el=$('#cpV105Games');if(!el)return;$('#cpV105Count').textContent=`${list.length} ${list.length===1?'jogo':'jogos'}`;el.innerHTML=list.length?list.map(card).join(''):`<div class="v105Empty"><b>${state.loading?'Consultando IA...':'Sem jogos nesta seleção'}</b>${state.loading?'Os dados reais estão sendo carregados.':'Use TODOS ou escolha outra linha.'}</div>`}
-      function render(){renderMarkets();renderLines();renderHero();renderGames();$('#cpV105DateText').textContent=`📅 ${dateLabel(state.date||ymd())}`;syncAuth()}
-      let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
-      async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch('/auth/firebase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||'Falha ao autenticar');const m=await fetch('/auth/me',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||'Falha ao carregar perfil');return {...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
-      function syncAuth(){const img=$('#cpV105UserImg'),dot=$('#cpV105User i'),btn=$('#cpV105User');const photo=currentUser?.photoURL||currentProfile?.user?.foto||'';if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||'Perfil'):'Entrar com Google';if(dot)dot.style.background=currentUser?'#66ff2a':'#6f7a75'}
-      async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V107 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V107 firebase]',e);syncAuth()}}
-      async function openAuth(){if(authBusy||!firebaseApi)return;if(currentUser){return}authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn('[V107 login]',e)}finally{authBusy=false;syncAuth()}}
-      function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$('#cpV105MatchTitle').textContent=`${home(g)} × ${away(g)}`;$('#cpV105MatchBody').innerHTML=`<section class="v105MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v105MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):'—'}</b> &nbsp; Confiança: <b>${cf?cf+'%':'—'}</b></p></section><section class="v105MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,'Análise carregada pelos mesmos motores utilizados no site desktop.'))}</p></section>`;document.documentElement.classList.add('cpV105MatchOpen')}
-      document.addEventListener('click',e=>{const m=e.target.closest('[data-v105-market]');if(m){state.market=m.dataset.v105Market;state.line='IA';render();return}const l=e.target.closest('[data-v105-line]');if(l){state.line=l.dataset.v105Line;render();return}const d=e.target.closest('[data-v105-day]');if(d){document.querySelectorAll('[data-v105-day]').forEach(x=>x.classList.remove('active'));d.classList.add('active');state.date=ymd(Number(d.dataset.v105Day||0));state.line='IA';load();return}const g=e.target.closest('[data-v105-game]');if(g){const x=filtered()[Number(g.dataset.v105Game)];if(x)openGame(x);return}if(e.target.closest('[data-v105-hero]')){const x=filtered()[0]||null;if(x)openGame(x);return}if(e.target.closest('#cpV105CloseMatch')){document.documentElement.classList.remove('cpV105MatchOpen');return}if(e.target.closest('#cpV105Refresh')){load();return}if(e.target.closest('#cpV105User')){openAuth();return}},true);
-      state.date=$('#date')?.value||ymd();if($('#date'))$('#date').value=state.date;render();syncAuth();initAuth();
-      load().catch(e=>{console.error('[CP V107]',e);state.loading=false;render()});
-    })();
-
-    </script>
-
-    <section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
-      <div class="v127MoreCard" role="dialog" aria-modal="true" aria-labelledby="cpV127MoreTitle">
-        <div class="v127MoreHandle" aria-hidden="true"></div>
-
-        <div class="v127MoreHead">
-          <div class="v127MoreTitleWrap">
-            <span class="v127MoreBadge">CORNERPRO</span>
-            <b id="cpV127MoreTitle">Central de mercados</b>
-            <small>Acesso rápido às análises e ferramentas</small>
-          </div>
-          <button type="button" class="v127MoreClose" data-v127-close-more aria-label="Fechar">×</button>
-        </div>
-
-        <div class="v127MorePulse">
-          <span class="v127MorePulseDot"></span>
-          <div><b>Motores de análise ativos</b><small>Dados e IA atualizados em tempo real</small></div>
-          <i>ONLINE</i>
-        </div>
-
-        <div class="v127MoreLabel">MERCADOS</div>
-        <div class="v127MoreGrid">
-          <button type="button" data-v110-open-market="goals"><i>⚽</i><span><b>Gols</b><small>Over, linhas e projeções</small></span><em>›</em></button>
-          <button type="button" data-v110-open-market="cards"><i>▯</i><span><b>Cartões</b><small>Linhas e intensidade</small></span><em>›</em></button>
-          <button type="button" data-v110-open-market="handicap"><i>⚡</i><span><b>Handicap</b><small>Leitura asiática</small></span><em>›</em></button>
-          <button type="button" data-v110-open-market="btts"><i>◎</i><span><b>Ambas marcam</b><small>Probabilidade BTTS</small></span><em>›</em></button>
-          <button type="button" data-v110-open-market="result"><i>🏆</i><span><b>Resultado</b><small>Casa, empate ou fora</small></span><em>›</em></button>
-          <button type="button" data-v110-open-market="builder"><i>✦</i><span><b>Aposta pronta</b><small>Maior confiança da IA</small></span><em>›</em></button>
-        </div>
-
-        <div class="v127MoreLabel">CONTA</div>
-        <button type="button" id="cpV127MoreLogin" class="v127MoreAccount">
-          <span class="v127MoreAccountIcon">♙</span>
-          <span><b>Minha conta</b><small>Perfil, acesso e preferências</small></span>
-          <em>›</em>
+      <div class="topUser" id="authAreaDesktop">
+        <button class="bell" type="button" aria-label="Notificações">♧</button>
+
+        <button type="button" id="btnGoogleLogin" class="authLoginButton" aria-label="Entrar ou criar conta" title="Entrar / Criar conta">
+          <svg class="cpDesktopUserIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 21a8 8 0 0 0-16 0"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span class="cpDesktopAuthText">Entrar / Criar conta</span>
         </button>
 
-        <div class="v127MoreFoot">
-          <span>● SISTEMA OPERACIONAL</span>
-          <small>CornerPro • análises esportivas</small>
+        <div class="authUserProfile" id="authUserProfile" hidden>
+          <img id="authUserPhoto" class="authUserPhoto" src="" alt="Foto do usuário" referrerpolicy="no-referrer" />
+          <div class="userText">
+            <strong id="authUserName">Usuário</strong>
+            <small id="authUserPlan">PLANO GRATUITO</small>
+          </div>
+          <button type="button" id="btnGoogleLogout" class="authLogoutButton" aria-label="Sair da conta">SAIR</button>
         </div>
       </div>
-    </section>
+    </header>
 
-    </body>
-    </html>
+    <div class="topCalendarDropdown" id="topCalendarDropdown" aria-hidden="true">
+      <div class="topCalendarBox">
+        <div class="topCalendarHeader">
+          <button class="topCalNav" type="button" id="topCalPrev" aria-label="Mês anterior">‹</button>
+          <strong id="topCalTitle">Calendário</strong>
+          <button class="topCalNav" type="button" id="topCalNext" aria-label="Próximo mês">›</button>
+        </div>
+
+        <div class="topCalendarWeek">
+          <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+        </div>
+
+        <div class="topCalendarDays" id="topCalendarDays"></div>
+
+        <div class="topCalendarFooter">
+          <button type="button" id="topCalToday">HOJE</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="content">
+      <div class="dashboardGrid">
+        <section class="dashboardMainColumn">
+          <!-- =====================================================
+               CORNER PRO WEB DESKTOP V3 — estrutura fixa no HTML.
+               O mobile/app continua usando os blocos antigos abaixo.
+               O Match Center da coluna direita NÃO é alterado.
+               ===================================================== -->
+          <section class="cpd3Experience" id="cpDesktopExperienceV3" aria-label="Mercados desktop">
+            <div class="cpd3Topline">
+              <div class="cpd3TopTitle"><span>🔥</span><strong id="cpd3TopTitle">MELHOR APOSTA • ESCANTEIOS</strong><small class="cpWebVersion">WEB V26 • CALENDÁRIO OK</small></div>
+              <div class="cpd3TopActions">
+                <button type="button" id="cpd3TodayBtn">HOJE</button>
+                <button type="button" id="cpd3FilterBtn">☷ FILTROS</button>
+              </div>
+            </div>
+
+            <section class="cpd3Hero" id="cpd3Hero">
+              <div class="cpd3HeroShade"></div>
+              <div class="cpd3HeroTeam cpd3HeroHome">
+                <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="home" aria-label="Favoritar time da casa">☆</button>
+                <div class="cpd3HeroBadge" id="cpd3HomeBadge"><i>CP</i></div>
+                <strong id="cpd3HomeName">Carregando...</strong>
+                <div class="cpd3Form" id="cpd3HomeForm"><span>V</span><span>V</span><span>E</span><span>D</span><span>V</span></div>
+              </div>
+              <div class="cpd3HeroCenter">
+                <small id="cpd3KickLabel">HOJE • --:--</small>
+                <b id="cpd3Clock">PRÉ-JOGO</b>
+                <em>VS</em>
+              </div>
+              <div class="cpd3HeroTeam cpd3HeroAway">
+                <button type="button" class="cpd3HeroFav" data-cpd3-hero-fav="away" aria-label="Favoritar time visitante">☆</button>
+                <div class="cpd3HeroBadge" id="cpd3AwayBadge"><i>CP</i></div>
+                <strong id="cpd3AwayName">Carregando...</strong>
+                <div class="cpd3Form" id="cpd3AwayForm"><span>V</span><span>E</span><span>V</span><span>D</span><span>V</span></div>
+              </div>
+            </section>
+
+            <nav class="cpd3MarketNav" aria-label="Mercados">
+              <button type="button" class="active" data-cpd3-market="corners">ESCANTEIOS</button>
+              <button type="button" data-cpd3-market="goals">GOLS</button>
+              <button type="button" data-cpd3-market="cards">CARTÕES</button>
+              <button type="button" data-cpd3-market="handicap">HANDICAP</button>
+              <button type="button" data-cpd3-market="btts">AMBAS MARCAM</button>
+              <button type="button" data-cpd3-market="result">RESULTADO</button>
+              <button type="button" data-cpd3-market="doublechance">DUPLA CHANCE</button>
+              <button type="button" data-cpd3-market="teamgoals">GOLS DO TIME</button>
+              <button type="button" class="cpd3BuilderTab" data-cpd3-market="builder">⚡ APOSTA PRONTA</button>
+            </nav>
+
+            <div class="cpd3SubNav" id="cpd3SubNav"></div>
+            <div class="cpd3LineNav" id="cpd3LineNav"></div>
+
+            <section class="cpd3ResultsPanel">
+              <header class="cpd3ResultsHead">
+                <div><span>★</span><strong id="cpd3ResultsTitle">OVER 10.5 ESCANTEIOS • TODOS OS JOGOS</strong></div>
+                <button type="button" id="cpd3AdvancedFilter">⚲ Exibir filtros</button>
+              </header>
+              <div class="cpd3TableHead" id="cpd3TableHead">
+                <span>JOGO</span><span>LIGA</span><span>INÍCIO</span><span>PROJEÇÃO</span><span>MÉDIA</span><span>CONFIANÇA</span><span>TENDÊNCIA</span><span>ANÁLISE</span>
+              </div>
+              <div class="cpd3Rows" id="cpd3Rows">
+                <div class="cpd3Loading">CARREGANDO JOGOS REAIS DO DIA...</div>
+              </div>
+            </section>
+          </section>
+
+          <section class="heroPanel">
+            <div class="heroCopy">
+              <h1>ANÁLISE. ESTATÍSTICA.<br><span>VANTAGEM!</span></h1>
+              <p>Pré-jogo completo, escanteios, gols e muito mais. Informação que gera lucro!</p>
+              <div class="heroStats"></div>
+            </div>
+            <div class="heroPlayer" aria-hidden="true"></div>
+          </section>
+
+          <section class="marketTabs">
+            <button class="marketTab active" type="button"><span>⚽</span><b>PRÉ-JOGO</b><small>ANÁLISES COMPLETAS</small></button>
+            <button class="marketTab" type="button"><span>⚑</span><b>ESCANTEIOS</b><small>MERCADOS EXCLUSIVOS</small></button>
+            <button class="marketTab" type="button"><span>✹</span><b>GOLS</b><small>TOTAIS E HT/FT</small></button>
+            <button class="marketTab" type="button"><span>▯</span><b>CARTÕES</b><small>ANÁLISES DE CARTÕES</small></button>
+            <button class="marketTab" type="button"><span>♞</span><b>PLAYER PROPS</b><small>DESEMPENHO INDIVIDUAL</small></button>
+          </section>
+
+          <section class="gamesPanel">
+            <div class="sectionHead">
+              <h2>Jogos em Destaque</h2>
+              <div class="cornerOrderSwitch" aria-label="Ordenar jogos">
+                <button type="button" class="active" data-corner-order="strength" aria-pressed="true">🔥 Força de cantos</button>
+                <button type="button" data-corner-order="time" aria-pressed="false">🕒 Horário</button>
+              </div>
+              <div class="filterPills">
+                <button type="button">Todos</button>
+                <button type="button" class="active">Hoje</button>
+                <button type="button">Amanhã</button>
+              </div>
+              <a>Ver todos ›</a>
+            </div>
+            <div class="cornerProStatus" id="initialGamesLoading" role="status" aria-live="polite">Carregando jogos reais do dia...</div>
+          </section>
+        </section>
+
+        <aside class="dashboardRightRail" id="desktopMatchRail">
+          <section class="railCard matchRailCard railEmptyHero">
+            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+            <div class="railEmptyRadar" aria-hidden="true">
+              <span class="radarRing ring1"></span>
+              <span class="radarRing ring2"></span>
+              <span class="radarRing ring3"></span>
+              <span class="radarSweep"></span>
+              <span class="radarBall">⚽</span>
+            </div>
+            <div class="railEmptyText"><strong>Aguardando partida</strong><span>Selecione um jogo para iniciar o Match Center e ver todas as análises.</span></div>
+          </section>
+          <section class="railCard railEmptyStatsCard">
+            <h3>ESTATÍSTICAS DO FILTRO</h3>
+            <div class="railEmptyStatsGrid">
+              <div class="railEmptyStatBox"><i>🛡</i><span>Força do filtro</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🚩</i><span>Proj. escanteios</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>🏠</i><span>Casa média</span><b>--</b><small>Aguardando</small></div>
+              <div class="railEmptyStatBox"><i>✈</i><span>Visitante média</span><b>--</b><small>Aguardando</small></div>
+            </div>
+            <div class="railEmptyHint">As estatísticas serão carregadas após a seleção de uma partida.</div>
+          </section>
+          <section class="railCard railEmptyEventsCard">
+            <h3>EVENTOS / LEITURA</h3>
+            <div class="railEmptyEventIcons">
+              <span><i>◎</i><b>Pressão</b><small>--</small></span>
+              <span><i>◔</i><b>Posse</b><small>--</small></span>
+              <span><i>▣</i><b>Cartões</b><small>--</small></span>
+              <span><i>⚑</i><b>Escanteios</b><small>--</small></span>
+              <span><i>⚽</i><b>Gols</b><small>--</small></span>
+            </div>
+            <div class="railEmptyTimeline"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="railEmptyReadBox"><b>📋</b><p>A leitura do jogo aparecerá aqui. Selecione uma partida para ver eventos e insights em tempo real.</p></div>
+          </section>
+          <button class="railFullBtn railFullBtnDisabled" type="button" disabled><span>▶ INICIAR MATCH CENTER</span><small>Selecione um jogo para continuar</small></button>
+        </aside>
+      </div>
+
+      <footer class="bottomStrip">
+        <div><b>◎ ANÁLISES 24H</b><span>Conteúdo atualizado diariamente</span></div>
+        <div><b>♧ SUPORTE PREMIUM</b><span>Suporte rápido e especializado</span></div>
+        <div><b>◉ FERRAMENTAS EXCLUSIVAS</b><span>Tenha acesso a ferramentas que realmente funcionam</span></div>
+        <div><b>♚ COMUNIDADE PRO</b><span>Participe da nossa comunidade de vencedores</span></div>
+      </footer>
+    </section>
+  </main>
+
+  <nav class="mobileBottomNav" aria-label="Navegação mobile">
+    <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+    <button type="button"><span>⚽</span><b>Pré-Jogo</b></button>
+    <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+    <button type="button"><span>⚑</span><b>Escanteios</b></button>
+    <button type="button"><span>•••</span><b>Mais</b></button>
+  </nav>
+
+
+  <!-- DASHBOARD MOBILE NOVO — não interfere no desktop -->
+  <section class="cpMobileHome" id="cpMobileHome" aria-label="Dashboard mobile">
+    <header class="cpHomeHeader">
+      <button class="cpHomeMenu" type="button" aria-label="Menu">☰</button>
+      <div class="cpHomeBrand"><strong>CORNER<span>PRO</span></strong><small>ANÁLISES ESPORTIVAS</small></div>
+      <button class="cpHomeCalendar" type="button" aria-label="Calendário"><span class="cpHomeCalendarMonth">JUL</span><b class="cpHomeCalendarDay">28</b></button>
+      <div class="cpHomeHeaderAuth" id="cpHomeAuthArea">
+        <div class="cpHomeAuthText">
+          <strong id="cpHomeAuthName">Entrar</strong>
+          <small id="cpHomeAuthPlan">COM GOOGLE</small>
+        </div>
+        <button type="button" id="cpHomeAuthButton" aria-label="Entrar com Google">
+          <img id="cpHomeAuthPhoto" src="" alt="" referrerpolicy="no-referrer" hidden>
+          <span class="cpHomeAuthFallback" aria-hidden="true">●</span>
+          <i></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="cpHomeScroll">
+
+      <section class="cpHomeBest is-loading-initial" id="cpHomeBest" aria-busy="true">
+        <div class="cpHomeBestTop">
+          <b id="cpHomeBestTitle">🔥 MELHOR APOSTA • GOLS</b>
+          <span id="cpHomeBestMarket">ANALISANDO</span>
+        </div>
+
+        <div class="cpHomeInitialLoading" id="cpHomeInitialLoading" role="status" aria-live="polite">
+          <div class="cpRefLoadingDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="cpHomeBestStatusBar" id="cpHomeBestStatusBar" hidden>
+          <i aria-hidden="true"></i><b id="cpHomeBestStatusText">PRÉ-JOGO</b><span id="cpHomeBestStatusExtra"></span>
+        </div>
+
+        <div class="cpRefTimeRow">
+          <time id="cpHomeBestTime">--:--</time>
+          <span id="cpHomeBestDayLabel">HOJE</span>
+        </div>
+
+        <div class="cpRefMatchStage">
+          <div class="cpRefTeam cpRefTeamHome">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestHomeBadge" class="cpRefShield" alt="Escudo do time mandante" hidden>
+              <span id="cpHomeBestHomeFallback" class="cpRefShieldFallback">CA</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="home" aria-label="Favoritar mandante">☆</button>
+            </div>
+            <strong id="cpHomeBestHome">Aguardando</strong>
+            <div class="cpRefForm" id="cpHomeBestHomeForm"><i>V</i><i>V</i><i>E</i><i>D</i><i>V</i></div>
+          </div>
+
+          <div class="cpRefVersus">VS</div>
+
+          <div class="cpRefTeam cpRefTeamAway">
+            <div class="cpRefShieldWrap">
+              <img id="cpHomeBestAwayBadge" class="cpRefShield" alt="Escudo do time visitante" hidden>
+              <span id="cpHomeBestAwayFallback" class="cpRefShieldFallback">FO</span>
+              <button type="button" class="cpRefFavorite" data-ref-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <strong id="cpHomeBestAway">partidas</strong>
+            <div class="cpRefForm" id="cpHomeBestAwayForm"><i>V</i><i>E</i><i>V</i><i>D</i><i>V</i></div>
+          </div>
+        </div>
+
+        <div class="cpRefStatsPanel">
+          <div class="cpRefStatsCol">
+            <small id="cpRefProjectionLabel">PROJEÇÃO</small>
+            <b id="cpRefProjection">—</b>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b id="cpRefCornersAvg">—</b>
+          </div>
+
+          <div class="cpRefConfidenceCol">
+            <small>CONFIANÇA</small>
+            <div class="cpRefGauge" id="cpRefGauge" style="--ref-confidence:0">
+              <strong id="cpHomeBestConfidence">—%</strong>
+            </div>
+            <span id="cpRefConfidenceLabel">ANALISANDO</span>
+          </div>
+
+          <div class="cpRefStatsCol cpRefStatsRight">
+            <small>TENDÊNCIA</small>
+            <b id="cpRefTrend">—</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b id="cpRefGoalsAvg">—</b>
+          </div>
+        </div>
+
+        <div class="cpHomeBestLiveStats" id="cpHomeBestLiveStats" hidden>
+          <div><i>⚽</i><small>GOLS</small><b><span id="cpHomeBestHomeGoals">0</span> × <span id="cpHomeBestAwayGoals">0</span></b></div>
+          <div><i>⚑</i><small>ESCANTEIOS</small><b><span id="cpHomeBestHomeCorners">0</span> × <span id="cpHomeBestAwayCorners">0</span></b></div>
+          <div><i>▯</i><small>CARTÕES</small><b><span id="cpHomeBestHomeCards">0</span> × <span id="cpHomeBestAwayCards">0</span></b></div>
+        </div>
+
+        <button type="button" id="cpHomeBestOpen" disabled>
+          <span class="cpHomeButtonSpinner" aria-hidden="true"></span>
+          <span class="cpHomeBestOpenText">AGUARDE UM MOMENTO</span>
+          <i aria-hidden="true">›</i>
+        </button>
+
+        <div class="cpHomeBestScore" id="cpHomeBestScore" hidden>
+          <b id="cpHomeBestHomeScore">0</b><i>×</i><b id="cpHomeBestAwayScore">0</b>
+        </div>
+        <i class="cpHomeBestVersus" hidden>×</i>
+        <div class="cpHomeBestTeams" hidden></div>
+        <div class="cpHomeMarketDots" hidden></div>
+      </section>
+
+      <section class="cpHomeSection cpHomeMarketsSection">
+        <div class="cpHomeSectionHead">
+          <div>
+            <h2>Mercados em destaque</h2>
+            <small>Escolha o mercado e veja as melhores análises</small>
+          </div>
+          <button type="button">VER TODOS ›</button>
+        </div>
+
+        <div class="cpHomeMarkets">
+          <button type="button" data-home-market="corners">
+            <span>⚑</span><b>ESCANTEIOS</b><small>9.5 • 10.5 • 11.5</small>
+            <em>18 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="goals">
+            <span>⚽</span><b>GOLS</b><small>2.5 • 3.5 • 4.5</small>
+            <em>24 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="cards">
+            <span>▯</span><b>CARTÕES</b><small>2.5 • 3.5 • 4.5</small>
+            <em>31 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="handicap">
+            <span>⚖</span><b>HANDICAP</b><small>-1.0 • +1.0 • 0.0</small>
+            <em>16 jogos hoje</em>
+          </button>
+          <button type="button" data-home-market="btts">
+            <span>◎</span><b>AMBAS MARCAM</b><small>SIM • NÃO</small>
+            <em>22 jogos hoje</em>
+          </button>
+        </div>
+
+        <div class="cpHomeCarouselDots" aria-hidden="true">
+          <i class="active"></i><i></i><i></i><i></i><i></i>
+        </div>
+      </section>
+
+      <section class="cpHomeSection cpHomeFeaturedGamesSection" id="cpHomeFeaturedGamesSection">
+        <div class="cpHomeSectionHead"><h2>Jogos em destaque</h2><button type="button">VER TODOS ›</button></div>
+        <div class="cpHomeOrderSwitch" aria-label="Ordenar jogos em destaque">
+          <button type="button" class="active" data-corner-order="strength" aria-pressed="true"><span>🔥</span> FORÇA DE CANTOS</button>
+          <button type="button" data-corner-order="time" aria-pressed="false"><span>🕒</span> HORÁRIO</button>
+        </div>
+        <small class="cpHomeOrderHint">Em força de cantos, o melhor jogo do dia fica sempre em primeiro.</small>
+        <div class="cpHomeGames" id="cpHomeGames"><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div><div class="cpHomeSkeleton"></div></div>
+      </section>
+
+      <section class="cpHomeMatchMini" id="cpHomeMatchMini">
+        <div class="cpHomeSectionHead"><h2>Match Center</h2><span>TOQUE PARA ABRIR</span></div>
+        <button type="button" id="cpHomeMatchOpen"><div><small>PARTIDA EM DESTAQUE</small><strong id="cpHomeMatchTeams">Selecione um jogo</strong></div><b>›</b></button>
+      </section>
+
+      <section class="cpHomeSection cpHomeLast">
+        <div class="cpHomeSectionHead"><h2>Próximos jogos</h2><button type="button">VER TODOS ›</button></div>
+        <div id="cpHomeLastGames" class="cpHomeLastGames"></div>
+      </section>
+
+    </main>
+
+    <!-- HOME VISUAL V31 — isolada dos estilos antigos -->
+    <main class="cprHome" id="cpReferenceHome" aria-label="Corner Pro Dashboard">
+      <section class="cprHero" id="cprHero">
+        <div class="cprHeroTop">
+          <strong id="cprTitle">🔥 MELHOR APOSTA • GOLS</strong>
+          <span id="cprMarket">ANALISANDO</span>
+        </div>
+
+        <div class="cprTime">
+          <b id="cprTime">--:--</b>
+          <span id="cprDay">HOJE</span>
+        </div>
+
+        <div class="cprMatch">
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprHomeBadge" alt="Escudo mandante" hidden>
+              <span id="cprHomeBadgeFallback">CA</span>
+              <button type="button" class="cprFav" data-cpr-fav="home" aria-label="Favoritar mandante">☆</button>
+            </div>
+            <h2 id="cprHomeName">Aguardando</h2>
+            <div class="cprForm" id="cprHomeForm">
+              <i>V</i><i>V</i><i>E</i><i>D</i><i>V</i>
+            </div>
+          </article>
+
+          <div class="cprVs">VS</div>
+
+          <article class="cprTeam">
+            <div class="cprBadgeBox">
+              <img id="cprAwayBadge" alt="Escudo visitante" hidden>
+              <span id="cprAwayBadgeFallback">FO</span>
+              <button type="button" class="cprFav" data-cpr-fav="away" aria-label="Favoritar visitante">☆</button>
+            </div>
+            <h2 id="cprAwayName">partidas</h2>
+            <div class="cprForm" id="cprAwayForm">
+              <i>V</i><i>E</i><i>V</i><i>D</i><i>V</i>
+            </div>
+          </article>
+        </div>
+
+        <div class="cprStats">
+          <article>
+            <small id="cprProjectionLabel">PROJEÇÃO DE GOLS</small>
+            <b id="cprProjection">—</b>
+            <div class="cprMiniBars"><i></i><i></i><i></i><i></i></div>
+            <hr>
+            <small>MÉDIA DE CANTOS</small>
+            <b><span class="cprFlag">⚑</span> <span id="cprCornersAvg">—</span></b>
+          </article>
+
+          <article class="cprConfidence">
+            <small>CONFIANÇA</small>
+            <div class="cprGauge" id="cprGauge" style="--p:0">
+              <b id="cprConfidence">0%</b>
+            </div>
+            <span id="cprConfidenceLabel">ANALISANDO</span>
+          </article>
+
+          <article>
+            <small>TENDÊNCIA</small>
+            <b id="cprTrend">↗ —</b>
+            <hr>
+            <small>MÉDIA DE GOLS</small>
+            <b><span>⚽</span> <span id="cprGoalsAvg">—</span></b>
+          </article>
+        </div>
+
+        <button type="button" class="cprOpen" id="cprOpen">
+          <span>▥</span>
+          <b>VER ANÁLISE COMPLETA</b>
+          <i>›</i>
+        </button>
+
+        <div class="cprLoading" id="cprLoading">
+          <div><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <section class="cprSection cprMarketsSection">
+        <header>
+          <h2>◎ MERCADOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
+
+        <div class="cprMarkets">
+          <button type="button" class="is-hot" data-home-market="corners">
+            <em>HOT</em><span>⚑</span><b>ESCANTEIOS</b>
+            <small>9.5 • 10.5 • 11.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>18 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="goals">
+            <span>⚽</span><b>GOLS</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>24 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="cards">
+            <span>▯</span><b>CARTÕES</b>
+            <small>2.5 • 3.5 • 4.5</small>
+            <div class="cprSpark is-yellow"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>31 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="handicap">
+            <span>⌁</span><b>HANDICAP</b>
+            <small>-1.0 • +1.0 • 0.0</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>16 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+
+          <button type="button" data-home-market="btts">
+            <span>◎</span><b>AMBAS MARCAM</b>
+            <small>SIM • NÃO</small>
+            <div class="cprSpark"><i></i><i></i><i></i><i></i><i></i></div>
+            <p>22 jogos hoje</p><strong>VER ANÁLISES</strong>
+          </button>
+        </div>
+
+        <div class="cprDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
+      </section>
+
+      <section class="cprSection cprFeatured">
+        <header>
+          <h2>☆ JOGOS EM DESTAQUE</h2>
+          <button type="button">VER TODOS ›</button>
+        </header>
+        <div class="cprFeaturedGames" id="cprFeaturedGames">
+          <div class="cprEmpty">Carregando jogos...</div>
+        </div>
+      </section>
+    </main>
+</section>
+
+  <!-- CORNER PRO MOBILE APP SHELL — exclusivo para telas pequenas -->
+  <section class="cpMobileLayer" id="cpMobileMarketsLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="markets" aria-label="Voltar">‹</button>
+      <div>
+        <strong id="cpMobileMarketsTitle">MERCADOS</strong>
+        <small>Escolha uma linha para ver os melhores jogos</small>
+      </div>
+      <button class="cpMobileFavorite" type="button" aria-label="Favoritar">☆</button>
+    </header>
+
+    <div class="cpMobileMarketKinds" id="cpMobileMarketKinds">
+      <button type="button" data-cp-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button" data-cp-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button" data-cp-market="goals"><span>◎</span><b>Gols</b></button>
+      <button type="button" data-cp-market="cards"><span>▯</span><b>Cartões</b></button>
+      <button type="button" data-cp-market="combined"><span>▦</span><b>Combinadas</b></button>
+      <button type="button" data-cp-market="props"><span>♞</span><b>Props</b></button>
+    </div>
+
+    <div class="cpMobileSubTabs" id="cpMobileSubTabs">
+      <button type="button" class="active">Totais</button>
+      <button type="button">1º tempo</button>
+      <button type="button">2º tempo</button>
+      <button type="button">Por equipe</button>
+    </div>
+
+    <main class="cpMobileMarketsBody">
+      <div class="cpMobileMarketHeading">
+        <div><span id="cpMobileMarketIcon">⚑</span><strong id="cpMobileMarketHeading">Totais de escanteios</strong></div>
+        <small>Toque em uma opção</small>
+      </div>
+      <div class="cpMobileOddsGrid" id="cpMobileOddsGrid"></div>
+
+      <section class="cpMobileRecommended" id="cpMobileRecommended" hidden>
+        <div class="cpMobileRecommendedHead">
+          <div><small>MELHORES JOGOS PARA</small><strong id="cpMobileSelectedLine">OVER 10.5</strong></div>
+          <span>POR CONFIANÇA</span>
+        </div>
+        <div class="cpMobileGameCarousel" id="cpMobileGameCarousel"></div>
+      </section>
+    </main>
+  </section>
+
+  <section class="cpMobileLayer cpMobileMatchLayer" id="cpMobileMatchLayer" aria-hidden="true">
+    <header class="cpMobileLayerHeader">
+      <button class="cpMobileBack" type="button" data-cp-close="match" aria-label="Voltar">‹</button>
+      <div><strong id="cpMobileMatchTitle">ANÁLISE PRÉ-JOGO</strong><small id="cpMobileMatchSubtitle">Central de inteligência da partida</small></div>
+      <button class="cpMobileFavorite" type="button" aria-label="Compartilhar">↗</button>
+    </header>
+    <div class="cpMobileMatchContent" id="cpMobileMatchContent">
+      <div class="cpMobileMatchLoading"><span></span><b>Carregando análise real...</b></div>
+    </div>
+  </section>
+
+
+  <!-- CORNER PRO — AUTENTICAÇÃO / CADASTRO -->
+  <section class="cpAuthModal" id="cpAuthModal" hidden aria-hidden="true" aria-labelledby="cpAuthModalTitle">
+    <button class="cpAuthModalBackdrop" id="cpAuthModalBackdrop" type="button" aria-label="Fechar autenticação"></button>
+
+    <div class="cpAuthCard" role="dialog" aria-modal="true">
+      <button class="cpAuthClose" id="cpAuthModalClose" type="button" aria-label="Fechar">×</button>
+
+      <div class="cpAuthBrand">
+        <span class="cpAuthBrandMark">⚑</span>
+        <div>
+          <strong>CORNER<span>PRO</span></strong>
+          <small>SUA CONTA</small>
+        </div>
+      </div>
+
+      <div class="cpAuthHeading">
+        <h2 id="cpAuthModalTitle">Entre no CornerPro</h2>
+        <p id="cpAuthModalSubtitle">Entre para continuar. O acesso com Google é rápido e seguro.</p>
+      </div>
+
+      <div class="cpAuthTabs" role="tablist" aria-label="Entrar ou criar conta">
+        <button type="button" id="cpAuthTabLogin" class="active">ENTRAR</button>
+        <button type="button" id="cpAuthTabRegister">CRIAR CONTA</button>
+      </div>
+
+      <button type="button" class="cpAuthGoogle" id="cpAuthGoogle">
+        <span>G</span>
+        <b>CONTINUAR COM GOOGLE</b>
+      </button>
+
+      <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
+
+      <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
+        <label id="cpAuthNameWrap" hidden>
+          <span>Nome</span>
+          <input id="cpAuthName" name="name" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
+        </label>
+
+        <label>
+          <span>E-mail</span>
+          <input id="cpAuthEmail" name="email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="seu@email.com">
+        </label>
+
+        <label>
+          <span>Senha</span>
+          <input id="cpAuthPassword" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
+        </label>
+
+        <label id="cpAuthConfirmWrap" hidden>
+          <span>Confirmar senha</span>
+          <input id="cpAuthPasswordConfirm" name="password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
+        </label>
+
+        <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
+
+        <div class="cpAuthFormMessage" id="cpAuthFormMessage" hidden role="status" aria-live="polite"></div>
+
+        <button type="submit" class="cpAuthSubmit" id="cpAuthSubmit">
+          <span>ENTRAR</span>
+          <i>›</i>
+        </button>
+      </form>
+
+      <div class="cpAuthSwitch">
+        <span id="cpAuthSwitchText">Ainda não possui conta?</span>
+        <button type="button" id="cpAuthSwitchButton">Criar conta</button>
+      </div>
+
+      <small class="cpAuthPrivacy">
+        Ao continuar, você concorda com o uso da conta para autenticação e preferências do Corner Pro.
+      </small>
+    </div>
+  </section>
+
+  <!-- auth.js é carregado apenas no desktop; o mobile usa firebase-client.js diretamente. -->
+
+  <div id="authMessage" class="authMessage" role="status" aria-live="polite" hidden></div>
+
+
+  <!-- Barra original global: Dashboard, mercados e Match Center -->
+<nav class="cpHomeBottom cpGlobalBottomNav">
+      <button class="active" type="button"><span>⌂</span><b>Dashboard</b></button>
+      <button type="button" data-home-market="pregame"><span>⚽</span><b>Pré-jogo</b></button>
+      <button type="button"><span>◎</span><b>Ao Vivo</b></button>
+      <button type="button" data-home-market="corners"><span>⚑</span><b>Escanteios</b></button>
+      <button type="button"><span>•••</span><b>Mais</b></button>
+    </nav>
+
+
+<script id="cpDesktopStableBoot">
+(function(){
+  "use strict";
+
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) {
+    document.documentElement.classList.remove("cpDesktopBoot");
+    return;
+  }
+
+  let released = false;
+  const started = performance.now();
+
+  function layoutLooksReady(){
+    const main = document.querySelector(".main");
+    const grid = document.querySelector(".dashboardGrid");
+    const experience = document.getElementById("cpDesktopExperienceV3");
+    const hero = document.getElementById("cpd3Hero");
+
+    if (!main || !grid || !experience || !hero) return false;
+
+    const mr = main.getBoundingClientRect();
+    const gr = grid.getBoundingClientRect();
+    const er = experience.getBoundingClientRect();
+
+    // O estado quebrado mostrado no carregamento fica estreito.
+    // Só libera quando o dashboard já ocupou a largura real do desktop.
+    if (mr.width < 700 || gr.width < 700 || er.width < 500) return false;
+
+    const style = getComputedStyle(experience);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+
+    return true;
+  }
+
+  function release(){
+    if (released) return;
+    released = true;
+    document.documentElement.classList.remove("cpDesktopBoot");
+    document.documentElement.classList.add("cpDesktopReady");
+  }
+
+  function check(){
+    if (released) return;
+
+    if (layoutLooksReady()) {
+      // Dois frames extras evitam mostrar o meio da reorganização do grid.
+      requestAnimationFrame(() => requestAnimationFrame(release));
+      return;
+    }
+
+    // Segurança: nunca deixa a página presa caso alguma API falhe.
+    if (performance.now() - started > 2600) {
+      release();
+      return;
+    }
+
+    requestAnimationFrame(check);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", check, {once:true});
+  } else {
+    check();
+  }
+
+  window.addEventListener("load", check, {once:true});
+  setTimeout(release, 2800);
+})();
+</script>
+
+<script id="cpNewMobileV106Controller">
+
+(()=>{
+  'use strict';
+  if(!window.matchMedia?.('(max-width:980px)').matches)return;
+  if(window.__CP_NEW_MOBILE_V107__)return; window.__CP_NEW_MOBILE_V107__=true;
+  const $=(s,r=document)=>r.querySelector(s); const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
+  const clean=(v,f='')=>{const s=String(v??'').trim();return s&&!['undefined','null','NaN'].includes(s)?s:f};
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const num=(...xs)=>{for(const x of xs){if(x===null||x===undefined||x==='')continue;const n=Number(String(x).replace('%','').replace(',','.'));if(Number.isFinite(n))return n}return null};
+  const MARKETS={
+    corners:{label:'Escanteios',icon:'⚑',hint:'8.5 • 9.5 • 10.5',field:'corners_ai',lines:['IA','TODOS','8.5','9.5','10.5','11.5','12.5']},
+    goals:{label:'Gols',icon:'⚽',hint:'1.5 • 2.5 • 3.5',field:'goals_ai',lines:['IA','TODOS','1.5','2.5','3.5','4.5']},
+    cards:{label:'Cartões',icon:'▯',hint:'2.5 • 3.5 • 4.5',field:'cards_ai',lines:['IA','TODOS','2.5','3.5','4.5','5.5']},
+    handicap:{label:'Handicap',icon:'⇆',hint:'-1.0 • 0.0 • +1.0',field:'handicap_ai',lines:['IA','TODOS','-2.0','-1.5','-1.0','-0.5','0.0','+0.5','+1.0','+1.5','+2.0']},
+    btts:{label:'Ambas Marcam',icon:'◎',hint:'SIM • NÃO',field:'btts_ai',lines:['IA','TODOS','SIM','NÃO']},
+    result:{label:'Resultado',icon:'🏆',hint:'CASA • X • FORA',field:null,lines:['IA','TODOS','CASA','EMPATE','FORA']},
+    doublechance:{label:'Dupla Chance',icon:'◇',hint:'1X • 12 • X2',field:null,lines:['IA','TODOS','1X','12','X2']},
+    teamgoals:{label:'Gols do Time',icon:'◉',hint:'0.5 • 1.5 • 2.5',field:null,lines:['IA','TODOS','0.5','1.5','2.5']},
+    builder:{label:'Aposta Pronta',icon:'⚡',hint:'Maior confiança',field:null,lines:['IA','TODOS']}
+  };
+  const state={date:'',market:'corners',line:'IA',base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],loading:false,request:0};
+  function ymd(offset=0){const now=new Date();now.setDate(now.getDate()+offset);try{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return now.toISOString().slice(0,10)}}
+  function dateLabel(x){const [Y,M,D]=String(x).split('-').map(Number);return Number.isFinite(D)?`${String(D).padStart(2,'0')}/${String(M).padStart(2,'0')}`:'Hoje'}
+  function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==='object');if(!payload||typeof payload!=='object'||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ['games','jogos','matches','fixtures','events','data','items','results','response','quentes','list','top','top6','recommendations','opportunities','corners']){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==='object')}return[]}
+  const raw=g=>g?.raw||g||{};
+  const home=g=>clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??raw(g)?.casa??raw(g)?.match_hometeam_name,'Casa');
+  const away=g=>clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??raw(g)?.fora??raw(g)?.match_awayteam_name,'Fora');
+  const time=g=>clean(g?.hora??g?.time??g?.match_time??raw(g)?.hora??raw(g)?.match_time,'--:--');
+  const league=g=>clean(g?.liga??g?.league_name??g?.league??raw(g)?.liga??raw(g)?.league_name,'Liga');
+  const id=g=>clean(g?.match_id??g?.event_id??g?.event_key??g?.fixture_id??g?.id??raw(g)?.match_id,'')||`${norm(home(g))}|${norm(away(g))}`;
+  function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
+  function confidence(g,m=state.market){let n;if(m==='builder')n=Math.max(...['corners','goals','cards','handicap','btts'].map(x=>confidence(g,x)),0);else if(['result','doublechance','teamgoals'].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
+  function projection(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==='corners')return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners);if(m==='goals'||m==='teamgoals')return num(d?.projection,r?.expected_goals_total,r?.goals_projection);if(m==='cards')return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards);return num(d?.projection)}
+  function cornerRecommendation(g){
+    const d=dec(g,'corners');
+    const serverLine=clean(d?.line,'').toUpperCase();
+    const p=projection(g,'corners');
+    const c=confidence(g,'corners');
+    if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(serverLine)){
+      return {valid:true,line:serverLine,projection:p,confidence:c,source:'server'};
+    }
+    if(p!==null && Number.isFinite(Number(p))){
+      const proj=Number(p);
+      if(proj>=11.75)return {valid:true,line:'OVER 11.5',projection:proj,confidence:c,source:'projection'};
+      if(proj>=10.75)return {valid:true,line:'OVER 10.5',projection:proj,confidence:c,source:'projection'};
+      if(proj>=9.55)return {valid:true,line:'OVER 9.5',projection:proj,confidence:c,source:'projection'};
+    }
+    return {valid:false,line:'SEM ENTRADA',projection:p,confidence:c,source:'none'};
+  }
+  function pick(g,m=state.market){const r=raw(g),d=dec(g,m);if(m==='corners'){const cr=cornerRecommendation(g);return cr.valid?cr.line:clean(d?.line,'SEM ENTRADA').toUpperCase()}if(m==='result'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??'');return s.includes('away')?'FORA':s.includes('home')?'CASA':'1X2'}if(m==='doublechance'){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??'');return s.includes('away')?'X2':s.includes('home')?'1X':'12'}if(m==='teamgoals')return `OVER ${state.line==='IA'||state.line==='TODOS'?'0.5':state.line}`;if(m==='builder'){let best={c:0,p:'ANALISANDO'};for(const x of ['corners','goals','cards','handicap','btts']){const c=confidence(g,x),p=clean(dec(g,x)?.line,'');if(c>best.c&&p&&!/analis|atualiza|sem aposta/i.test(p))best={c,p}}return best.p}return clean(d?.line??d?.pick??d?.recommendation??d?.selection,'ANALISANDO').toUpperCase()}
+  function resolved(g,m=state.market){
+    if(m==='corners') return cornerRecommendation(g).valid;
+    if(['result','doublechance','teamgoals','builder'].includes(m))return confidence(g,m)>0;
+    const d=dec(g,m),p=pick(g,m);
+    return !!(d&&!d.updating&&!d.skip&&p&&!/ANALISANDO|ATUALIZAÇÃO|ATUALIZACAO|SEM APOSTA/.test(p));
+  }
+  function status(g){const r=raw(g),s=norm(r?.match_status??r?.status??r?.event_status??'');const minute=num(r?.minute,r?.match_minute,r?.elapsed);const hs=num(r?.match_hometeam_score,r?.home_score,r?.score_home),as=num(r?.match_awayteam_score,r?.away_score,r?.score_away);const finished=/finished|full time|\bft\b|encerr|final|ended/.test(s);const ht=!finished&&(/half time|\bht\b|interval/.test(s));const live=!finished&&(ht||/live|ao vivo|1st|2nd/.test(s)||(minute!==null&&minute>0));return{finished,ht,live,label:finished?'ENCERRADO':ht?'INTERVALO':live?(minute?`AO VIVO • ${Math.round(minute)}'`:'AO VIVO'):'PRÉ-JOGO',score:(finished||ht||live)&&hs!==null&&as!==null?`${hs} - ${as}`:'VS'}}
+  function logo(g,side){const r=raw(g),src=side==='home'?(r.home_badge||r.team_home_badge||r.home_team_badge||r.home_logo):(r.away_badge||r.team_away_badge||r.away_team_badge||r.away_logo);const n=side==='home'?home(g):away(g);return `<span class="v105Logo">${src?`<img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none">${esc(n.slice(0,2).toUpperCase())}</i>`:`<i>${esc(n.slice(0,2).toUpperCase())}</i>`}</span>`}
+  function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=='object')return;const k=id(g),old=map.get(k)||{};const next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field;const d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
+  function source(m=state.market){return state.engines[m]?.length?state.engines[m].map(e=>state.games.find(g=>id(g)===id(e))||e):state.games}
+  function filtered(m=state.market,line=state.line){let a=source(m).slice();if(line==='IA')a=a.filter(g=>resolved(g,m));else if(line!=='TODOS'){const q=norm(line);a=a.filter(g=>norm(pick(g,m)).includes(q)||norm(dec(g,m)?.line).includes(q))}return a.sort((a,b)=>confidence(b,m)-confidence(a,m)||((projection(b,m)||0)-(projection(a,m)||0))).slice(0,30)}
+  async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
+  async function load(){const req=++state.request;state.loading=true;render();const date=state.date||ymd(),stamp=Date.now();
+    // Base primeiro: não espera IA pesada para mostrar o app.
+    let base=[];try{base=extract(await fetchJ(`/quentes?date=${encodeURIComponent(date)}&_mobile=1&ai=0&t=${stamp}`,15000))}catch(e){console.warn('[V107 quentes fast]',e)}
+    if(req!==state.request)return;if(!base.length){try{base=extract(await fetchJ(`/mercados?date=${encodeURIComponent(date)}&t=${stamp}`,25000))}catch(e){console.warn('[V107 mercados fallback]',e)}}
+    if(req!==state.request)return;state.base=base;merge();render();
+    // Motores em paralelo e atualizações independentes.
+    const jobs=[
+      ['corners',`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],
+      ['all',`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],
+      ['fast',`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
+    ];
+    await Promise.allSettled(jobs.map(async([kind,url,to])=>{
+      try{
+        const p=await fetchJ(url,to);
+        if(req!==state.request)return;
+        if(kind==='corners'){
+          const a=extract(p,'corners');
+          if(a.length)state.engines.corners=a;
+        }else{
+          // Escanteios NÃO é sobrescrito pelos motores gerais.
+          for(const m of ['goals','cards','handicap','btts']){
+            const a=extract(p,m);
+            if(a.length)state.engines[m]=a;
+          }
+        }
+        merge();render();
+      }catch(e){console.warn('[V107 engine]',kind,e)}
+    }));
+    if(req===state.request){state.loading=false;render()}
+  }
+  function renderMarkets(){const el=$('#cpV105Markets');if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m])=>`<button class="v105Market ${state.market===k?'active':''}" data-v105-market="${k}"><i>${m.icon}</i><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><em>${filtered(k,'IA').length||source(k).length} jogos</em></button>`).join('')}
+  function renderLines(){const m=MARKETS[state.market],el=$('#cpV105Lines');if(!el)return;$('#cpV105MarketTitle').textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?'active':''}" data-v105-line="${x}">${x==='IA'?'✦ IA':x}</button>`).join('')}
+  function card(g,i){const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g);return `<article class="v105Game" data-v105-game="${i}"><div class="v105GameTop"><span>${esc(league(g))} • ${esc(time(g))}</span><b class="v105Status ${s.live?'live':''} ${s.finished?'finished':''}">${esc(s.label)}</b></div><div class="v105GameTeams"><div><b>${esc(home(g))}</b></div><em>${esc(s.score)}</em><div><b>${esc(away(g))}</b></div></div><div class="v105Bet"><div><small>RECOMENDAÇÃO</small><b>${esc(p)}</b></div><div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):'—'}</b></div><div><small>CONFIANÇA</small><b>${cf?cf+'%':'—'}</b></div></div><button class="v105GameOpen" type="button">VER ANÁLISE ›</button></article>`}
+  function renderHero(){const el=$('#cpV105Hero');if(!el)return;const iaList=filtered();const g=iaList[0]||null;if(!g){el.innerHTML=`<div class="v105HeroLoading">${state.loading?'<div class="v105Spinner"></div>':''}<b>${state.loading?'Carregando análises...':'Nenhuma oportunidade aprovada'}</b><p>${state.loading?'Buscando os mesmos motores do site.':'Escolha TODOS ou outra linha.'}</p></div>`;return}const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g);el.innerHTML=`<div class="v105HeroTop"><b>🔥 MELHOR OPORTUNIDADE • ${esc(MARKETS[state.market].label.toUpperCase())}</b><span class="v105Status ${s.live?'live':''} ${s.finished?'finished':''}">${esc(s.label)}</span></div><div class="v105HeroMatch"><div class="v105HeroTeam">${logo(g,'home')}<strong>${esc(home(g))}</strong></div><div class="v105HeroMid"><small>${esc(league(g))}<br>${esc(time(g))}</small><b>${esc(s.score)}</b></div><div class="v105HeroTeam">${logo(g,'away')}<strong>${esc(away(g))}</strong></div></div><div class="v105HeroPick"><div><small>IA RECOMENDA</small><b>${esc(p)}</b></div><div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):'—'}</b></div><div><small>CONFIANÇA</small><b>${cf?cf+'%':'—'}</b></div></div><button class="v105HeroOpen" type="button" data-v105-hero>VER ANÁLISE COMPLETA ›</button>`}
+  function renderGames(){const list=filtered(),el=$('#cpV105Games');if(!el)return;$('#cpV105Count').textContent=`${list.length} ${list.length===1?'jogo':'jogos'}`;el.innerHTML=list.length?list.map(card).join(''):`<div class="v105Empty"><b>${state.loading?'Consultando IA...':'Sem jogos nesta seleção'}</b>${state.loading?'Os dados reais estão sendo carregados.':'Use TODOS ou escolha outra linha.'}</div>`}
+  function render(){renderMarkets();renderLines();renderHero();renderGames();$('#cpV105DateText').textContent=`📅 ${dateLabel(state.date||ymd())}`;syncAuth()}
+  let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
+  async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch('/auth/firebase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||'Falha ao autenticar');const m=await fetch('/auth/me',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||'Falha ao carregar perfil');return {...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
+  function syncAuth(){const img=$('#cpV105UserImg'),dot=$('#cpV105User i'),btn=$('#cpV105User');const photo=currentUser?.photoURL||currentProfile?.user?.foto||'';if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||'Perfil'):'Entrar com Google';if(dot)dot.style.background=currentUser?'#66ff2a':'#6f7a75'}
+  async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V107 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V107 firebase]',e);syncAuth()}}
+  async function openAuth(){if(authBusy||!firebaseApi)return;if(currentUser){return}authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn('[V107 login]',e)}finally{authBusy=false;syncAuth()}}
+  function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$('#cpV105MatchTitle').textContent=`${home(g)} × ${away(g)}`;$('#cpV105MatchBody').innerHTML=`<section class="v105MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v105MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):'—'}</b> &nbsp; Confiança: <b>${cf?cf+'%':'—'}</b></p></section><section class="v105MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,'Análise carregada pelos mesmos motores utilizados no site desktop.'))}</p></section>`;document.documentElement.classList.add('cpV105MatchOpen')}
+  document.addEventListener('click',e=>{const m=e.target.closest('[data-v105-market]');if(m){state.market=m.dataset.v105Market;state.line='IA';render();return}const l=e.target.closest('[data-v105-line]');if(l){state.line=l.dataset.v105Line;render();return}const d=e.target.closest('[data-v105-day]');if(d){document.querySelectorAll('[data-v105-day]').forEach(x=>x.classList.remove('active'));d.classList.add('active');state.date=ymd(Number(d.dataset.v105Day||0));state.line='IA';load();return}const g=e.target.closest('[data-v105-game]');if(g){const x=filtered()[Number(g.dataset.v105Game)];if(x)openGame(x);return}if(e.target.closest('[data-v105-hero]')){const x=filtered()[0]||null;if(x)openGame(x);return}if(e.target.closest('#cpV105CloseMatch')){document.documentElement.classList.remove('cpV105MatchOpen');return}if(e.target.closest('#cpV105Refresh')){load();return}if(e.target.closest('#cpV105User')){openAuth();return}},true);
+  state.date=$('#date')?.value||ymd();if($('#date'))$('#date').value=state.date;render();syncAuth();initAuth();
+  load().catch(e=>{console.error('[CP V107]',e);state.loading=false;render()});
+})();
+
+</script>
+
+<section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
+  <div class="v127MoreCard" role="dialog" aria-modal="true" aria-labelledby="cpV127MoreTitle">
+    <div class="v127MoreHandle" aria-hidden="true"></div>
+
+    <div class="v127MoreHead">
+      <div class="v127MoreTitleWrap">
+        <span class="v127MoreBadge">CORNERPRO</span>
+        <b id="cpV127MoreTitle">Central de mercados</b>
+        <small>Acesso rápido às análises e ferramentas</small>
+      </div>
+      <button type="button" class="v127MoreClose" data-v127-close-more aria-label="Fechar">×</button>
+    </div>
+
+    <div class="v127MorePulse">
+      <span class="v127MorePulseDot"></span>
+      <div><b>Motores de análise ativos</b><small>Dados e IA atualizados em tempo real</small></div>
+      <i>ONLINE</i>
+    </div>
+
+    <div class="v127MoreLabel">MERCADOS</div>
+    <div class="v127MoreGrid">
+      <button type="button" data-v110-open-market="goals"><i>⚽</i><span><b>Gols</b><small>Over, linhas e projeções</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="cards"><i>▯</i><span><b>Cartões</b><small>Linhas e intensidade</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="handicap"><i>⚡</i><span><b>Handicap</b><small>Leitura asiática</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="btts"><i>◎</i><span><b>Ambas marcam</b><small>Probabilidade BTTS</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="result"><i>🏆</i><span><b>Resultado</b><small>Casa, empate ou fora</small></span><em>›</em></button>
+      <button type="button" data-v110-open-market="builder"><i>✦</i><span><b>Aposta pronta</b><small>Maior confiança da IA</small></span><em>›</em></button>
+    </div>
+
+    <div class="v127MoreLabel">CONTA</div>
+    <button type="button" id="cpV127MoreLogin" class="v127MoreAccount">
+      <span class="v127MoreAccountIcon">♙</span>
+      <span><b>Minha conta</b><small>Perfil, acesso e preferências</small></span>
+      <em>›</em>
+    </button>
+
+    <div class="v127MoreFoot">
+      <span>● SISTEMA OPERACIONAL</span>
+      <small>CornerPro • análises esportivas</small>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
