@@ -30550,6 +30550,37 @@ const fallbackSide = target > 0
     }finally{busy=false}
   }
 
+  // V146 — ATIVA FAVORITOS MESMO SE O HTML ANTIGO AINDA ESTIVER EM CACHE
+  function activateFavoriteEntries(){
+    // Desktop: item lateral "Favoritos"
+    document.querySelectorAll('.sidebar .side-item, .sidebar-nav .side-item').forEach(el=>{
+      const txt=String(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(txt==='☆ favoritos' || txt==='favoritos' || txt.endsWith(' favoritos')){
+        el.setAttribute('data-cp-favorites-open','desktop');
+        if(el.tagName==='A' && !el.getAttribute('href')) el.setAttribute('href','#');
+      }
+    });
+
+    // App: botão rápido FAVORITOS
+    document.querySelectorAll('#cpNewMobileV110 .v110Quick button, #cpNewMobileV105 .v105Quick button, .v110Quick button').forEach(el=>{
+      const b=el.querySelector('b');
+      if(norm(b?.textContent)==='favoritos') el.setAttribute('data-cp-favorites-open','mobile');
+    });
+  }
+
+  activateFavoriteEntries();
+
+  // Alguns handlers antigos do dashboard usam stopImmediatePropagation no clique.
+  // Abrimos no pointerdown, antes desses handlers, para o Favoritos responder sempre.
+  document.addEventListener('pointerdown',e=>{
+    activateFavoriteEntries();
+    const open=e.target.closest?.('[data-cp-favorites-open]');
+    if(!open) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openModal();
+  },true);
+
   document.addEventListener('click',e=>{
     const open=e.target.closest?.('[data-cp-favorites-open]');if(open){e.preventDefault();e.stopPropagation();openModal();return}
     if(e.target.closest?.('[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav')){
@@ -30559,6 +30590,6 @@ const fallbackSide = target > 0
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   window.addEventListener('storage',e=>{if(KEYS.includes(e.key)){try{localStorage.removeItem(CACHE)}catch{};refresh({force:true,rerender:true})}});
 
-  const mo=new MutationObserver(()=>{const c=cached();paintBadges(c?.alerts||window.__cpFavoriteHomeAlertsV145||[])});mo.observe(document.documentElement,{subtree:true,childList:true});
+  const mo=new MutationObserver(()=>{activateFavoriteEntries();const c=cached();paintBadges(c?.alerts||window.__cpFavoriteHomeAlertsV145||[])});mo.observe(document.documentElement,{subtree:true,childList:true});
   const c=cached();if(c)paintBadges(c.alerts);setTimeout(()=>refresh({force:false}),300);setInterval(()=>{try{localStorage.removeItem(CACHE)}catch{};refresh({force:true})},15*60*1000);
 })();
