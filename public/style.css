@@ -22765,3 +22765,62 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     45%{opacity:1;transform:translateY(-2px) scale(1);}
   }
 }
+
+/* =========================================================
+   DESKTOP — FAVORITOS DE ESCANTEIOS EM CASA
+   Faixa discreta e global acima dos mercados.
+   Não afeta o app/mobile.
+   ========================================================= */
+@media (min-width:981px){
+  #cpDesktopExperienceV3 .cpd3HomeFavoritesBar{
+    min-height:42px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:5px 12px;
+    background:linear-gradient(90deg,rgba(7,15,17,.98),rgba(8,17,18,.98));
+    border-left:1px solid #1b2b31;
+    border-right:1px solid #1b2b31;
+    border-bottom:1px solid rgba(99,241,39,.20);
+    overflow:hidden;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavoritesBar[hidden]{display:none!important}
+  #cpDesktopExperienceV3 .cpd3HomeFavLabel{
+    flex:0 0 auto;display:flex;align-items:center;gap:7px;
+    padding-right:13px;border-right:1px solid #1c2a2f;
+    color:#cbd5d2;font-size:9px;font-weight:900;white-space:nowrap;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavLabel span{color:#d9b83e;font-size:15px;line-height:1}
+  #cpDesktopExperienceV3 .cpd3HomeFavList{
+    min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem{
+    flex:0 1 190px;min-width:130px;max-width:210px;height:31px;
+    display:flex;align-items:center;gap:7px;padding:3px 9px;
+    border:1px solid transparent;border-radius:7px;background:#0a1215;
+    color:#e7eeeb;text-align:left;transition:.15s ease;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem:hover{
+    border-color:rgba(99,241,39,.32);background:#0d1815;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem .cpd3MiniBadge{
+    flex:0 0 23px;width:23px;height:23px;display:grid;place-items:center;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem .cpd3MiniBadge img{max-width:23px;max-height:23px}
+  #cpDesktopExperienceV3 .cpd3HomeFavItem .cpd3MiniBadge i{
+    width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
+    background:#13211b;color:#76f13b;font-size:7px;font-style:normal;font-weight:950;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem span{min-width:0;display:block}
+  #cpDesktopExperienceV3 .cpd3HomeFavItem b{
+    display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;line-height:1.1;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavItem small{
+    display:block;margin-top:2px;color:#7f8e89;font-size:7px;font-weight:800;white-space:nowrap;
+  }
+  #cpDesktopExperienceV3 .cpd3HomeFavMore{
+    flex:0 0 auto;display:grid;place-items:center;min-width:28px;height:24px;padding:0 7px;
+    border-radius:999px;background:rgba(99,241,39,.09);border:1px solid rgba(99,241,39,.18);
+    color:#80f04a;font-size:8px;font-weight:950;
+  }
+}

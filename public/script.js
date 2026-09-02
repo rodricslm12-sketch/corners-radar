@@ -3050,6 +3050,62 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               state.favorites.has(k)?state.favorites.delete(k):state.favorites.add(k);
               saveFav();
             }
+
+            /* =========================================================
+               DESKTOP — FAVORITOS DE ESCANTEIOS JOGANDO EM CASA
+               - usa a lista de favoritos já existente do desktop
+               - só mostra o favorito quando ele for o MANDANTE
+               - aparece acima dos mercados, independentemente do mercado ativo
+               - não altera o mobile/app
+               ========================================================= */
+            function desktopHomeFavoriteGames(){
+              const seen=new Set();
+              return unique(state.games||[]).filter(g=>{
+                const st=gameStatus(g);
+                const teamKey=norm(home(g));
+                if(!teamKey || !state.favorites.has(teamKey) || st.finished || seen.has(teamKey)) return false;
+                seen.add(teamKey);
+                return true;
+              }).sort((a,b)=>time(a).localeCompare(time(b)));
+            }
+
+            function renderDesktopHomeFavorites(){
+              if(!mq.matches) return;
+              const root=$("#cpDesktopExperienceV3");
+              const hero=$("#cpd3Hero");
+              const marketNav=root?.querySelector(".cpd3MarketNav");
+              if(!root || !hero || !marketNav) return;
+
+              let bar=$("#cpd3HomeFavoritesBar");
+              if(!bar){
+                bar=document.createElement("section");
+                bar.id="cpd3HomeFavoritesBar";
+                bar.className="cpd3HomeFavoritesBar";
+                bar.setAttribute("aria-label","Favoritos de escanteios jogando em casa");
+                marketNav.before(bar);
+              }
+
+              const favorites=desktopHomeFavoriteGames();
+              if(!favorites.length){
+                bar.hidden=true;
+                bar.innerHTML="";
+                return;
+              }
+
+              const visible=favorites.slice(0,3);
+              const extra=Math.max(0,favorites.length-visible.length);
+              bar.hidden=false;
+              bar.innerHTML=`
+                <div class="cpd3HomeFavLabel"><span>☆</span><strong>FAVORITOS EM CASA</strong></div>
+                <div class="cpd3HomeFavList">
+                  ${visible.map(g=>`
+                    <button type="button" class="cpd3HomeFavItem" data-cpd3-open="${esc(key(g))}" title="Abrir ${esc(home(g))} × ${esc(away(g))}">
+                      ${badgeHtml(g,"home",true)}
+                      <span><b>${esc(home(g))}</b><small>${esc(time(g))} • mandante</small></span>
+                    </button>`).join("")}
+                  ${extra?`<span class="cpd3HomeFavMore">+${extra}</span>`:""}
+                </div>`;
+            }
           
             function renderControls(){
               const c=MARKET[state.market];
@@ -3291,6 +3347,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(!$("#cpDesktopExperienceV3")) return;
           
               renderControls();
+              renderDesktopHomeFavorites();
           
               const rows=$("#cpd3Rows");
               const titleEl=$("#cpd3ResultsTitle");
