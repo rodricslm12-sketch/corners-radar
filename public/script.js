@@ -30139,3 +30139,292 @@ const fallbackSide = target > 0
     setTimeout(nudge,5500);
   },{once:true});
 })();
+/* ================================================================
+   CORNER PRO V144 — ALERTA DE FAVORITOS JOGANDO EM CASA
+   - Mostra badge no menu "Favoritos" quando um time favoritado
+     tiver partida em casa (hoje/próximos 3 dias).
+   - Prioriza amanhã no texto do alerta.
+   - Funciona com os 3 storages de favoritos já usados no projeto.
+   - Sem alteração de HTML/CSS externo.
+   ================================================================ */
+(()=>{
+  "use strict";
+  if (window.__CP_FAVORITES_HOME_ALERT_V144__) return;
+  window.__CP_FAVORITES_HOME_ALERT_V144__ = true;
+
+  const STORE_KEYS = [
+    "cornerProFavoriteTeams:v2",
+    "cornerProFavorites",
+    "cornerpro_mobile_favorite_teams_v1"
+  ];
+  const STYLE_ID = "cpFavoritesHomeAlertV144Style";
+  const BADGE_CLASS = "cpFavHomeAlertBadgeV144";
+  const CACHE_KEY = "cp_favorites_home_alert_v144_cache";
+  const CACHE_TTL = 10 * 60 * 1000;
+  let refreshTimer = null;
+  let inFlight = false;
+
+  function norm(v){
+    return String(v ?? "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  }
+
+  function clean(v){
+    const s=String(v??"").trim();
+    return s && !["undefined","null","nan"].includes(s.toLowerCase()) ? s : "";
+  }
+
+  function favorites(){
+    const map = new Map();
+    for(const key of STORE_KEYS){
+      try{
+        const arr = JSON.parse(localStorage.getItem(key) || "[]");
+        if(!Array.isArray(arr)) continue;
+        for(const item of arr){
+          const name = clean(item);
+          const k = norm(name);
+          if(k && !map.has(k)) map.set(k,name);
+        }
+      }catch{}
+    }
+    return map;
+  }
+
+  function teamHome(g){
+    const r=g?.raw||g||{};
+    return clean(
+      g?.casa ?? g?.home ?? g?.home_name ?? g?.home_team ?? g?.match_hometeam_name ??
+      r?.casa ?? r?.home ?? r?.home_name ?? r?.home_team ?? r?.match_hometeam_name
+    );
+  }
+  function teamAway(g){
+    const r=g?.raw||g||{};
+    return clean(
+      g?.fora ?? g?.away ?? g?.away_name ?? g?.away_team ?? g?.match_awayteam_name ??
+      r?.fora ?? r?.away ?? r?.away_name ?? r?.away_team ?? r?.match_awayteam_name
+    );
+  }
+  function gameTime(g){
+    const r=g?.raw||g||{};
+    return clean(g?.hora ?? g?.time ?? g?.match_time ?? r?.hora ?? r?.time ?? r?.match_time) || "--:--";
+  }
+  function gameLeague(g){
+    const r=g?.raw||g||{};
+    return clean(g?.liga ?? g?.league_name ?? g?.league ?? r?.liga ?? r?.league_name ?? r?.league) || "Liga";
+  }
+
+  function extract(payload, seen=new Set()){
+    if(Array.isArray(payload)) return payload.filter(x=>x && typeof x==="object");
+    if(!payload || typeof payload!=="object" || seen.has(payload)) return [];
+    seen.add(payload);
+    for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6"]){
+      const v=payload[k];
+      if(Array.isArray(v) && v.length) return v.filter(x=>x && typeof x==="object");
+    }
+    for(const v of Object.values(payload)){
+      if(v && typeof v==="object"){
+        const found=extract(v,seen);
+        if(found.length) return found;
+      }
+    }
+    return [];
+  }
+
+  function manausYMD(offset=0){
+    const now=new Date();
+    now.setDate(now.getDate()+offset);
+    try{
+      const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(now);
+      const o=Object.fromEntries(p.map(x=>[x.type,x.value]));
+      return `${o.year}-${o.month}-${o.day}`;
+    }catch{return now.toISOString().slice(0,10)}
+  }
+
+  function dayLabel(offset){
+    if(offset===0) return "hoje";
+    if(offset===1) return "amanhã";
+    const ymd=manausYMD(offset);
+    const [y,m,d]=ymd.split("-").map(Number);
+    try{return new Intl.DateTimeFormat("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",timeZone:"America/Manaus"}).format(new Date(y,m-1,d,12)).replace(".","");}
+    catch{return ymd.split("-").reverse().slice(0,2).join("/")}
+  }
+
+  function isSameFavorite(homeName, favMap){
+    const h=norm(homeName);
+    if(!h) return false;
+    if(favMap.has(h)) return true;
+    // tolera variações simples de nome, mas evita substring curta demais.
+    for(const key of favMap.keys()){
+      if(key.length>=5 && h.length>=5 && (h.includes(key) || key.includes(h))) return true;
+    }
+    return false;
+  }
+
+  async function fetchDay(date){
+    const urls=[
+      `/mercados?date=${encodeURIComponent(date)}&_favhome=1&t=${Date.now()}`,
+      `/quentes?date=${encodeURIComponent(date)}&_favhome=1&ai=0&t=${Date.now()}`
+    ];
+    for(const url of urls){
+      try{
+        const res=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"}});
+        if(!res.ok) continue;
+        const payload=await res.json();
+        const games=extract(payload);
+        if(games.length) return games;
+      }catch{}
+    }
+    return [];
+  }
+
+  function installStyle(){
+    if(document.getElementById(STYLE_ID)) return;
+    const st=document.createElement("style");
+    st.id=STYLE_ID;
+    st.textContent=`
+      .${BADGE_CLASS}{
+        margin-left:auto;min-width:22px;height:20px;padding:0 6px;border-radius:999px;
+        display:inline-flex;align-items:center;justify-content:center;gap:4px;
+        background:#67ff2c;color:#061106;font-size:10px;font-weight:900;line-height:1;
+        box-shadow:0 0 0 1px rgba(103,255,44,.28),0 0 14px rgba(103,255,44,.32);
+        vertical-align:middle;position:relative;flex:0 0 auto;
+      }
+      .${BADGE_CLASS}::before{content:"";width:5px;height:5px;border-radius:50%;background:#061106;animation:cpFavPulseV144 1.4s infinite;}
+      .${BADGE_CLASS}[data-tomorrow="1"]{background:#ffcf39;color:#160f00;box-shadow:0 0 0 1px rgba(255,207,57,.30),0 0 16px rgba(255,207,57,.34)}
+      .${BADGE_CLASS}[data-tomorrow="1"]::before{background:#160f00}
+      @keyframes cpFavPulseV144{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.25)}}
+      .cpFavHomeAlertHostV144{display:flex!important;align-items:center!important;gap:8px!important;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function findFavoritesMenu(){
+    const nodes=[...document.querySelectorAll("a,button,li,div,span")];
+    // prefere elementos clicáveis pequenos cujo texto é exatamente Favoritos
+    return nodes.find(el=>{
+      if(el.closest?.("[aria-hidden='true']")) return false;
+      const txt=String(el.textContent||"").replace(/\s+/g," ").trim().toLowerCase();
+      if(txt!=="favoritos") return false;
+      const r=el.getBoundingClientRect?.();
+      return !r || (r.width>0 && r.height>0 && r.height<80);
+    }) || null;
+  }
+
+  function paint(alerts){
+    installStyle();
+    const menu=findFavoritesMenu();
+    if(!menu) return false;
+
+    // usa o próprio item se for clicável; caso o texto esteja em span, usa o pai mais próximo.
+    const host=menu.matches?.("a,button,li") ? menu : (menu.closest?.("a,button,li") || menu.parentElement || menu);
+    host.classList.add("cpFavHomeAlertHostV144");
+    host.querySelectorAll?.(`.${BADGE_CLASS}`).forEach(x=>x.remove());
+
+    if(!Array.isArray(alerts) || !alerts.length){
+      host.removeAttribute("data-favorite-home-alert");
+      host.title = host.title?.startsWith("Favorito em casa") ? "" : host.title;
+      return true;
+    }
+
+    const tomorrowCount=alerts.filter(x=>x.offset===1).length;
+    const badge=document.createElement("span");
+    badge.className=BADGE_CLASS;
+    badge.textContent=String(alerts.length);
+    badge.dataset.tomorrow=tomorrowCount>0?"1":"0";
+    badge.setAttribute("aria-label",`${alerts.length} favorito(s) joga(m) em casa em breve`);
+    host.appendChild(badge);
+
+    const ordered=[...alerts].sort((a,b)=>a.offset-b.offset || String(a.time).localeCompare(String(b.time)));
+    const preview=ordered.slice(0,4).map(x=>`${x.home} x ${x.away} • ${dayLabel(x.offset)} ${x.time}`).join(" | ");
+    const extra=ordered.length>4?` • +${ordered.length-4} jogo(s)`:"";
+    host.title=`Favorito em casa: ${preview}${extra}`;
+    host.dataset.favoriteHomeAlert="1";
+    return true;
+  }
+
+  function saveCache(alerts){
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({at:Date.now(),alerts}))}catch{}
+  }
+  function loadCache(){
+    try{
+      const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+      return c && Date.now()-Number(c.at||0)<CACHE_TTL && Array.isArray(c.alerts) ? c.alerts : null;
+    }catch{return null}
+  }
+
+  async function refresh({force=false}={}){
+    if(inFlight) return;
+    const favMap=favorites();
+    if(!favMap.size){
+      paint([]);saveCache([]);return;
+    }
+
+    if(!force){
+      const cached=loadCache();
+      if(cached){ paint(cached); return; }
+    }
+
+    inFlight=true;
+    try{
+      const days=await Promise.all([0,1,2,3].map(async offset=>({offset,games:await fetchDay(manausYMD(offset))})));
+      const alerts=[];
+      const seen=new Set();
+      for(const {offset,games} of days){
+        for(const g of games){
+          const h=teamHome(g);
+          if(!isSameFavorite(h,favMap)) continue;
+          const a=teamAway(g);
+          const key=`${offset}|${norm(h)}|${norm(a)}|${gameTime(g)}`;
+          if(seen.has(key)) continue;
+          seen.add(key);
+          alerts.push({offset,home:h,away:a,time:gameTime(g),league:gameLeague(g)});
+        }
+      }
+      alerts.sort((a,b)=>a.offset-b.offset || String(a.time).localeCompare(String(b.time)));
+      saveCache(alerts);
+      paint(alerts);
+      window.__cpFavoriteHomeAlertsV144=alerts;
+      window.dispatchEvent(new CustomEvent("cornerpro:favorites-home-alerts",{detail:{alerts}}));
+    }finally{inFlight=false}
+  }
+
+  function schedule(force=false){
+    clearTimeout(refreshTimer);
+    refreshTimer=setTimeout(()=>refresh({force}),force?250:600);
+  }
+
+  // pinta cache imediatamente para não piscar ao recarregar.
+  const cached=loadCache();
+  if(cached) setTimeout(()=>paint(cached),50);
+  schedule(false);
+
+  // Favoritar/desfavoritar no mesmo clique: espera os handlers existentes gravarem o localStorage.
+  document.addEventListener("click",e=>{
+    if(e.target.closest?.("[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav")){
+      try{localStorage.removeItem(CACHE_KEY)}catch{}
+      schedule(true);
+    }
+  },true);
+
+  // Mudança de favoritos em outra aba/janela.
+  window.addEventListener("storage",e=>{
+    if(STORE_KEYS.includes(e.key)){
+      try{localStorage.removeItem(CACHE_KEY)}catch{}
+      schedule(true);
+    }
+  });
+
+  // Se a sidebar for reconstruída pelo app, recoloca o badge.
+  const mo=new MutationObserver(()=>{
+    const alerts=window.__cpFavoriteHomeAlertsV144 || loadCache() || [];
+    if(!document.querySelector(`.${BADGE_CLASS}`)) paint(alerts);
+  });
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+
+  // Atualiza periodicamente sem sobrecarregar a API.
+  setInterval(()=>{
+    try{localStorage.removeItem(CACHE_KEY)}catch{}
+    refresh({force:true});
+  },15*60*1000);
+})();
