@@ -2584,105 +2584,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         
             // WEB V22: o carregamento visual é centralizado em load().
         
-            /* =========================================================
-               DESKTOP — FILTRO DE LIGAS / QUALIDADE DE DADOS
-               Evita campeonatos pequenos sem dados reais ocuparem a lista
-               e o destaque principal. Ligas secundárias ainda podem entrar
-               quando o motor realmente trouxer análise suficiente.
-               NÃO ALTERA MOBILE/APP.
-               ========================================================= */
-            function desktopTrustedLeague(g){
-              const l=norm(league(g));
-              const c=norm(country(g));
-              const lc=`${l} ${c}`;
-
-              // Competições que queremos priorizar no desktop.
-              if(/championship/.test(lc) && /england|inglaterra/.test(lc)) return true;
-              if(/premier league/.test(lc) && /england|inglaterra/.test(lc)) return true;
-              if(/la liga|primera division/.test(lc) && /spain|espanha/.test(lc)) return true;
-              if(/bundesliga/.test(lc) && /germany|alemanha/.test(lc)) return true;
-              if(/serie a/.test(lc) && /italy|italia|brazil|brasil/.test(lc)) return true;
-              if(/ligue 1/.test(lc) && /france|franca/.test(lc)) return true;
-              if(/eredivisie/.test(lc) && /netherlands|holanda/.test(lc)) return true;
-              if(/primeira liga|liga portugal/.test(lc) && /portugal/.test(lc)) return true;
-              if(/first division a|jupiler/.test(lc) && /belgium|belgica/.test(lc)) return true;
-              if(/premiership/.test(lc) && /scotland|escocia/.test(lc)) return true;
-              if(/super lig|süper lig/.test(lc) && /turkey|turquia/.test(lc)) return true;
-
-              // Alguns retornos da API não trazem país, mas trazem o nome inequívoco.
-              if(/brasileirao serie a|brasileirão serie a/.test(l)) return true;
-              if(/eredivisie|jupiler pro league|liga portugal|efl championship/.test(l)) return true;
-
-              return false;
-            }
-
-            function desktopRealDataCount(g,market=state.market){
-              const r=raw(g);
-              const d=decision(g,market);
-              const vals=[];
-
-              if(market==="corners"){
-                vals.push(
-                  d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,
-                  r?.media_combinada,r?.corner_avg,r?.corners_avg,
-                  r?.home_corners_avg,r?.away_corners_avg,
-                  r?.home_recent?.cornersForAvg,r?.away_recent?.cornersForAvg
-                );
-              }else if(market==="goals" || market==="teamgoals"){
-                vals.push(
-                  d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg,
-                  r?.home_goals_avg,r?.away_goals_avg,r?.xg_home,r?.xg_away
-                );
-              }else if(market==="cards"){
-                vals.push(
-                  d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes,
-                  r?.home_cards_avg,r?.away_cards_avg
-                );
-              }else if(market==="handicap" || market==="result" || market==="doublechance"){
-                vals.push(
-                  d?.confidence,r?.home_win_prob,r?.away_win_prob,
-                  r?.odds?.casa,r?.odds?.away,r?.home_odd,r?.away_odd
-                );
-              }else if(market==="btts"){
-                vals.push(
-                  d?.confidence,d?.probability,r?.btts_prob,r?.goals_ai?.projection,
-                  r?.expected_goals_total,r?.home_goals_avg,r?.away_goals_avg
-                );
-              }
-
-              return vals.reduce((n,v)=>n+(num(v)!==null?1:0),0);
-            }
-
-            function desktopDataQualityPass(g,market=state.market){
-              // Ligas principais ficam disponíveis normalmente.
-              if(desktopTrustedLeague(g)) return true;
-
-              const d=decision(g,market);
-              const conf=confidence(g,market);
-              const line=clean(d?.line,"").toUpperCase();
-              const hasDecision=
-                line &&
-                !Boolean(d?.updating) &&
-                !Boolean(d?.skip) &&
-                !/DADOS EM ATUALIZA|ANALISANDO|SEM APOSTA|SEM ENTRADA/.test(line);
-
-              const realData=desktopRealDataCount(g,market);
-
-              // Campeonato menor só entra se houver análise REAL do mercado.
-              // Isso elimina casos com projeção genérica repetida e confiança "—".
-              if(conf < 52) return false;
-              if(["corners","goals","cards","handicap","btts"].includes(market) && !hasDecision) return false;
-              if(realData < 2) return false;
-
-              return true;
-            }
-
             function source(){
               // SEMPRE parte de todos os jogos-base.
               // O engine só injeta a IA no jogo correspondente.
-              // Antes de renderizar, o desktop remove ligas pequenas sem dados reais.
-              return mergeLists(state.games,state.engines[state.market])
-                .filter(g=>desktopDataQualityPass(g,state.market));
+              return mergeLists(state.games,state.engines[state.market]);
             }
           
             function matchesLine(g){
@@ -3145,62 +3050,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               state.favorites.has(k)?state.favorites.delete(k):state.favorites.add(k);
               saveFav();
             }
-
-            /* =========================================================
-               DESKTOP — FAVORITOS DE ESCANTEIOS JOGANDO EM CASA
-               - usa a lista de favoritos já existente do desktop
-               - só mostra o favorito quando ele for o MANDANTE
-               - aparece acima dos mercados, independentemente do mercado ativo
-               - não altera o mobile/app
-               ========================================================= */
-            function desktopHomeFavoriteGames(){
-              const seen=new Set();
-              return unique(state.games||[]).filter(g=>{
-                const st=gameStatus(g);
-                const teamKey=norm(home(g));
-                if(!teamKey || !state.favorites.has(teamKey) || st.finished || seen.has(teamKey)) return false;
-                seen.add(teamKey);
-                return true;
-              }).sort((a,b)=>time(a).localeCompare(time(b)));
-            }
-
-            function renderDesktopHomeFavorites(){
-              if(!mq.matches) return;
-              const root=$("#cpDesktopExperienceV3");
-              const hero=$("#cpd3Hero");
-              const marketNav=root?.querySelector(".cpd3MarketNav");
-              if(!root || !hero || !marketNav) return;
-
-              let bar=$("#cpd3HomeFavoritesBar");
-              if(!bar){
-                bar=document.createElement("section");
-                bar.id="cpd3HomeFavoritesBar";
-                bar.className="cpd3HomeFavoritesBar";
-                bar.setAttribute("aria-label","Favoritos de escanteios jogando em casa");
-                marketNav.before(bar);
-              }
-
-              const favorites=desktopHomeFavoriteGames();
-              if(!favorites.length){
-                bar.hidden=true;
-                bar.innerHTML="";
-                return;
-              }
-
-              const visible=favorites.slice(0,3);
-              const extra=Math.max(0,favorites.length-visible.length);
-              bar.hidden=false;
-              bar.innerHTML=`
-                <div class="cpd3HomeFavLabel"><span>☆</span><strong>FAVORITOS EM CASA</strong></div>
-                <div class="cpd3HomeFavList">
-                  ${visible.map(g=>`
-                    <button type="button" class="cpd3HomeFavItem" data-cpd3-open="${esc(key(g))}" title="Abrir ${esc(home(g))} × ${esc(away(g))}">
-                      ${badgeHtml(g,"home",true)}
-                      <span><b>${esc(home(g))}</b><small>${esc(time(g))} • mandante</small></span>
-                    </button>`).join("")}
-                  ${extra?`<span class="cpd3HomeFavMore">+${extra}</span>`:""}
-                </div>`;
-            }
           
             function renderControls(){
               const c=MARKET[state.market];
@@ -3442,7 +3291,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(!$("#cpDesktopExperienceV3")) return;
           
               renderControls();
-              renderDesktopHomeFavorites();
           
               const rows=$("#cpd3Rows");
               const titleEl=$("#cpd3ResultsTitle");
