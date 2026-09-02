@@ -30008,343 +30008,264 @@
     })();
 
     /* =========================================================
-       CORNER PRO — MENU DESKTOP ATIVO V2
-       Corrige clique bloqueado por handlers antigos em capture.
-       Ativa SOMENTE os acessos que estavam sem ação.
-       Lives & Vídeos permanece desativado.
+       CORNER PRO — NAVEGAÇÃO DESKTOP FUNCIONAL V3
+       Usa capture no WINDOW para passar antes dos handlers antigos.
+       Não altera IA, filtros, linhas ou APIs.
        ========================================================= */
-    (function installCornerProDesktopMenuActiveV2(){
+    (function cornerProDesktopNavigationV3(){
       "use strict";
-      if (window.__cpDesktopMenuActiveV2) return;
-      window.__cpDesktopMenuActiveV2 = true;
+      if(window.__cornerProDesktopNavigationV3) return;
+      window.__cornerProDesktopNavigationV3=true;
 
-      const desktop = () => !!window.matchMedia?.("(min-width:981px)").matches;
+      const isDesktop=()=>!!window.matchMedia?.("(min-width:981px)").matches;
+      const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+      const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 
-      const norm = value => String(value || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g,"")
-        .replace(/\s+/g," ")
-        .trim()
-        .toLowerCase();
-
-      const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[ch]));
-
-      function addStyle(){
-        if (document.getElementById("cpDesktopMenuActiveV2Style")) return;
-        const style = document.createElement("style");
-        style.id = "cpDesktopMenuActiveV2Style";
-        style.textContent = `
-          .cpMenuV2Overlay{
-            position:fixed;inset:0;z-index:2147483000;
-            display:none;align-items:center;justify-content:center;
-            padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)
-          }
-          .cpMenuV2Overlay.is-open{display:flex}
-          .cpMenuV2Card{
-            width:min(760px,92vw);max-height:82vh;overflow:auto;
-            border:1px solid #1b3327;border-radius:16px;
-            background:linear-gradient(180deg,#0c1411,#050907);
-            box-shadow:0 28px 90px rgba(0,0,0,.55);color:#f7faf8
-          }
-          .cpMenuV2Head{
-            position:sticky;top:0;z-index:2;display:flex;align-items:center;
-            justify-content:space-between;padding:16px 18px;border-bottom:1px solid #1a2b22;
-            background:#08100d
-          }
-          .cpMenuV2Head h2{margin:0;font-size:16px;color:#63f127}
-          .cpMenuV2Close{
-            width:34px;height:34px;border:1px solid #26392f;border-radius:9px;
-            background:#0b1510;color:#fff;font-size:20px;cursor:pointer
-          }
-          .cpMenuV2Body{padding:18px}
-          .cpMenuV2Body>p{margin:0 0 14px;color:#9ba7a1;line-height:1.55}
-          .cpMenuV2Grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-          .cpMenuV2Item{
-            padding:13px;border:1px solid #1a2d23;border-radius:11px;background:#08100d
-          }
-          .cpMenuV2Item b{display:block;color:#fff;font-size:11px}
-          .cpMenuV2Item small{display:block;margin-top:5px;color:#7f8d86;font-size:9px}
-          .cpMenuV2Empty{
-            padding:24px;border:1px dashed #294034;border-radius:12px;
-            text-align:center;color:#89968f
-          }
-          .sidebar .side-item.cp-menu-v2-enabled,.topbar .nav a.cp-menu-v2-enabled{
-            cursor:pointer!important;pointer-events:auto!important
-          }
-          .sidebar .side-item.cp-menu-v2-disabled{
-            opacity:.48!important;cursor:not-allowed!important
-          }
-        `;
-        document.head.appendChild(style);
-      }
-
-      function root(){
-        addStyle();
-        let el = document.getElementById("cpMenuV2Overlay");
-        if (el) return el;
-        el = document.createElement("div");
-        el.id = "cpMenuV2Overlay";
-        el.className = "cpMenuV2Overlay";
-        el.setAttribute("aria-hidden","true");
-        el.innerHTML = `
-          <section class="cpMenuV2Card" role="dialog" aria-modal="true">
-            <header class="cpMenuV2Head">
-              <h2 id="cpMenuV2Title">CORNER PRO</h2>
-              <button class="cpMenuV2Close" type="button" aria-label="Fechar">×</button>
-            </header>
-            <div class="cpMenuV2Body" id="cpMenuV2Body"></div>
-          </section>`;
-        document.body.appendChild(el);
-        el.addEventListener("click", event => {
-          if (event.target === el || event.target.closest(".cpMenuV2Close")) closePanel();
-        });
-        return el;
-      }
-
-      function openPanel(title, html){
-        const el = root();
-        el.querySelector("#cpMenuV2Title").textContent = title;
-        el.querySelector("#cpMenuV2Body").innerHTML = html;
-        el.classList.add("is-open");
-        el.setAttribute("aria-hidden","false");
-      }
-
-      function closePanel(){
-        const el = document.getElementById("cpMenuV2Overlay");
-        if (!el) return;
-        el.classList.remove("is-open");
-        el.setAttribute("aria-hidden","true");
-      }
-
-      function games(){
-        const sources = [
-          document.querySelector(".gamesPanel")?.__cornerProAllGames,
+      function allGames(){
+        const panel=document.querySelector(".gamesPanel");
+        const sources=[
+          panel?.__cornerProAllGames,
           window.__cornerProAllGames,
-          document.querySelector(".gamesPanel")?.__cornerProGames,
+          panel?.__cornerProGames,
           window.lastMarketGames,
-          window.lastRawGames
+          window.lastRawGames,
+          window.__premiumFilteredGames,
+          window.__premiumMarketGames
         ];
-        for (const list of sources){
-          if (Array.isArray(list) && list.length) return list.map(x => x?.raw || x);
+        for(const list of sources){
+          if(Array.isArray(list)&&list.length) return list.map(x=>x?.raw||x);
         }
         return [];
       }
 
-      function teamName(g, side){
-        if (side === "home") return String(g?.casa ?? g?.home ?? g?.home_name ?? g?.match_hometeam_name ?? "Casa");
-        return String(g?.fora ?? g?.away ?? g?.away_name ?? g?.match_awayteam_name ?? "Fora");
-      }
+      function gameHome(g){return String(g?.casa??g?.home??g?.home_name??g?.match_hometeam_name??"Casa")}
+      function gameAway(g){return String(g?.fora??g?.away??g?.away_name??g?.match_awayteam_name??"Fora")}
+      function gameLeague(g){return String(g?.liga??g?.league_name??g?.league?.name??"Liga")}
 
-      function leagueName(g){
-        return String(g?.liga ?? g?.league_name ?? g?.league?.name ?? "Liga");
-      }
-
-      function favoriteNames(){
-        const out = [];
-        const keys = [
-          "cornerpro_mobile_favorite_teams_v1",
-          "cornerProFavoriteTeams:v2",
-          "cornerProFavorites"
-        ];
-        for (const key of keys){
+      function favs(){
+        const out=[];
+        const keys=["cornerpro_mobile_favorite_teams_v1","cornerProFavoriteTeams:v2","cornerProFavorites"];
+        keys.forEach(key=>{
           try{
-            const value = JSON.parse(localStorage.getItem(key) || "[]");
-            if (!Array.isArray(value)) continue;
-            value.forEach(item => {
-              const name = typeof item === "string" ? item : (item?.name || item?.team || "");
-              if (name && !out.some(x => norm(x) === norm(name))) out.push(name);
+            const arr=JSON.parse(localStorage.getItem(key)||"[]");
+            if(!Array.isArray(arr)) return;
+            arr.forEach(item=>{
+              const name=typeof item==="string"?item:(item?.name||item?.team||"");
+              if(name&&!out.some(x=>norm(x)===norm(name))) out.push(name);
             });
           }catch(_){}
-        }
+        });
         return out;
       }
 
-      function renderFavorites(){
-        const favs = favoriteNames();
-        openPanel("Favoritos", favs.length
-          ? `<p>Times que você marcou como favoritos.</p>
-             <div class="cpMenuV2Grid">${favs.map(name =>
-               `<article class="cpMenuV2Item"><b>★ ${esc(name)}</b><small>Favorito salvo</small></article>`
-             ).join("")}</div>`
-          : `<div class="cpMenuV2Empty">Você ainda não possui times favoritos.</div>`);
+      function ensureUtility(){
+        let root=document.getElementById("cpDesktopUtilityView");
+        if(root) return root;
+
+        const host=document.querySelector(".content") || document.querySelector(".main");
+        if(!host) return null;
+        if(getComputedStyle(host).position==="static") host.style.position="relative";
+
+        root=document.createElement("section");
+        root.id="cpDesktopUtilityView";
+        root.className="cpDesktopUtilityView";
+        root.innerHTML=`
+          <div class="cpDesktopUtilityHead">
+            <h2 id="cpDesktopUtilityTitle">CORNER PRO</h2>
+            <button type="button" class="cpDesktopUtilityClose" aria-label="Fechar">×</button>
+          </div>
+          <div id="cpDesktopUtilityBody"></div>`;
+        host.appendChild(root);
+
+        root.querySelector(".cpDesktopUtilityClose")?.addEventListener("click",closeUtility);
+        return root;
       }
 
-      function renderLeagues(){
-        const list = [...new Set(games().map(leagueName).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-        openPanel("Ligas", list.length
-          ? `<p>Ligas disponíveis nos jogos carregados para a data atual.</p>
-             <div class="cpMenuV2Grid">${list.map(name =>
-               `<article class="cpMenuV2Item"><b>${esc(name)}</b><small>Liga carregada</small></article>`
-             ).join("")}</div>`
-          : `<div class="cpMenuV2Empty">As ligas aparecerão após o carregamento dos jogos.</div>`);
+      function closeUtility(){
+        const root=document.getElementById("cpDesktopUtilityView");
+        root?.classList.remove("is-open");
       }
 
-      function renderAlerts(){
-        const favs = favoriteNames();
-        const list = games();
-        const homeFavs = list.filter(g => favs.some(f => norm(f) === norm(teamName(g,"home"))));
-        openPanel("Meus Alertas", homeFavs.length
-          ? `<p>Times favoritos que aparecem como mandantes nos jogos carregados.</p>
-             <div class="cpMenuV2Grid">${homeFavs.map(g =>
-               `<article class="cpMenuV2Item"><b>★ ${esc(teamName(g,"home"))} em casa</b><small>${esc(teamName(g,"home"))} x ${esc(teamName(g,"away"))}</small></article>`
-             ).join("")}</div>`
-          : `<div class="cpMenuV2Empty">Nenhum alerta de favorito em casa nesta data.</div>`);
+      function openUtility(title,html){
+        const root=ensureUtility();
+        if(!root) return;
+        root.querySelector("#cpDesktopUtilityTitle").textContent=title;
+        root.querySelector("#cpDesktopUtilityBody").innerHTML=html;
+        root.classList.add("is-open");
       }
 
-      function renderReports(){
-        openPanel("Relatórios",
-          `<p>Acesso ativado. Esta área fica isolada dos motores dos mercados.</p>
-           <div class="cpMenuV2Grid">
-             <article class="cpMenuV2Item"><b>Desempenho</b><small>Resumo das análises disponíveis</small></article>
-             <article class="cpMenuV2Item"><b>Mercados</b><small>Escanteios, gols, cartões e handicap</small></article>
-           </div>`);
+      function utilityCard(title,sub=""){
+        return `<article class="cpDesktopUtilityCard"><b>${esc(title)}</b><small>${esc(sub)}</small></article>`;
       }
 
-      function renderSupport(){
-        openPanel("Suporte",
-          `<p>Central de suporte ativada.</p>
-           <div class="cpMenuV2Grid">
-             <article class="cpMenuV2Item"><b>Ajuda com a plataforma</b><small>Acesso aos recursos e navegação</small></article>
-             <article class="cpMenuV2Item"><b>Problemas técnicos</b><small>Área para suporte do site</small></article>
-           </div>`);
-      }
-
-      function renderBots(){
-        openPanel("Bots",
-          `<p>Acesso ativado sem alterar as IAs atuais dos mercados.</p>
-           <div class="cpMenuV2Empty">Nenhum bot adicional configurado neste código.</div>`);
-      }
-
-      function openStats(){
-        const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
-        if (rail){
-          rail.scrollIntoView({behavior:"smooth",block:"start"});
-          try{
-            rail.animate(
-              [{filter:"brightness(1)"},{filter:"brightness(1.35)"},{filter:"brightness(1)"}],
-              {duration:750}
-            );
-          }catch(_){}
-          return;
-        }
-        openPanel("Estatísticas",
-          `<div class="cpMenuV2Empty">Selecione uma partida para carregar as estatísticas no Match Center.</div>`);
-      }
-
-      function openPlayerProps(){
-        const candidates = [...document.querySelectorAll(
-          ".marketTab,.marketInlineTab,.marketInlineItem,[data-home-market],[data-cp-market],[data-v110-open-market]"
-        )];
-
-        const direct = candidates.find(el => {
-          const t = norm(el.textContent);
-          return t.includes("player props") ||
-                 el.dataset?.homeMarket === "props" ||
-                 el.dataset?.cpMarket === "props" ||
-                 el.dataset?.v110OpenMarket === "props";
-        });
-
-        if (direct){
-          direct.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
-          setTimeout(() => {
-            document.querySelector(".marketInlinePanel,.gamesPanel,#top1")?.scrollIntoView?.({
-              behavior:"smooth",block:"start"
-            });
-          },80);
+      function openUtilityRoute(route){
+        if(route==="favorites"){
+          const list=favs();
+          openUtility("Favoritos",list.length
+            ? `<div class="cpDesktopUtilityGrid">${list.map(x=>utilityCard("★ "+x,"Time favorito")).join("")}</div>`
+            : `<div class="cpDesktopUtilityEmpty">Você ainda não possui times favoritos.</div>`);
           return;
         }
 
-        openPanel("Player Props",
-          `<div class="cpMenuV2Empty">Player Props está ativo, mas não há painel de jogador disponível para os jogos carregados agora.</div>`);
+        if(route==="alerts"){
+          const fs=favs();
+          const matches=allGames().filter(g=>fs.some(f=>norm(f)===norm(gameHome(g))));
+          openUtility("Meus Alertas",matches.length
+            ? `<div class="cpDesktopUtilityGrid">${matches.map(g=>utilityCard("★ "+gameHome(g)+" em casa",gameHome(g)+" x "+gameAway(g))).join("")}</div>`
+            : `<div class="cpDesktopUtilityEmpty">Nenhum time favorito jogando em casa nesta data.</div>`);
+          return;
+        }
+
+        if(route==="leagues"){
+          const list=[...new Set(allGames().map(gameLeague).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+          openUtility("Ligas",list.length
+            ? `<div class="cpDesktopUtilityGrid">${list.map(x=>utilityCard(x,"Liga disponível")).join("")}</div>`
+            : `<div class="cpDesktopUtilityEmpty">As ligas aparecerão após os jogos serem carregados.</div>`);
+          return;
+        }
+
+        if(route==="reports"){
+          openUtility("Relatórios",
+            `<div class="cpDesktopUtilityGrid">
+              ${utilityCard("Desempenho","Resumo das análises")}
+              ${utilityCard("Mercados","Escanteios, gols, cartões e handicap")}
+              ${utilityCard("Histórico","Resultados disponíveis na plataforma")}
+            </div>`);
+          return;
+        }
+
+        if(route==="support"){
+          openUtility("Suporte",
+            `<div class="cpDesktopUtilityGrid">
+              ${utilityCard("Ajuda com a plataforma","Navegação e recursos")}
+              ${utilityCard("Problema técnico","Falhas de carregamento e acesso")}
+            </div>`);
+          return;
+        }
+
+        if(route==="bots"){
+          openUtility("Bots",`<div class="cpDesktopUtilityEmpty">Área de Bots ativada. Nenhum bot adicional está configurado neste código.</div>`);
+          return;
+        }
       }
 
-      function isLives(text){
-        const t = norm(text);
-        return t.includes("lives & videos") || t.includes("lives & vídeos");
-      }
+      function clickExistingMarket(route){
+        closeUtility();
 
-      function markItems(){
-        if (!desktop()) return;
-        document.querySelectorAll(".sidebar .side-item,.topbar .nav a").forEach(el => {
-          const text = norm(el.textContent);
-          if (!text) return;
-
-          if (isLives(text)){
-            el.classList.remove("cp-menu-v2-enabled");
-            el.classList.add("cp-menu-v2-disabled");
-            el.setAttribute("aria-disabled","true");
-            el.title = "Lives & Vídeos permanece desativado";
-          }else{
-            el.classList.add("cp-menu-v2-enabled");
-            el.classList.remove("cp-menu-v2-disabled");
-            el.removeAttribute("aria-disabled");
+        if(route==="handicap"||route==="btts"){
+          const target=document.querySelector(`[data-cpd3-nav="${route}"]`);
+          if(target){
+            // Chama API oficial, caso exista, sem redisparar o mesmo evento.
+            try{
+              if(typeof window.cpd3OpenMarket==="function"){window.cpd3OpenMarket(route);return true;}
+              if(typeof window.openDesktopMarket==="function"){window.openDesktopMarket(route);return true;}
+            }catch(_){}
           }
+        }
+
+        const aliases={
+          corners:["escanteios","corners"],
+          goals:["gols","goals"],
+          cards:["cartoes","cards"],
+          props:["player props","props"],
+          live:["ao vivo","live"]
+        };
+        const wanted=aliases[route]||[];
+
+        const candidates=[...document.querySelectorAll(
+          ".marketTab,.marketInlineItem,.marketInlineTab,[data-home-market],[data-cp-market],[data-v110-open-market],[data-tab],[data-view]"
+        )].filter(el=>!el.closest(".sidebar")&&!el.closest(".topbar"));
+
+        const target=candidates.find(el=>{
+          const t=norm(el.textContent);
+          const data=norm(el.dataset?.homeMarket||el.dataset?.cpMarket||el.dataset?.v110OpenMarket||el.dataset?.tab||el.dataset?.view||"");
+          return wanted.some(x=>t.includes(norm(x))||data===norm(x));
         });
+
+        if(target){
+          target.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
+          setTimeout(()=>target.scrollIntoView?.({behavior:"smooth",block:"center"}),80);
+          return true;
+        }
+        return false;
       }
 
-      /*
-        IMPORTANTE:
-        capture=true + registro no document garante que estes acessos sem ação
-        sejam tratados antes dos módulos antigos que chamam stopImmediatePropagation().
-      */
-      document.addEventListener("click", function(event){
-        if (!desktop()) return;
+      function activatePregame(){
+        closeUtility();
+        try{
+          const old=document.querySelector('[data-view="pregame"]:not(.sidebar *):not(.topbar *)');
+          if(old){old.click();return;}
+        }catch(_){}
+        try{
+          if(typeof window.loadAll==="function"){
+            window.loadAll({date:document.getElementById("date")?.value,fresh:false});
+          }
+        }catch(_){}
+      }
 
-        const item = event.target.closest(".sidebar .side-item,.topbar .nav a");
-        if (!item) return;
+      function activateDashboard(){
+        closeUtility();
+        document.querySelector(".content")?.scrollTo?.({top:0,behavior:"smooth"});
+      }
 
-        const text = norm(item.textContent);
-        if (!text) return;
+      function activateStats(){
+        closeUtility();
+        const rail=document.getElementById("desktopMatchRail")||document.querySelector(".dashboardRightRail");
+        rail?.scrollIntoView?.({behavior:"smooth",block:"start"});
+      }
 
-        if (isLives(text)){
+      function handleNav(item,event){
+        if(!item||!isDesktop()) return;
+        const route=String(item.dataset.cpNav||"").trim();
+        if(!route) return;
+
+        if(route==="lives"){
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
           return;
         }
 
-        let handled = true;
+        const utility=["favorites","alerts","leagues","reports","support","bots"];
+        const existing=["corners","goals","cards","handicap","btts","props","live"];
 
-        if (text === "favoritos") renderFavorites();
-        else if (text === "meus alertas") renderAlerts();
-        else if (text === "ligas") renderLeagues();
-        else if (text === "relatorios") renderReports();
-        else if (text === "suporte") renderSupport();
-        else if (text === "estatisticas") openStats();
-        else if (text === "bots") renderBots();
-        else if (text.includes("player props")) openPlayerProps();
-        else handled = false;
+        if(route==="dashboard") activateDashboard();
+        else if(route==="pregame") activatePregame();
+        else if(route==="stats") activateStats();
+        else if(utility.includes(route)) openUtilityRoute(route);
+        else if(existing.includes(route)) clickExistingMarket(route);
+        else return;
 
-        if (handled){
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        document.querySelectorAll(".sidebar .side-item,.topbar .nav a").forEach(el=>el.classList.remove("active","is-active"));
+        item.classList.add("active","is-active");
+      }
+
+      // WINDOW capture roda antes de handlers em document capture.
+      window.addEventListener("pointerdown",function(event){
+        const item=event.target?.closest?.("[data-cp-nav]");
+        if(!item||!isDesktop()) return;
+        if(item.dataset.cpNav==="lives"){
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-
-          document.querySelectorAll(".sidebar .side-item,.topbar .nav a").forEach(el=>{
-            el.classList.remove("active","is-active");
-          });
-          item.classList.add("active","is-active");
         }
-      }, true);
+      },true);
 
-      document.addEventListener("keydown", event => {
-        if (event.key === "Escape") closePanel();
+      window.addEventListener("click",function(event){
+        const item=event.target?.closest?.("[data-cp-nav]");
+        if(item) handleNav(item,event);
+      },true);
+
+      window.addEventListener("hashchange",function(){
+        if(!isDesktop()) return;
+        const route=location.hash.replace("#","");
+        const item=document.querySelector(`[data-cp-nav="${CSS.escape(route)}"]`);
+        if(item) item.click();
       });
 
-      function start(){
-        addStyle();
-        markItems();
-        setTimeout(markItems,300);
-        setTimeout(markItems,1000);
-      }
-
-      if (document.readyState === "loading"){
-        document.addEventListener("DOMContentLoaded", start, {once:true});
-      }else{
-        start();
-      }
-
-      window.addEventListener("pageshow", markItems);
+      document.addEventListener("keydown",e=>{if(e.key==="Escape")closeUtility()});
     })();
