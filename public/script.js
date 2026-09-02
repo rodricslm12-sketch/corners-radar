@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v130:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v143:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -277,7 +277,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()]}
+    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()].filter(isMainLeagueGame)}
     /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
        Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
        parecerem iguais e fazia linhas manuais zerarem a tela. */
@@ -721,6 +721,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       const approved=filtered("corners","IA");
       const fallback=state.games
+        .filter(isMainLeagueGame)
         .filter(g=>{const s=status(g); return !s.finished;})
         .sort((a,b)=>
           (confidence(b,"corners")-confidence(a,"corners")) ||
@@ -2281,6 +2282,54 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 ""
               );
             }
+
+            /* V143 — FILTRO GLOBAL DE COMPETIÇÕES PRINCIPAIS (DESKTOP PRINCIPAL)
+               Esta é a tela cpd3 usada pela tabela "IA / PROJEÇÃO".
+               O filtro entra na fonte dos jogos, portanto vale para IA, TODOS,
+               linhas manuais, hero e Aposta Pronta. */
+            function cpMajorLeagueNorm(v){
+              return String(v ?? "")
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            }
+
+            function cpMajorLeagueId(g){
+              const r=raw(g), er=r?.event_raw || g?.event_raw || {};
+              return num(g?.league_id,r?.league_id,er?.league_id,er?.match_league_id);
+            }
+
+            function isMajorCompetitionD3(g){
+              if(!g || typeof g!=="object") return false;
+              const l=cpMajorLeagueNorm(league(g));
+              const c=cpMajorLeagueNorm(country(g));
+              const lid=Number(cpMajorLeagueId(g));
+
+              // IDs já reconhecidos pelo próprio CornerPro.
+              if([152,302,175,207,168,244,266,99,63,279,322].includes(lid)) return true;
+
+              // Grandes torneios continentais.
+              if([18,3,4].includes(lid)) return true;
+              if(/champions league|europa league|conference league|libertadores|sudamericana/.test(l)) return true;
+
+              // Primeiras divisões e ligas secundárias relevantes escolhidas para o projeto.
+              if(/premier league/.test(l) && (!c || /england|inglaterra/.test(c))) return true;
+              if(/championship/.test(l) && (!c || /england|inglaterra/.test(c))) return true;
+              if(/la liga|laliga/.test(l)) return true;
+              if(/bundesliga/.test(l) && !/2 bundesliga|3 liga/.test(l)) return true;
+              if((/^serie a$|serie a tim|serie a enilive/.test(l)) && (!c || /italy|italia|brazil|brasil/.test(c))) return true;
+              if(/ligue 1/.test(l)) return true;
+              if(/liga portugal|primeira liga/.test(l)) return true;
+              if(/eredivisie/.test(l)) return true;
+              if(/jupiler pro league|first division a/.test(l) && (!c || /belgium|belgica/.test(c))) return true;
+              if(/scottish premiership|premiership/.test(l) && /scotland|escocia/.test(c)) return true;
+              if(/super lig/.test(l) && (!c || /turkey|turquia/.test(c))) return true;
+              if(/brasileirao serie a|brasileirao/.test(l)) return true;
+              if(/liga profesional/.test(l) && /argentina/.test(c)) return true;
+              if(/major league soccer|mls/.test(l)) return true;
+
+              // Bloqueio por padrão: 1st League, 2nd League, regionais, reservas, youth etc.
+              return false;
+            }
           
             function badge(g, side){
               const r=raw(g);
@@ -2624,9 +2673,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             // WEB V22: o carregamento visual é centralizado em load().
         
             function source(){
-              // SEMPRE parte de todos os jogos-base.
-              // O engine só injeta a IA no jogo correspondente.
-              return mergeLists(state.games,state.engines[state.market]);
+              // V143: todas as telas desktop partem somente de competições principais.
+              // O engine ainda injeta a IA no jogo correspondente, mas não consegue
+              // reintroduzir uma liga pequena na interface.
+              return mergeLists(state.games,state.engines[state.market]).filter(isMajorCompetitionD3);
             }
           
             function matchesLine(g){
@@ -3116,7 +3166,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                podem atualizar placar/minuto/dados, mas NÃO trocam o jogo.
                Exclusivo do desktop e do mercado Escanteios + IA.
                ========================================================= */
-            const CP_DESKTOP_GOLD_LOCK_PREFIX = "cornerProDesktopGold:v6:";
+            const CP_DESKTOP_GOLD_LOCK_PREFIX = "cornerProDesktopGold:v7:";
 
             function cpDesktopGoldDate(){
               const v = $("#date")?.value;
@@ -3179,7 +3229,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
               const locked = cpReadDesktopGold();
               if(locked?.game){
-                return cpGoldGameFromCurrentData(locked.game);
+                const lockedGame = cpGoldGameFromCurrentData(locked.game);
+                if(isMajorCompetitionD3(lockedGame)) return lockedGame;
+                // Remove Ouro antigo salvo de uma liga que agora é bloqueada.
+                try{ localStorage.removeItem(cpDesktopGoldStorageKey()); }catch(_){}
               }
 
               if(!candidate) return candidate;
@@ -3205,7 +3258,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 if(state.line==="IA" && ["corners","goals","cards","handicap","btts"].includes(state.market)){
                   g=recommended || state.hero || null;
                 }else{
-                  g=recommended || source()[0] || state.games[0];
+                  g=recommended || source()[0] || null;
                 }
               }
 
@@ -3350,7 +3403,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(state.market==="builder"){
                 if(titleEl) titleEl.textContent=title();
                 if(!rows) return;
-                const pool=unique(state.games).filter(g=>!gameStatus(g).finished);
+                const pool=unique(state.games).filter(isMajorCompetitionD3).filter(g=>!gameStatus(g).finished);
                 const picks=[];
                 for(const [mk,label] of [["corners","Escanteios"],["goals","Gols"],["btts","Ambas marcam"],["handicap","Handicap"]]){
                   const best=pool.slice().sort((a,b)=>confidence(b,mk)-confidence(a,mk)).find(g=>confidence(g,mk)>=55);
