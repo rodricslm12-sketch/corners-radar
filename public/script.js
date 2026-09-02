@@ -30218,6 +30218,7 @@ const fallbackSide = target > 0
   function close(){const o=document.getElementById("cpFav147Overlay");o?.classList.remove("open")}
   function render(alerts=[]){const o=overlay(),body=o.querySelector("#cpFav147Content"),f=[...favorites().values()],groups=new Map();alerts.forEach(a=>{if(!groups.has(a.offset))groups.set(a.offset,[]);groups.get(a.offset).push(a)});body.innerHTML=`<div class="cpFav147Summary"><div><small>TIMES FAVORITOS</small><b>${f.length}</b></div><div><small>EM CASA HOJE</small><b>${alerts.filter(x=>x.offset===0).length}</b></div><div><small>EM CASA AMANHÃ</small><b>${alerts.filter(x=>x.offset===1).length}</b></div></div><div class="cpFav147Body">${f.length?`<div class="cpFav147Chips">${f.map(n=>`<span>☆ ${esc(n)}</span>`).join("")}</div>`:""}${!f.length?'<div class="cpFav147Empty"><b>Nenhum time favoritado.</b>Clique na estrela de um time para adicioná-lo.</div>':!alerts.length?'<div class="cpFav147Empty"><b>Nenhum favorito joga em casa nos próximos dias.</b>O alerta aparecerá automaticamente.</div>':[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([off,list])=>`<section class="cpFav147Day"><div class="cpFav147DayTitle"><b>${day(Number(off))}</b><span>${list.length} jogo(s)</span></div>${list.map(x=>`<article class="cpFav147Game"><div class="teams"><strong>${esc(x.home)}</strong><span>x ${esc(x.away)}</span></div><div class="when"><b>${esc(x.time)}</b><small>EM CASA</small></div><div class="league">${esc(x.league)}</div></article>`).join("")}</section>`).join("")}</div>`}
   function open(){const o=overlay(),a=getCache()||window.__cpFav147Alerts||[];render(a);o.classList.add("open");schedule(true,true)}
+  window.CornerProFavoritesDesktopOpenV148 = open;
   async function refresh(force=false,rerender=false){
     if(busy)return;const fav=favorites();if(!fav.size){setCache([]);window.__cpFav147Alerts=[];paint([]);if(rerender)render([]);return}
     if(!force){const c=getCache();if(c){window.__cpFav147Alerts=c;paint(c);if(rerender)render(c);return}}
@@ -30238,4 +30239,68 @@ const fallbackSide = target > 0
   style();const c=getCache();if(c){window.__cpFav147Alerts=c;setTimeout(()=>paint(c),250)}
   setTimeout(()=>{paint(window.__cpFav147Alerts||[]);schedule(false,false)},2500);
   setInterval(()=>schedule(true,false),15*60*1000);
+})();
+
+
+/* =========================================================
+   CORNER PRO V148 — FAVORITOS DESKTOP: CLIQUE DIRETO
+   Somente desktop >=981px. NÃO altera o app/mobile.
+   ========================================================= */
+(function cpFavoritesDesktopClickV148(){
+  if(!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if(window.__CP_FAVORITES_DESKTOP_CLICK_V148__) return;
+  window.__CP_FAVORITES_DESKTOP_CLICK_V148__ = true;
+
+  const norm = v => String(v || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  function findButton(){
+    return [...document.querySelectorAll(".sidebar-nav .side-item")].find(el =>
+      norm(el.querySelector("b")?.textContent || el.textContent) === "favoritos"
+    ) || null;
+  }
+
+  function openFavorites(ev){
+    if(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation?.();
+    }
+    if(typeof window.CornerProFavoritesDesktopOpenV148 === "function"){
+      window.CornerProFavoritesDesktopOpenV148();
+      return false;
+    }
+    return false;
+  }
+
+  function bind(){
+    const btn = findButton();
+    if(!btn) return false;
+    btn.setAttribute("href", "#favoritos");
+    btn.setAttribute("role", "button");
+    btn.style.cursor = "pointer";
+    btn.dataset.cpFavDesktopV148 = "1";
+
+    // Propriedades diretas do próprio elemento: evitam conflito com handlers antigos do dashboard.
+    btn.onpointerdown = openFavorites;
+    btn.onclick = openFavorites;
+    btn.onkeydown = function(ev){
+      if(ev.key === "Enter" || ev.key === " ") return openFavorites(ev);
+    };
+    return true;
+  }
+
+  function boot(){
+    bind();
+    // A sidebar pode ser reconstruída por scripts antigos; rebinda sem observar o DOM.
+    setTimeout(bind, 500);
+    setTimeout(bind, 1500);
+    setTimeout(bind, 3500);
+    window.addEventListener("pageshow", ()=>setTimeout(bind,100));
+    window.addEventListener("focus", ()=>setTimeout(bind,100));
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
 })();
