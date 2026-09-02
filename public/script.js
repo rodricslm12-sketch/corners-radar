@@ -3627,6 +3627,36 @@
             
                 // Ponte pública usada pelo calendário do topo.
                 window.CornerProDesktopReloadDate = reloadDesktopDate;
+
+                // =========================================================
+                // WEB V27 — API PÚBLICA REAL DOS MERCADOS DESKTOP
+                // Permite menu lateral/topo trocar o estado do mesmo motor
+                // que renderiza #cpDesktopExperienceV3, sem clique sintético.
+                // =========================================================
+                window.CornerProDesktopOpenMarket = function(market){
+                  if(!mq.matches) return false;
+
+                  const target = String(market || "").trim().toLowerCase();
+                  if(!MARKET[target]) return false;
+
+                  state.market = target;
+                  state.sub = "all";
+                  state.line = ["corners","goals","cards","handicap","btts"].includes(target)
+                    ? "IA"
+                    : "TODOS";
+                  state.limit = 8;
+
+                  render();
+
+                  try{
+                    document.getElementById("cpDesktopExperienceV3")?.scrollIntoView({
+                      behavior:"smooth",
+                      block:"start"
+                    });
+                  }catch(_){}
+
+                  return true;
+                };
             
                 document.addEventListener("click",event=>{
                   if(!mq.matches) return;
@@ -30152,70 +30182,21 @@
       function clickExistingMarket(route){
         closeUtility();
 
-        /*
-          CORREÇÃO V5:
-          O painel que aparece no desktop é o WEB V11 (#cpDesktopExperienceV3).
-          Portanto o menu lateral/superior precisa clicar nos botões
-          [data-cpd3-market], e NÃO nos cards antigos .marketTab.
-        */
-        if(["corners","goals","cards","handicap","btts"].includes(route)){
-          const realMarket = document.querySelector(`#cpDesktopExperienceV3 [data-cpd3-market="${route}"]`);
-          if(realMarket){
-            realMarket.dispatchEvent(new MouseEvent("click",{
-              bubbles:true,
-              cancelable:true,
-              view:window
-            }));
-
-            setTimeout(()=>{
-              document.getElementById("cpDesktopExperienceV3")?.scrollIntoView?.({
-                behavior:"smooth",
-                block:"start"
-              });
-            },60);
-
-            return true;
-          }
+        // Usa diretamente o MESMO estado/render do WEB V11.
+        if(["corners","goals","cards","handicap","btts","result","doublechance","teamgoals","builder"].includes(route)){
+          try{
+            if(typeof window.CornerProDesktopOpenMarket==="function"){
+              return window.CornerProDesktopOpenMarket(route)===true;
+            }
+          }catch(_){}
         }
 
-        /*
-          Player Props ainda pertence ao bloco antigo de mercados.
-          Neste caso continua usando o card correspondente.
-        */
+        // Player Props pertence ao painel secundário antigo.
         if(route==="props"){
           const target=[...document.querySelectorAll(".marketTabs .marketTab")]
             .find(el=>norm(el.querySelector("b")?.textContent||el.textContent).includes("player props"));
-
           if(target){
-            target.dispatchEvent(new MouseEvent("click",{
-              bubbles:true,
-              cancelable:true,
-              view:window
-            }));
-            setTimeout(()=>target.scrollIntoView?.({behavior:"smooth",block:"center"}),60);
-            return true;
-          }
-        }
-
-        /*
-          Ao Vivo: usa somente um controle real já existente, se houver.
-          Não inventa filtro/mercado.
-        */
-        if(route==="live"){
-          const target=[...document.querySelectorAll(
-            '[data-view="live"],[data-tab="live"],[data-live],button,a'
-          )].find(el=>{
-            if(el.closest(".sidebar")||el.closest(".topbar")) return false;
-            const t=norm(el.textContent);
-            return t==="ao vivo"||t==="live";
-          });
-
-          if(target){
-            target.dispatchEvent(new MouseEvent("click",{
-              bubbles:true,
-              cancelable:true,
-              view:window
-            }));
+            target.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
             return true;
           }
         }
@@ -30226,18 +30207,12 @@
       function activatePregame(){
         closeUtility();
 
-        // Pré-Jogo fica no bloco de mercados antigo; abre o painel correspondente.
-        const tab=[...document.querySelectorAll(".marketTabs .marketTab")]
-          .find(el=>norm(el.querySelector("b")?.textContent||el.textContent).includes("pre-jogo"));
-
-        if(tab){
-          tab.dispatchEvent(new MouseEvent("click",{
-            bubbles:true,
-            cancelable:true,
-            view:window
-          }));
-          setTimeout(()=>tab.scrollIntoView?.({behavior:"smooth",block:"center"}),60);
-        }
+        // O desktop WEB V11 é todo pré-jogo; abre RESULTADO como visão pré-jogo geral.
+        try{
+          if(typeof window.CornerProDesktopOpenMarket==="function"){
+            window.CornerProDesktopOpenMarket("result");
+          }
+        }catch(_){}
       }
 
       function activateDashboard(){
