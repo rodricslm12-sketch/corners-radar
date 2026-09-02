@@ -30006,255 +30006,345 @@
         setTimeout(nudge,5500);
       },{once:true});
     })();
+
     /* =========================================================
-       CORNER PRO — NAVEGAÇÃO ATIVA V1
-       Ativa os itens antes sem ação no menu lateral e superior.
-       EXCEÇÃO: "Lives & Vídeos" continua desativado, como solicitado.
-       Não altera motores, filtros, IA, linhas ou carregamento dos mercados.
+       CORNER PRO — MENU DESKTOP ATIVO V2
+       Corrige clique bloqueado por handlers antigos em capture.
+       Ativa SOMENTE os acessos que estavam sem ação.
+       Lives & Vídeos permanece desativado.
        ========================================================= */
-    (function installCornerProActiveNavigationV1(){
+    (function installCornerProDesktopMenuActiveV2(){
       "use strict";
-      if (window.__cpActiveNavigationV1) return;
-      window.__cpActiveNavigationV1 = true;
+      if (window.__cpDesktopMenuActiveV2) return;
+      window.__cpDesktopMenuActiveV2 = true;
 
-      const norm = v => String(v || "")
-        .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-        .replace(/\s+/g," ").trim().toLowerCase();
+      const desktop = () => !!window.matchMedia?.("(min-width:981px)").matches;
 
-      const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({
+      const norm = value => String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .replace(/\s+/g," ")
+        .trim()
+        .toLowerCase();
+
+      const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[c]));
+      }[ch]));
 
-      const marketMap = {
-        "pre-jogo":"pregame", "pre jogo":"pregame",
-        "escanteios":"corners", "gols":"goals", "cartoes":"cards",
-        "handicap":"handicap", "ambas marcam":"btts", "player props":"props"
-      };
-
-      function isLives(el){
-        return norm(el?.textContent).includes("lives & videos") ||
-               norm(el?.textContent).includes("lives & vídeos");
-      }
-
-      function ensureStyles(){
-        if (document.getElementById("cpActiveNavigationV1Style")) return;
-        const s=document.createElement("style");
-        s.id="cpActiveNavigationV1Style";
-        s.textContent=`
-          .cpNavHub{position:fixed;inset:0;z-index:2147482500;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}
-          .cpNavHub.is-open{display:flex}
-          .cpNavHubCard{width:min(760px,94vw);max-height:82vh;overflow:auto;border:1px solid #1c3428;border-radius:16px;background:linear-gradient(180deg,#0a1210,#050908);box-shadow:0 30px 90px rgba(0,0,0,.55);color:#f5f7f6}
-          .cpNavHubHead{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #18271f;background:#08100d}
-          .cpNavHubHead h2{margin:0;font-size:16px}.cpNavHubHead h2 span{color:#63f127}
-          .cpNavHubClose{width:34px;height:34px;border:1px solid #26382f;border-radius:9px;color:#fff;background:#0c1511;font-size:20px}
-          .cpNavHubBody{padding:18px}.cpNavHubBody p{color:#9eaaa4;line-height:1.55}
-          .cpNavHubGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
-          .cpNavHubItem{padding:13px;border:1px solid #1a2b23;border-radius:11px;background:#08100d}
-          .cpNavHubItem b{display:block;color:#fff;font-size:11px}.cpNavHubItem small{display:block;margin-top:5px;color:#7f8d86;font-size:9px}
-          .cpNavHubEmpty{padding:22px;border:1px dashed #24382d;border-radius:12px;text-align:center;color:#8d9a93}
-          .side-item.cp-nav-enabled,.topbar .nav a.cp-nav-enabled{cursor:pointer}
-          .side-item.cp-nav-disabled{opacity:.48;cursor:not-allowed!important}
-          @media(max-width:980px){.cpNavHub{padding:12px}.cpNavHubCard{width:100%;max-height:88dvh}.cpNavHubGrid{grid-template-columns:1fr}}
+      function addStyle(){
+        if (document.getElementById("cpDesktopMenuActiveV2Style")) return;
+        const style = document.createElement("style");
+        style.id = "cpDesktopMenuActiveV2Style";
+        style.textContent = `
+          .cpMenuV2Overlay{
+            position:fixed;inset:0;z-index:2147483000;
+            display:none;align-items:center;justify-content:center;
+            padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)
+          }
+          .cpMenuV2Overlay.is-open{display:flex}
+          .cpMenuV2Card{
+            width:min(760px,92vw);max-height:82vh;overflow:auto;
+            border:1px solid #1b3327;border-radius:16px;
+            background:linear-gradient(180deg,#0c1411,#050907);
+            box-shadow:0 28px 90px rgba(0,0,0,.55);color:#f7faf8
+          }
+          .cpMenuV2Head{
+            position:sticky;top:0;z-index:2;display:flex;align-items:center;
+            justify-content:space-between;padding:16px 18px;border-bottom:1px solid #1a2b22;
+            background:#08100d
+          }
+          .cpMenuV2Head h2{margin:0;font-size:16px;color:#63f127}
+          .cpMenuV2Close{
+            width:34px;height:34px;border:1px solid #26392f;border-radius:9px;
+            background:#0b1510;color:#fff;font-size:20px;cursor:pointer
+          }
+          .cpMenuV2Body{padding:18px}
+          .cpMenuV2Body>p{margin:0 0 14px;color:#9ba7a1;line-height:1.55}
+          .cpMenuV2Grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+          .cpMenuV2Item{
+            padding:13px;border:1px solid #1a2d23;border-radius:11px;background:#08100d
+          }
+          .cpMenuV2Item b{display:block;color:#fff;font-size:11px}
+          .cpMenuV2Item small{display:block;margin-top:5px;color:#7f8d86;font-size:9px}
+          .cpMenuV2Empty{
+            padding:24px;border:1px dashed #294034;border-radius:12px;
+            text-align:center;color:#89968f
+          }
+          .sidebar .side-item.cp-menu-v2-enabled,.topbar .nav a.cp-menu-v2-enabled{
+            cursor:pointer!important;pointer-events:auto!important
+          }
+          .sidebar .side-item.cp-menu-v2-disabled{
+            opacity:.48!important;cursor:not-allowed!important
+          }
         `;
-        document.head.appendChild(s);
+        document.head.appendChild(style);
       }
 
-      function hub(){
-        ensureStyles();
-        let root=document.getElementById("cpNavHubV1");
-        if(root) return root;
-        root=document.createElement("div");
-        root.id="cpNavHubV1";
-        root.className="cpNavHub";
-        root.setAttribute("aria-hidden","true");
-        root.innerHTML=`
-          <section class="cpNavHubCard" role="dialog" aria-modal="true">
-            <header class="cpNavHubHead"><h2 id="cpNavHubTitle"><span>CORNER PRO</span></h2><button class="cpNavHubClose" type="button" aria-label="Fechar">×</button></header>
-            <div class="cpNavHubBody" id="cpNavHubBody"></div>
+      function root(){
+        addStyle();
+        let el = document.getElementById("cpMenuV2Overlay");
+        if (el) return el;
+        el = document.createElement("div");
+        el.id = "cpMenuV2Overlay";
+        el.className = "cpMenuV2Overlay";
+        el.setAttribute("aria-hidden","true");
+        el.innerHTML = `
+          <section class="cpMenuV2Card" role="dialog" aria-modal="true">
+            <header class="cpMenuV2Head">
+              <h2 id="cpMenuV2Title">CORNER PRO</h2>
+              <button class="cpMenuV2Close" type="button" aria-label="Fechar">×</button>
+            </header>
+            <div class="cpMenuV2Body" id="cpMenuV2Body"></div>
           </section>`;
-        document.body.appendChild(root);
-        root.addEventListener("click",e=>{
-          if(e.target===root || e.target.closest(".cpNavHubClose")) closeHub();
+        document.body.appendChild(el);
+        el.addEventListener("click", event => {
+          if (event.target === el || event.target.closest(".cpMenuV2Close")) closePanel();
         });
-        return root;
+        return el;
       }
 
-      function closeHub(){
-        const root=document.getElementById("cpNavHubV1");
-        if(!root)return;
-        root.classList.remove("is-open");
-        root.setAttribute("aria-hidden","true");
+      function openPanel(title, html){
+        const el = root();
+        el.querySelector("#cpMenuV2Title").textContent = title;
+        el.querySelector("#cpMenuV2Body").innerHTML = html;
+        el.classList.add("is-open");
+        el.setAttribute("aria-hidden","false");
       }
 
-      function openHub(title, body){
-        const root=hub();
-        root.querySelector("#cpNavHubTitle").innerHTML=`<span>${esc(title)}</span>`;
-        root.querySelector("#cpNavHubBody").innerHTML=body;
-        root.classList.add("is-open");
-        root.setAttribute("aria-hidden","false");
+      function closePanel(){
+        const el = document.getElementById("cpMenuV2Overlay");
+        if (!el) return;
+        el.classList.remove("is-open");
+        el.setAttribute("aria-hidden","true");
+      }
+
+      function games(){
+        const sources = [
+          document.querySelector(".gamesPanel")?.__cornerProAllGames,
+          window.__cornerProAllGames,
+          document.querySelector(".gamesPanel")?.__cornerProGames,
+          window.lastMarketGames,
+          window.lastRawGames
+        ];
+        for (const list of sources){
+          if (Array.isArray(list) && list.length) return list.map(x => x?.raw || x);
+        }
+        return [];
+      }
+
+      function teamName(g, side){
+        if (side === "home") return String(g?.casa ?? g?.home ?? g?.home_name ?? g?.match_hometeam_name ?? "Casa");
+        return String(g?.fora ?? g?.away ?? g?.away_name ?? g?.match_awayteam_name ?? "Fora");
+      }
+
+      function leagueName(g){
+        return String(g?.liga ?? g?.league_name ?? g?.league?.name ?? "Liga");
       }
 
       function favoriteNames(){
-        const keys=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
-        const out=[];
-        for(const key of keys){
+        const out = [];
+        const keys = [
+          "cornerpro_mobile_favorite_teams_v1",
+          "cornerProFavoriteTeams:v2",
+          "cornerProFavorites"
+        ];
+        for (const key of keys){
           try{
-            const arr=JSON.parse(localStorage.getItem(key)||"[]");
-            if(Array.isArray(arr)) arr.forEach(x=>{
-              const name=typeof x==="string"?x:(x?.name||x?.team||"");
-              if(name && !out.some(y=>norm(y)===norm(name))) out.push(name);
+            const value = JSON.parse(localStorage.getItem(key) || "[]");
+            if (!Array.isArray(value)) continue;
+            value.forEach(item => {
+              const name = typeof item === "string" ? item : (item?.name || item?.team || "");
+              if (name && !out.some(x => norm(x) === norm(name))) out.push(name);
             });
           }catch(_){}
         }
         return out;
       }
 
-      function visibleGames(){
-        const pools=[
-          window.__cornerProAllGames, window.__cornerProGames,
-          window.lastMarketGames, window.lastRawGames,
-          window.__premiumFilteredGames, window.__premiumMarketGames
-        ];
-        for(const p of pools) if(Array.isArray(p)&&p.length) return p;
-        return [];
+      function renderFavorites(){
+        const favs = favoriteNames();
+        openPanel("Favoritos", favs.length
+          ? `<p>Times que você marcou como favoritos.</p>
+             <div class="cpMenuV2Grid">${favs.map(name =>
+               `<article class="cpMenuV2Item"><b>★ ${esc(name)}</b><small>Favorito salvo</small></article>`
+             ).join("")}</div>`
+          : `<div class="cpMenuV2Empty">Você ainda não possui times favoritos.</div>`);
       }
 
-      function openInfo(label){
-        const key=norm(label);
-        if(key==="favoritos"){
-          const favs=favoriteNames();
-          openHub("Favoritos", favs.length
-            ? `<p>Times salvos no navegador.</p><div class="cpNavHubGrid">${favs.map(x=>`<div class="cpNavHubItem"><b>★ ${esc(x)}</b><small>Time favorito</small></div>`).join("")}</div>`
-            : `<div class="cpNavHubEmpty">Você ainda não possui times favoritos.</div>`);
-          return;
-        }
-        if(key==="meus alertas"){
-          openHub("Meus Alertas", `<p>Central de alertas ativa. Os alertas configurados nas partidas e mercados ficam associados aos jogos disponíveis.</p>`);
-          return;
-        }
-        if(key==="ligas"){
-          const games=visibleGames();
-          const leagues=[...new Set(games.map(g=>g?.liga||g?.league_name||g?.league?.name).filter(Boolean))].sort();
-          openHub("Ligas", leagues.length
-            ? `<p>Ligas presentes nos jogos carregados.</p><div class="cpNavHubGrid">${leagues.map(x=>`<div class="cpNavHubItem"><b>${esc(x)}</b><small>Disponível nos jogos atuais</small></div>`).join("")}</div>`
-            : `<div class="cpNavHubEmpty">As ligas aparecerão aqui após os jogos da data serem carregados.</div>`);
-          return;
-        }
-        if(key==="relatorios"){
-          openHub("Relatórios", `<p>Área de relatórios ativada no menu. Ela fica separada dos motores dos mercados para não interferir nas análises atuais.</p>`);
-          return;
-        }
-        if(key==="suporte"){
-          openHub("Suporte", `<p>Central de suporte ativada no menu.</p>`);
-          return;
-        }
-        if(key==="estatisticas"){
-          const rail=document.getElementById("desktopMatchRail");
-          if(rail && window.matchMedia?.("(min-width:981px)").matches){
-            rail.scrollIntoView({behavior:"smooth",block:"start"});
-            rail.animate?.([{outline:"1px solid rgba(99,241,39,.7)"},{outline:"1px solid transparent"}],{duration:900});
-          }else{
-            openHub("Estatísticas", `<p>Selecione uma partida para consultar as estatísticas disponíveis no Match Center.</p>`);
-          }
-          return;
-        }
-        if(key==="bots"){
-          openHub("Bots", `<p>Área de Bots ativada no menu, sem alterar a IA e os filtros que já selecionam os jogos.</p>`);
-        }
+      function renderLeagues(){
+        const list = [...new Set(games().map(leagueName).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+        openPanel("Ligas", list.length
+          ? `<p>Ligas disponíveis nos jogos carregados para a data atual.</p>
+             <div class="cpMenuV2Grid">${list.map(name =>
+               `<article class="cpMenuV2Item"><b>${esc(name)}</b><small>Liga carregada</small></article>`
+             ).join("")}</div>`
+          : `<div class="cpMenuV2Empty">As ligas aparecerão após o carregamento dos jogos.</div>`);
       }
 
-      function openMarket(type){
-        if(type==="pregame"){
-          const target=[...document.querySelectorAll(".side-item,.topbar .nav a,[data-tab],[data-view]")]
-            .find(x=>norm(x.textContent)==="pre-jogo" || norm(x.textContent)==="pre jogo" || x.dataset?.tab==="pregame");
-          if(target && target!==document.activeElement){
-            try{ target.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window})); }catch(_){}
-          }
-          return true;
-        }
-        if(type==="props"){
-          const tab=[...document.querySelectorAll(".marketTab,.topbar .nav a")].find(x=>norm(x.textContent).includes("player props"));
-          if(tab && tab.dataset?.cpNavV1Forward!=="1"){
-            tab.dataset.cpNavV1Forward="1";
-            try{tab.click();}catch(_){}
-            delete tab.dataset.cpNavV1Forward;
-            return true;
-          }
-          openHub("Player Props", `<p>Player Props está ativo no menu. Os dados aparecem quando houver mercado individual disponível para a partida.</p>`);
-          return true;
-        }
-        try{
-          if(window.matchMedia?.("(max-width:980px)").matches && typeof window.cpMobileOpenMarket==="function"){
-            window.cpMobileOpenMarket(type); return true;
-          }
-          if(typeof window.cpd3OpenMarket==="function"){ window.cpd3OpenMarket(type); return true; }
-          if(window.CornerProMobileOfficialV80?.openMarket && window.matchMedia?.("(max-width:980px)").matches){
-            window.CornerProMobileOfficialV80.openMarket(type); return true;
-          }
-        }catch(_){}
-        const selector = type==="corners"?"escante":type==="goals"?"gol":type==="cards"?"cart":type==="handicap"?"handicap":"ambas";
-        const tab=[...document.querySelectorAll(".marketTab,[data-cpd3-market]")].find(x=>norm(x.textContent).includes(selector));
-        if(tab){ try{tab.click();return true;}catch(_){} }
-        return false;
+      function renderAlerts(){
+        const favs = favoriteNames();
+        const list = games();
+        const homeFavs = list.filter(g => favs.some(f => norm(f) === norm(teamName(g,"home"))));
+        openPanel("Meus Alertas", homeFavs.length
+          ? `<p>Times favoritos que aparecem como mandantes nos jogos carregados.</p>
+             <div class="cpMenuV2Grid">${homeFavs.map(g =>
+               `<article class="cpMenuV2Item"><b>★ ${esc(teamName(g,"home"))} em casa</b><small>${esc(teamName(g,"home"))} x ${esc(teamName(g,"away"))}</small></article>`
+             ).join("")}</div>`
+          : `<div class="cpMenuV2Empty">Nenhum alerta de favorito em casa nesta data.</div>`);
       }
 
-      function activate(){
-        const items=[...document.querySelectorAll(".sidebar .side-item,.topbar .nav a")];
-        items.forEach(el=>{
-          const label=norm(el.textContent);
-          if(!label) return;
+      function renderReports(){
+        openPanel("Relatórios",
+          `<p>Acesso ativado. Esta área fica isolada dos motores dos mercados.</p>
+           <div class="cpMenuV2Grid">
+             <article class="cpMenuV2Item"><b>Desempenho</b><small>Resumo das análises disponíveis</small></article>
+             <article class="cpMenuV2Item"><b>Mercados</b><small>Escanteios, gols, cartões e handicap</small></article>
+           </div>`);
+      }
 
-          if(isLives(el)){
-            el.classList.add("cp-nav-disabled");
-            el.classList.remove("cp-nav-enabled");
+      function renderSupport(){
+        openPanel("Suporte",
+          `<p>Central de suporte ativada.</p>
+           <div class="cpMenuV2Grid">
+             <article class="cpMenuV2Item"><b>Ajuda com a plataforma</b><small>Acesso aos recursos e navegação</small></article>
+             <article class="cpMenuV2Item"><b>Problemas técnicos</b><small>Área para suporte do site</small></article>
+           </div>`);
+      }
+
+      function renderBots(){
+        openPanel("Bots",
+          `<p>Acesso ativado sem alterar as IAs atuais dos mercados.</p>
+           <div class="cpMenuV2Empty">Nenhum bot adicional configurado neste código.</div>`);
+      }
+
+      function openStats(){
+        const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+        if (rail){
+          rail.scrollIntoView({behavior:"smooth",block:"start"});
+          try{
+            rail.animate(
+              [{filter:"brightness(1)"},{filter:"brightness(1.35)"},{filter:"brightness(1)"}],
+              {duration:750}
+            );
+          }catch(_){}
+          return;
+        }
+        openPanel("Estatísticas",
+          `<div class="cpMenuV2Empty">Selecione uma partida para carregar as estatísticas no Match Center.</div>`);
+      }
+
+      function openPlayerProps(){
+        const candidates = [...document.querySelectorAll(
+          ".marketTab,.marketInlineTab,.marketInlineItem,[data-home-market],[data-cp-market],[data-v110-open-market]"
+        )];
+
+        const direct = candidates.find(el => {
+          const t = norm(el.textContent);
+          return t.includes("player props") ||
+                 el.dataset?.homeMarket === "props" ||
+                 el.dataset?.cpMarket === "props" ||
+                 el.dataset?.v110OpenMarket === "props";
+        });
+
+        if (direct){
+          direct.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
+          setTimeout(() => {
+            document.querySelector(".marketInlinePanel,.gamesPanel,#top1")?.scrollIntoView?.({
+              behavior:"smooth",block:"start"
+            });
+          },80);
+          return;
+        }
+
+        openPanel("Player Props",
+          `<div class="cpMenuV2Empty">Player Props está ativo, mas não há painel de jogador disponível para os jogos carregados agora.</div>`);
+      }
+
+      function isLives(text){
+        const t = norm(text);
+        return t.includes("lives & videos") || t.includes("lives & vídeos");
+      }
+
+      function markItems(){
+        if (!desktop()) return;
+        document.querySelectorAll(".sidebar .side-item,.topbar .nav a").forEach(el => {
+          const text = norm(el.textContent);
+          if (!text) return;
+
+          if (isLives(text)){
+            el.classList.remove("cp-menu-v2-enabled");
+            el.classList.add("cp-menu-v2-disabled");
             el.setAttribute("aria-disabled","true");
-            el.title="Lives & Vídeos permanece desativado";
-            return;
+            el.title = "Lives & Vídeos permanece desativado";
+          }else{
+            el.classList.add("cp-menu-v2-enabled");
+            el.classList.remove("cp-menu-v2-disabled");
+            el.removeAttribute("aria-disabled");
           }
-
-          el.classList.add("cp-nav-enabled");
-          el.classList.remove("cp-nav-disabled");
-          el.removeAttribute("aria-disabled");
-
-          if(el.dataset.cpActiveNavV1==="1") return;
-          el.dataset.cpActiveNavV1="1";
-
-          el.addEventListener("click",function(ev){
-            const text=norm(el.textContent);
-
-            if(text==="dashboard"){
-              closeHub();
-              document.querySelector(".content,.dashboardGrid,#top1")?.scrollIntoView?.({behavior:"smooth",block:"start"});
-              return;
-            }
-
-            if(text==="ao vivo"){
-              // Mantém o handler existente de Ao Vivo.
-              return;
-            }
-
-            const market=marketMap[text];
-            if(market){
-              if(text==="pre-jogo" || text==="pre jogo") return; // deixa o handler original
-              ev.preventDefault();
-              ev.stopPropagation();
-              openMarket(market);
-              return;
-            }
-
-            if(["ligas","favoritos","meus alertas","relatorios","suporte","estatisticas","bots"].includes(text)){
-              ev.preventDefault();
-              ev.stopPropagation();
-              openInfo(text);
-            }
-          });
         });
       }
 
-      document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHub()});
-      if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",activate,{once:true});
-      else activate();
-      window.addEventListener("pageshow",activate);
-      setTimeout(activate,300);
-      setTimeout(activate,1200);
+      /*
+        IMPORTANTE:
+        capture=true + registro no document garante que estes acessos sem ação
+        sejam tratados antes dos módulos antigos que chamam stopImmediatePropagation().
+      */
+      document.addEventListener("click", function(event){
+        if (!desktop()) return;
+
+        const item = event.target.closest(".sidebar .side-item,.topbar .nav a");
+        if (!item) return;
+
+        const text = norm(item.textContent);
+        if (!text) return;
+
+        if (isLives(text)){
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return;
+        }
+
+        let handled = true;
+
+        if (text === "favoritos") renderFavorites();
+        else if (text === "meus alertas") renderAlerts();
+        else if (text === "ligas") renderLeagues();
+        else if (text === "relatorios") renderReports();
+        else if (text === "suporte") renderSupport();
+        else if (text === "estatisticas") openStats();
+        else if (text === "bots") renderBots();
+        else if (text.includes("player props")) openPlayerProps();
+        else handled = false;
+
+        if (handled){
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+
+          document.querySelectorAll(".sidebar .side-item,.topbar .nav a").forEach(el=>{
+            el.classList.remove("active","is-active");
+          });
+          item.classList.add("active","is-active");
+        }
+      }, true);
+
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") closePanel();
+      });
+
+      function start(){
+        addStyle();
+        markItems();
+        setTimeout(markItems,300);
+        setTimeout(markItems,1000);
+      }
+
+      if (document.readyState === "loading"){
+        document.addEventListener("DOMContentLoaded", start, {once:true});
+      }else{
+        start();
+      }
+
+      window.addEventListener("pageshow", markItems);
     })();
