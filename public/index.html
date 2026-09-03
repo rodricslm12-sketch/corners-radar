@@ -10,6 +10,44 @@
     })();
   </script>
 
+  <!-- V151 — FAILSAFE DO BOOT DESKTOP
+       Garante que a tela "CARREGANDO PAINEL" nunca fique presa,
+       mesmo se algum JS posterior falhar. Não roda no app/mobile. -->
+  <script id="cpDesktopBootEmergencyReleaseV151">
+    (function(){
+      if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+
+      function releaseDesktopBoot(){
+        try{
+          document.documentElement.classList.remove("cpDesktopBoot");
+          document.documentElement.classList.add("cpDesktopReady");
+          var boot = document.getElementById("cpDesktopBootScreen");
+          if (boot){
+            boot.style.display = "none";
+            boot.style.visibility = "hidden";
+            boot.style.pointerEvents = "none";
+          }
+        }catch(e){}
+      }
+
+      // Libera mesmo se houver erro em qualquer script carregado depois.
+      window.addEventListener("error", function(){
+        setTimeout(releaseDesktopBoot, 50);
+      });
+
+      window.addEventListener("unhandledrejection", function(){
+        setTimeout(releaseDesktopBoot, 50);
+      });
+
+      document.addEventListener("DOMContentLoaded", function(){
+        setTimeout(releaseDesktopBoot, 2200);
+      }, {once:true});
+
+      // Última segurança absoluta.
+      setTimeout(releaseDesktopBoot, 3200);
+    })();
+  </script>
+
   <meta charset="UTF-8" />
   <meta name="google" content="notranslate" />
   <meta name="google-site-verification" content="iW5VXoH3gN2PL5epDd5N9aDcTOCY7h_CzxL0xqRmA58" />
