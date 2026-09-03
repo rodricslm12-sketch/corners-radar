@@ -13830,10 +13830,6 @@ const fallbackSide = target > 0
             
                     ensureDateVisible();
             
-                    // V149 DESKTOP FIX — #btn foi removido do HTML.
-                    // O listener legado só pode ser registrado quando o botão existir.
-                    // Sem esta proteção, "btn.addEventListener" lança TypeError e interrompe
-                    // todo o restante do script, incluindo o módulo de Favoritos do desktop.
                     if (btn) {
                       btn.addEventListener("click", () => {
                         ensureDateVisible();
