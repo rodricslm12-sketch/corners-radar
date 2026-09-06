@@ -400,8 +400,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
       ];
 
+      /* V149 — abre o painel assim que o motor principal de escanteios termina.
+         Os demais motores continuam em segundo plano, sem segurar a Home inteira. */
       let smartJobsDone=0;
-      await Promise.allSettled(jobs.map(async([kind,url,to])=>{
+      const runEngineJob=async([kind,url,to])=>{
         try{
           const p=await fetchJ(url,to);
           if(req!==state.request)return;
@@ -416,12 +418,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(a.length)state.engines[market]=a;
             }
           }
+
           merge();
 
-          // V128 APP: cada motor que termina atualiza a Home automaticamente.
-          // Isso elimina a dependência do clique em "Escanteios/Gols/etc." para
-          // o card principal aparecer. request protege contra respostas antigas.
-          if(req===state.request && state.view==="home" && !backgroundRefresh){
+          // Depois que a Home já abriu, os outros mercados entram silenciosamente.
+          if(req===state.request && state.view==="home" && (!state.loading || !backgroundRefresh)){
             render();
           }
         }catch(e){
@@ -430,20 +431,29 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           if(req===state.request && !backgroundRefresh){
             smartJobsDone+=1;
             const stages=[
-              [56,"Analisando mercados com IA..."],
-              [74,"Comparando projeções e confiança..."],
-              [88,"Selecionando os melhores jogos..."]
+              [58,"IA analisando os melhores jogos..."],
+              [76,"Comparando projeções e confiança..."],
+              [90,"Finalizando seu painel..."]
             ];
             const [p,msg]=stages[Math.min(smartJobsDone-1,stages.length-1)];
             setSmartLoading(p,msg);
           }
         }
-      }));
+      };
+
+      const cornerPromise=runEngineJob(jobs[0]);
+      const secondaryPromises=jobs.slice(1).map(runEngineJob);
+
+      // A Home não fica esperando Goals/Cards/Handicap/BTTS.
+      // Aguarda o motor de cantos OU no máximo 7,5s, o que ocorrer primeiro.
+      await Promise.race([
+        cornerPromise,
+        new Promise(resolve=>setTimeout(resolve,7500))
+      ]);
 
       if(req!==state.request)return;
 
-      // Fallback do Top 1 antes da única renderização final.
-      if(!backgroundRefresh)setSmartLoading(92,"Finalizando melhor oportunidade...");
+      if(!backgroundRefresh)setSmartLoading(92,"Abrindo painel...");
       if(!filtered("corners","IA").length){
         try{
           const p=await fetchJ(`/prelive_best?date=${encodeURIComponent(date)}&_mobile=1&t=${Date.now()}`,26000);
@@ -462,14 +472,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(req===state.request){
         if(!backgroundRefresh){
           setSmartLoading(100,"Painel pronto");
-          // Mantém 100% visível por um instante antes de revelar o jogo.
-          await new Promise(resolve=>setTimeout(resolve,220));
+          // Transição curta: deixa a barra completar sem segurar o usuário.
+          await new Promise(resolve=>setTimeout(resolve,80));
           if(req!==state.request)return;
         }
+
         state.loading=false;
         state.__hydratedFromCache=false;
         saveMobileHomeSnapshot(date);
         render();
+
+        // Motores secundários continuam sem bloquear a Home.
+        Promise.allSettled(secondaryPromises).then(()=>{
+          if(req!==state.request)return;
+          merge();
+          saveMobileHomeSnapshot(date);
+          if(state.view==="home")render();
+        });
       }
     }
   
