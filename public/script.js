@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v143:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v144_cornersfix:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -152,29 +152,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function dateLong(x){const [Y,M,D]=String(x).split("-").map(Number);if(!Y)return "Hoje";return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","")}
     function dayChip(offset){const x=ymd(offset),[Y,M,D]=x.split("-").map(Number);const w=new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","").toUpperCase();return `${w} ${D}`}
   
-    function dec(g,m=state.market){
-      const f=MARKETS[m]?.field;
-      if(!f)return {};
-      // APP: prioriza a decisão injetada pelo motor dedicado (/web_corners_ai).
-      // O raw da base pode conter corners_ai antigo/genérico (ex.: projeção 6.5).
-      return g?.[f] || raw(g)?.[f] || {};
-    }
+    function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(g?.[f]||raw(g)?.[f]||{}):{}}
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
     /* V141 — MERCADOS MOBILE: uma única fonte de leitura, sem fallback cruzado */
     function projection(g,m=state.market){
       const r=raw(g),d=dec(g,m);
-      if(m==="corners")return num(
-        g?.corners_ai?.projection,
-        d?.projection,
-        r?.corners_ai?.projection,
-        g?.proj_cantos,
-        r?.proj_cantos,
-        g?.corners_projection,
-        r?.corners_projection,
-        g?.expected_corners,
-        r?.expected_corners,
-        r?.total_corners_avg
-      );
+      if(m==="corners")return num(g?.corners_ai?.projection,d?.projection,r?.corners_ai?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
       if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
       if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
       if(m==="handicap")return num(d?.projection,d?.expected_handicap,r?.handicap_projection,r?.expected_handicap);
@@ -189,38 +172,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function cornerRec(g){
       const d=dec(g,"corners"),line=decisionLine(g,"corners"),p=projection(g,"corners"),c=confidence(g,"corners");
       if(d?.updating||d?.skip)return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
-
-      // Mesma prioridade do site: se /web_corners_ai já decidiu um OVER válido, respeita.
-      if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line)){
-        return{valid:true,line,projection:p,confidence:c};
-      }
-
-      // Mesmo fallback visual do motor WEB dedicado.
-      if(p!==null&&Number.isFinite(Number(p))){
-        const proj=Number(p);
-        if(proj>=11.75)return{valid:true,line:"OVER 11.5",projection:proj,confidence:c};
-        if(proj>=10.75)return{valid:true,line:"OVER 10.5",projection:proj,confidence:c};
-        if(proj>=9.75)return{valid:true,line:"OVER 9.5",projection:proj,confidence:c};
-        if(proj>=8.90)return{valid:true,line:"OVER 8.5",projection:proj,confidence:c};
+      if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};
+      /* Só deriva uma linha quando existe projeção REAL suficiente. Não transforma 6.5 em entrada. */
+      if(p!==null){
+        if(p>=12.15)return{valid:true,line:"OVER 11.5",projection:p,confidence:c};
+        if(p>=11.15)return{valid:true,line:"OVER 10.5",projection:p,confidence:c};
+        if(p>=10.15)return{valid:true,line:"OVER 9.5",projection:p,confidence:c};
+        if(p>=9.15)return{valid:true,line:"OVER 8.5",projection:p,confidence:c};
       }
       return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
-    }
-
-    function cornerLineQualified(g,line){
-      const target=num(String(line).replace("+",""));
-      const p=projection(g,"corners");
-      if(target===null||p===null||!Number.isFinite(Number(p)))return false;
-
-      // Faixas equivalentes às usadas pelo site para a recomendação automática.
-      const minProjection={
-        "8.5":8.90,
-        "9.5":9.75,
-        "10.5":10.75,
-        "11.5":11.75,
-        "12.5":12.75
-      }[String(line)];
-
-      return Number(p) >= (minProjection ?? (Number(target)+0.25));
     }
 
     function handicapSide(g){
@@ -317,7 +277,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()].filter(isMainLeagueGame)}
+    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},oldRaw=raw(old),newRaw=raw(g),next={...old,...g,raw:{...oldRaw,...newRaw}};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||newRaw?.[f]||g?.decision||g?.ai;if(d){next[f]=d;next.raw={...next.raw,[f]:d}}}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()].filter(isMainLeagueGame)}
     /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
        Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
        parecerem iguais e fazia linhas manuais zerarem a tela. */
@@ -348,11 +308,22 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ).slice(0,30);
       }
 
-      /* Linha manual: não exige que a IA automática tenha escolhido exatamente a mesma linha.
-         Cada botão passa a recalcular/rankear a própria linha. */
+      /* V144 CANTOS APP — linhas manuais usam a projeção REAL do motor dedicado.
+         Quanto maior a linha, mais seletiva fica a lista. Não altera desktop/site. */
       if(m==="corners"){
-        // Cada aba mostra somente jogos cuja projeção realmente sustenta a linha.
-        a=a.filter(g=>cornerLineQualified(g,line));
+        const target=num(String(line).replace("+",""));
+        const minProjection=target===8.5?8.90:target===9.5?9.75:target===10.5?10.75:target===11.5?11.75:target===12.5?12.75:null;
+        a=a.filter(g=>{
+          const p=projection(g,"corners");
+          const rec=cornerRec(g);
+          if(p===null)return false;
+          if(minProjection!==null && Number(p)>=minProjection)return true;
+          if(rec.valid){
+            const recN=num(String(rec.line||"").replace(/OVER\s*/i,""));
+            return recN!==null && target!==null && recN>=target;
+          }
+          return false;
+        });
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
