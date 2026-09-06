@@ -25,7 +25,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
-    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,request:0};
+    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,loadingProgress:6,loadingStatus:"Preparando painel...",request:0};
     /* =========================================================
        APP V130 — CACHE DO PRIMEIRO CARREGAMENTO
        Primeiro acesso da data: mostra loading.
@@ -328,6 +328,26 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
   
+    /* =========================================================
+       APP V148 — LOADING INTELIGENTE
+       Atualiza SOMENTE o visual do carregamento conforme as etapas reais.
+       Não altera filtros, ranking, mercados ou motores da IA.
+       ========================================================= */
+    function setSmartLoading(progress,status){
+      const p=Math.max(0,Math.min(100,Number(progress)||0));
+      state.loadingProgress=Math.max(Number(state.loadingProgress)||0,p);
+      if(status)state.loadingStatus=String(status);
+
+      const hero=document.getElementById("cpV110Hero");
+      const fill=hero?.querySelector(".v148LoadingFill");
+      const pct=hero?.querySelector(".v148LoadingPct");
+      const msg=hero?.querySelector(".v148LoadingStatus");
+
+      if(fill)fill.style.width=`${state.loadingProgress}%`;
+      if(pct)pct.textContent=`${Math.round(state.loadingProgress)}%`;
+      if(msg&&status)msg.textContent=state.loadingStatus;
+    }
+
     async function load(){
       const req=++state.request;
       const backgroundRefresh=state.__hydratedFromCache===true;
@@ -335,7 +355,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       // Sem cache: loading visual.
       // Com cache: mantém os times na tela e atualiza silenciosamente.
       state.loading=!backgroundRefresh;
-      if(state.view==="home" && !backgroundRefresh) render();
+      if(!backgroundRefresh){
+        state.loadingProgress=6;
+        state.loadingStatus="Preparando painel...";
+      }
+      if(state.view==="home" && !backgroundRefresh){
+        render();
+        setSmartLoading(10,"Buscando jogos do dia...");
+      }
 
       const date=state.date||ymd();
       const stamp=Date.now();
@@ -359,6 +386,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       state.base=base;
       merge();
+      if(!backgroundRefresh)setSmartLoading(34,"Jogos encontrados. Carregando estatísticas...");
 
       // V128 APP: a base já chegou; atualiza contadores e mantém o hero
       // em "Carregando" enquanto as IAs específicas terminam.
@@ -372,6 +400,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
       ];
 
+      let smartJobsDone=0;
       await Promise.allSettled(jobs.map(async([kind,url,to])=>{
         try{
           const p=await fetchJ(url,to);
@@ -397,12 +426,24 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           }
         }catch(e){
           console.warn("[V122 engine]",kind,e);
+        }finally{
+          if(req===state.request && !backgroundRefresh){
+            smartJobsDone+=1;
+            const stages=[
+              [56,"Analisando mercados com IA..."],
+              [74,"Comparando projeções e confiança..."],
+              [88,"Selecionando os melhores jogos..."]
+            ];
+            const [p,msg]=stages[Math.min(smartJobsDone-1,stages.length-1)];
+            setSmartLoading(p,msg);
+          }
         }
       }));
 
       if(req!==state.request)return;
 
       // Fallback do Top 1 antes da única renderização final.
+      if(!backgroundRefresh)setSmartLoading(92,"Finalizando melhor oportunidade...");
       if(!filtered("corners","IA").length){
         try{
           const p=await fetchJ(`/prelive_best?date=${encodeURIComponent(date)}&_mobile=1&t=${Date.now()}`,26000);
@@ -419,6 +460,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
 
       if(req===state.request){
+        if(!backgroundRefresh){
+          setSmartLoading(100,"Painel pronto");
+          // Mantém 100% visível por um instante antes de revelar o jogo.
+          await new Promise(resolve=>setTimeout(resolve,220));
+          if(req!==state.request)return;
+        }
         state.loading=false;
         state.__hydratedFromCache=false;
         saveMobileHomeSnapshot(date);
@@ -693,27 +740,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(state.loading){
         state.heroGame=null;
         el.innerHTML=`
-          <div class="v129LoadingVisual" aria-live="polite" aria-busy="true">
-            <div class="v129LoadingStadium" aria-hidden="true">
-              <span class="v129Light v129LightL"></span>
-              <span class="v129Light v129LightR"></span>
-              <span class="v129PitchLine"></span>
-              <div class="v129Radar">
-                <span class="v129RadarRing r1"></span>
-                <span class="v129RadarRing r2"></span>
-                <span class="v129RadarRing r3"></span>
-                <span class="v129RadarSweep"></span>
-                <b>⚽</b>
+          <div class="v129LoadingVisual v148SmartLoading" aria-live="polite" aria-busy="true">
+            <div class="v148LoadingInner">
+              <div class="v148LoadingBall" aria-hidden="true">⚽</div>
+              <strong class="v148LoadingTitle">CARREGANDO SEU PAINEL</strong>
+              <small class="v148LoadingStatus">${esc(state.loadingStatus||"Preparando painel...")}</small>
+              <div class="v148LoadingTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(state.loadingProgress||0)}">
+                <span class="v148LoadingFill" style="width:${Math.round(state.loadingProgress||0)}%"></span>
               </div>
-            </div>
-
-            <div class="v129LoadingCopy">
-              <strong>IA ANALISANDO OS MELHORES JOGOS</strong>
-              <small>Projeções • forma recente • confiança • escanteios</small>
-              <div class="v129LoadingSteps" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i>
-              </div>
-              <em>Aguarde alguns segundos...</em>
+              <em class="v148LoadingPct">${Math.round(state.loadingProgress||0)}%</em>
             </div>
           </div>`;
         return;

@@ -22814,3 +22814,162 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   .cpFavoritesV145Head{padding:16px}.cpFavoritesV145Summary{padding:12px 14px 0;gap:7px}.cpFavoritesV145Summary div{padding:9px}.cpFavoritesV145Body{padding:12px 14px 22px}
   .cpFavoritesV145Game{grid-template-columns:1fr 82px;gap:8px}.cpFavoritesV145Game .league{grid-column:1/-1;text-align:left;padding-top:4px;border-top:1px solid #17252a}
 }
+
+/* =========================================================
+   CORNER PRO APP V148 — LOADING INTELIGENTE REAL
+   Somente mobile/app <= 980px.
+   A barra recebe o progresso real do load() no JS.
+   ========================================================= */
+@media (max-width:980px){
+  #cpV110Hero:has(.v148SmartLoading){
+    min-height:300px!important;
+    height:300px!important;
+    overflow:hidden!important;
+    border-radius:16px!important;
+    border:1px solid rgba(99,241,39,.22)!important;
+    background:#06100b!important;
+    box-shadow:
+      inset 0 0 70px rgba(99,241,39,.035),
+      0 0 0 1px rgba(0,0,0,.18)!important;
+  }
+
+  .v148SmartLoading{
+    position:relative!important;
+    width:100%!important;
+    min-height:300px!important;
+    height:300px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:28px 24px!important;
+    background:
+      radial-gradient(circle at 50% 40%,rgba(99,241,39,.09),transparent 26%),
+      linear-gradient(180deg,#07130d 0%,#05100a 62%,#06110b 100%)!important;
+  }
+
+  .v148SmartLoading::before{
+    content:""!important;
+    position:absolute!important;
+    width:170px!important;
+    height:170px!important;
+    left:50%!important;
+    top:48%!important;
+    transform:translate(-50%,-50%)!important;
+    border-radius:50%!important;
+    background:radial-gradient(circle,rgba(99,241,39,.09),rgba(99,241,39,.025) 42%,transparent 70%)!important;
+    filter:blur(2px)!important;
+    pointer-events:none!important;
+  }
+
+  .v148LoadingInner{
+    position:relative!important;
+    z-index:2!important;
+    width:min(100%,310px)!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    text-align:center!important;
+  }
+
+  .v148LoadingBall{
+    display:grid!important;
+    place-items:center!important;
+    width:68px!important;
+    height:68px!important;
+    margin-bottom:25px!important;
+    font-size:54px!important;
+    line-height:1!important;
+    filter:drop-shadow(0 9px 16px rgba(0,0,0,.42))!important;
+    animation:v148BallFloat 1.7s ease-in-out infinite alternate!important;
+  }
+
+  .v148LoadingTitle{
+    margin:0!important;
+    color:#fff!important;
+    font-size:18px!important;
+    line-height:1.05!important;
+    font-weight:1000!important;
+    letter-spacing:.3px!important;
+  }
+
+  .v148LoadingStatus{
+    display:block!important;
+    min-height:29px!important;
+    margin-top:10px!important;
+    color:#8fa09a!important;
+    font-size:9px!important;
+    line-height:1.4!important;
+    font-weight:850!important;
+    letter-spacing:.55px!important;
+  }
+
+  .v148LoadingTrack{
+    position:relative!important;
+    width:100%!important;
+    height:7px!important;
+    margin-top:15px!important;
+    overflow:hidden!important;
+    border-radius:999px!important;
+    background:#123022!important;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.55)!important;
+  }
+
+  .v148LoadingFill{
+    position:absolute!important;
+    inset:0 auto 0 0!important;
+    min-width:8px!important;
+    border-radius:inherit!important;
+    background:linear-gradient(90deg,#2bdc22,#63f127,#7dff45)!important;
+    box-shadow:0 0 14px rgba(99,241,39,.45)!important;
+    transition:width .48s cubic-bezier(.2,.75,.25,1)!important;
+  }
+
+  .v148LoadingFill::after{
+    content:""!important;
+    position:absolute!important;
+    top:0!important;
+    right:0!important;
+    width:54px!important;
+    height:100%!important;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.48))!important;
+    transform:translateX(20px)!important;
+    animation:v148ProgressGlow 1s ease-in-out infinite!important;
+  }
+
+  .v148LoadingPct{
+    display:block!important;
+    margin-top:8px!important;
+    color:#63f127!important;
+    font-size:8px!important;
+    line-height:1!important;
+    font-style:normal!important;
+    font-weight:950!important;
+    letter-spacing:.8px!important;
+  }
+
+  /* Neutraliza regras antigas do V129/V130 somente dentro do novo loading */
+  .v148SmartLoading .v129LoadingStadium,
+  .v148SmartLoading .v129LoadingCopy,
+  .v148SmartLoading .v129LoadingSteps{
+    display:none!important;
+  }
+
+  @keyframes v148BallFloat{
+    from{transform:translateY(-3px) scale(.98);}
+    to{transform:translateY(4px) scale(1.025);}
+  }
+
+  @keyframes v148ProgressGlow{
+    0%,100%{opacity:.18;}
+    50%{opacity:.9;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .v148LoadingBall,
+    .v148LoadingFill::after{
+      animation:none!important;
+    }
+    .v148LoadingFill{
+      transition:none!important;
+    }
+  }
+}
