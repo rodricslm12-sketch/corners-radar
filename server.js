@@ -9146,9 +9146,12 @@ async function buildAllMarketEngines({ date }) {
         corners_ai,
         cards_ai,
         handicap_ai,
+        // HANDICAP RESTORE: mantém o perfil público original dos demais mercados.
+        // O motor de cantos continua usando cornerHomeProfile/cornerAwayProfile internamente,
+        // sem substituir o perfil genérico utilizado por Handicap/Gols/BTTS/Cartões.
         engine_profiles: {
-          home: cornerHomeProfile,
-          away: cornerAwayProfile
+          home: homeProfile,
+          away: awayProfile
         }
       };
     }
