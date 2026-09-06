@@ -22053,3 +22053,162 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   .cpFavoritesV145Head{padding:16px}.cpFavoritesV145Summary{padding:12px 14px 0;gap:7px}.cpFavoritesV145Summary div{padding:9px}.cpFavoritesV145Body{padding:12px 14px 22px}
   .cpFavoritesV145Game{grid-template-columns:1fr 82px;gap:8px}.cpFavoritesV145Game .league{grid-column:1/-1;text-align:left;padding-top:4px;border-top:1px solid #17252a}
 }
+/* =========================================================
+   CORNER PRO APP — LOADING PREMIUM V131
+   SOMENTE MOBILE (<=980px). VISUAL APENAS.
+   Não altera JS, endpoints, filtros, cache ou desktop.
+   ========================================================= */
+@media (max-width:980px){
+  #cpV110Hero:has(.v129LoadingVisual){
+    height:300px!important;
+    min-height:300px!important;
+    border-radius:14px!important;
+    overflow:hidden!important;
+    background:#050a08!important;
+    border:1px solid rgba(99,241,39,.10)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  }
+
+  .v129LoadingVisual{
+    position:relative!important;
+    width:100%!important;
+    height:300px!important;
+    min-height:300px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:
+      radial-gradient(circle at 50% 45%,rgba(99,241,39,.075),transparent 28%),
+      linear-gradient(180deg,#07100c 0%,#040807 100%)!important;
+  }
+
+  .v129LoadingVisual::before{
+    content:""!important;
+    position:absolute!important;
+    width:116px!important;
+    height:116px!important;
+    left:50%!important;
+    top:45px!important;
+    transform:translateX(-50%)!important;
+    border-radius:50%!important;
+    border:3px solid rgba(99,241,39,.10)!important;
+    border-top-color:#63f127!important;
+    border-right-color:rgba(99,241,39,.55)!important;
+    box-shadow:0 0 24px rgba(99,241,39,.08)!important;
+    animation:cpAppPremiumSpin 1.25s linear infinite!important;
+  }
+
+  .v129LoadingVisual::after{
+    content:"⚽"!important;
+    position:absolute!important;
+    left:50%!important;
+    top:77px!important;
+    transform:translateX(-50%)!important;
+    font-size:39px!important;
+    line-height:1!important;
+    filter:grayscale(.12) drop-shadow(0 5px 10px rgba(0,0,0,.5))!important;
+    animation:cpAppBallPulse 1.25s ease-in-out infinite!important;
+  }
+
+  .v129LoadingStadium{display:none!important;}
+
+  .v129LoadingCopy{
+    position:relative!important;
+    z-index:3!important;
+    width:100%!important;
+    height:100%!important;
+    padding:176px 24px 22px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    text-align:center!important;
+    background:none!important;
+  }
+
+  .v129LoadingCopy::before{
+    content:"CARREGANDO SEU PAINEL"!important;
+    display:block!important;
+    margin:0!important;
+    color:#f4f7f5!important;
+    font-size:13px!important;
+    line-height:1.15!important;
+    font-style:normal!important;
+    font-weight:950!important;
+    letter-spacing:.2px!important;
+    text-shadow:none!important;
+  }
+
+  .v129LoadingCopy strong{
+    order:2!important;
+    position:relative!important;
+    width:100%!important;
+    height:auto!important;
+    margin:7px 0 0!important;
+    color:#7f8e88!important;
+    font-size:7px!important;
+    font-weight:750!important;
+    letter-spacing:.25px!important;
+    line-height:1.35!important;
+  }
+
+  .v129LoadingCopy strong::before{
+    content:"Buscando jogos, estatísticas e análises"!important;
+    position:static!important;
+    color:#7f8e88!important;
+    font-size:7px!important;
+    font-style:normal!important;
+    letter-spacing:.25px!important;
+    white-space:normal!important;
+  }
+  .v129LoadingCopy strong::after{display:none!important;content:none!important;}
+
+  .v129LoadingCopy small,
+  .v129LoadingCopy em{display:none!important;}
+
+  .v129LoadingSteps{
+    order:3!important;
+    position:relative!important;
+    width:min(270px,78%)!important;
+    height:5px!important;
+    margin:16px auto 0!important;
+    display:block!important;
+    overflow:hidden!important;
+    border-radius:999px!important;
+    background:#102019!important;
+    box-shadow:inset 0 0 0 1px rgba(99,241,39,.08)!important;
+  }
+
+  .v129LoadingSteps::before{
+    content:""!important;
+    position:absolute!important;
+    inset:0 auto 0 0!important;
+    width:44%!important;
+    border-radius:inherit!important;
+    background:linear-gradient(90deg,#38d91e,#63f127)!important;
+    box-shadow:0 0 10px rgba(99,241,39,.32)!important;
+    animation:cpAppProgress 2.2s ease-in-out infinite!important;
+  }
+
+  .v129LoadingSteps i{display:none!important;}
+
+  @keyframes cpAppPremiumSpin{
+    to{transform:translateX(-50%) rotate(360deg);}
+  }
+  @keyframes cpAppBallPulse{
+    0%,100%{transform:translateX(-50%) scale(.96);}
+    50%{transform:translateX(-50%) scale(1.03);}
+  }
+  @keyframes cpAppProgress{
+    0%{width:18%;opacity:.65;}
+    50%{width:68%;opacity:1;}
+    100%{width:92%;opacity:.78;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .v129LoadingVisual::before,
+    .v129LoadingVisual::after,
+    .v129LoadingSteps::before{animation:none!important;}
+    .v129LoadingSteps::before{width:68%!important;}
+  }
+}
