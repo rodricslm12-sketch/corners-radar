@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v150-handicap-fast-lines:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v151-handicap-tabs-fixed:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -284,7 +284,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(manual&&["corners","goals","cards"].includes(m))return `OVER ${state.line}`;
       if(manual&&m==="handicap"){
         const info=handicapLineInfo(g,state.line);
-        return `${info.side?info.side+" ":""}${state.line}`.trim();
+        const side=info.valid&&info.side ? info.side : handicapSide(g);
+        return `${side?side+" ":""}${state.line}`.trim();
       }
       if(manual&&m==="btts")return state.line;
 
@@ -327,14 +328,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       if(m==="handicap"){
         const info=handicapLineInfo(g,line);
-        if(!info.valid)return -9999;
         const d=dec(g,m);
         const direct=num(
           d?.probability,d?.confidence,
           d?.[`line_${String(line).replace("+","").replace(".","_")}_prob`]
         );
-        const oddBonus=(info.odd!==null&&info.odd>1)?Math.max(0,6-(info.odd-1.5)*4):0;
-        return (direct??c)+oddBonus;
+
+        if(info.valid){
+          const oddBonus=(info.odd!==null&&info.odd>1)?Math.max(0,6-(info.odd-1.5)*4):0;
+          return (direct??c)+oddBonus+12;
+        }
+
+        const target=num(String(line).replace("+",""));
+        const official=num(String(d?.line??"").replace("+",""));
+        if(target===null||official===null)return -9999;
+
+        // Quanto mais próxima a linha oficial estiver da escolhida, melhor o ranking.
+        return (direct??c) - Math.abs(official-target)*18;
       }
 
       if(m==="btts"){
@@ -410,10 +420,39 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
-        a=a.filter(g=>{
+        const target=num(String(line).replace("+",""));
+
+        // Primeiro tenta somente linhas AH reais/exatas.
+        const exact=a.filter(g=>{
           const d=dec(g,m);
           return d&&typeof d==="object"&&handicapLineInfo(g,line).valid;
         });
+
+        if(exact.length){
+          a=exact;
+        }else{
+          // Fallback seguro: quando a API não manda a grade AH completa,
+          // não zera a aba. Usa a linha oficial do motor como referência
+          // e mostra os jogos mais próximos da linha selecionada.
+          a=a
+            .filter(g=>{
+              const d=dec(g,m);
+              return d&&typeof d==="object"&&!d.updating&&!d.skip&&decisionLine(g,m);
+            })
+            .sort((g1,g2)=>{
+              const d1=dec(g1,m), d2=dec(g2,m);
+              const l1=num(String(d1?.line??"").replace("+",""));
+              const l2=num(String(d2?.line??"").replace("+",""));
+              const c1=confidence(g1,m), c2=confidence(g2,m);
+
+              const dist1=(target!==null&&l1!==null)?Math.abs(l1-target):99;
+              const dist2=(target!==null&&l2!==null)?Math.abs(l2-target):99;
+
+              if(dist1!==dist2)return dist1-dist2;
+              return c2-c1;
+            })
+            .slice(0,6);
+        }
       }else if(m==="btts"){
         a=a.filter(g=>decisionLine(g,m));
       }
@@ -6991,15 +7030,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   ? selectedLine
                   : "IA";
 
-                // HANDICAP V150:
-                // A lista state.handicap vem do endpoint rápido e contém
-                // asian_handicap_markets / handicap_available_lines reais.
-                // Antes as abas manuais usavam mobileAllGamesForMarket(),
-                // que em muitos jogos não carregava essas linhas e zerava tudo.
-                const originalSourceGames =
-                  (Array.isArray(state.handicap) && state.handicap.length)
-                    ? state.handicap
-                    : mobileAllGamesForMarket("handicap");
+                // HANDICAP V151:
+                // Usa a base completa e mescla nela os dados enriquecidos de state.handicap.
+                const originalSourceGames = mobileAllGamesForMarket("handicap");
 
                 const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
                 const sourceGames = upcomingHandicapGames.length
