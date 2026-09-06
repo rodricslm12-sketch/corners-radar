@@ -151,7 +151,7 @@ const CORNER_LEARNING_VERSION = "corner-online-v1";
 
 const OFFICIAL_CORNER_PICK_VERSION = "official-corner-pick-v1";
 
-const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v4-confidence-gate";
+const CORNER_PREGAME_LOCK_VERSION = "corner-pregame-lock-v5-real-corners-profile";
 const CORNER_PREGAME_LOCK_FILE = path.join(
   __dirname,
   "corner-pregame-locks.json"
@@ -7654,6 +7654,13 @@ function cornersFallbackLineFromProjection(projection) {
     return null;
   }
 
+  if (projection >= 12.9) {
+    return {
+      line: "OVER 12.5",
+      confidence: 66
+    };
+  }
+
   if (projection >= 11.9) {
     return {
       line: "OVER 11.5",
@@ -7824,7 +7831,9 @@ function cornersEngineDecision({ game, home, away }) {
     );
   }
 
-  projection = engineClamp(projection, 7.2, 15.8);
+  // CANTOS V27 — nunca achata partidas diferentes em 7.2.
+  // Mantém a projeção calculada; limites apenas evitam valores absurdos.
+  projection = engineClamp(projection, 4.0, 17.5);
 
   const pressureHits = engineGameNumber(game, [
     "pressureHits",
@@ -7891,6 +7900,14 @@ function cornersEngineDecision({ game, home, away }) {
       minProbability: 0.31
     },
     {
+      label: "OVER 12.5",
+      direction: "OVER",
+      line: 12.5,
+      estimatedOdd: 2.62,
+      ambitionBonus: 28,
+      minProbability: 0.25
+    },
+    {
       label: "UNDER 9.5",
       direction: "UNDER",
       line: 9.5,
@@ -7930,6 +7947,8 @@ function cornersEngineDecision({ game, home, away }) {
       projectionGate = projection >= 10.75;
     } else if (candidate.label === "OVER 11.5") {
       projectionGate = projection >= 11.75;
+    } else if (candidate.label === "OVER 12.5") {
+      projectionGate = projection >= 12.75;
     } else if (candidate.label === "UNDER 9.5") {
       // UNDER 9.5 é uma linha agressiva: só entra com amostra forte
       // e projeção realmente baixa. Nunca entra por simples piso do motor.
@@ -8070,7 +8089,7 @@ function cornersEngineDecision({ game, home, away }) {
           ? Number((normalizedOver95 * 100).toFixed(1))
           : null,
       robust_under_evidence: robustUnderEvidence,
-      corner_engine_version: "corners-strict-v4-confidence-gate",
+      corner_engine_version: "corners-strict-v5-real-corners-profile",
       under_gate_version: "strict-v4-confidence-gate",
       compared_lines:
         cornersComparisonSummary(comparison.ranked),
@@ -8490,7 +8509,7 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
         oldDecision?.extra?.corner_engine_version ??
         "";
 
-      if (oldCornerVersion !== "corners-strict-v4-confidence-gate") {
+      if (oldCornerVersion !== "corners-strict-v5-real-corners-profile") {
         oldDecision = null;
       }
     }
@@ -8566,7 +8585,7 @@ function mergeMarketEngineList(incomingList, storedList, decisionField) {
         oldDecision?.extra?.corner_engine_version ??
         "";
 
-      if (oldCornerVersion !== "corners-strict-v4-confidence-gate") {
+      if (oldCornerVersion !== "corners-strict-v5-real-corners-profile") {
         oldDecision = null;
       }
     }
@@ -9050,18 +9069,34 @@ async function buildAllMarketEngines({ date }) {
         oddsInfo
       });
 
+      // CANTOS V27 — o motor de escanteios usa o perfil dedicado de cantos
+      // (mesma coleta robusta do motor de cantos do site), e não o perfil
+      // genérico dos outros mercados.
+      const [cornerHomeProfile, cornerAwayProfile] = await Promise.all([
+        webCornersRecentProfile(
+          game.casa,
+          homeMatches,
+          Math.max(WEB_CORNERS_RECENT_N, MULTI_MARKET_ENGINE.RECENT_N)
+        ),
+        webCornersRecentProfile(
+          game.fora,
+          awayMatches,
+          Math.max(WEB_CORNERS_RECENT_N, MULTI_MARKET_ENGINE.RECENT_N)
+        )
+      ]);
+
       const rawCornersDecision = cornersEngineDecision({
         game,
-        home: homeProfile,
-        away: awayProfile
+        home: cornerHomeProfile,
+        away: cornerAwayProfile
       });
 
       const learnedCornersDecision = cornerLearningApply(
         {
           ...game,
           engine_profiles: {
-            home: homeProfile,
-            away: awayProfile
+            home: cornerHomeProfile,
+            away: cornerAwayProfile
           }
         },
         rawCornersDecision
@@ -9077,8 +9112,8 @@ async function buildAllMarketEngines({ date }) {
         game,
         market: "corners",
         decision: lockedCornersDecision,
-        homeProfile,
-        awayProfile,
+        homeProfile: cornerHomeProfile,
+        awayProfile: cornerAwayProfile,
         oddsInfo
       });
 
@@ -9112,8 +9147,8 @@ async function buildAllMarketEngines({ date }) {
         cards_ai,
         handicap_ai,
         engine_profiles: {
-          home: homeProfile,
-          away: awayProfile
+          home: cornerHomeProfile,
+          away: cornerAwayProfile
         }
       };
     }
@@ -9876,18 +9911,7 @@ function webCornersDirectPair(match) {
 
 async function webCornersPairForMatch(match) {
   const direct = webCornersDirectPair(match);
-
-  // APP/CORNERS FIX V26:
-  // Algumas respostas da API trazem 0 x 0 como placeholder de escanteios.
-  // Isso contaminava a forma recente e empurrava várias projeções para o
-  // piso artificial de 6.5. Só aceitamos o par direto quando existe ao
-  // menos um escanteio; caso contrário tentamos as estatísticas reais.
-  const directLooksReal =
-    direct.home !== null &&
-    direct.away !== null &&
-    (Number(direct.home) + Number(direct.away) > 0);
-
-  if (directLooksReal) {
+  if (direct.home !== null && direct.away !== null) {
     return { ...direct, source: "event" };
   }
 
@@ -10032,13 +10056,10 @@ function webCornersIndividualDecision(game, home, away) {
     sampleGames >= 3 ? 0.78 :
     0.70;
 
-  // APP/CORNERS FIX V26:
-  // Mantém a projeção calculada de verdade. O antigo piso 6.5 fazia qualquer
-  // leitura abaixo dele aparecer exatamente como 6.5 no app.
   const projection = engineClamp(
     recentProjection * recentWeight +
     leagueBase * (1 - recentWeight),
-    3.0,
+    6.5,
     16.5
   );
 
@@ -10987,7 +11008,7 @@ function cornerPregameLockSnapshot(game, decision) {
     corner_engine_version:
       decision?.corner_engine_version ??
       decision?.extra?.corner_engine_version ??
-      "corners-strict-v4-confidence-gate",
+      "corners-strict-v5-real-corners-profile",
     lock_version: CORNER_PREGAME_LOCK_VERSION
   };
 }

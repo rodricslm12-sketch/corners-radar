@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v145-corners-engine:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v146-corners-real-lines:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -167,6 +167,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function decisionLine(g,m=state.market){
       const d=dec(g,m);
       return clean(d?.line??d?.pick??d?.recommendation??d?.selection,"").toUpperCase();
+    }
+
+    function cornerProjectionLine(g){
+      const p=projection(g,"corners");
+      if(!Number.isFinite(p))return "";
+      if(p>=12.75)return "OVER 12.5";
+      if(p>=11.75)return "OVER 11.5";
+      if(p>=10.75)return "OVER 10.5";
+      if(p>=9.75)return "OVER 9.5";
+      if(p>=8.90)return "OVER 8.5";
+      return "";
     }
 
     function cornerRec(g){
@@ -308,15 +319,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ).slice(0,30);
       }
 
-      /* APP CANTOS V145:
-         Nos botões 8.5/9.5/10.5/11.5/12.5 não reciclamos a mesma lista.
-         A linha vem da decisão REAL do motor /market_engines para cada partida. */
+      /* CANTOS V146 — cada aba representa a linha calculada daquele jogo.
+         Não repete a mesma lista e não depende da IA automática excluir o 8.5. */
       if(m==="corners"){
         const wanted=`OVER ${line}`.toUpperCase();
-        a=a.filter(g=>{
-          const dline=decisionLine(g,"corners");
-          return dline===wanted;
-        });
+        a=a.filter(g=>cornerProjectionLine(g)===wanted);
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
@@ -373,12 +380,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         render();
       }
 
-      /* APP CANTOS V145
-         O /web_corners_ai é exclusivo do DESKTOP.
-         No mobile usamos o motor oficial /market_engines, que já devolve
-         corners/goals/cards/handicap/btts com a decisão individual de cada jogo. */
       const jobs=[
-        ["all",`/market_engines?date=${encodeURIComponent(date)}&_mobile_corners_v145=${stamp}`,50000],
+        ["all",`/market_engines?date=${encodeURIComponent(date)}&_mobile_corners_v146=${stamp}`,50000],
         ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
       ];
 
@@ -629,7 +632,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function gameCard(g,i){
-      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
+      const s=status(g);
+      const p=(state.market==="corners" && !["IA","TODOS"].includes(state.line))
+        ? `OVER ${state.line}`
+        : pick(g);
+      const pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
       const isScore=s.live||s.ht||s.finished;
       const scoreNote=s.finished?(s.halftimeScore?`1º TEMPO ${s.halftimeScore}`:"FIM DE JOGO"):s.ht?"INTERVALO":s.live?"EM ANDAMENTO":"";
       return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}" data-match-id="${esc(id(g))}">
