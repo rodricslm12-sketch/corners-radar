@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v144_cornersfix:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v145_corners_web:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -157,7 +157,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     /* V141 — MERCADOS MOBILE: uma única fonte de leitura, sem fallback cruzado */
     function projection(g,m=state.market){
       const r=raw(g),d=dec(g,m);
-      if(m==="corners")return num(g?.corners_ai?.projection,d?.projection,r?.corners_ai?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
+      if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
       if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
       if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
       if(m==="handicap")return num(d?.projection,d?.expected_handicap,r?.handicap_projection,r?.expected_handicap);
@@ -277,7 +277,42 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},oldRaw=raw(old),newRaw=raw(g),next={...old,...g,raw:{...oldRaw,...newRaw}};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||newRaw?.[f]||g?.decision||g?.ai;if(d){next[f]=d;next.raw={...next.raw,[f]:d}}}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()].filter(isMainLeagueGame)}
+    function merge(){
+      const map=new Map();
+      const mergeGame=(base,extra,m=null)=>{
+        if(!base)return extra;
+        if(!extra)return base;
+        const br=raw(base),er=raw(extra);
+        const out={
+          ...base,
+          ...extra,
+          raw:{
+            ...br,
+            ...er,
+            markets:{...(br?.markets||{}),...(er?.markets||{})},
+            corners_ai:er?.corners_ai ?? extra?.corners_ai ?? br?.corners_ai ?? base?.corners_ai,
+            goals_ai:er?.goals_ai ?? extra?.goals_ai ?? br?.goals_ai ?? base?.goals_ai,
+            cards_ai:er?.cards_ai ?? extra?.cards_ai ?? br?.cards_ai ?? base?.cards_ai,
+            btts_ai:er?.btts_ai ?? extra?.btts_ai ?? br?.btts_ai ?? base?.btts_ai,
+            handicap_ai:er?.handicap_ai ?? extra?.handicap_ai ?? br?.handicap_ai ?? base?.handicap_ai
+          }
+        };
+        if(m&&MARKETS[m]?.field){
+          const f=MARKETS[m].field;
+          const d=extra?.[f]||er?.[f]||extra?.decision||extra?.ai;
+          if(d){out[f]=d;out.raw[f]=d;}
+        }
+        return out;
+      };
+      const add=(g,m=null)=>{
+        if(!g||typeof g!=="object")return;
+        const k=id(g);
+        map.set(k,mergeGame(map.get(k),g,m));
+      };
+      state.base.forEach(g=>add(g));
+      Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));
+      state.games=[...map.values()].filter(isMainLeagueGame);
+    }
     /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
        Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
        parecerem iguais e fazia linhas manuais zerarem a tela. */
@@ -308,21 +343,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ).slice(0,30);
       }
 
-      /* V144 CANTOS APP — linhas manuais usam a projeção REAL do motor dedicado.
-         Quanto maior a linha, mais seletiva fica a lista. Não altera desktop/site. */
+      /* Linha manual: não exige que a IA automática tenha escolhido exatamente a mesma linha.
+         Cada botão passa a recalcular/rankear a própria linha. */
       if(m==="corners"){
         const target=num(String(line).replace("+",""));
-        const minProjection=target===8.5?8.90:target===9.5?9.75:target===10.5?10.75:target===11.5?11.75:target===12.5?12.75:null;
+        if(target===null)return [];
+        const minProjection={"8.5":8.90,"9.5":9.75,"10.5":10.75,"11.5":11.75,"12.5":12.75}[String(line)] ?? (target+0.25);
         a=a.filter(g=>{
           const p=projection(g,"corners");
-          const rec=cornerRec(g);
-          if(p===null)return false;
-          if(minProjection!==null && Number(p)>=minProjection)return true;
-          if(rec.valid){
-            const recN=num(String(rec.line||"").replace(/OVER\s*/i,""));
-            return recN!==null && target!==null && recN>=target;
-          }
-          return false;
+          return p!==null && Number(p)>=minProjection;
         });
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
