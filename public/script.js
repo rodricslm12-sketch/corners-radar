@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v147-handicap-restored:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v148-handicap-original:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -202,54 +202,6 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       return"";
     }
 
-    // HANDICAP RESTORE V147 — o app não inventa uma linha ao clicar no botão.
-    // Só aceita linhas realmente publicadas/disponíveis pelo motor de Handicap.
-    function normalizeHandicapLine(v){
-      const n=num(String(v??"").replace("+",""));
-      if(n===null)return"";
-      const fixed=n.toFixed(1);
-      return n>0?`+${fixed}`:fixed;
-    }
-
-    function handicapAvailableLines(g){
-      const d=dec(g,"handicap");
-      const out=new Set();
-
-      const add=v=>{
-        const x=normalizeHandicapLine(v);
-        if(x)out.add(x);
-      };
-
-      add(d?.line);
-
-      const lists=[
-        d?.available_lines,
-        d?.lines_available,
-        d?.market_lines,
-        d?.availableLines
-      ];
-
-      for(const list of lists){
-        if(Array.isArray(list)){
-          list.forEach(v=>{
-            if(v&&typeof v==="object") add(v.line??v.value??v.handicap);
-            else add(v);
-          });
-        }else if(list&&typeof list==="object"){
-          Object.keys(list).forEach(add);
-        }
-      }
-
-      // Se o servidor só publicou uma linha oficial, ela continua sendo a autoridade.
-      return out;
-    }
-
-    function handicapHasLine(g,line){
-      const wanted=normalizeHandicapLine(line);
-      if(!wanted)return false;
-      return handicapAvailableLines(g).has(wanted);
-    }
-
     function pick(g,m=state.market){
       const r=raw(g),d=dec(g,m);
       const manual=!["IA","TODOS"].includes(state.line);
@@ -257,9 +209,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(manual&&["corners","goals","cards"].includes(m))return `OVER ${state.line}`;
       if(manual&&m==="handicap"){
         const side=handicapSide(g);
-        const d=dec(g,"handicap");
-        const realLine=normalizeHandicapLine(d?.line);
-        return `${side?side+" ":""}${realLine||state.line}`.trim();
+        return `${side?side+" ":""}${state.line}`.trim();
       }
       if(manual&&m==="btts")return state.line;
 
@@ -296,14 +246,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
 
       if(m==="handicap"){
-        if(!handicapHasLine(g,line))return -9999;
         const d=dec(g,m);
         const direct=num(
-          d?.probability,
-          d?.confidence,
+          d?.probability,d?.confidence,
           d?.[`line_${String(line).replace("+","").replace(".","_")}_prob`]
         );
-        return direct??c;
+        return (direct??c)+(decisionLine(g,m)?10:0);
       }
 
       if(m==="btts"){
@@ -379,11 +327,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
-        a=a.filter(g=>{
-          const d=dec(g,"handicap");
-          if(!d||typeof d!=="object"||d.skip||d.updating)return false;
-          return handicapHasLine(g,line);
-        });
+        a=a.filter(g=>dec(g,m)&&typeof dec(g,m)==="object");
       }else if(m==="btts"){
         a=a.filter(g=>decisionLine(g,m));
       }
