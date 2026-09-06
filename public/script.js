@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v149-handicap-real-lines:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v150-handicap-fast-lines:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -211,7 +211,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       const markets=[
         ...(Array.isArray(r?.asian_handicap_markets)?r.asian_handicap_markets:[]),
-        ...(Array.isArray(g?.asian_handicap_markets)?g.asian_handicap_markets:[])
+        ...(Array.isArray(g?.asian_handicap_markets)?g.asian_handicap_markets:[]),
+        ...(Array.isArray(d?.asian_handicap_markets)?d.asian_handicap_markets:[])
       ];
 
       const candidates=[];
@@ -241,13 +242,30 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       const available=[
         ...(Array.isArray(r?.handicap_available_lines)?r.handicap_available_lines:[]),
+        ...(Array.isArray(g?.handicap_available_lines)?g.handicap_available_lines:[]),
         ...(Array.isArray(d?.available_lines)?d.available_lines:[]),
         ...(Array.isArray(d?.lines_available)?d.lines_available:[]),
         ...(Array.isArray(d?.market_lines)?d.market_lines:[])
       ].map(v=>num(String(v).replace("+",""))).filter(v=>v!==null);
 
-      const exists=available.some(v=>Math.abs(v-target)<0.001);
+      const officialLine=num(String(d?.line??"").replace("+",""));
+      const officialMatches=
+        officialLine!==null && Math.abs(officialLine-target)<0.001;
+
+      const exists=
+        officialMatches ||
+        available.some(v=>Math.abs(v-target)<0.001);
+
       if(!exists)return{valid:false,side:"",odd:null};
+
+      if(officialMatches){
+        const side=handicapSide(g);
+        return{
+          valid:!!side,
+          side,
+          odd:num(d?.market_odd)
+        };
+      }
 
       // Linha existe, mas sem lado explícito: usa a lógica já existente do motor.
       const engine=handicapSide(g);
@@ -271,6 +289,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(manual&&m==="btts")return state.line;
 
       if(m==="corners")return cornerRec(g).line;
+      if(m==="handicap"){
+        const side=handicapSide(g);
+        const line=clean(d?.line??d?.pick??d?.recommendation??d?.selection,"ANALISANDO").toUpperCase();
+        return `${side?side+" ":""}${line}`.trim();
+      }
       if(m==="result"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"FORA":s.includes("home")?"CASA":"1X2"}
       if(m==="doublechance"){const s=norm(r?.handicap_ai?.side_key??r?.handicap_ai?.side??"");return s.includes("away")?"X2":s.includes("home")?"1X":"12"}
       if(m==="teamgoals")return `OVER ${state.line==="IA"||state.line==="TODOS"?"0.5":state.line}`;
@@ -6968,13 +6991,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   ? selectedLine
                   : "IA";
 
+                // HANDICAP V150:
+                // A lista state.handicap vem do endpoint rápido e contém
+                // asian_handicap_markets / handicap_available_lines reais.
+                // Antes as abas manuais usavam mobileAllGamesForMarket(),
+                // que em muitos jogos não carregava essas linhas e zerava tudo.
                 const originalSourceGames =
-                  requestedLine === "IA"
-                    ? (
-                        (Array.isArray(state.handicap) && state.handicap.length)
-                          ? state.handicap
-                          : []
-                      )
+                  (Array.isArray(state.handicap) && state.handicap.length)
+                    ? state.handicap
                     : mobileAllGamesForMarket("handicap");
 
                 const upcomingHandicapGames = originalSourceGames.filter(game => !handicapFinished(game));
