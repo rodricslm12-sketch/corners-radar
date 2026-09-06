@@ -308,9 +308,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ).slice(0,30);
       }
 
-      /* Linha manual: não exige que a IA automática tenha escolhido exatamente a mesma linha.
-         Cada botão passa a recalcular/rankear a própria linha. */
-      if(["corners","goals","cards"].includes(m)){
+      /* APP/CORNERS FIX V26:
+         Em Escanteios, cada botão mostra somente os jogos cuja linha calculada
+         pertence àquela faixa. Assim 8.5, 9.5, 10.5, 11.5 e 12.5 deixam de
+         repetir a mesma lista. */
+      if(m==="corners"){
+        const wanted=`OVER ${line}`.toUpperCase();
+        a=a.filter(g=>{
+          const rec=cornerRec(g);
+          return rec.valid && String(rec.line||"").toUpperCase()===wanted;
+        });
+      }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
         a=a.filter(g=>dec(g,m)&&typeof dec(g,m)==="object");
@@ -618,7 +626,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function gameCard(g,i){
-      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
+      const s=status(g);
+      const p=(state.market==="corners" && !["IA","TODOS"].includes(state.line))
+        ? `OVER ${state.line}`
+        : pick(g);
+      const pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
       const isScore=s.live||s.ht||s.finished;
       const scoreNote=s.finished?(s.halftimeScore?`1º TEMPO ${s.halftimeScore}`:"FIM DE JOGO"):s.ht?"INTERVALO":s.live?"EM ANDAMENTO":"";
       return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}" data-match-id="${esc(id(g))}">

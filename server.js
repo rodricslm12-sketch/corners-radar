@@ -9876,7 +9876,18 @@ function webCornersDirectPair(match) {
 
 async function webCornersPairForMatch(match) {
   const direct = webCornersDirectPair(match);
-  if (direct.home !== null && direct.away !== null) {
+
+  // APP/CORNERS FIX V26:
+  // Algumas respostas da API trazem 0 x 0 como placeholder de escanteios.
+  // Isso contaminava a forma recente e empurrava várias projeções para o
+  // piso artificial de 6.5. Só aceitamos o par direto quando existe ao
+  // menos um escanteio; caso contrário tentamos as estatísticas reais.
+  const directLooksReal =
+    direct.home !== null &&
+    direct.away !== null &&
+    (Number(direct.home) + Number(direct.away) > 0);
+
+  if (directLooksReal) {
     return { ...direct, source: "event" };
   }
 
@@ -10021,10 +10032,13 @@ function webCornersIndividualDecision(game, home, away) {
     sampleGames >= 3 ? 0.78 :
     0.70;
 
+  // APP/CORNERS FIX V26:
+  // Mantém a projeção calculada de verdade. O antigo piso 6.5 fazia qualquer
+  // leitura abaixo dele aparecer exatamente como 6.5 no app.
   const projection = engineClamp(
     recentProjection * recentWeight +
     leagueBase * (1 - recentWeight),
-    6.5,
+    3.0,
     16.5
   );
 
