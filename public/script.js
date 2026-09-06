@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v148-handicap-original:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v149-handicap-real-lines:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -202,14 +202,71 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       return"";
     }
 
+    // HANDICAP V149 — cada botão usa as linhas asiáticas REAIS do próprio jogo.
+    // Lê asian_handicap_markets + handicap_available_lines + available_lines.
+    function handicapLineInfo(g,line){
+      const r=raw(g),d=dec(g,"handicap");
+      const target=num(String(line).replace("+",""));
+      if(target===null)return{valid:false,side:"",odd:null};
+
+      const markets=[
+        ...(Array.isArray(r?.asian_handicap_markets)?r.asian_handicap_markets:[]),
+        ...(Array.isArray(g?.asian_handicap_markets)?g.asian_handicap_markets:[])
+      ];
+
+      const candidates=[];
+
+      for(const item of markets){
+        const hl=num(item?.home_line), al=num(item?.away_line);
+        const ho=num(item?.home_odd), ao=num(item?.away_odd);
+
+        if(hl!==null && Math.abs(hl-target)<0.001){
+          candidates.push({side:"CASA",odd:ho});
+        }
+        if(al!==null && Math.abs(al-target)<0.001){
+          candidates.push({side:"FORA",odd:ao});
+        }
+      }
+
+      if(candidates.length){
+        // Se houver odds, prefere a opção com odd válida mais baixa;
+        // se não, mantém a primeira linha real encontrada.
+        candidates.sort((a,b)=>{
+          const av=(a.odd!==null&&a.odd>1)?a.odd:999;
+          const bv=(b.odd!==null&&b.odd>1)?b.odd:999;
+          return av-bv;
+        });
+        return{valid:true,side:candidates[0].side,odd:candidates[0].odd};
+      }
+
+      const available=[
+        ...(Array.isArray(r?.handicap_available_lines)?r.handicap_available_lines:[]),
+        ...(Array.isArray(d?.available_lines)?d.available_lines:[]),
+        ...(Array.isArray(d?.lines_available)?d.lines_available:[]),
+        ...(Array.isArray(d?.market_lines)?d.market_lines:[])
+      ].map(v=>num(String(v).replace("+",""))).filter(v=>v!==null);
+
+      const exists=available.some(v=>Math.abs(v-target)<0.001);
+      if(!exists)return{valid:false,side:"",odd:null};
+
+      // Linha existe, mas sem lado explícito: usa a lógica já existente do motor.
+      const engine=handicapSide(g);
+      let side=engine;
+      if(target>0){
+        if(engine==="CASA")side="FORA";
+        else if(engine==="FORA")side="CASA";
+      }
+      return{valid:!!side,side,odd:null};
+    }
+
     function pick(g,m=state.market){
       const r=raw(g),d=dec(g,m);
       const manual=!["IA","TODOS"].includes(state.line);
 
       if(manual&&["corners","goals","cards"].includes(m))return `OVER ${state.line}`;
       if(manual&&m==="handicap"){
-        const side=handicapSide(g);
-        return `${side?side+" ":""}${state.line}`.trim();
+        const info=handicapLineInfo(g,state.line);
+        return `${info.side?info.side+" ":""}${state.line}`.trim();
       }
       if(manual&&m==="btts")return state.line;
 
@@ -246,12 +303,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
 
       if(m==="handicap"){
+        const info=handicapLineInfo(g,line);
+        if(!info.valid)return -9999;
         const d=dec(g,m);
         const direct=num(
           d?.probability,d?.confidence,
           d?.[`line_${String(line).replace("+","").replace(".","_")}_prob`]
         );
-        return (direct??c)+(decisionLine(g,m)?10:0);
+        const oddBonus=(info.odd!==null&&info.odd>1)?Math.max(0,6-(info.odd-1.5)*4):0;
+        return (direct??c)+oddBonus;
       }
 
       if(m==="btts"){
@@ -327,7 +387,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
       }else if(m==="handicap"){
-        a=a.filter(g=>dec(g,m)&&typeof dec(g,m)==="object");
+        a=a.filter(g=>{
+          const d=dec(g,m);
+          return d&&typeof d==="object"&&handicapLineInfo(g,line).valid;
+        });
       }else if(m==="btts"){
         a=a.filter(g=>decisionLine(g,m));
       }
