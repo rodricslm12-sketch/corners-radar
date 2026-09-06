@@ -154,10 +154,67 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
+    /* =========================================================
+       V151 — FIX EXCLUSIVO DE ESCANTEIOS / PROJEÇÃO 6.5
+       O app estava aceitando d.projection=6.5 como se fosse uma
+       projeção real de cantos. Isso deixava vários jogos iguais,
+       "SEM ENTRADA" e fazia as linhas 8.5/9.5/10.5 não diferenciarem.
+
+       IMPORTANTE:
+       - altera SOMENTE corners;
+       - gols, cartões, handicap, BTTS etc. permanecem exatamente iguais.
+       ========================================================= */
+    function realCornersProjection(g){
+      const r=raw(g),d=dec(g,"corners");
+
+      // Primeiro procura a projeção real no objeto bruto do jogo.
+      // Inclui os nomes de campo usados pelas diferentes rotas do site/app.
+      const rawCandidates=[
+        r?.proj_cantos,
+        r?.projCorners,
+        r?.projected_corners,
+        r?.corners_projection,
+        r?.corner_projection,
+        r?.expected_corners,
+        r?.total_corners_avg,
+        r?.media_combinada,
+        r?.corner_avg,
+        r?.corners_avg,
+        r?.media_cantos_total,
+        r?.cantos_proj,
+        r?.real?.recentCombinedAvg,
+        g?.proj_cantos,
+        g?.projCorners,
+        g?.projected_corners,
+        g?.corners_projection,
+        g?.corner_projection,
+        g?.expected_corners
+      ];
+
+      for(const value of rawCandidates){
+        const n=num(value);
+        // Faixa de projeção plausível para o motor de escanteios.
+        // 6.5 não é reaproveitado como fallback visual.
+        if(n!==null && n>=7.5 && n<=20)return n;
+      }
+
+      // Só usa a projeção da decisão da IA se ela também parecer uma
+      // projeção REAL. Isso elimina o 6.5 fixo vindo como placeholder/linha.
+      const aiProjection=num(d?.projection);
+      if(aiProjection!==null && aiProjection>=7.5 && aiProjection<=20){
+        return aiProjection;
+      }
+
+      return null;
+    }
+
     /* V141 — MERCADOS MOBILE: uma única fonte de leitura, sem fallback cruzado */
     function projection(g,m=state.market){
       const r=raw(g),d=dec(g,m);
-      if(m==="corners")return num(d?.projection,r?.proj_cantos,r?.corners_projection,r?.expected_corners,r?.total_corners_avg);
+
+      // FIX V151: somente ESCANTEIOS usa a leitura protegida acima.
+      if(m==="corners")return realCornersProjection(g);
+
       if(m==="goals"||m==="teamgoals")return num(d?.projection,r?.expected_goals_total,r?.goals_projection,r?.total_goals_avg);
       if(m==="cards")return num(d?.projection,r?.cards_projection,r?.proj_cards,r?.avg_cards,r?.media_cartoes);
       if(m==="handicap")return num(d?.projection,d?.expected_handicap,r?.handicap_projection,r?.expected_handicap);
@@ -172,6 +229,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function cornerRec(g){
       const d=dec(g,"corners"),line=decisionLine(g,"corners"),p=projection(g,"corners"),c=confidence(g,"corners");
       if(d?.updating||d?.skip)return{valid:false,line:"SEM ENTRADA",projection:p,confidence:c};
+
+      // V151: OVER 6.5 nunca é aceito no motor mobile de escanteios.
       if(/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line))return{valid:true,line,projection:p,confidence:c};
       /* Só deriva uma linha quando existe projeção REAL suficiente. Não transforma 6.5 em entrada. */
       if(p!==null){
