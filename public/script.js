@@ -32,7 +32,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
        Próximos refreshes: hidrata jogos imediatamente e atualiza
        em segundo plano sem voltar para a tela de loading.
        ========================================================= */
-    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v143:";
+    const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v145-corners-engine:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
     function mobileHomeCacheKey(date=state.date||ymd()){
@@ -308,15 +308,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ).slice(0,30);
       }
 
-      /* APP/CORNERS FIX V26:
-         Em Escanteios, cada botão mostra somente os jogos cuja linha calculada
-         pertence àquela faixa. Assim 8.5, 9.5, 10.5, 11.5 e 12.5 deixam de
-         repetir a mesma lista. */
+      /* APP CANTOS V145:
+         Nos botões 8.5/9.5/10.5/11.5/12.5 não reciclamos a mesma lista.
+         A linha vem da decisão REAL do motor /market_engines para cada partida. */
       if(m==="corners"){
         const wanted=`OVER ${line}`.toUpperCase();
         a=a.filter(g=>{
-          const rec=cornerRec(g);
-          return rec.valid && String(rec.line||"").toUpperCase()===wanted;
+          const dline=decisionLine(g,"corners");
+          return dline===wanted;
         });
       }else if(["goals","cards"].includes(m)){
         a=a.filter(g=>projection(g,m)!==null);
@@ -374,9 +373,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         render();
       }
 
+      /* APP CANTOS V145
+         O /web_corners_ai é exclusivo do DESKTOP.
+         No mobile usamos o motor oficial /market_engines, que já devolve
+         corners/goals/cards/handicap/btts com a decisão individual de cada jogo. */
       const jobs=[
-        ["corners",`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=25`,38000],
-        ["all",`/market_engines?date=${encodeURIComponent(date)}&t=${stamp}`,50000],
+        ["all",`/market_engines?date=${encodeURIComponent(date)}&_mobile_corners_v145=${stamp}`,50000],
         ["fast",`/market_engines_fast?date=${encodeURIComponent(date)}&t=${stamp}`,24000]
       ];
 
@@ -385,10 +387,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           const p=await fetchJ(url,to);
           if(req!==state.request)return;
 
-          if(kind==="corners"){
-            let a=extract(p,"corners");
-            if(!a.length)a=extract(p);
-            if(a.length)state.engines.corners=a;
+          if(kind==="all"){
+            for(const market of ["corners","goals","cards","handicap","btts"]){
+              const a=extract(p,market);
+              if(a.length)state.engines[market]=a;
+            }
           }else{
             for(const market of ["goals","cards","handicap","btts"]){
               const a=extract(p,market);
@@ -626,11 +629,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function gameCard(g,i){
-      const s=status(g);
-      const p=(state.market==="corners" && !["IA","TODOS"].includes(state.line))
-        ? `OVER ${state.line}`
-        : pick(g);
-      const pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
+      const s=status(g),p=pick(g),pr=projection(g),cf=confidence(g),theme=gameTheme(i),cv=confidenceView(cf),leg=legInfo(g);
       const isScore=s.live||s.ht||s.finished;
       const scoreNote=s.finished?(s.halftimeScore?`1º TEMPO ${s.halftimeScore}`:"FIM DE JOGO"):s.ht?"INTERVALO":s.live?"EM ANDAMENTO":"";
       return `<article class="v110Game v120MarketGame theme-${theme}" data-v110-game="${i}" data-match-id="${esc(id(g))}">
