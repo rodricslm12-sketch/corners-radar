@@ -557,7 +557,7 @@
   css.href="style.css?v=20260826-app-v122-mobile";
   document.head.appendChild(css);
   var js=document.createElement("script");
-  js.src="script.js?v=20260826-app-v122-mobile";
+  js.src="script.js?v=20260909-app-v156-auth";
   js.defer=true;
   document.head.appendChild(js);
 })();
@@ -653,20 +653,43 @@
   </div>
 </section>
 
-<section id="cpV116Login" class="v116Overlay" aria-hidden="true">
-  <div class="v116Modal v116LoginModal" role="dialog" aria-modal="true" aria-labelledby="cpV116LoginTitle">
-    <button class="v116Close" type="button" data-v116-close-login>×</button>
-    <div class="v116LoginBrand">⚑ <b>CORNER<span>PRO</span></b></div>
-    <h2 id="cpV116LoginTitle">Entrar no CornerPro</h2>
-    <p>Acesse sua conta para manter favoritos, alertas e recursos do seu plano.</p>
-    <button class="v116Google" id="cpV116GoogleLogin" type="button">
-      <span>G</span><b>Entrar com Google</b>
-    </button>
-    <p class="v116LoginError" aria-live="polite"></p>
-    <div class="v116Logged" id="cpV116Logged" hidden>
-      <img id="cpV116LoggedImg" alt="">
-      <div><strong id="cpV116LoggedName">Usuário</strong><small id="cpV116LoggedEmail"></small></div>
-    </div>
+<section id="cpV116Login" class="v116Overlay" aria-hidden="true" data-v155-account-ui="1">
+  <div class="v155AccountCard" role="dialog" aria-modal="true" aria-labelledby="v155AccountTitle">
+    <button type="button" class="v155AccountClose" data-v116-close-login aria-label="Fechar">×</button>
+
+    <div class="v155Brand"><span>⚑</span><b>CORNER<span>PRO</span></b></div>
+
+    <section id="v155LoggedOut" class="v155AccountState">
+      <h2 id="v155AccountTitle">Acesse sua conta</h2>
+      <p>Entre para manter seus favoritos, alertas e recursos do seu plano.</p>
+
+      <button id="cpV116GoogleLogin" class="v155GoogleBtn" type="button">
+        <span class="v155GoogleG">G</span>
+        <b>Continuar com Google</b>
+      </button>
+
+      <div class="v155SecureNote">🔒 Login seguro pelo Google</div>
+    </section>
+
+    <section id="cpV116Logged" class="v155AccountState v155LoggedState" hidden>
+      <div class="v155ProfileTop">
+        <img id="cpV116LoggedImg" alt="">
+        <div>
+          <h2 id="cpV116LoggedName">Usuário CornerPro</h2>
+          <p id="cpV116LoggedEmail"></p>
+        </div>
+        <span id="v155PlanBadge" class="v155PlanBadge">FREE</span>
+      </div>
+
+      <div class="v155AccountMenu">
+        <button type="button" data-v155-my-account><span>👤</span><b>Minha conta</b><em>›</em></button>
+        <button type="button" data-v155-devices><span>▣</span><b>Gerenciar dispositivos</b><em>›</em></button>
+        <button type="button" data-v155-upgrade class="v155Upgrade"><span>♛</span><b>Assinar CornerPro PRO</b><em>›</em></button>
+        <button type="button" data-v155-logout class="v155Logout"><span>↪</span><b>Sair</b><em>›</em></button>
+      </div>
+    </section>
+
+    <p class="v116LoginError v155LoginError" aria-live="polite"></p>
   </div>
 </section>
 
