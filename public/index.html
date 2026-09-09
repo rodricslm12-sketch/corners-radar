@@ -1347,6 +1347,27 @@
         <b>CONTINUAR COM GOOGLE</b>
       </button>
 
+      <!-- APP V154 — PERFIL DA CONTA (somente mobile; preenchido pelo Firebase) -->
+      <div class="cpAuthMobileAccount" id="cpAuthMobileAccount" hidden>
+        <div class="cpAuthMobileIdentity">
+          <div class="cpAuthMobileAvatar" id="cpAuthMobileAvatar"><span>CP</span></div>
+          <div>
+            <strong id="cpAuthMobileName">Usuário</strong>
+            <small id="cpAuthMobileEmail">Conta CornerPro</small>
+          </div>
+        </div>
+        <div class="cpAuthMobilePlan">
+          <span>PLANO ATUAL</span>
+          <b id="cpAuthMobilePlan">FREE</b>
+          <small id="cpAuthMobilePlanHint">Acesso gratuito ativo</small>
+        </div>
+        <div class="cpAuthMobileSecure">
+          <span>✓</span>
+          <div><b>Conta protegida pelo Firebase</b><small>Seu acesso fica vinculado ao seu usuário, não a um link compartilhável.</small></div>
+        </div>
+        <button type="button" class="cpAuthMobileLogout" id="cpAuthMobileLogout">SAIR DA CONTA</button>
+      </div>
+
       <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
 
       <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
@@ -1577,9 +1598,24 @@
   function render(){renderMarkets();renderLines();renderHero();renderGames();$('#cpV105DateText').textContent=`📅 ${dateLabel(state.date||ymd())}`;syncAuth()}
   let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
   async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch('/auth/firebase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||'Falha ao autenticar');const m=await fetch('/auth/me',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||'Falha ao carregar perfil');return {...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
-  function syncAuth(){const img=$('#cpV105UserImg'),dot=$('#cpV105User i'),btn=$('#cpV105User');const photo=currentUser?.photoURL||currentProfile?.user?.foto||'';if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||'Perfil'):'Entrar com Google';if(dot)dot.style.background=currentUser?'#66ff2a':'#6f7a75'}
-  async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V107 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V107 firebase]',e);syncAuth()}}
-  async function openAuth(){if(authBusy||!firebaseApi)return;if(currentUser){return}authBusy=true;try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;if(currentUser)currentProfile=await serverProfile(currentUser,true)}catch(e){console.warn('[V107 login]',e)}finally{authBusy=false;syncAuth()}}
+  function authModalEls(){return{modal:$('#cpAuthModal'),title:$('#cpAuthModalTitle'),subtitle:$('#cpAuthModalSubtitle'),google:$('#cpAuthGoogle'),tabs:$('.cpAuthTabs'),divider:$('.cpAuthDivider'),form:$('#cpAuthForm'),switcher:$('.cpAuthSwitch'),privacy:$('.cpAuthPrivacy'),account:$('#cpAuthMobileAccount'),avatar:$('#cpAuthMobileAvatar'),name:$('#cpAuthMobileName'),email:$('#cpAuthMobileEmail'),plan:$('#cpAuthMobilePlan'),planHint:$('#cpAuthMobilePlanHint'),logout:$('#cpAuthMobileLogout')}}
+  function setAuthModalMessage(message,type='error'){const box=$('#cpAuthFormMessage');if(!box)return;if(!message){box.hidden=true;box.textContent='';box.removeAttribute('data-type');return}box.textContent=message;box.dataset.type=type;box.hidden=false}
+  function closeAuthModal(){const {modal}=authModalEls();if(!modal)return;modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('cpAuthModalOpen');setAuthModalMessage('')}
+  function paintMobileAccount(){const e=authModalEls();const logged=!!currentUser;const profile=currentProfile?.user||currentProfile||{};const premium=currentProfile?.premium===true||profile?.premium===true;const name=currentUser?.displayName||profile?.nome||currentUser?.email?.split('@')[0]||'Usuário';const email=currentUser?.email||profile?.email||'';const photo=currentUser?.photoURL||profile?.foto||'';
+    if(e.tabs)e.tabs.hidden=true;if(e.divider)e.divider.hidden=true;if(e.form)e.form.hidden=true;if(e.switcher)e.switcher.hidden=true;
+    if(e.google)e.google.hidden=logged;if(e.account)e.account.hidden=!logged;
+    if(e.title)e.title.textContent=logged?'Minha conta':'Bem-vindo ao CornerPro';
+    if(e.subtitle)e.subtitle.textContent=logged?'Gerencie seu acesso e acompanhe o status da sua conta.':'Crie sua conta ou entre de forma rápida e segura usando o Google.';
+    if(e.privacy)e.privacy.textContent=logged?'Sua sessão é validada pelo servidor do CornerPro.':'Ao continuar, o Google confirma sua identidade e o CornerPro cria seu cadastro individual automaticamente.';
+    if(e.name)e.name.textContent=name;if(e.email)e.email.textContent=email||'Conta Google';if(e.plan)e.plan.textContent=premium?'PRO':'FREE';if(e.planHint)e.planHint.textContent=premium?'CornerPro PRO ativo':'Acesso gratuito ativo';
+    if(e.avatar){if(photo){e.avatar.innerHTML=`<img src="${esc(photo)}" alt="Foto de ${esc(name)}" referrerpolicy="no-referrer">`}else{e.avatar.innerHTML=`<span>${esc((name||'CP').slice(0,2).toUpperCase())}</span>`}}
+  }
+  function syncAuth(){const img=$('#cpV105UserImg'),dot=$('#cpV105User i'),btn=$('#cpV105User');const photo=currentUser?.photoURL||currentProfile?.user?.foto||'';if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}if(btn){btn.title=currentUser?(currentUser.displayName||currentUser.email||'Minha conta'):'Entrar / Criar conta';btn.setAttribute('aria-label',currentUser?'Abrir minha conta':'Entrar ou criar conta')}if(dot)dot.style.background=currentUser?'#66ff2a':'#6f7a75';paintMobileAccount()}
+  async function initAuth(){try{firebaseApi=await import('./firebase-client.js');firebaseApi.observarAutenticacao(async st=>{currentUser=st?.usuario||st?.user||firebaseApi.firebaseAuth?.currentUser||null;if(!currentUser){currentProfile=null;syncAuth();return}try{currentProfile=await serverProfile(currentUser)}catch(e){console.warn('[V154 auth profile]',e)}syncAuth()});}catch(e){console.warn('[V154 firebase]',e);syncAuth()}}
+  function openAuth(){const {modal}=authModalEls();if(!modal)return;paintMobileAccount();setAuthModalMessage('');modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('cpAuthModalOpen')}
+  async function mobileGoogleLogin(){if(authBusy||!firebaseApi)return;authBusy=true;const e=authModalEls();if(e.google){e.google.disabled=true;e.google.classList.add('is-loading');const b=e.google.querySelector('b');if(b)b.textContent='CONECTANDO...'}setAuthModalMessage('');try{const r=await firebaseApi.entrarComGoogle();currentUser=r?.usuario||r?.user||firebaseApi.firebaseAuth?.currentUser||null;if(!currentUser)throw new Error('Não foi possível confirmar sua conta Google.');currentProfile=await serverProfile(currentUser,true);syncAuth();paintMobileAccount()}catch(err){console.warn('[V154 login]',err);setAuthModalMessage(err?.message||'Não foi possível entrar com o Google.')}finally{authBusy=false;if(e.google){e.google.disabled=false;e.google.classList.remove('is-loading');const b=e.google.querySelector('b');if(b)b.textContent='CONTINUAR COM GOOGLE'}}}
+  async function mobileLogout(){if(authBusy||!firebaseApi)return;authBusy=true;const e=authModalEls();if(e.logout)e.logout.disabled=true;try{if(typeof firebaseApi.sairDaConta==='function')await firebaseApi.sairDaConta();else if(typeof firebaseApi.sair==='function')await firebaseApi.sair();else if(firebaseApi.firebaseAuth?.signOut)await firebaseApi.firebaseAuth.signOut();currentUser=null;currentProfile=null;syncAuth();closeAuthModal()}catch(err){console.warn('[V154 logout]',err);setAuthModalMessage('Não foi possível sair da conta.')}finally{authBusy=false;if(e.logout)e.logout.disabled=false}}
+  document.addEventListener('click',e=>{if(!window.matchMedia?.('(max-width:980px)').matches)return;if(e.target.closest('#cpAuthGoogle')){e.preventDefault();mobileGoogleLogin();return}if(e.target.closest('#cpAuthMobileLogout')){e.preventDefault();mobileLogout();return}if(e.target.closest('#cpAuthModalClose,#cpAuthModalBackdrop')){e.preventDefault();closeAuthModal();return}},true);
   function openGame(g){const m=MARKETS[state.market],d=dec(g),pr=projection(g),cf=confidence(g),s=status(g);$('#cpV105MatchTitle').textContent=`${home(g)} × ${away(g)}`;$('#cpV105MatchBody').innerHTML=`<section class="v105MatchCard"><small>${esc(league(g))} • ${esc(time(g))}</small><h2>${esc(home(g))} ${esc(s.score)} ${esc(away(g))}</h2><b>${esc(s.label)}</b></section><section class="v105MatchCard"><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2><p>Projeção: <b>${pr!==null?pr.toFixed(1):'—'}</b> &nbsp; Confiança: <b>${cf?cf+'%':'—'}</b></p></section><section class="v105MatchCard"><h3>LEITURA DA IA</h3><p>${esc(clean(d?.reason??d?.explanation??d?.analysis,'Análise carregada pelos mesmos motores utilizados no site desktop.'))}</p></section>`;document.documentElement.classList.add('cpV105MatchOpen')}
   document.addEventListener('click',e=>{const m=e.target.closest('[data-v105-market]');if(m){state.market=m.dataset.v105Market;state.line='IA';render();return}const l=e.target.closest('[data-v105-line]');if(l){state.line=l.dataset.v105Line;render();return}const d=e.target.closest('[data-v105-day]');if(d){document.querySelectorAll('[data-v105-day]').forEach(x=>x.classList.remove('active'));d.classList.add('active');state.date=ymd(Number(d.dataset.v105Day||0));state.line='IA';load();return}const g=e.target.closest('[data-v105-game]');if(g){const x=filtered()[Number(g.dataset.v105Game)];if(x)openGame(x);return}if(e.target.closest('[data-v105-hero]')){const x=filtered()[0]||null;if(x)openGame(x);return}if(e.target.closest('#cpV105CloseMatch')){document.documentElement.classList.remove('cpV105MatchOpen');return}if(e.target.closest('#cpV105Refresh')){load();return}if(e.target.closest('#cpV105User')){openAuth();return}},true);
   state.date=$('#date')?.value||ymd();if($('#date'))$('#date').value=state.date;render();syncAuth();initAuth();
@@ -1589,47 +1625,4 @@
 </script>
 
 <section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
-  <div class="v127MoreCard" role="dialog" aria-modal="true" aria-labelledby="cpV127MoreTitle">
-    <div class="v127MoreHandle" aria-hidden="true"></div>
-
-    <div class="v127MoreHead">
-      <div class="v127MoreTitleWrap">
-        <span class="v127MoreBadge">CORNERPRO</span>
-        <b id="cpV127MoreTitle">Central de mercados</b>
-        <small>Acesso rápido às análises e ferramentas</small>
-      </div>
-      <button type="button" class="v127MoreClose" data-v127-close-more aria-label="Fechar">×</button>
-    </div>
-
-    <div class="v127MorePulse">
-      <span class="v127MorePulseDot"></span>
-      <div><b>Motores de análise ativos</b><small>Dados e IA atualizados em tempo real</small></div>
-      <i>ONLINE</i>
-    </div>
-
-    <div class="v127MoreLabel">MERCADOS</div>
-    <div class="v127MoreGrid">
-      <button type="button" data-v110-open-market="goals"><i>⚽</i><span><b>Gols</b><small>Over, linhas e projeções</small></span><em>›</em></button>
-      <button type="button" data-v110-open-market="cards"><i>▯</i><span><b>Cartões</b><small>Linhas e intensidade</small></span><em>›</em></button>
-      <button type="button" data-v110-open-market="handicap"><i>⚡</i><span><b>Handicap</b><small>Leitura asiática</small></span><em>›</em></button>
-      <button type="button" data-v110-open-market="btts"><i>◎</i><span><b>Ambas marcam</b><small>Probabilidade BTTS</small></span><em>›</em></button>
-      <button type="button" data-v110-open-market="result"><i>🏆</i><span><b>Resultado</b><small>Casa, empate ou fora</small></span><em>›</em></button>
-      <button type="button" data-v110-open-market="builder"><i>✦</i><span><b>Aposta pronta</b><small>Maior confiança da IA</small></span><em>›</em></button>
-    </div>
-
-    <div class="v127MoreLabel">CONTA</div>
-    <button type="button" id="cpV127MoreLogin" class="v127MoreAccount">
-      <span class="v127MoreAccountIcon">♙</span>
-      <span><b>Minha conta</b><small>Perfil, acesso e preferências</small></span>
-      <em>›</em>
-    </button>
-
-    <div class="v127MoreFoot">
-      <span>● SISTEMA OPERACIONAL</span>
-      <small>CornerPro • análises esportivas</small>
-    </div>
-  </div>
-</section>
-
-</body>
-</html>
+  <div class="v127MoreCard" role="dialog" aria-modal="true" a

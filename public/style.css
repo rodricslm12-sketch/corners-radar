@@ -23082,3 +23082,108 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     text-align:center!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO APP V154 — LOGIN / CADASTRO GOOGLE PROFISSIONAL
+   SOMENTE MOBILE (<=980px). NÃO ALTERA DESKTOP NEM MERCADOS.
+   ========================================================= */
+@media (max-width:980px){
+  #cpAuthModal{
+    z-index:2147483647!important;
+    align-items:flex-end!important;
+    padding:0!important;
+  }
+  #cpAuthModal .cpAuthModalBackdrop{
+    background:rgba(0,0,0,.82)!important;
+    backdrop-filter:blur(12px)!important;
+    -webkit-backdrop-filter:blur(12px)!important;
+  }
+  #cpAuthModal .cpAuthCard{
+    width:100%!important;
+    max-width:520px!important;
+    max-height:88dvh!important;
+    margin:0 auto!important;
+    padding:24px 20px calc(24px + env(safe-area-inset-bottom,0px))!important;
+    border-radius:26px 26px 0 0!important;
+    border:1px solid rgba(105,255,42,.22)!important;
+    border-bottom:0!important;
+    background:radial-gradient(circle at 82% 0,rgba(99,241,39,.16),transparent 32%),linear-gradient(180deg,#0b1512 0%,#07100d 58%,#030806 100%)!important;
+    box-shadow:0 -24px 70px rgba(0,0,0,.75)!important;
+  }
+  #cpAuthModal .cpAuthBrand{margin-bottom:18px!important}
+  #cpAuthModal .cpAuthBrandMark{background:#102317!important;color:#78ff2d!important;border-color:#285b2d!important}
+  #cpAuthModal .cpAuthHeading h2{font-size:25px!important;letter-spacing:-.8px!important}
+  #cpAuthModal .cpAuthHeading p{font-size:12px!important;line-height:1.55!important;margin-bottom:20px!important}
+
+  /* Nesta etapa o cadastro mobile é pelo Google, que já existe no firebase-client.js. */
+  #cpAuthModal .cpAuthTabs,
+  #cpAuthModal .cpAuthDivider,
+  #cpAuthModal #cpAuthForm,
+  #cpAuthModal .cpAuthSwitch{
+    display:none!important;
+  }
+  #cpAuthModal .cpAuthGoogle{
+    min-height:54px!important;
+    border-radius:15px!important;
+    border:1px solid #2a3c34!important;
+    background:#f7faf8!important;
+    color:#111713!important;
+    box-shadow:0 12px 32px rgba(0,0,0,.28)!important;
+  }
+  #cpAuthModal .cpAuthGoogle span{
+    width:28px!important;height:28px!important;
+    border:1px solid #d8dedb!important;
+    font-size:14px!important;
+  }
+  #cpAuthModal .cpAuthGoogle b{font-size:11px!important;letter-spacing:.25px!important}
+  #cpAuthModal .cpAuthGoogle.is-loading{opacity:.68!important;cursor:wait!important}
+  #cpAuthModal .cpAuthPrivacy{
+    margin-top:18px!important;
+    padding-top:16px!important;
+    color:#7e8d86!important;
+    font-size:9px!important;
+  }
+  #cpAuthModal .cpAuthFormMessage{
+    display:block!important;
+    margin-top:12px!important;
+  }
+  #cpAuthModal .cpAuthFormMessage[hidden]{display:none!important}
+
+  .cpAuthMobileAccount{display:grid;gap:13px;margin-top:2px}
+  .cpAuthMobileAccount[hidden]{display:none!important}
+  .cpAuthMobileIdentity{
+    display:flex;align-items:center;gap:12px;
+    padding:14px;border:1px solid #1f3328;border-radius:17px;
+    background:linear-gradient(180deg,#0b1711,#08110d)
+  }
+  .cpAuthMobileAvatar{
+    width:50px;height:50px;flex:0 0 50px;display:grid;place-items:center;
+    overflow:hidden;border-radius:50%;border:2px solid #69ff2a;
+    background:#102018;color:#69ff2a;font-size:13px;font-weight:950;
+    box-shadow:0 0 20px rgba(105,255,42,.12)
+  }
+  .cpAuthMobileAvatar img{width:100%;height:100%;object-fit:cover}
+  .cpAuthMobileIdentity strong{display:block;font-size:14px;color:#fff;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cpAuthMobileIdentity small{display:block;margin-top:4px;color:#829088;font-size:10px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cpAuthMobilePlan{
+    padding:14px 15px;border:1px solid rgba(105,255,42,.25);border-radius:17px;
+    background:linear-gradient(135deg,rgba(105,255,42,.10),rgba(105,255,42,.025));
+  }
+  .cpAuthMobilePlan span{display:block;color:#7f9188;font-size:8px;font-weight:950;letter-spacing:1px}
+  .cpAuthMobilePlan b{display:block;margin-top:4px;color:#73ff31;font-size:23px;font-weight:950}
+  .cpAuthMobilePlan small{display:block;margin-top:3px;color:#a2afa8;font-size:10px}
+  .cpAuthMobileSecure{
+    display:flex;gap:10px;align-items:flex-start;padding:12px 13px;border:1px solid #1d2e26;border-radius:14px;background:#07100c
+  }
+  .cpAuthMobileSecure>span{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;border-radius:50%;background:#17351a;color:#74ff32;font-weight:950}
+  .cpAuthMobileSecure b{display:block;color:#dce6e0;font-size:10px}
+  .cpAuthMobileSecure small{display:block;margin-top:3px;color:#78877f;font-size:9px;line-height:1.35}
+  .cpAuthMobileLogout{
+    width:100%;height:48px;border:1px solid #26372f!important;border-radius:14px!important;background:#0a1210!important;color:#cbd5cf!important;font-size:10px!important;font-weight:950!important
+  }
+  .cpAuthMobileLogout:disabled{opacity:.55!important}
+
+  /* O botão do avatar vira a entrada oficial da conta no APP. */
+  #cpV105User{cursor:pointer!important}
+  #cpV105User i{transition:background .18s ease,box-shadow .18s ease!important}
+}
