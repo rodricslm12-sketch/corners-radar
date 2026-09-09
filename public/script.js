@@ -924,10 +924,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||"Perfil"):"Entrar com Google";
       if(dot)dot.style.background=currentUser?"#66ff2a":"#6f7a75";
   
-      const logged=$("#cpV116Logged"),google=$("#cpV116GoogleLogin");
+      const logged=$("#cpV116Logged"),google=$("#cpV116GoogleLogin"),loggedOut=$("#v155LoggedOut");
+      const planBadge=$("#v155PlanBadge");
+      if(planBadge){
+        const isPro=currentProfile?.premium===true;
+        planBadge.textContent=isPro?"PRO":"FREE";
+        planBadge.classList.toggle("pro",isPro);
+      }
       const li=$("#cpV116LoggedImg"),ln=$("#cpV116LoggedName"),le=$("#cpV116LoggedEmail");
       if(currentUser){
-        if(logged){logged.hidden=false;logged.style.display="flex"}
+        if(logged){logged.hidden=false;logged.style.display="block"}
+        if(loggedOut){loggedOut.hidden=true;loggedOut.style.display="none"}
         if(google){google.hidden=true;google.style.display="none"}
         if(li){li.src=photo||"";li.style.display=photo?"block":"none"}
         if(ln)ln.textContent=currentUser.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
@@ -938,12 +945,105 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
       }else{
         if(logged){logged.hidden=true;logged.style.display="none"}
+        if(loggedOut){loggedOut.hidden=false;loggedOut.style.display="block"}
         if(google){google.hidden=false;google.style.display="flex"}
       }
     }
+    /* =========================================================
+       APP V155 — CONTA / LOGIN PROFISSIONAL
+       Substitui o conteúdo do modal antigo SOMENTE no mobile.
+       Mantém Firebase, login diário e motores de mercados intactos.
+       ========================================================= */
+    function ensureV155AccountUI(){
+      const modal=$("#cpV116Login");
+      if(!modal || modal.dataset.v155AccountUi==="1")return;
+
+      modal.dataset.v155AccountUi="1";
+      modal.innerHTML=`
+        <div class="v155AccountCard" role="dialog" aria-modal="true" aria-labelledby="v155AccountTitle">
+          <button type="button" class="v155AccountClose" data-v116-close-login aria-label="Fechar">×</button>
+
+          <div class="v155Brand"><span>⚑</span><b>CORNER<span>PRO</span></b></div>
+
+          <section id="v155LoggedOut" class="v155AccountState">
+            <h2 id="v155AccountTitle">Acesse sua conta</h2>
+            <p>Entre para manter seus favoritos, alertas e recursos do seu plano.</p>
+
+            <button id="cpV116GoogleLogin" class="v155GoogleBtn" type="button">
+              <span class="v155GoogleG">G</span>
+              <b>Continuar com Google</b>
+            </button>
+
+            <div class="v155SecureNote">🔒 Login seguro pelo Google</div>
+          </section>
+
+          <section id="cpV116Logged" class="v155AccountState v155LoggedState" hidden>
+            <div class="v155ProfileTop">
+              <img id="cpV116LoggedImg" alt="" />
+              <div>
+                <h2 id="cpV116LoggedName">Usuário CornerPro</h2>
+                <p id="cpV116LoggedEmail"></p>
+              </div>
+              <span id="v155PlanBadge" class="v155PlanBadge">FREE</span>
+            </div>
+
+            <div class="v155AccountMenu">
+              <button type="button" data-v155-my-account><span>👤</span><b>Minha conta</b><em>›</em></button>
+              <button type="button" data-v155-devices><span>▣</span><b>Gerenciar dispositivos</b><em>›</em></button>
+              <button type="button" data-v155-upgrade class="v155Upgrade"><span>♛</span><b>Assinar CornerPro PRO</b><em>›</em></button>
+              <button type="button" data-v155-logout class="v155Logout"><span>↪</span><b>Sair</b><em>›</em></button>
+            </div>
+          </section>
+
+          <p class="v116LoginError v155LoginError" aria-live="polite"></p>
+        </div>`;
+
+      if(!document.getElementById("cpV155AccountStyles")){
+        const style=document.createElement("style");
+        style.id="cpV155AccountStyles";
+        style.textContent=`
+          @media(max-width:980px){
+            #cpV116Login{position:fixed!important;inset:0!important;z-index:2147483647!important;display:none!important;align-items:center!important;justify-content:center!important;padding:20px!important;background:rgba(0,0,0,.82)!important;backdrop-filter:blur(12px)!important}
+            #cpV116Login.open{display:flex!important}
+            #cpV116Login .v155AccountCard{position:relative;width:min(100%,390px);max-height:86dvh;overflow:auto;padding:30px 24px 24px;border:1px solid rgba(102,255,42,.18);border-radius:28px;background:linear-gradient(155deg,#07100c 0%,#020706 65%,#071208 100%);box-shadow:0 30px 80px rgba(0,0,0,.72),0 0 40px rgba(73,255,34,.06);color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+            #cpV116Login .v155AccountClose{position:absolute;right:16px;top:15px;width:42px;height:42px;border:0;border-radius:14px;background:#0b1510;color:#dce5df;font-size:30px;line-height:1;cursor:pointer}
+            #cpV116Login .v155Brand{display:flex;justify-content:center;align-items:center;gap:7px;margin:8px 0 32px;font-style:italic}
+            #cpV116Login .v155Brand>span{color:#65ff25;font-size:28px}
+            #cpV116Login .v155Brand>b{font-size:29px;font-weight:950;letter-spacing:-1.5px}
+            #cpV116Login .v155Brand b span{color:#63ff22}
+            #cpV116Login .v155AccountState>h2{text-align:center;margin:0;font-size:29px;font-weight:900;letter-spacing:-.7px}
+            #cpV116Login .v155AccountState>p{text-align:center;color:#87928b;font-size:14px;line-height:1.5;margin:12px 0 26px}
+            #cpV116Login .v155GoogleBtn{width:100%;min-height:58px;display:flex;align-items:center;justify-content:center;gap:13px;border:1px solid rgba(255,255,255,.15);border-radius:16px;background:#fff;color:#101510;font-size:15px;font-weight:850;box-shadow:0 10px 30px rgba(0,0,0,.25);cursor:pointer}
+            #cpV116Login .v155GoogleBtn:disabled{opacity:.65}
+            #cpV116Login .v155GoogleG{font-size:20px;font-weight:900;color:#4285f4}
+            #cpV116Login .v155SecureNote{text-align:center;margin-top:18px;color:#657169;font-size:12px}
+            #cpV116Login .v155ProfileTop{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:13px;padding:17px;border:1px solid rgba(255,255,255,.07);border-radius:20px;background:#07110c}
+            #cpV116Login .v155ProfileTop img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #5cff24;background:#111}
+            #cpV116Login .v155ProfileTop h2{margin:0 0 5px;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+            #cpV116Login .v155ProfileTop p{margin:0;color:#87928b;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+            #cpV116Login .v155PlanBadge{padding:6px 9px;border-radius:9px;background:#183d1c;color:#78ff49;border:1px solid rgba(105,255,66,.35);font-size:11px;font-weight:950}
+            #cpV116Login .v155PlanBadge.pro{background:#5cff24;color:#071006}
+            #cpV116Login .v155AccountMenu{display:grid;gap:8px;margin-top:16px}
+            #cpV116Login .v155AccountMenu button{width:100%;min-height:54px;display:grid;grid-template-columns:32px 1fr 18px;align-items:center;text-align:left;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:#08110d;color:#eef4ef;padding:0 14px;cursor:pointer}
+            #cpV116Login .v155AccountMenu button span{font-size:17px;text-align:center}
+            #cpV116Login .v155AccountMenu button b{font-size:14px;font-weight:800}
+            #cpV116Login .v155AccountMenu button em{font-style:normal;color:#77817b;font-size:22px}
+            #cpV116Login .v155AccountMenu .v155Upgrade{border-color:rgba(98,255,37,.24);color:#8aff5c}
+            #cpV116Login .v155AccountMenu .v155Logout{color:#ff9b9b}
+            #cpV116Login .v155LoginError{min-height:18px;margin:13px 0 0!important;color:#ff8e8e!important;font-size:12px!important;text-align:center!important}
+          }`;
+        document.head.appendChild(style);
+      }
+    }
+
     function openLogin(){
       const modal=$("#cpV116Login");
-      if(modal){modal.classList.add("open");modal.setAttribute("aria-hidden","false");syncAuth()}
+      if(modal){
+        ensureV155AccountUI();
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden","false");
+        syncAuth();
+      }
     }
     function closeLogin(){
       if(document.documentElement.classList.contains("cpDailyLoginRequired"))return;
@@ -1140,6 +1240,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         closeLogin();return
       }
       if(e.target.closest("#cpV116GoogleLogin")){openAuth();return}
+      if(e.target.closest("[data-v155-logout]")){
+        (async()=>{
+          try{ await firebaseApi?.sair?.(); }catch(err){ console.warn("[V155 logout]",err); }
+          currentUser=null;
+          currentProfile=null;
+          clearDailyLogin();
+          syncAuth();
+          lockAppForDailyLogin();
+        })();
+        return;
+      }
   
       const fav=e.target.closest("[data-v110-fav-team]");
       if(fav){
