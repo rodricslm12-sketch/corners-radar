@@ -23303,3 +23303,121 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   html.cpAuthGateLocked .cpd3Rows,
   html.cpAuthGateLocked .cpd3Hero{user-select:none!important}
 }
+
+/* =========================================================
+   CORNERPRO DESKTOP V172 — MATCH CENTER VISÍVEL PARA VISITANTE
+   Somente desktop.
+   ========================================================= */
+@media (min-width:981px){
+  /* A coluna fica nítida; somente o conteúdo real atrás é ocultado. */
+  html.cpAuthGateLocked #desktopMatchRail,
+  html.cpAuthGateLocked .dashboardRightRail{
+    filter:none!important;
+    opacity:1!important;
+    visibility:visible!important;
+    position:relative!important;
+    pointer-events:none!important;
+    overflow:hidden!important;
+  }
+
+  /* Desativa o aviso antigo que cobria a coluna inteira. */
+  html.cpAuthGateLocked #desktopMatchRail::after,
+  html.cpAuthGateLocked .dashboardRightRail::after{
+    display:none!important;
+    content:none!important;
+  }
+
+  /* Dados reais continuam impossíveis de ler. */
+  html.cpAuthGateLocked #desktopMatchRail > *:not(.cpGuestMatchRail),
+  html.cpAuthGateLocked .dashboardRightRail > *:not(.cpGuestMatchRail){
+    filter:blur(10px)!important;
+    opacity:.08!important;
+    user-select:none!important;
+  }
+
+  .cpGuestMatchRail{
+    position:absolute!important;
+    inset:0!important;
+    z-index:50!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:9px!important;
+    padding:0!important;
+    filter:none!important;
+    opacity:1!important;
+    background:linear-gradient(180deg,rgba(4,10,12,.96),rgba(3,8,10,.98))!important;
+    color:#eef5f1!important;
+  }
+
+  .cpGuestRailHead{
+    min-height:42px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    padding:0 13px!important;
+    border:1px solid #14252b!important;
+    border-radius:8px!important;
+    background:linear-gradient(180deg,#0b1519,#071014)!important;
+  }
+  .cpGuestRailHead strong{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    font-size:10px!important;
+    font-weight:950!important;
+  }
+  .cpGuestRailHead strong span{color:#69ff2d!important;font-size:14px!important}
+  .cpGuestRailHead b{
+    padding:5px 8px!important;
+    border-radius:999px!important;
+    background:#153718!important;
+    color:#70ff32!important;
+    font-size:7px!important;
+    font-weight:950!important;
+  }
+
+  .cpGuestRailLockCard{
+    min-height:150px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    padding:18px 12px!important;
+    border:1px solid #14252b!important;
+    border-radius:8px!important;
+    background:
+      radial-gradient(circle at 50% 38%,rgba(99,241,39,.08),transparent 36%),
+      linear-gradient(180deg,#0b1418,#071014)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  }
+  .cpGuestRailPrimary{min-height:155px!important}
+  .cpGuestLockIcon{
+    width:34px!important;height:34px!important;
+    display:grid!important;place-items:center!important;
+    margin-bottom:10px!important;
+    border-radius:9px!important;
+    border:1px solid #34443d!important;
+    background:#0a1210!important;
+    font-size:17px!important;
+  }
+  .cpGuestRailLockCard strong{
+    color:#f3f7f5!important;
+    font-size:10px!important;
+    font-weight:900!important;
+  }
+  .cpGuestRailLockCard small{
+    display:block!important;
+    max-width:210px!important;
+    margin-top:6px!important;
+    color:#8f9d97!important;
+    font-size:8px!important;
+    line-height:1.45!important;
+  }
+  .cpGuestRailSectionTitle{
+    padding:2px 3px 0!important;
+    color:#788680!important;
+    font-size:8px!important;
+    font-weight:950!important;
+  }
+}

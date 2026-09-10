@@ -31257,3 +31257,147 @@ const fallbackSide = target > 0
     openLoginModal();
   }, true);
 })();
+
+/* =========================================================
+   CORNERPRO DESKTOP V172 — LOGIN IMEDIATO + MATCH CENTER VISÍVEL
+   Somente desktop.
+   - Captura o clique no WINDOW (antes de listeners antigos do document).
+   - Visitante: qualquer mercado/linha abre o login imediatamente.
+   - Match Center continua visível como vitrine, porém bloqueado.
+   - Não altera mobile nem motor da IA.
+   ========================================================= */
+(function cornerProDesktopGuestGateV172(){
+  "use strict";
+
+  if(!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if(window.__CP_DESKTOP_GUEST_GATE_V172__) return;
+  window.__CP_DESKTOP_GUEST_GATE_V172__ = true;
+
+  const root = document.documentElement;
+
+  function guestLocked(){
+    return root.classList.contains("cpAuthGateLocked");
+  }
+
+  function forceOpenLogin(){
+    root.classList.add("cpAuthGatePromptOpen");
+
+    const modal = document.getElementById("cpAuthModal");
+    if(modal){
+      modal.hidden = false;
+      modal.removeAttribute("hidden");
+      modal.style.setProperty("display","flex","important");
+      modal.style.setProperty("visibility","visible","important");
+      modal.style.setProperty("opacity","1","important");
+      modal.style.setProperty("pointer-events","auto","important");
+      modal.setAttribute("aria-hidden","false");
+      document.body.classList.add("cpAuthModalOpen");
+
+      /* Garante o formulário desktop completo. */
+      const tabs = modal.querySelector(".cpAuthTabs");
+      const divider = modal.querySelector(".cpAuthDivider");
+      const form = modal.querySelector("#cpAuthForm");
+      const switcher = modal.querySelector(".cpAuthSwitch");
+      const google = modal.querySelector("#cpAuthGoogle");
+      const mobileAccount = modal.querySelector("#cpAuthMobileAccount");
+      if(tabs) tabs.hidden = false;
+      if(divider) divider.hidden = false;
+      if(form) form.hidden = false;
+      if(switcher) switcher.hidden = false;
+      if(google) google.hidden = false;
+      if(mobileAccount) mobileAccount.hidden = true;
+    }
+  }
+
+  function marketTarget(target){
+    if(!target?.closest) return null;
+    return target.closest([
+      "#cpDesktopExperienceV3 .cpd3MarketNav button",
+      "#cpDesktopExperienceV3 .cpd3SubNav button",
+      "#cpDesktopExperienceV3 .cpd3LineNav button",
+      "#cpDesktopExperienceV3 [data-cpd3-market]",
+      "#cpDesktopExperienceV3 [data-cpd3-line]",
+      "#cpDesktopExperienceV3 [data-market-line]",
+      "#cpDesktopExperienceV3 [data-analysis-line]",
+      "#cpDesktopExperienceV3 .marketInlineItem",
+      "#cpDesktopExperienceV3 .marketChipPremium",
+      "#cpDesktopExperienceV3 [data-premium-market]",
+      "#cpDesktopExperienceV3 .premiumMarket",
+      "#cpDesktopExperienceV3 .marketTab",
+      "#cpDesktopExperienceV3 .marketTabs button",
+      "#cpDesktopExperienceV3 .filterPills button"
+    ].join(","));
+  }
+
+  /* WINDOW capture: roda antes dos listeners legados registrados no document. */
+  window.addEventListener("click", function(ev){
+    if(!window.matchMedia("(min-width:981px)").matches) return;
+    if(!guestLocked()) return;
+    if(!marketTarget(ev.target)) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    forceOpenLogin();
+  }, true);
+
+  function guestRailMarkup(){
+    return `
+      <div class="cpGuestMatchRail" aria-hidden="true">
+        <div class="cpGuestRailHead">
+          <strong><span>▮</span> MATCH CENTER</strong>
+          <b>PRÉ-JOGO</b>
+        </div>
+
+        <section class="cpGuestRailLockCard cpGuestRailPrimary">
+          <div class="cpGuestLockIcon">🔒</div>
+          <strong>Faça login para ver o Match Center</strong>
+          <small>Acompanhe jogos ao vivo e estatísticas.</small>
+        </section>
+
+        <div class="cpGuestRailSectionTitle">ESTATÍSTICAS DO FILTRO</div>
+        <section class="cpGuestRailLockCard">
+          <div class="cpGuestLockIcon">🔒</div>
+          <strong>Faça login para ver as estatísticas</strong>
+          <small>Dados detalhados e insights da IA.</small>
+        </section>
+
+        <div class="cpGuestRailSectionTitle">EVENTOS / LEITURA</div>
+        <section class="cpGuestRailLockCard">
+          <div class="cpGuestLockIcon">🔒</div>
+          <strong>Faça login para ver eventos e leitura</strong>
+          <small>Conteúdo exclusivo para usuários cadastrados.</small>
+        </section>
+      </div>`;
+  }
+
+  function syncGuestRail(){
+    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
+    if(!rail) return;
+
+    let guest = rail.querySelector(":scope > .cpGuestMatchRail");
+    if(guestLocked()){
+      if(!guest) rail.insertAdjacentHTML("beforeend", guestRailMarkup());
+    }else if(guest){
+      guest.remove();
+    }
+  }
+
+  function start(){
+    syncGuestRail();
+
+    const observer = new MutationObserver(()=>{
+      clearTimeout(window.__cpGuestRailV172Timer);
+      window.__cpGuestRailV172Timer = setTimeout(syncGuestRail,20);
+    });
+    observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});
+
+    window.addEventListener("cornerpro:auth-user", syncGuestRail);
+    setTimeout(syncGuestRail,120);
+    setTimeout(syncGuestRail,600);
+    setTimeout(syncGuestRail,1800);
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",start,{once:true});
+  else start();
+})();
