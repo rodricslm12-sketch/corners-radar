@@ -31181,3 +31181,79 @@ const fallbackSide = target > 0
     document.getElementById('btnGoogleLogin')?.click();
   },true);
 })();
+
+/* =========================================================
+   CORNERPRO DESKTOP V171 — LOGIN AO CLICAR EM QUALQUER MERCADO
+   Somente desktop.
+   - Antes do login, qualquer clique em mercado/linha (ex.: Gols Over 1.5)
+     abre imediatamente o modal de login.
+   - Impede trocar o mercado ou revelar resultados antes da autenticação.
+   - Depois do login, os cliques funcionam normalmente.
+   ========================================================= */
+(function cornerProDesktopMarketLoginGateV171(){
+  "use strict";
+
+  if(!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if(window.__CP_DESKTOP_MARKET_LOGIN_GATE_V171__) return;
+  window.__CP_DESKTOP_MARKET_LOGIN_GATE_V171__ = true;
+
+  function userIsLoggedIn(){
+    const profile = document.getElementById("authUserProfile");
+    if(profile && profile.hidden === false) return true;
+
+    const loginBtn = document.getElementById("btnGoogleLogin");
+    if(loginBtn && loginBtn.hidden === true) return true;
+
+    return false;
+  }
+
+  function openLoginModal(){
+    const loginBtn = document.getElementById("btnGoogleLogin");
+    if(loginBtn){
+      loginBtn.disabled = false;
+      loginBtn.removeAttribute("disabled");
+      loginBtn.click();
+      return;
+    }
+
+    const modal = document.getElementById("cpAuthModal");
+    if(!modal) return;
+
+    modal.hidden = false;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("cpAuthModalOpen");
+  }
+
+  function isMarketInteraction(target){
+    if(!target?.closest) return false;
+
+    return !!target.closest([
+      ".cpd3MarketNav button",
+      ".cpd3SubNav button",
+      ".cpd3LineNav button",
+      "[data-cpd3-market]",
+      "[data-cpd3-line]",
+      ".marketInlineItem",
+      "[data-market-line]",
+      "[data-analysis-line]",
+      "[data-v9-line]",
+      "[data-v8-line]",
+      "[data-handicap-line]",
+      "[data-premium-market]",
+      ".premiumMarket"
+    ].join(","));
+  }
+
+  document.addEventListener("click", function(ev){
+    if(!window.matchMedia("(min-width:981px)").matches) return;
+    if(userIsLoggedIn()) return;
+    if(!isMarketInteraction(ev.target)) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    openLoginModal();
+  }, true);
+})();
