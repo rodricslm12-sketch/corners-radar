@@ -31167,3 +31167,17 @@ const fallbackSide = target > 0
   setTimeout(unlockButton,600);
   setTimeout(unlockButton,1800);
 })();
+/* DESKTOP V170 — reforço da vitrine bloqueada.
+   A autenticação principal continua sendo controlada pelo gate V164/V168 do HTML.
+   Este trecho não roda no mobile. */
+(function(){
+  if(!window.matchMedia?.('(min-width:981px)').matches)return;
+  document.addEventListener('click',function(ev){
+    if(!document.documentElement.classList.contains('cpAuthGateLocked'))return;
+    const teaser=ev.target.closest?.('.cpd3MarketNav button,.cpd3SubNav button,.cpd3LineNav button,[data-cpd3-market],[data-cpd3-line]');
+    if(!teaser)return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    document.getElementById('btnGoogleLogin')?.click();
+  },true);
+})();

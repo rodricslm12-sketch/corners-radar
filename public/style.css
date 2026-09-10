@@ -23187,3 +23187,119 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   #cpV105User{cursor:pointer!important}
   #cpV105User i{transition:background .18s ease,box-shadow .18s ease!important}
 }
+/* =========================================================
+   DESKTOP V170 — VITRINE BLOQUEADA ANTES DO LOGIN
+   Somente desktop. Mantém mercados/linhas visíveis e esconde
+   jogos, IA, estatísticas e Match Center até autenticar.
+   ========================================================= */
+@media (min-width:981px){
+  html.cpAuthGateLocked body{overflow:hidden!important}
+
+  /* O fundo continua visível, sem virar uma tela preta. */
+  html.cpAuthGateLocked #cpAuthModal{
+    background:transparent!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:18px!important;
+  }
+  html.cpAuthGateLocked #cpAuthModalBackdrop{
+    background:rgba(1,5,5,.18)!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    pointer-events:none!important;
+  }
+
+  /* Card central compacto, como a referência enviada. */
+  html.cpAuthGateLocked #cpAuthModal .cpAuthCard{
+    width:min(430px,calc(100vw - 42px))!important;
+    max-width:430px!important;
+    padding:26px 28px 22px!important;
+    border-radius:16px!important;
+    border:1px solid rgba(99,241,39,.28)!important;
+    background:
+      radial-gradient(circle at 50% 0,rgba(99,241,39,.12),transparent 34%),
+      linear-gradient(180deg,#07140f 0%,#06100d 52%,#030908 100%)!important;
+    box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 42px rgba(99,241,39,.08)!important;
+  }
+  html.cpAuthGateLocked #cpAuthModalClose{display:none!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthBrand{justify-content:center!important;margin-bottom:15px!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthHeading{text-align:center!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthHeading h2{
+    margin-bottom:7px!important;font-size:25px!important;line-height:1.08!important
+  }
+  html.cpAuthGateLocked #cpAuthModal .cpAuthHeading h2::after{
+    content:"\A liberar todo o conteúdo";
+    white-space:pre;
+    color:#70ff31;
+  }
+  html.cpAuthGateLocked #cpAuthModal .cpAuthHeading p{
+    max-width:330px!important;margin:0 auto 18px!important;color:#aab6b1!important;line-height:1.45!important
+  }
+
+  /* Login principal em destaque; e-mail continua disponível abaixo. */
+  html.cpAuthGateLocked #cpAuthModal .cpAuthGoogle{
+    min-height:48px!important;border-radius:8px!important;
+    background:linear-gradient(90deg,#62f127,#79ff36)!important;
+    border-color:#70ff31!important;color:#061006!important;
+    box-shadow:0 9px 24px rgba(99,241,39,.16)!important
+  }
+  html.cpAuthGateLocked #cpAuthModal .cpAuthGoogle span{background:#fff!important;color:#4285f4!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthTabs{margin-top:2px!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthDivider{margin:13px 0!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthForm input{height:42px!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthSubmit{height:44px!important}
+  html.cpAuthGateLocked #cpAuthModal .cpAuthPrivacy{margin-top:13px!important;text-align:center!important}
+
+  /* VITRINE: menus e linhas de mercado ficam nítidos para chamar atenção. */
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3Topline,
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3MarketNav,
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3SubNav,
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3LineNav{
+    filter:none!important;opacity:1!important;visibility:visible!important
+  }
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3MarketNav,
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3LineNav{
+    position:relative!important;z-index:2!important
+  }
+
+  /* Conteúdo premium: usuário percebe que existe, mas não consegue ler. */
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3Hero,
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3ResultsPanel,
+  html.cpAuthGateLocked #desktopMatchRail,
+  html.cpAuthGateLocked .dashboardRightRail{
+    filter:blur(7px)!important;
+    opacity:.38!important;
+    user-select:none!important;
+    pointer-events:none!important
+  }
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3ResultsPanel{
+    position:relative!important;overflow:hidden!important
+  }
+
+  /* Reforça o bloqueio visual da lista, sem mostrar nomes/apostas. */
+  html.cpAuthGateLocked #cpDesktopExperienceV3 .cpd3ResultsPanel::after{
+    content:"🔒  Jogos e análises bloqueados\A Faça login para ver os jogos, probabilidades e recomendações da IA.";
+    white-space:pre-line;
+    position:absolute;inset:0;z-index:8;
+    display:grid;place-content:center;text-align:center;
+    padding:30px;color:#e9f0ed;font-size:13px;font-weight:850;line-height:1.55;
+    background:linear-gradient(180deg,rgba(3,10,9,.42),rgba(3,10,9,.66));
+    filter:none!important
+  }
+
+  /* Lateral bloqueada no mesmo padrão da referência. */
+  html.cpAuthGateLocked #desktopMatchRail::after,
+  html.cpAuthGateLocked .dashboardRightRail::after{
+    content:"🔒\A Faça login para ver Match Center, estatísticas e eventos";
+    white-space:pre-line;
+    position:absolute;inset:0;display:grid;place-content:center;text-align:center;
+    padding:20px;color:#dfe9e4;font-weight:850;line-height:1.5;
+    background:rgba(3,10,9,.36)
+  }
+  html.cpAuthGateLocked #desktopMatchRail,
+  html.cpAuthGateLocked .dashboardRightRail{position:relative!important}
+
+  /* Nada atrás do modal pode revelar conteúdo por seleção/cópia. */
+  html.cpAuthGateLocked .cpd3Rows,
+  html.cpAuthGateLocked .cpd3Hero{user-select:none!important}
+}
