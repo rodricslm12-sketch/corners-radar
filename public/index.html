@@ -155,7 +155,7 @@
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v167-private-user';
+          s.src='script.js?v=20260910-desktop-v168-market-teaser';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -619,6 +619,158 @@
   document.head.appendChild(js);
 })();
 </script>
+
+
+<style id="cpVisitorMarketTeaserV168">
+@media (min-width:981px){
+
+  /* Visitante autenticado continua vendo tudo normalmente */
+  html.cpAuthGateLocked body{
+    overflow:hidden!important;
+  }
+
+  /* NÃO escurece a faixa dos mercados */
+  html.cpAuthGateLocked .marketTabs,
+  html.cpAuthGateLocked .gamesPanel .sectionHead,
+  html.cpAuthGateLocked .gamesPanel .filterPills,
+  html.cpAuthGateLocked .gamesPanel .marketTabs,
+  html.cpAuthGateLocked .gamesPanel .marketSubTabs,
+  html.cpAuthGateLocked .gamesPanel .marketLines,
+  html.cpAuthGateLocked .gamesPanel .linePills,
+  html.cpAuthGateLocked [data-market-tabs],
+  html.cpAuthGateLocked [data-market-lines]{
+    position:relative!important;
+    z-index:2147483200!important;
+    filter:none!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+  }
+
+  /* Mantém a faixa visual visível e atraente */
+  html.cpAuthGateLocked .marketTabs,
+  html.cpAuthGateLocked .gamesPanel .sectionHead{
+    box-shadow:
+      0 0 0 1px rgba(99,241,39,.18),
+      0 0 28px rgba(99,241,39,.08)!important;
+  }
+
+  /* Esconde o card principal e conteúdo sensível */
+  html.cpAuthGateLocked .heroPanel,
+  html.cpAuthGateLocked .heroMatch,
+  html.cpAuthGateLocked .bestMatch,
+  html.cpAuthGateLocked .bestBetCard,
+  html.cpAuthGateLocked #desktopBestGame,
+  html.cpAuthGateLocked #desktopMatchHero,
+  html.cpAuthGateLocked .gamesPanel .gameRow,
+  html.cpAuthGateLocked .compactGameRow,
+  html.cpAuthGateLocked .dashboardRightRail,
+  html.cpAuthGateLocked #desktopMatchRail{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  /* Reserva espaço para o card principal e mostra chamada de login */
+  html.cpAuthGateLocked .dashboardMainColumn{
+    position:relative!important;
+  }
+
+  html.cpAuthGateLocked .dashboardMainColumn::before{
+    content:"🔒  Faça login para liberar a melhor aposta do dia";
+    position:absolute;
+    left:50%;
+    top:78px;
+    transform:translateX(-50%);
+    z-index:2147483150;
+    width:min(680px,78%);
+    min-height:110px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:26px 34px;
+    border:1px solid rgba(99,241,39,.22);
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 50% 0,rgba(99,241,39,.14),transparent 46%),
+      linear-gradient(180deg,rgba(8,18,14,.97),rgba(5,10,8,.97));
+    color:#f3f7f4;
+    font:900 18px/1.35 Inter,system-ui,Arial,sans-serif;
+    letter-spacing:-.25px;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+
+  /* Mostra a área de mercados por cima do fundo escurecido */
+  html.cpAuthGateLocked .gamesPanel{
+    position:relative!important;
+    z-index:2147483100!important;
+    background:#081015!important;
+  }
+
+  /* Oculta cabeçalho da lista e linhas de jogos, mas preserva filtros */
+  html.cpAuthGateLocked .gamesPanel .gameRow,
+  html.cpAuthGateLocked .gamesPanel [data-game-row],
+  html.cpAuthGateLocked .gamesPanel .gamesList,
+  html.cpAuthGateLocked .gamesPanel tbody{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  /* Mensagem logo abaixo dos mercados */
+  html.cpAuthGateLocked .gamesPanel::after{
+    content:"Escolha um mercado para ver as análises • login necessário";
+    display:block;
+    margin:10px 12px 12px;
+    padding:13px 16px;
+    border:1px dashed rgba(99,241,39,.28);
+    border-radius:10px;
+    background:rgba(99,241,39,.035);
+    color:#9fdc86;
+    text-align:center;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.25px;
+  }
+
+  /* Modal mais compacto para não esconder totalmente os mercados */
+  html.cpAuthGateLocked #cpAuthModal{
+    align-items:flex-start!important;
+    padding-top:150px!important;
+    background:transparent!important;
+  }
+
+  html.cpAuthGateLocked #cpAuthModalBackdrop{
+    background:rgba(0,0,0,.72)!important;
+    backdrop-filter:blur(8px)!important;
+    -webkit-backdrop-filter:blur(8px)!important;
+  }
+
+  html.cpAuthGateLocked #cpAuthModal .cpAuthCard{
+    width:min(430px,calc(100vw - 34px))!important;
+    max-height:calc(100vh - 180px)!important;
+    overflow:auto!important;
+    box-shadow:0 28px 90px rgba(0,0,0,.72)!important;
+  }
+
+  /* O modal fica fechado inicialmente: aparece só ao clicar num mercado
+     ou em entrar/criar conta. */
+  html.cpAuthGateLocked:not(.cpAuthGatePromptOpen) #cpAuthModal{
+    display:none!important;
+  }
+
+  html.cpAuthGateLocked.cpAuthGatePromptOpen #cpAuthModal{
+    display:flex!important;
+  }
+
+  /* Tooltip de "login necessário" nos mercados */
+  html.cpAuthGateLocked .marketTab,
+  html.cpAuthGateLocked [data-market],
+  html.cpAuthGateLocked [data-market-line],
+  html.cpAuthGateLocked [data-corner-line],
+  html.cpAuthGateLocked .filterPills button{
+    cursor:pointer!important;
+  }
+}
+</style>
 
 </head>
 <body class="dashboard notranslate" translate="no">
@@ -1723,7 +1875,19 @@
   function setGateLocked(locked){
     const root=document.documentElement;
     root.classList.toggle("cpAuthGateLocked",!!locked);
+    if(!locked)root.classList.remove("cpAuthGatePromptOpen");
     if(authResolved)root.classList.remove("cpAuthGatePending");
+  }
+
+  function showVisitorLoginPrompt(){
+    if(accessGranted)return;
+    document.documentElement.classList.add("cpAuthGatePromptOpen");
+    openModal();
+  }
+
+  function hideVisitorLoginPrompt(){
+    if(accessGranted)return;
+    document.documentElement.classList.remove("cpAuthGatePromptOpen");
   }
 
   const $ = (s, r=document) => r.querySelector(s);
@@ -1863,17 +2027,19 @@
     const e=E();
     if(!e.modal) return;
 
-    /* V166: visitante sem sessão não pode fechar a porta de acesso. */
+    /* V168: fechar o modal não libera o conteúdo; apenas volta para a vitrine. */
     if(!accessGranted){
-      e.modal.hidden=false;
-      e.modal.removeAttribute("hidden");
-      e.modal.setAttribute("aria-hidden","false");
-      e.modal.style.setProperty("display","flex","important");
-      e.modal.style.setProperty("visibility","visible","important");
-      e.modal.style.setProperty("opacity","1","important");
-      e.modal.style.setProperty("pointer-events","auto","important");
-      e.modal.style.setProperty("z-index","2147483647","important");
-      document.body.classList.add("cpAuthModalOpen");
+      e.modal.hidden=true;
+      e.modal.setAttribute("hidden","");
+      e.modal.setAttribute("aria-hidden","true");
+      e.modal.style.removeProperty("display");
+      e.modal.style.removeProperty("visibility");
+      e.modal.style.removeProperty("opacity");
+      e.modal.style.removeProperty("pointer-events");
+      e.modal.style.removeProperty("z-index");
+      document.body.classList.remove("cpAuthModalOpen");
+      document.documentElement.classList.remove("cpAuthGatePromptOpen");
+      msg("");
       return;
     }
 
@@ -1941,8 +2107,9 @@
       }
       if(e.profile)e.profile.hidden=true;
 
-      /* Abre automaticamente: ninguém entra no site sem autenticar. */
-      openModal();
+      /* V168: visitante pode ver a vitrine dos mercados.
+         O modal abre somente ao clicar em um mercado ou no botão de conta. */
+      document.documentElement.classList.remove("cpAuthGatePromptOpen");
       return;
     }
 
@@ -2066,6 +2233,7 @@
       ev.preventDefault();
       ev.stopPropagation();
       ev.stopImmediatePropagation();
+      document.documentElement.classList.add("cpAuthGatePromptOpen");
       openModal();
       return;
     }
@@ -2093,6 +2261,25 @@
     }
   },true);
 
+  document.addEventListener("click",function(ev){
+    if(!window.matchMedia("(min-width:981px)").matches)return;
+    if(accessGranted)return;
+
+    const target=ev.target?.closest?.(
+      ".marketTab,[data-market],[data-market-line],[data-corner-line],"+
+      ".filterPills button,.marketTabs button,.gamesPanel button"
+    );
+    if(!target)return;
+
+    /* Não intercepta botões que pertencem ao próprio modal. */
+    if(target.closest("#cpAuthModal"))return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    showVisitorLoginPrompt();
+  },true);
+
   document.addEventListener("submit",function(ev){
     if(ev.target?.id!=="cpAuthForm")return;
     if(!window.matchMedia("(min-width:981px)").matches)return;
@@ -2103,10 +2290,10 @@
 
   document.addEventListener("keydown",function(ev){
     if(!window.matchMedia("(min-width:981px)").matches)return;
-    if(ev.key==="Escape" && !accessGranted){
+    if(ev.key==="Escape" && !accessGranted && document.documentElement.classList.contains("cpAuthGatePromptOpen")){
       ev.preventDefault();
       ev.stopImmediatePropagation();
-      openModal();
+      closeModal();
     }
   },true);
 
@@ -2142,8 +2329,7 @@
       accessGranted=false;
       setGateLocked(true);
       unlock();
-      openModal();
-      msg("Não foi possível validar sua sessão. Tente entrar novamente.");
+      document.documentElement.classList.remove("cpAuthGatePromptOpen");
     });
   }
 
@@ -2158,7 +2344,7 @@
     if(!authResolved){
       document.documentElement.classList.remove("cpAuthGatePending");
       setGateLocked(true);
-      openModal();
+      document.documentElement.classList.remove("cpAuthGatePromptOpen");
     }
   },2500);
 
