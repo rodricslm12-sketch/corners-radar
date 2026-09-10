@@ -149,13 +149,13 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="style.css?v=20260910-desktop-v170-auth-showcase" media="(min-width:981px)">
+  <link rel="stylesheet" href="style.css?v=20260910-desktop-v164-auth" media="(min-width:981px)">
   <script>
     (function(){
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v170-auth-showcase';
+          s.src='script.js?v=20260910-desktop-v169-market-teaser-clean';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -2543,5 +2543,206 @@
 
   window.addEventListener("load",unlock);
   setInterval(unlock,1500);
+})();
+</script>
+
+<!-- =========================================================
+     CORNERPRO DESKTOP V173 — LOGIN AO CLICAR + MATCH CENTER VISÍVEL
+     PATCH INLINE: NÃO DEPENDE DO script.js PARA CAPTURAR O CLIQUE.
+     SOMENTE DESKTOP (>=981px).
+     ========================================================= -->
+<style id="cpDesktopVisitorGateV173">
+@media (min-width:981px){
+  /* Match Center permanece VISÍVEL para visitante */
+  html.cpAuthGateLocked #desktopMatchRail,
+  html.cpAuthGateLocked .dashboardRightRail{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    filter:none!important;
+    pointer-events:none!important;
+    position:relative!important;
+  }
+
+  html.cpAuthGateLocked #desktopMatchRail .railCard{
+    visibility:visible!important;
+    opacity:1!important;
+    filter:none!important;
+    position:relative!important;
+    overflow:hidden!important;
+    min-height:150px!important;
+  }
+
+  /* Títulos continuam legíveis */
+  html.cpAuthGateLocked #desktopMatchRail .railTitle,
+  html.cpAuthGateLocked #desktopMatchRail .railCard > h3{
+    position:relative!important;
+    z-index:5!important;
+    opacity:1!important;
+    filter:none!important;
+  }
+
+  /* Conteúdo interno fica apenas como prévia */
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyRadar,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyText,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyStatsGrid,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyHint,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyEventIcons,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyTimeline,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyReadBox{
+    filter:blur(5px)!important;
+    opacity:.20!important;
+    user-select:none!important;
+  }
+
+  html.cpAuthGateLocked #desktopMatchRail .matchRailCard::after,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyStatsCard::after,
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyEventsCard::after{
+    position:absolute!important;
+    left:50%!important;
+    top:55%!important;
+    transform:translate(-50%,-50%)!important;
+    z-index:20!important;
+    width:82%!important;
+    text-align:center!important;
+    color:#f1f7f3!important;
+    font:800 11px/1.45 Inter,system-ui,Arial,sans-serif!important;
+    white-space:pre-line!important;
+    text-shadow:0 2px 14px rgba(0,0,0,.95)!important;
+    pointer-events:none!important;
+  }
+  html.cpAuthGateLocked #desktopMatchRail .matchRailCard::after{
+    content:"🔒\A Faça login para ver o Match Center\A Acompanhe jogos ao vivo e estatísticas.";
+  }
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyStatsCard::after{
+    content:"🔒\A Faça login para ver as estatísticas\A Dados detalhados e insights da IA.";
+  }
+  html.cpAuthGateLocked #desktopMatchRail .railEmptyEventsCard::after{
+    content:"🔒\A Faça login para ver eventos e leitura\A Conteúdo exclusivo para usuários cadastrados.";
+  }
+
+  html.cpAuthGateLocked #desktopMatchRail .railFullBtn{
+    opacity:.28!important;
+    filter:blur(2px)!important;
+  }
+
+  /* Mercados continuam claramente clicáveis */
+  html.cpAuthGateLocked .marketTabs,
+  html.cpAuthGateLocked .marketTab,
+  html.cpAuthGateLocked .filterPills,
+  html.cpAuthGateLocked .filterPills button,
+  html.cpAuthGateLocked [data-market-line],
+  html.cpAuthGateLocked [data-corner-line],
+  html.cpAuthGateLocked [data-market-filter],
+  html.cpAuthGateLocked .marketInlineItem,
+  html.cpAuthGateLocked .marketChipPremium{
+    pointer-events:auto!important;
+    cursor:pointer!important;
+  }
+
+  /* Quando o usuário clicar num mercado, o modal é garantido por inline style */
+  html.cpAuthGateLocked.cpAuthGatePromptOpen #cpAuthModal{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    z-index:2147483647!important;
+  }
+}
+</style>
+
+<script id="cpDesktopVisitorGateV173Script">
+(function(){
+  'use strict';
+  if(!window.matchMedia || !window.matchMedia('(min-width:981px)').matches) return;
+  if(window.__CP_DESKTOP_VISITOR_GATE_V173__) return;
+  window.__CP_DESKTOP_VISITOR_GATE_V173__=true;
+
+  const SELECTOR = [
+    '.marketTabs .marketTab',
+    '.marketTabs button',
+    '.filterPills button',
+    '[data-market]',
+    '[data-market-line]',
+    '[data-corner-line]',
+    '[data-market-filter]',
+    '[data-premium-market]',
+    '.marketInlineItem',
+    '.marketInlineMore',
+    '.marketInlineAll',
+    '.marketChipPremium',
+    '.premiumMarket',
+    '.marketSubTabs button',
+    '.marketLines button',
+    '.linePills button'
+  ].join(',');
+
+  function visitorLocked(){
+    return document.documentElement.classList.contains('cpAuthGateLocked');
+  }
+
+  function forceDesktopFields(modal){
+    if(!modal) return;
+    const tabs=modal.querySelector('.cpAuthTabs');
+    const divider=modal.querySelector('.cpAuthDivider');
+    const form=modal.querySelector('#cpAuthForm');
+    const switcher=modal.querySelector('.cpAuthSwitch');
+    const google=modal.querySelector('#cpAuthGoogle');
+    const account=modal.querySelector('#cpAuthMobileAccount');
+    if(tabs){tabs.hidden=false;tabs.style.removeProperty('display');}
+    if(divider){divider.hidden=false;divider.style.removeProperty('display');}
+    if(form){form.hidden=false;form.style.removeProperty('display');}
+    if(switcher){switcher.hidden=false;switcher.style.removeProperty('display');}
+    if(google){google.hidden=false;google.style.removeProperty('display');}
+    if(account) account.hidden=true;
+  }
+
+  function openLogin(){
+    if(!visitorLocked()) return;
+    const root=document.documentElement;
+    const modal=document.getElementById('cpAuthModal');
+    if(!modal) return;
+
+    root.classList.add('cpAuthGatePromptOpen');
+    forceDesktopFields(modal);
+
+    modal.hidden=false;
+    modal.removeAttribute('hidden');
+    modal.setAttribute('aria-hidden','false');
+    modal.style.setProperty('display','flex','important');
+    modal.style.setProperty('visibility','visible','important');
+    modal.style.setProperty('opacity','1','important');
+    modal.style.setProperty('pointer-events','auto','important');
+    modal.style.setProperty('z-index','2147483647','important');
+    document.body.classList.add('cpAuthModalOpen');
+  }
+
+  function intercept(ev){
+    if(!visitorLocked()) return;
+    const t=ev.target && ev.target.closest ? ev.target.closest(SELECTOR) : null;
+    if(!t || t.closest('#cpAuthModal')) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+    openLogin();
+  }
+
+  /* WINDOW captura antes dos listeners antigos do document. */
+  window.addEventListener('click',intercept,true);
+
+  /* Backup para elementos inseridos dinamicamente. */
+  document.addEventListener('click',intercept,true);
+
+  /* Conta do topo também abre o mesmo modal quando visitante. */
+  window.addEventListener('click',function(ev){
+    if(!visitorLocked()) return;
+    const btn=ev.target && ev.target.closest ? ev.target.closest('#btnGoogleLogin') : null;
+    if(!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+    openLogin();
+  },true);
 })();
 </script>
