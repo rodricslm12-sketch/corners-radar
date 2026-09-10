@@ -98,7 +98,7 @@
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v164-auth';
+          s.src='script.js?v=20260910-desktop-v165-auth';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -1648,7 +1648,7 @@
 </script>
 
 <section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
-  <div class="v127MoreCard" role="dialog" aria-modal="true" a
+  <div class="v127MoreCard" role="dialog" aria-modal="true">
 <script id="cpDesktopAuthInlineV164">
 (function(){
   "use strict";
@@ -2005,7 +2005,7 @@
     if(b){
       new MutationObserver(unlock).observe(b,{
         attributes:true,
-        attributeFilter:["disabled","aria-busy","hidden","style"]
+        attributeFilter:["disabled","aria-busy","hidden"]
       });
     }
 

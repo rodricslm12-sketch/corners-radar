@@ -31092,7 +31092,7 @@ const fallbackSide = target > 0
     unlockButton();
     new MutationObserver(unlockButton).observe(btn,{
       attributes:true,
-      attributeFilter:["disabled","aria-busy","style","hidden"]
+      attributeFilter:["disabled","aria-busy","hidden"]
     });
   };
 
