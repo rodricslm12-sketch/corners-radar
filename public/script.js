@@ -30675,3 +30675,345 @@ const fallbackSide = target > 0
   setTimeout(()=>{paint(window.__cpFav147Alerts||[]);schedule(false,false)},2500);
   setInterval(()=>schedule(true,false),15*60*1000);
 })();
+
+/* =========================================================
+   CORNERPRO DESKTOP V162 — ENTRAR / CRIAR CONTA
+   SOMENTE DESKTOP (min-width:981px)
+   - Abre o modal já existente no HTML.
+   - Google, e-mail/senha, cadastro e recuperação de senha.
+   - Sincroniza usuário com /auth/firebase e /auth/me.
+   - Não altera MOBILE nem motores/mercados.
+   ========================================================= */
+(function cornerProDesktopAccountV162(){
+  "use strict";
+
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__CP_DESKTOP_ACCOUNT_V162__) return;
+  window.__CP_DESKTOP_ACCOUNT_V162__ = true;
+
+  let api = null;
+  let mode = "login";
+  let busy = false;
+
+  const $ = (s, r=document) => r.querySelector(s);
+
+  function els(){
+    return {
+      modal: $("#cpAuthModal"),
+      title: $("#cpAuthModalTitle"),
+      subtitle: $("#cpAuthModalSubtitle"),
+      tabLogin: $("#cpAuthTabLogin"),
+      tabRegister: $("#cpAuthTabRegister"),
+      google: $("#cpAuthGoogle"),
+      form: $("#cpAuthForm"),
+      nameWrap: $("#cpAuthNameWrap"),
+      name: $("#cpAuthName"),
+      email: $("#cpAuthEmail"),
+      password: $("#cpAuthPassword"),
+      confirmWrap: $("#cpAuthConfirmWrap"),
+      confirm: $("#cpAuthPasswordConfirm"),
+      forgot: $("#cpAuthForgot"),
+      submit: $("#cpAuthSubmit"),
+      submitText: $("#cpAuthSubmit span"),
+      switchText: $("#cpAuthSwitchText"),
+      switchBtn: $("#cpAuthSwitchButton"),
+      message: $("#cpAuthFormMessage")
+    };
+  }
+
+  function message(msg="", type="error"){
+    const box = els().message;
+    if (!box) return;
+    box.textContent = msg;
+    box.hidden = !msg;
+    if (msg) box.dataset.type = type;
+    else box.removeAttribute("data-type");
+  }
+
+  function openModal(){
+    const e = els();
+    if (!e.modal) return;
+    setMode("login");
+    message("");
+    e.modal.hidden = false;
+    e.modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("cpAuthModalOpen");
+    setTimeout(() => e.email?.focus(), 80);
+  }
+
+  function closeModal(){
+    const e = els();
+    if (!e.modal) return;
+    e.modal.hidden = true;
+    e.modal.setAttribute("aria-hidden","true");
+    document.body.classList.remove("cpAuthModalOpen");
+    message("");
+  }
+
+  function setMode(next){
+    mode = next === "register" ? "register" : "login";
+    const reg = mode === "register";
+    const e = els();
+
+    e.tabLogin?.classList.toggle("active", !reg);
+    e.tabRegister?.classList.toggle("active", reg);
+    if (e.nameWrap) e.nameWrap.hidden = !reg;
+    if (e.confirmWrap) e.confirmWrap.hidden = !reg;
+    if (e.forgot) e.forgot.hidden = reg;
+
+    if (e.password){
+      e.password.autocomplete = reg ? "new-password" : "current-password";
+    }
+
+    if (e.title) e.title.textContent = reg ? "Crie sua conta" : "Entre no CornerPro";
+    if (e.subtitle) e.subtitle.textContent = reg
+      ? "Crie seu acesso individual ao CornerPro."
+      : "Acesse sua conta para manter seu plano e suas preferências.";
+
+    if (e.submitText) e.submitText.textContent = reg ? "CRIAR CONTA" : "ENTRAR";
+    if (e.switchText) e.switchText.textContent = reg ? "Já possui uma conta?" : "Ainda não possui conta?";
+    if (e.switchBtn) e.switchBtn.textContent = reg ? "Entrar" : "Criar conta";
+
+    message("");
+  }
+
+  function setBusy(value){
+    busy = !!value;
+    const e = els();
+    [e.google,e.submit,e.tabLogin,e.tabRegister,e.switchBtn,e.forgot]
+      .filter(Boolean).forEach(btn => btn.disabled = busy);
+  }
+
+  async function syncServer(user, force=false){
+    if (!user) return null;
+    const token = await user.getIdToken(force);
+
+    const login = await fetch("/auth/firebase", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token}),
+      cache:"no-store"
+    });
+    const loginData = await login.json().catch(()=>({}));
+    if (!login.ok) throw new Error(loginData?.error || "Falha ao registrar sua conta no servidor.");
+
+    const me = await fetch("/auth/me", {
+      headers:{Authorization:`Bearer ${token}`},
+      cache:"no-store"
+    });
+    const meData = await me.json().catch(()=>({}));
+    if (!me.ok) throw new Error(meData?.error || "Falha ao carregar seu perfil.");
+
+    return {...meData, user:meData?.user || loginData?.user || null};
+  }
+
+  function paintDesktopUser(user, profile=null){
+    const loginButton = $("#btnGoogleLogin");
+    const profileBox = $("#authUserProfile");
+    const photo = $("#authUserPhoto");
+    const name = $("#authUserName");
+    const plan = $("#authUserPlan");
+    const premium = profile?.premium === true || profile?.user?.premium === true;
+
+    if (!user){
+      if (loginButton){
+        loginButton.hidden = false;
+        loginButton.disabled = false;
+        loginButton.title = "Entrar / Criar conta";
+      }
+      if (profileBox) profileBox.hidden = true;
+      return;
+    }
+
+    if (loginButton) loginButton.hidden = true;
+    if (profileBox) profileBox.hidden = false;
+
+    const displayName = user.displayName || profile?.user?.nome || user.email?.split("@")[0] || "Usuário";
+    if (name) name.textContent = displayName;
+    if (plan){
+      plan.textContent = premium ? "CORNERPRO PRO" : "PLANO GRATUITO";
+      plan.classList.toggle("is-premium", premium);
+    }
+    if (photo){
+      if (user.photoURL){
+        photo.src = user.photoURL;
+        photo.hidden = false;
+      } else {
+        photo.hidden = true;
+        photo.removeAttribute("src");
+      }
+    }
+  }
+
+  async function googleLogin(){
+    if (busy || !api) return;
+    setBusy(true);
+    message("");
+    try{
+      const result = await api.entrarComGoogle();
+      const user = result?.usuario || result?.user || api.firebaseAuth?.currentUser;
+      if (!user) throw new Error("Não foi possível confirmar sua conta Google.");
+      const profile = await syncServer(user, true);
+      paintDesktopUser(user, profile);
+      closeModal();
+    }catch(err){
+      message(err?.message || "Não foi possível entrar com o Google.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function submitEmail(){
+    if (busy || !api) return;
+    const e = els();
+    const nome = String(e.name?.value || "").trim();
+    const email = String(e.email?.value || "").trim();
+    const senha = String(e.password?.value || "");
+    const confirmar = String(e.confirm?.value || "");
+
+    if (!email) return message("Digite seu e-mail.");
+    if (!senha) return message("Digite sua senha.");
+    if (senha.length < 6) return message("A senha precisa ter pelo menos 6 caracteres.");
+
+    if (mode === "register"){
+      if (!nome) return message("Digite seu nome.");
+      if (senha !== confirmar) return message("As senhas não coincidem.");
+    }
+
+    setBusy(true);
+    message("");
+    try{
+      const result = mode === "register"
+        ? await api.criarContaComEmail({nome,email,senha})
+        : await api.entrarComEmail({email,senha});
+
+      const user = result?.usuario || result?.user || api.firebaseAuth?.currentUser;
+      if (!user) throw new Error("Não foi possível confirmar sua conta.");
+
+      const profile = await syncServer(user, true);
+      paintDesktopUser(user, profile);
+      closeModal();
+    }catch(err){
+      message(err?.message || "Não foi possível concluir a autenticação.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function forgotPassword(){
+    if (busy || !api) return;
+    const email = String(els().email?.value || "").trim();
+    if (!email) return message("Digite seu e-mail para redefinir a senha.");
+
+    setBusy(true);
+    try{
+      await api.redefinirSenha(email);
+      message("Enviamos o link de redefinição para seu e-mail.", "success");
+    }catch(err){
+      message(err?.message || "Não foi possível enviar o e-mail de redefinição.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function logout(){
+    if (busy || !api) return;
+    setBusy(true);
+    try{
+      await api.sairDaConta();
+      paintDesktopUser(null);
+    }catch(err){
+      console.error("[Desktop V162 logout]", err);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  /* Captura antes do bridge legado: o botão do desktop passa a ABRIR O MODAL,
+     em vez de disparar o Google imediatamente. */
+  document.addEventListener("click", function(ev){
+    if (!window.matchMedia("(min-width:981px)").matches) return;
+
+    if (ev.target.closest("#btnGoogleLogin")){
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      openModal();
+      return;
+    }
+
+    if (ev.target.closest("#cpAuthGoogle")){
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      googleLogin();
+      return;
+    }
+
+    if (ev.target.closest("#cpAuthTabLogin")){
+      ev.preventDefault(); ev.stopImmediatePropagation(); setMode("login"); return;
+    }
+    if (ev.target.closest("#cpAuthTabRegister")){
+      ev.preventDefault(); ev.stopImmediatePropagation(); setMode("register"); return;
+    }
+    if (ev.target.closest("#cpAuthSwitchButton")){
+      ev.preventDefault(); ev.stopImmediatePropagation();
+      setMode(mode === "login" ? "register" : "login");
+      return;
+    }
+    if (ev.target.closest("#cpAuthForgot")){
+      ev.preventDefault(); ev.stopImmediatePropagation(); forgotPassword(); return;
+    }
+    if (ev.target.closest("#cpAuthModalClose,#cpAuthModalBackdrop")){
+      ev.preventDefault(); ev.stopImmediatePropagation(); closeModal(); return;
+    }
+    if (ev.target.closest("#btnGoogleLogout")){
+      ev.preventDefault(); ev.stopImmediatePropagation(); logout(); return;
+    }
+  }, true);
+
+  document.addEventListener("submit", function(ev){
+    if (!window.matchMedia("(min-width:981px)").matches) return;
+    if (ev.target?.id !== "cpAuthForm") return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    submitEmail();
+  }, true);
+
+  document.addEventListener("keydown", function(ev){
+    if (ev.key === "Escape" && !els().modal?.hidden) closeModal();
+  });
+
+  async function init(){
+    try{
+      api = await import("./firebase-client.js");
+
+      if (typeof api.observarAutenticacao === "function"){
+        api.observarAutenticacao(async state => {
+          const user = state?.usuario || state?.user || api.firebaseAuth?.currentUser || null;
+          if (!user){
+            paintDesktopUser(null);
+            return;
+          }
+          try{
+            const profile = await syncServer(user);
+            paintDesktopUser(user, profile);
+          }catch(err){
+            console.warn("[Desktop V162 profile]", err);
+            paintDesktopUser(user, null);
+          }
+        });
+      }
+    }catch(err){
+      console.error("[Desktop V162 Firebase]", err);
+      const btn = $("#btnGoogleLogin");
+      if (btn) btn.disabled = true;
+    }
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init, {once:true});
+  }else{
+    init();
+  }
+})();
