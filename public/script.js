@@ -26981,10 +26981,13 @@ const fallbackSide = target > 0
 
                     if (loginButton){
                       loginButton.hidden = false;
-                      loginButton.disabled = !firebaseApi;
+                      // DESKTOP V163: o botão do cabeçalho NUNCA fica bloqueado
+                      // aguardando o Firebase. Ele abre o modal imediatamente.
+                      loginButton.disabled = false;
+                      loginButton.removeAttribute("disabled");
                       loginButton.removeAttribute("aria-busy");
-                      loginButton.setAttribute("aria-label", "Entrar ou criar conta com Google");
-                      loginButton.onclick = loginWithGoogle;
+                      loginButton.setAttribute("aria-label", "Entrar ou criar conta");
+                      loginButton.onclick = null;
                     }
 
                     if (messageBox){
@@ -31016,4 +31019,91 @@ const fallbackSide = target > 0
   }else{
     init();
   }
+})();
+
+
+/* =========================================================
+   CORNERPRO DESKTOP V163 — FAILSAFE DO BOTÃO DE CONTA
+   Somente desktop. Impede módulos legados de desabilitarem
+   novamente #btnGoogleLogin e garante clique no modal.
+   ========================================================= */
+(function cornerProDesktopAuthButtonFailsafeV163(){
+  "use strict";
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__CP_DESKTOP_AUTH_FAILSAFE_V163__) return;
+  window.__CP_DESKTOP_AUTH_FAILSAFE_V163__ = true;
+
+  function unlockButton(){
+    const btn=document.getElementById("btnGoogleLogin");
+    if(!btn)return;
+    btn.disabled=false;
+    btn.removeAttribute("disabled");
+    btn.removeAttribute("aria-busy");
+    btn.style.setProperty("pointer-events","auto","important");
+    btn.style.setProperty("cursor","pointer","important");
+    btn.style.setProperty("opacity","1","important");
+    btn.style.setProperty("visibility","visible","important");
+    btn.style.setProperty("position","relative");
+    btn.style.setProperty("z-index","2147483000");
+  }
+
+  function openDesktopAuthModal(ev){
+    const btn=ev.target?.closest?.("#btnGoogleLogin");
+    if(!btn)return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+
+    unlockButton();
+
+    const modal=document.getElementById("cpAuthModal");
+    if(!modal)return;
+
+    modal.hidden=false;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("cpAuthModalOpen");
+
+    // Garante que o conteúdo de cadastro desktop apareça,
+    // mesmo que o módulo mobile tenha escondido campos antes.
+    const tabs=modal.querySelector(".cpAuthTabs");
+    const divider=modal.querySelector(".cpAuthDivider");
+    const form=modal.querySelector("#cpAuthForm");
+    const switcher=modal.querySelector(".cpAuthSwitch");
+    const google=modal.querySelector("#cpAuthGoogle");
+    const mobileAccount=modal.querySelector("#cpAuthMobileAccount");
+
+    if(tabs)tabs.hidden=false;
+    if(divider)divider.hidden=false;
+    if(form)form.hidden=false;
+    if(switcher)switcher.hidden=false;
+    if(google)google.hidden=false;
+    if(mobileAccount)mobileAccount.hidden=true;
+  }
+
+  // Captura antes de qualquer onclick/listener legado.
+  document.addEventListener("click",openDesktopAuthModal,true);
+
+  // Se algum módulo tentar colocar disabled depois, desfaz na hora.
+  const observe=()=>{
+    const btn=document.getElementById("btnGoogleLogin");
+    if(!btn)return;
+    unlockButton();
+    new MutationObserver(unlockButton).observe(btn,{
+      attributes:true,
+      attributeFilter:["disabled","aria-busy","style","hidden"]
+    });
+  };
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",observe,{once:true});
+  }else{
+    observe();
+  }
+
+  window.addEventListener("load",unlockButton);
+  setTimeout(unlockButton,100);
+  setTimeout(unlockButton,600);
+  setTimeout(unlockButton,1800);
 })();
