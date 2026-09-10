@@ -1240,6 +1240,27 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         closeLogin();return
       }
       if(e.target.closest("#cpV116GoogleLogin")){openAuth();return}
+
+      // V158 — ações do menu da conta
+      if(e.target.closest("[data-v155-my-account]")){
+        e.preventDefault();
+        const nome=currentUser?.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
+        const email=currentUser?.email||currentProfile?.user?.email||"";
+        const plano=currentProfile?.premium===true?"CORNERPRO PRO":"FREE";
+        alert(`MINHA CONTA\n\nNome: ${nome}\nE-mail: ${email}\nPlano: ${plano}`);
+        return;
+      }
+      if(e.target.closest("[data-v155-devices]")){
+        e.preventDefault();
+        alert("GERENCIAR DISPOSITIVOS\n\nEste dispositivo está com a sessão ativa.\n\nNa próxima etapa vamos conectar a lista real de dispositivos ao servidor para permitir revogar acessos.");
+        return;
+      }
+      if(e.target.closest("[data-v155-upgrade]")){
+        e.preventDefault();
+        alert("CORNERPRO PRO\n\nÁrea de assinatura ativada.\n\nO próximo passo é conectar este botão ao checkout do Mercado Pago. Nenhuma cobrança será feita agora.");
+        return;
+      }
+
       if(e.target.closest("[data-v155-logout]")){
         (async()=>{
           try{ await firebaseApi?.sair?.(); }catch(err){ console.warn("[V155 logout]",err); }
