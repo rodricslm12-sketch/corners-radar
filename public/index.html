@@ -155,7 +155,7 @@
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v168-market-teaser';
+          s.src='script.js?v=20260910-desktop-v169-market-teaser-clean';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -768,6 +768,199 @@
   html.cpAuthGateLocked [data-corner-line],
   html.cpAuthGateLocked .filterPills button{
     cursor:pointer!important;
+  }
+}
+</style>
+
+
+<style id="cpVisitorMarketTeaserV169">
+@media (min-width:981px){
+
+  /* =========================================================
+     V169 — VITRINE VISUAL MAIS LIMPA
+     Mantém mercados visíveis, conteúdo real protegido
+     ========================================================= */
+
+  /* Remove os blocos artificiais da V168 */
+  html.cpAuthGateLocked .dashboardMainColumn::before{
+    content:none!important;
+    display:none!important;
+  }
+
+  html.cpAuthGateLocked .gamesPanel::after{
+    content:none!important;
+    display:none!important;
+  }
+
+  /* Fundo geral: continua mostrando que existe conteúdo */
+  html.cpAuthGateLocked .dashboardGrid{
+    position:relative!important;
+  }
+
+  /* CARD PRINCIPAL: não mostra dados legíveis, mas preserva o visual */
+  html.cpAuthGateLocked .heroPanel{
+    visibility:visible!important;
+    pointer-events:none!important;
+    position:relative!important;
+    overflow:hidden!important;
+    filter:none!important;
+    opacity:1!important;
+  }
+
+  html.cpAuthGateLocked .heroPanel > *{
+    filter:blur(10px)!important;
+    opacity:.16!important;
+    user-select:none!important;
+  }
+
+  html.cpAuthGateLocked .heroPanel::after{
+    content:"🔒  Faça login para liberar a melhor análise do dia";
+    position:absolute!important;
+    inset:0!important;
+    z-index:20!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    padding:22px!important;
+    background:
+      linear-gradient(180deg,rgba(2,8,6,.38),rgba(2,8,6,.58))!important;
+    color:#eef7f0!important;
+    font:900 17px/1.3 Inter,system-ui,Arial,sans-serif!important;
+    letter-spacing:-.2px!important;
+    text-shadow:0 2px 18px rgba(0,0,0,.8)!important;
+    backdrop-filter:blur(1px)!important;
+  }
+
+  /* Painel direito continua visível como prévia, mas ilegível */
+  html.cpAuthGateLocked .dashboardRightRail{
+    visibility:visible!important;
+    pointer-events:none!important;
+    filter:blur(7px)!important;
+    opacity:.18!important;
+  }
+
+  html.cpAuthGateLocked #desktopMatchRail{
+    visibility:visible!important;
+  }
+
+  /* Faixa dos mercados vira o destaque principal */
+  html.cpAuthGateLocked .marketTabs{
+    position:relative!important;
+    z-index:2147483205!important;
+    opacity:1!important;
+    filter:none!important;
+    pointer-events:auto!important;
+    background:linear-gradient(180deg,#0b1318,#081015)!important;
+    border-top:1px solid rgba(99,241,39,.18)!important;
+    border-bottom:1px solid rgba(99,241,39,.24)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.02),
+      0 0 24px rgba(99,241,39,.06)!important;
+  }
+
+  html.cpAuthGateLocked .marketTab{
+    opacity:1!important;
+    filter:none!important;
+    cursor:pointer!important;
+  }
+
+  /* Submercados / linhas também continuam totalmente visíveis */
+  html.cpAuthGateLocked .gamesPanel{
+    position:relative!important;
+    z-index:2147483200!important;
+    background:linear-gradient(180deg,#081116,#061015)!important;
+    border-color:#18272d!important;
+    overflow:hidden!important;
+  }
+
+  html.cpAuthGateLocked .gamesPanel .sectionHead,
+  html.cpAuthGateLocked .gamesPanel .filterPills,
+  html.cpAuthGateLocked .gamesPanel .marketSubTabs,
+  html.cpAuthGateLocked .gamesPanel .marketLines,
+  html.cpAuthGateLocked .gamesPanel .linePills,
+  html.cpAuthGateLocked [data-market-tabs],
+  html.cpAuthGateLocked [data-market-lines]{
+    opacity:1!important;
+    filter:none!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+
+  /* Lista real fica apenas como prévia escurecida, sem leitura */
+  html.cpAuthGateLocked .gamesPanel .gameRow,
+  html.cpAuthGateLocked .gamesPanel [data-game-row],
+  html.cpAuthGateLocked .gamesPanel .gamesList,
+  html.cpAuthGateLocked .gamesPanel tbody{
+    visibility:visible!important;
+    pointer-events:none!important;
+    filter:blur(7px)!important;
+    opacity:.11!important;
+  }
+
+  /* Cabeçalho da lista também fica discreto */
+  html.cpAuthGateLocked .gamesPanel .tableHead,
+  html.cpAuthGateLocked .gamesPanel .gamesHeader{
+    opacity:.24!important;
+    filter:blur(2px)!important;
+  }
+
+  /* Mensagem elegante logo acima da lista, sem ocupar muito espaço */
+  html.cpAuthGateLocked .gamesPanel::before{
+    content:"Clique em qualquer mercado para liberar as análises";
+    position:absolute!important;
+    left:50%!important;
+    top:112px!important;
+    transform:translateX(-50%)!important;
+    z-index:30!important;
+    width:max-content!important;
+    max-width:72%!important;
+    padding:8px 14px!important;
+    border:1px solid rgba(99,241,39,.26)!important;
+    border-radius:999px!important;
+    background:rgba(5,16,11,.92)!important;
+    color:#8cff59!important;
+    font:900 9px/1 Inter,system-ui,Arial,sans-serif!important;
+    letter-spacing:.35px!important;
+    box-shadow:0 8px 26px rgba(0,0,0,.28)!important;
+    pointer-events:none!important;
+  }
+
+  /* Evita sensação de "buraco preto" na lateral */
+  html.cpAuthGateLocked .content,
+  html.cpAuthGateLocked .dashboardMainColumn{
+    background:transparent!important;
+  }
+
+  /* Modal: central, limpo e sem tampar a faixa inteira */
+  html.cpAuthGateLocked #cpAuthModal{
+    padding-top:82px!important;
+    align-items:flex-start!important;
+  }
+
+  html.cpAuthGateLocked #cpAuthModalBackdrop{
+    background:rgba(0,0,0,.66)!important;
+    backdrop-filter:blur(7px)!important;
+    -webkit-backdrop-filter:blur(7px)!important;
+  }
+
+  html.cpAuthGateLocked #cpAuthModal .cpAuthCard{
+    width:min(420px,calc(100vw - 34px))!important;
+    max-height:calc(100vh - 120px)!important;
+    overflow:auto!important;
+    border:1px solid rgba(99,241,39,.20)!important;
+    box-shadow:
+      0 32px 100px rgba(0,0,0,.78),
+      0 0 0 1px rgba(255,255,255,.02)!important;
+  }
+
+  /* Enquanto modal fechado, só a vitrine aparece */
+  html.cpAuthGateLocked:not(.cpAuthGatePromptOpen) #cpAuthModal{
+    display:none!important;
+  }
+
+  html.cpAuthGateLocked.cpAuthGatePromptOpen #cpAuthModal{
+    display:flex!important;
   }
 }
 </style>
