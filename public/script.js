@@ -389,7 +389,27 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
   
-    function merge(){const map=new Map();const add=(g,m=null)=>{if(!g||typeof g!=="object")return;const k=id(g),old=map.get(k)||{},next={...old,...g};if(m&&MARKETS[m]?.field){const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;if(d)next[f]=d}map.set(k,next)};state.base.forEach(g=>add(g));Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));state.games=[...map.values()].filter(isMainLeagueGame)}
+    function merge(){
+      const map=new Map();
+      const add=(g,m=null)=>{
+        if(!g||typeof g!=="object")return;
+        const k=id(g),old=map.get(k)||{},next={...old,...g};
+        if(m&&MARKETS[m]?.field){
+          const f=MARKETS[m].field,d=g?.[f]||raw(g)?.[f]||g?.decision||g?.ai;
+          if(d)next[f]=d
+        }
+        map.set(k,next)
+      };
+
+      state.base.forEach(g=>add(g));
+      Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));
+
+      // V161: o Card do Dia salvo nunca é removido por refresh/polling.
+      const savedHero=loadDailyHero(state.date||ymd());
+      if(savedHero)add(savedHero,"corners");
+
+      state.games=[...map.values()].filter(isMainLeagueGame)
+    }
     /* V141 — TODOS usa a base completa; IA usa somente decisões resolvidas.
        Antes, source() trocava a base inteira pela lista do engine. Isso fazia IA e TODOS
        parecerem iguais e fazia linhas manuais zerarem a tela. */
@@ -896,7 +916,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const approved=filtered("corners","IA");
       const fallback=state.games
         .filter(isMainLeagueGame)
-        .filter(g=>{const s=status(g); return !s.finished;})
+        // V161: permite recuperar o melhor jogo do dia mesmo se já ENCERRADO.
         .sort((a,b)=>
           (confidence(b,"corners")-confidence(a,"corners")) ||
           ((projection(b,"corners")||0)-(projection(a,"corners")||0))
@@ -908,6 +928,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const g=storedHero||approved[0]||fallback[0]||null;
 
       if(g && !storedHero){
+        // salva imediatamente a primeira escolha válida do dia, antes de qualquer polling
         saveDailyHero(g,state.date||ymd());
       }
       state.heroGame=g;
