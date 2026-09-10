@@ -35,6 +35,59 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     const MOBILE_HOME_CACHE_PREFIX="cornerpro_mobile_home_cache_v143:";
     const MOBILE_HOME_CACHE_TTL=8*60*60*1000;
 
+    /* =========================================================
+       APP V160 — CARD DO DIA PERSISTENTE
+       O jogo escolhido como "Melhor aposta • Escanteios" permanece
+       no card até o fim do dia, inclusive depois de ENCERRADO.
+       Não altera o motor da IA nem a escolha inicial do jogo.
+       ========================================================= */
+    const DAILY_HERO_PREFIX="cornerpro_mobile_daily_hero_v160:";
+
+    function dailyHeroKey(date=state.date||ymd()){
+      return DAILY_HERO_PREFIX+String(date||ymd());
+    }
+
+    function saveDailyHero(game,date=state.date||ymd()){
+      try{
+        if(!game||typeof game!=="object")return;
+        localStorage.setItem(dailyHeroKey(date),JSON.stringify({
+          date:String(date||ymd()),
+          savedAt:Date.now(),
+          game
+        }));
+      }catch(e){
+        console.warn("[V160 daily hero save]",e);
+      }
+    }
+
+    function loadDailyHero(date=state.date||ymd()){
+      try{
+        const parsed=JSON.parse(localStorage.getItem(dailyHeroKey(date))||"null");
+        if(!parsed||parsed.date!==String(date||ymd())||!parsed.game)return null;
+        return parsed.game;
+      }catch{
+        return null;
+      }
+    }
+
+    function mergeDailyHeroWithCurrent(saved){
+      if(!saved)return null;
+      const gid=id(saved);
+      if(!gid)return saved;
+
+      const current=(Array.isArray(state.games)?state.games:[]).find(g=>id(g)===gid);
+      if(!current)return saved;
+
+      return {
+        ...saved,
+        ...current,
+        raw:{
+          ...raw(saved),
+          ...raw(current)
+        }
+      };
+    }
+
     function mobileHomeCacheKey(date=state.date||ymd()){
       return MOBILE_HOME_CACHE_PREFIX+String(date||ymd());
     }
@@ -445,6 +498,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       state.base=base;
       merge();
+
+      // V160: se o provedor já retirou o jogo encerrado da lista do dia,
+      // mantém o jogo que foi escolhido anteriormente como Card do Dia.
+      const persistedHero=loadDailyHero(date);
+      if(persistedHero && !state.games.some(g=>id(g)===id(persistedHero))){
+        state.games.push(persistedHero);
+      }
+
       if(!backgroundRefresh)setSmartLoading(34,"Jogos encontrados. Carregando estatísticas...");
 
       // V128 APP: a base já chegou; atualiza contadores e mantém o hero
@@ -841,7 +902,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           ((projection(b,"corners")||0)-(projection(a,"corners")||0))
         );
 
-      const g=approved[0]||fallback[0]||null;
+      // V160: depois que o Card do Dia é escolhido, ele fica fixo naquela data.
+      // Mesmo se a partida terminar e sair das rotas pré-jogo, continua visível.
+      const storedHero=mergeDailyHeroWithCurrent(loadDailyHero(state.date||ymd()));
+      const g=storedHero||approved[0]||fallback[0]||null;
+
+      if(g && !storedHero){
+        saveDailyHero(g,state.date||ymd());
+      }
       state.heroGame=g;
 
       if(!g){
@@ -854,7 +922,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ? rawRec
         : {...rawRec,line:pr!==null?(pr>=10.75?"OVER 10.5":pr>=9.55?"OVER 9.5":"EM ANÁLISE"):"EM ANÁLISE"};
       const heroDay=state.date===ymd()?"HOJE":state.date===ymd(1)?"AMANHÃ":dateLong(state.date).toUpperCase();
-      el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>IA RECOMENDA</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${heroDay} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
+      const heroBadge=s.finished?"ENCERRADO":s.ht?"INTERVALO":s.live?"AO VIVO":"IA RECOMENDA";
+      el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>${heroBadge}</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${heroDay} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
     function applyView(){
       const root=$("#cpNewMobileV110");
       if(root){
