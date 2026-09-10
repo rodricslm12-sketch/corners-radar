@@ -135,14 +135,31 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
 
     function rememberMarket(){try{localStorage.setItem(LAST_MARKET_KEY,state.market)}catch{}}
-    const FAVORITES_KEY="cornerpro_mobile_favorite_teams_v1";
+    const FAVORITES_KEY_BASE="cornerpro_mobile_favorite_teams_v1";
     let favoriteTeams=new Set();
-    try{
-      const saved=JSON.parse(localStorage.getItem(FAVORITES_KEY)||"[]");
-      if(Array.isArray(saved)) favoriteTeams=new Set(saved.map(norm).filter(Boolean));
-    }catch{}
+
+    function favoriteUserId(){
+      return String(currentUser?.uid||window.__cornerProUserId||"").trim();
+    }
+    function favoritesStorageKey(){
+      const uid=favoriteUserId();
+      return uid?`${FAVORITES_KEY_BASE}:${uid}`:null;
+    }
+    function loadFavorites(){
+      favoriteTeams=new Set();
+      const key=favoritesStorageKey();
+      if(!key)return;
+      try{
+        const saved=JSON.parse(localStorage.getItem(key)||"[]");
+        if(Array.isArray(saved)) favoriteTeams=new Set(saved.map(norm).filter(Boolean));
+      }catch{}
+    }
     function isFavoriteTeam(name){return favoriteTeams.has(norm(name))}
-    function saveFavorites(){try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favoriteTeams]))}catch{}}
+    function saveFavorites(){
+      const key=favoritesStorageKey();
+      if(!key)return;
+      try{localStorage.setItem(key,JSON.stringify([...favoriteTeams]))}catch{}
+    }
     function toggleFavoriteTeam(name){
       const key=norm(name);
       if(!key)return;
@@ -2579,10 +2596,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               loading:true
             };
           
-            try {
-              const saved = JSON.parse(localStorage.getItem("cornerProFavorites") || "[]");
-              if (Array.isArray(saved)) saved.forEach(x => state.favorites.add(norm(x)));
-            } catch {}
+            function cpd3UserId(){
+              return String(window.__cornerProUserId||"").trim();
+            }
+            function cpd3FavoritesStorageKey(){
+              const uid=cpd3UserId();
+              return uid?`cornerProFavorites:${uid}`:null;
+            }
+            function loadCpd3Favorites(){
+              state.favorites.clear();
+              const key=cpd3FavoritesStorageKey();
+              if(!key)return;
+              try{
+                const saved=JSON.parse(localStorage.getItem(key)||"[]");
+                if(Array.isArray(saved))saved.forEach(x=>state.favorites.add(norm(x)));
+              }catch{}
+            }
+            loadCpd3Favorites();
           
             function clean(v, fb=""){
               const s=String(v ?? "").trim();
@@ -3566,8 +3596,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             }
           
             function saveFav(){
-              try{localStorage.setItem("cornerProFavorites",JSON.stringify([...state.favorites]));}catch{}
+              const key=cpd3FavoritesStorageKey();
+              if(!key)return;
+              try{localStorage.setItem(key,JSON.stringify([...state.favorites]))}catch{}
             }
+
+            window.addEventListener("cornerpro:auth-user",()=>{
+              loadCpd3Favorites();
+              try{renderControls()}catch{}
+              try{renderHero()}catch{}
+              try{renderGames()}catch{}
+            });
           
             function toggleFav(name){
               const k=norm(name);
@@ -5272,7 +5311,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
           
           
-              const CPR_FAVORITES_KEY = "cornerProFavoriteTeams:v2";
+              const CPR_FAVORITES_KEY_BASE = "cornerProFavoriteTeams:v2";
+
+              function cprFavoritesStorageKey(){
+                const uid=String(window.__cornerProUserId||"").trim();
+                return uid?`${CPR_FAVORITES_KEY_BASE}:${uid}`:null;
+              }
           
               function cprNormalizeTeamKey(name) {
                 return String(name || "")
@@ -5285,7 +5329,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
               function cprReadFavorites() {
                 try {
-                  const parsed = JSON.parse(localStorage.getItem(CPR_FAVORITES_KEY) || "[]");
+                  const storageKey=cprFavoritesStorageKey(); if(!storageKey)return []; const parsed = JSON.parse(localStorage.getItem(storageKey) || "[]");
                   return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
                 } catch {
                   return [];
@@ -5294,7 +5338,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           
               function cprWriteFavorites(items) {
                 try {
-                  localStorage.setItem(CPR_FAVORITES_KEY, JSON.stringify(items));
+                  const storageKey=cprFavoritesStorageKey(); if(!storageKey)return; localStorage.setItem(storageKey, JSON.stringify(items));
                 } catch {}
               }
           
@@ -30588,8 +30632,18 @@ const fallbackSide = target > 0
   if(window.__CP_FAVORITES_V147__) return;
   window.__CP_FAVORITES_V147__=true;
 
-  const KEYS=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
-  const CACHE="cornerpro_favorites_home_v147";
+  const KEY_BASES=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
+  const CACHE_BASE="cornerpro_favorites_home_v147";
+
+  function favUid(){return String(window.__cornerProUserId||"").trim()}
+  function scopedKeys(){
+    const uid=favUid();
+    return uid?KEY_BASES.map(k=>`${k}:${uid}`):[];
+  }
+  function cacheKey(){
+    const uid=favUid();
+    return uid?`${CACHE_BASE}:${uid}`:null;
+  }
   const TTL=10*60*1000;
   let busy=false,timer=null;
 
@@ -30599,7 +30653,7 @@ const fallbackSide = target > 0
 
   function favorites(){
     const m=new Map();
-    for(const key of KEYS){
+    for(const key of scopedKeys()){
       try{
         const a=JSON.parse(localStorage.getItem(key)||"[]");
         if(!Array.isArray(a))continue;
@@ -30633,8 +30687,8 @@ const fallbackSide = target > 0
     }
     return[];
   }
-  function getCache(){try{const c=JSON.parse(localStorage.getItem(CACHE)||"null");return c&&Date.now()-Number(c.at||0)<TTL&&Array.isArray(c.alerts)?c.alerts:null}catch{return null}}
-  function setCache(alerts){try{localStorage.setItem(CACHE,JSON.stringify({at:Date.now(),alerts}))}catch{}}
+  function getCache(){const k=cacheKey();if(!k)return null;try{const c=JSON.parse(localStorage.getItem(k)||"null");return c&&Date.now()-Number(c.at||0)<TTL&&Array.isArray(c.alerts)?c.alerts:null}catch{return null}}
+  function setCache(alerts){const k=cacheKey();if(!k)return;try{localStorage.setItem(k,JSON.stringify({at:Date.now(),alerts}))}catch{}}
 
   function style(){
     if(document.getElementById("cpFav147Style"))return;
@@ -30668,10 +30722,16 @@ const fallbackSide = target > 0
     if((d&&d.contains(e.target))||(m&&m.contains(e.target))){e.preventDefault();e.stopPropagation();open();return}
     if(e.target.closest?.("[data-cpfav-close]")){e.preventDefault();close();return}
     const o=document.getElementById("cpFav147Overlay");if(o&&e.target===o){close();return}
-    if(e.target.closest?.("[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav")){try{localStorage.removeItem(CACHE)}catch{};schedule(true,false)}
+    if(e.target.closest?.("[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav")){try{const k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}
   },true);
   document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
-  window.addEventListener("storage",e=>{if(KEYS.includes(e.key)){try{localStorage.removeItem(CACHE)}catch{};schedule(true,false)}});
+  window.addEventListener("storage",e=>{if(scopedKeys().includes(e.key)){try{const k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}});
+
+  window.addEventListener("cornerpro:auth-user",()=>{
+    window.__cpFav147Alerts=[];
+    paint([]);
+    schedule(true,false);
+  });
 
   // Sem observer: não cria ciclo de DOM e não bloqueia o card principal do app.
   style();const c=getCache();if(c){window.__cpFav147Alerts=c;setTimeout(()=>paint(c),250)}

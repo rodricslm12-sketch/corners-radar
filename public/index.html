@@ -155,7 +155,7 @@
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v166-auth';
+          s.src='script.js?v=20260910-desktop-v167-private-user';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -1450,25 +1450,25 @@
 
       <div class="cpAuthDivider"><span>OU CONTINUE COM E-MAIL</span></div>
 
-      <form class="cpAuthForm" id="cpAuthForm" autocomplete="on" novalidate>
+      <form class="cpAuthForm" id="cpAuthForm" autocomplete="off" novalidate>
         <label id="cpAuthNameWrap" hidden>
           <span>Nome</span>
-          <input id="cpAuthName" name="name" type="text" autocomplete="name" placeholder="Seu nome" maxlength="80">
+          <input id="cpAuthName" name="cp-name" type="text" autocomplete="off" placeholder="Seu nome" maxlength="80">
         </label>
 
         <label>
           <span>E-mail</span>
-          <input id="cpAuthEmail" name="email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="seu@email.com">
+          <input id="cpAuthEmail" name="cp-login-email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="seu@email.com">
         </label>
 
         <label>
           <span>Senha</span>
-          <input id="cpAuthPassword" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="6">
+          <input id="cpAuthPassword" name="cp-login-password" type="password" autocomplete="new-password" placeholder="Sua senha" minlength="6">
         </label>
 
         <label id="cpAuthConfirmWrap" hidden>
           <span>Confirmar senha</span>
-          <input id="cpAuthPasswordConfirm" name="password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
+          <input id="cpAuthPasswordConfirm" name="cp-register-password-confirm" type="password" autocomplete="new-password" placeholder="Repita sua senha" minlength="6">
         </label>
 
         <button type="button" class="cpAuthForgot" id="cpAuthForgot">Esqueci minha senha</button>
@@ -1806,6 +1806,14 @@
     msg("");
   }
 
+  function clearAuthFields(){
+    const e=E();
+    if(e.name)e.name.value="";
+    if(e.email)e.email.value="";
+    if(e.password)e.password.value="";
+    if(e.confirm)e.confirm.value="";
+  }
+
   function forceDesktopModalContent(){
     const e = E();
     if (!e.modal) return;
@@ -1834,6 +1842,7 @@
 
     unlock();
     forceDesktopModalContent();
+    clearAuthFields();
     setMode("login");
 
     e.modal.hidden = false;
@@ -1922,6 +1931,8 @@
 
     if(!user){
       accessGranted=false;
+      window.__cornerProUserId="";
+      window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid:""}}));
       setGateLocked(true);
 
       if(e.loginBtn){
@@ -1936,6 +1947,8 @@
     }
 
     accessGranted=true;
+    window.__cornerProUserId=String(user.uid||"");
+    window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid:window.__cornerProUserId}}));
     setGateLocked(false);
 
     if(e.loginBtn)e.loginBtn.hidden=true;
