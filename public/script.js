@@ -1241,23 +1241,124 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
       if(e.target.closest("#cpV116GoogleLogin")){openAuth();return}
 
-      // V158 — ações do menu da conta
-      if(e.target.closest("[data-v155-my-account]")){
-        e.preventDefault();
+      // V159 — ações profissionais dentro do próprio modal (sem alert do navegador)
+      const openAccountSubView=(type)=>{
+        const card=document.querySelector("#cpV116Login .v155AccountCard");
+        const logged=document.querySelector("#cpV116Logged");
+        if(!card||!logged)return;
+
+        card.querySelectorAll(".v159SubView").forEach(x=>x.remove());
+        logged.style.display="none";
+        logged.hidden=true;
+
         const nome=currentUser?.displayName||currentProfile?.user?.nome||"Usuário CornerPro";
         const email=currentUser?.email||currentProfile?.user?.email||"";
-        const plano=currentProfile?.premium===true?"CORNERPRO PRO":"FREE";
-        alert(`MINHA CONTA\n\nNome: ${nome}\nE-mail: ${email}\nPlano: ${plano}`);
+        const isPro=currentProfile?.premium===true;
+        const plano=isPro?"CORNERPRO PRO":"FREE";
+
+        let title="",content="";
+
+        if(type==="account"){
+          title="Minha conta";
+          content=`
+            <div class="v159InfoGrid">
+              <div><small>NOME</small><b>${esc(nome)}</b></div>
+              <div><small>E-MAIL</small><b>${esc(email)}</b></div>
+              <div><small>PLANO</small><b class="${isPro?"isPro":""}">${plano}</b></div>
+              <div><small>LOGIN</small><b>GOOGLE</b></div>
+            </div>`;
+        }
+
+        if(type==="devices"){
+          title="Gerenciar dispositivos";
+          content=`
+            <div class="v159DeviceCard">
+              <span>📱</span>
+              <div><b>Este dispositivo</b><small>Sessão atual do navegador</small></div>
+              <em>ATIVO</em>
+            </div>
+            <p class="v159Note">Na próxima etapa vamos conectar o controle real de dispositivos ao servidor para listar e revogar acessos.</p>`;
+        }
+
+        if(type==="upgrade"){
+          title="CornerPro PRO";
+          content=`
+            <div class="v159ProBox">
+              <span>♛</span>
+              <h3>Assinar CornerPro PRO</h3>
+              <p>Tenha acesso aos recursos premium da sua conta.</p>
+            </div>
+            <button type="button" class="v159PrimaryBtn" data-v159-pro-next>CONTINUAR PARA ASSINATURA</button>
+            <p class="v159Note">Mercado Pago ainda não está conectado. Nenhuma cobrança será feita neste momento.</p>`;
+        }
+
+        const view=document.createElement("section");
+        view.className="v159SubView";
+        view.innerHTML=`
+          <div class="v159SubHead">
+            <button type="button" data-v159-back aria-label="Voltar">‹</button>
+            <h2>${title}</h2>
+          </div>
+          ${content}`;
+        card.appendChild(view);
+
+        if(!document.getElementById("cpV159AccountStyles")){
+          const st=document.createElement("style");
+          st.id="cpV159AccountStyles";
+          st.textContent=`
+            @media(max-width:980px){
+              #cpV116Login .v159SubView{margin-top:4px}
+              #cpV116Login .v159SubHead{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;margin:0 0 18px}
+              #cpV116Login .v159SubHead button{width:42px;height:42px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:#0a1510;color:#fff;font-size:30px;line-height:1}
+              #cpV116Login .v159SubHead h2{margin:0;text-align:center;font-size:20px;font-weight:900}
+              #cpV116Login .v159InfoGrid{display:grid;gap:9px}
+              #cpV116Login .v159InfoGrid>div{padding:15px 16px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:#07110c}
+              #cpV116Login .v159InfoGrid small{display:block;margin-bottom:5px;color:#758179;font-size:10px;font-weight:900;letter-spacing:.7px}
+              #cpV116Login .v159InfoGrid b{display:block;font-size:14px;color:#f1f5f2;overflow-wrap:anywhere}
+              #cpV116Login .v159InfoGrid b.isPro{color:#72ff3c}
+              #cpV116Login .v159DeviceCard{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;padding:16px;border:1px solid rgba(101,255,42,.16);border-radius:17px;background:#07110c}
+              #cpV116Login .v159DeviceCard>span{font-size:25px}
+              #cpV116Login .v159DeviceCard b{display:block;font-size:14px}
+              #cpV116Login .v159DeviceCard small{display:block;margin-top:4px;color:#7f8b83;font-size:11px}
+              #cpV116Login .v159DeviceCard em{padding:5px 8px;border-radius:8px;background:#173b1a;color:#73ff42;font-size:10px;font-style:normal;font-weight:950}
+              #cpV116Login .v159ProBox{text-align:center;padding:22px 15px;border:1px solid rgba(101,255,42,.14);border-radius:18px;background:linear-gradient(145deg,#07110c,#0a180c)}
+              #cpV116Login .v159ProBox>span{display:block;color:#6cff35;font-size:38px}
+              #cpV116Login .v159ProBox h3{margin:7px 0 5px;font-size:20px}
+              #cpV116Login .v159ProBox p{margin:0;color:#87928b;font-size:12px}
+              #cpV116Login .v159PrimaryBtn{width:100%;min-height:54px;margin-top:14px;border:0;border-radius:15px;background:#63ff2c;color:#071006;font-size:13px;font-weight:950}
+              #cpV116Login .v159Note{margin:14px 4px 0;color:#748078;font-size:11px;line-height:1.5;text-align:center}
+            }`;
+          document.head.appendChild(st);
+        }
+      };
+
+      if(e.target.closest("[data-v155-my-account]")){
+        e.preventDefault();
+        openAccountSubView("account");
         return;
       }
       if(e.target.closest("[data-v155-devices]")){
         e.preventDefault();
-        alert("GERENCIAR DISPOSITIVOS\n\nEste dispositivo está com a sessão ativa.\n\nNa próxima etapa vamos conectar a lista real de dispositivos ao servidor para permitir revogar acessos.");
+        openAccountSubView("devices");
         return;
       }
       if(e.target.closest("[data-v155-upgrade]")){
         e.preventDefault();
-        alert("CORNERPRO PRO\n\nÁrea de assinatura ativada.\n\nO próximo passo é conectar este botão ao checkout do Mercado Pago. Nenhuma cobrança será feita agora.");
+        openAccountSubView("upgrade");
+        return;
+      }
+      if(e.target.closest("[data-v159-back]")){
+        e.preventDefault();
+        document.querySelectorAll("#cpV116Login .v159SubView").forEach(x=>x.remove());
+        const logged=document.querySelector("#cpV116Logged");
+        if(logged){logged.hidden=false;logged.style.display="block"}
+        syncAuth();
+        return;
+      }
+      if(e.target.closest("[data-v159-pro-next]")){
+        e.preventDefault();
+        const note=document.querySelector("#cpV116Login .v159Note");
+        if(note)note.textContent="Pagamento ainda não conectado. A próxima etapa é integrar o Mercado Pago.";
         return;
       }
 
