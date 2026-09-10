@@ -92,13 +92,70 @@
     #cpAuthModal [hidden] { display: none !important; }
   </style>
 
+  <!-- V166 — PORTA DE ACESSO DESKTOP -->
+  <style id="cpDesktopAuthGateV166">
+    @media (min-width:981px){
+      html.cpAuthGatePending::before{
+        content:"";
+        position:fixed;
+        inset:0;
+        z-index:2147483500;
+        background:
+          radial-gradient(circle at 50% 30%,rgba(99,241,39,.08),transparent 34%),
+          #030706;
+      }
+
+      html.cpAuthGatePending::after{
+        content:"VERIFICANDO ACESSO...";
+        position:fixed;
+        left:50%;
+        top:50%;
+        transform:translate(-50%,-50%);
+        z-index:2147483550;
+        color:#73ff35;
+        font:900 11px/1.2 Inter,system-ui,Arial,sans-serif;
+        letter-spacing:1.1px;
+      }
+
+      html.cpAuthGateLocked body{
+        overflow:hidden!important;
+      }
+
+      /* Enquanto não houver usuário autenticado, o site fica atrás do modal. */
+      html.cpAuthGateLocked #cpAuthModal{
+        display:flex!important;
+        visibility:visible!important;
+        opacity:1!important;
+        pointer-events:auto!important;
+        z-index:2147483647!important;
+      }
+
+      /* Sem "X" para pular o login. */
+      html.cpAuthGateLocked #cpAuthModalClose{
+        display:none!important;
+      }
+
+      html.cpAuthGateLocked #cpAuthModalBackdrop{
+        cursor:default!important;
+      }
+    }
+  </style>
+
+  <script id="cpDesktopAuthGateBootV166">
+    (function(){
+      if(window.matchMedia && window.matchMedia("(min-width:981px)").matches){
+        document.documentElement.classList.add("cpAuthGatePending");
+      }
+    })();
+  </script>
+
   <link rel="stylesheet" href="style.css?v=20260910-desktop-v164-auth" media="(min-width:981px)">
   <script>
     (function(){
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260910-desktop-v165-auth';
+          s.src='script.js?v=20260910-desktop-v166-auth';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -1660,6 +1717,14 @@
   let firebaseApi = null;
   let mode = "login";
   let busy = false;
+  let accessGranted = false;
+  let authResolved = false;
+
+  function setGateLocked(locked){
+    const root=document.documentElement;
+    root.classList.toggle("cpAuthGateLocked",!!locked);
+    if(authResolved)root.classList.remove("cpAuthGatePending");
+  }
 
   const $ = (s, r=document) => r.querySelector(s);
 
@@ -1788,6 +1853,21 @@
   function closeModal(){
     const e=E();
     if(!e.modal) return;
+
+    /* V166: visitante sem sessão não pode fechar a porta de acesso. */
+    if(!accessGranted){
+      e.modal.hidden=false;
+      e.modal.removeAttribute("hidden");
+      e.modal.setAttribute("aria-hidden","false");
+      e.modal.style.setProperty("display","flex","important");
+      e.modal.style.setProperty("visibility","visible","important");
+      e.modal.style.setProperty("opacity","1","important");
+      e.modal.style.setProperty("pointer-events","auto","important");
+      e.modal.style.setProperty("z-index","2147483647","important");
+      document.body.classList.add("cpAuthModalOpen");
+      return;
+    }
+
     e.modal.hidden=true;
     e.modal.setAttribute("hidden","");
     e.modal.setAttribute("aria-hidden","true");
@@ -1838,14 +1918,25 @@
   function renderUser(user, profile){
     const e=E();
 
+    authResolved=true;
+
     if(!user){
+      accessGranted=false;
+      setGateLocked(true);
+
       if(e.loginBtn){
         e.loginBtn.hidden=false;
         unlock();
       }
       if(e.profile)e.profile.hidden=true;
+
+      /* Abre automaticamente: ninguém entra no site sem autenticar. */
+      openModal();
       return;
     }
+
+    accessGranted=true;
+    setGateLocked(false);
 
     if(e.loginBtn)e.loginBtn.hidden=true;
     if(e.profile)e.profile.hidden=false;
@@ -1997,6 +2088,15 @@
     emailSubmit();
   },true);
 
+  document.addEventListener("keydown",function(ev){
+    if(!window.matchMedia("(min-width:981px)").matches)return;
+    if(ev.key==="Escape" && !accessGranted){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      openModal();
+    }
+  },true);
+
   function init(){
     unlock();
 
@@ -2024,8 +2124,13 @@
         });
       }
     }).catch(err=>{
-      console.warn("[V164 Firebase init]",err);
+      console.warn("[V166 Firebase init]",err);
+      authResolved=true;
+      accessGranted=false;
+      setGateLocked(true);
       unlock();
+      openModal();
+      msg("Não foi possível validar sua sessão. Tente entrar novamente.");
     });
   }
 
@@ -2034,6 +2139,15 @@
   }else{
     init();
   }
+
+  /* Failsafe visual: se o Firebase ainda não respondeu, mantém a porta de acesso. */
+  setTimeout(()=>{
+    if(!authResolved){
+      document.documentElement.classList.remove("cpAuthGatePending");
+      setGateLocked(true);
+      openModal();
+    }
+  },2500);
 
   window.addEventListener("load",unlock);
   setInterval(unlock,1500);
