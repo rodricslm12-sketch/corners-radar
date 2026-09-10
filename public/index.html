@@ -92,13 +92,13 @@
     #cpAuthModal [hidden] { display: none !important; }
   </style>
 
-  <link rel="stylesheet" href="style.css?v=20260826-app-v122-mobile" media="(min-width:981px)">
+  <link rel="stylesheet" href="style.css?v=20260910-desktop-v164-auth" media="(min-width:981px)">
   <script>
     (function(){
       if (window.matchMedia && window.matchMedia('(min-width:981px)').matches) {
         window.addEventListener('DOMContentLoaded', function(){
           var s=document.createElement('script');
-          s.src='script.js?v=20260909-desktop-v163-authfix';
+          s.src='script.js?v=20260910-desktop-v164-auth';
           s.async=false;
           document.body.appendChild(s);
         }, {once:true});
@@ -1649,3 +1649,393 @@
 
 <section id="cpV127MoreSheet" class="v127MoreSheet" aria-label="Central CornerPro">
   <div class="v127MoreCard" role="dialog" aria-modal="true" a
+<script id="cpDesktopAuthInlineV164">
+(function(){
+  "use strict";
+
+  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
+  if (window.__CP_DESKTOP_AUTH_INLINE_V164__) return;
+  window.__CP_DESKTOP_AUTH_INLINE_V164__ = true;
+
+  let firebaseApi = null;
+  let mode = "login";
+  let busy = false;
+
+  const $ = (s, r=document) => r.querySelector(s);
+
+  function E(){
+    return {
+      modal: $("#cpAuthModal"),
+      loginBtn: $("#btnGoogleLogin"),
+      profile: $("#authUserProfile"),
+      photo: $("#authUserPhoto"),
+      userName: $("#authUserName"),
+      plan: $("#authUserPlan"),
+      logout: $("#btnGoogleLogout"),
+
+      title: $("#cpAuthModalTitle"),
+      subtitle: $("#cpAuthModalSubtitle"),
+      tabLogin: $("#cpAuthTabLogin"),
+      tabRegister: $("#cpAuthTabRegister"),
+      google: $("#cpAuthGoogle"),
+      form: $("#cpAuthForm"),
+      nameWrap: $("#cpAuthNameWrap"),
+      name: $("#cpAuthName"),
+      email: $("#cpAuthEmail"),
+      password: $("#cpAuthPassword"),
+      confirmWrap: $("#cpAuthConfirmWrap"),
+      confirm: $("#cpAuthPasswordConfirm"),
+      forgot: $("#cpAuthForgot"),
+      submit: $("#cpAuthSubmit"),
+      submitText: $("#cpAuthSubmit span"),
+      switchText: $("#cpAuthSwitchText"),
+      switchBtn: $("#cpAuthSwitchButton"),
+      message: $("#cpAuthFormMessage"),
+      close: $("#cpAuthModalClose"),
+      backdrop: $("#cpAuthModalBackdrop")
+    };
+  }
+
+  function unlock(){
+    const b = E().loginBtn;
+    if (!b) return;
+    b.disabled = false;
+    b.removeAttribute("disabled");
+    b.removeAttribute("aria-busy");
+    b.style.setProperty("pointer-events","auto","important");
+    b.style.setProperty("cursor","pointer","important");
+    b.style.setProperty("opacity","1","important");
+    b.style.setProperty("visibility","visible","important");
+  }
+
+  function msg(text="", type="error"){
+    const box = E().message;
+    if (!box) return;
+    box.textContent = text;
+    box.hidden = !text;
+    if (text) box.dataset.type = type;
+    else box.removeAttribute("data-type");
+  }
+
+  function setMode(next){
+    mode = next === "register" ? "register" : "login";
+    const reg = mode === "register";
+    const e = E();
+
+    e.tabLogin?.classList.toggle("active", !reg);
+    e.tabRegister?.classList.toggle("active", reg);
+
+    if (e.nameWrap) e.nameWrap.hidden = !reg;
+    if (e.confirmWrap) e.confirmWrap.hidden = !reg;
+    if (e.forgot) e.forgot.hidden = reg;
+
+    if (e.title) e.title.textContent = reg ? "Crie sua conta" : "Entre no CornerPro";
+    if (e.subtitle) e.subtitle.textContent = reg
+      ? "Crie seu acesso individual ao CornerPro."
+      : "Entre para acessar sua conta, preferências e plano.";
+
+    if (e.submitText) e.submitText.textContent = reg ? "CRIAR CONTA" : "ENTRAR";
+    if (e.switchText) e.switchText.textContent = reg ? "Já possui uma conta?" : "Ainda não possui conta?";
+    if (e.switchBtn) e.switchBtn.textContent = reg ? "Entrar" : "Criar conta";
+
+    msg("");
+  }
+
+  function forceDesktopModalContent(){
+    const e = E();
+    if (!e.modal) return;
+
+    const tabs = e.modal.querySelector(".cpAuthTabs");
+    const divider = e.modal.querySelector(".cpAuthDivider");
+    const form = e.modal.querySelector("#cpAuthForm");
+    const switcher = e.modal.querySelector(".cpAuthSwitch");
+    const google = e.modal.querySelector("#cpAuthGoogle");
+    const mobileAccount = e.modal.querySelector("#cpAuthMobileAccount");
+
+    if (tabs) { tabs.hidden=false; tabs.style.removeProperty("display"); }
+    if (divider) { divider.hidden=false; divider.style.removeProperty("display"); }
+    if (form) { form.hidden=false; form.style.removeProperty("display"); }
+    if (switcher) { switcher.hidden=false; switcher.style.removeProperty("display"); }
+    if (google) { google.hidden=false; google.style.removeProperty("display"); }
+    if (mobileAccount) mobileAccount.hidden=true;
+  }
+
+  function openModal(){
+    const e = E();
+    if (!e.modal) {
+      console.error("[V164] #cpAuthModal não existe no HTML");
+      return;
+    }
+
+    unlock();
+    forceDesktopModalContent();
+    setMode("login");
+
+    e.modal.hidden = false;
+    e.modal.removeAttribute("hidden");
+    e.modal.setAttribute("aria-hidden","false");
+
+    e.modal.style.setProperty("display","flex","important");
+    e.modal.style.setProperty("visibility","visible","important");
+    e.modal.style.setProperty("opacity","1","important");
+    e.modal.style.setProperty("pointer-events","auto","important");
+    e.modal.style.setProperty("z-index","2147483647","important");
+
+    document.body.classList.add("cpAuthModalOpen");
+    setTimeout(()=>e.email?.focus(), 80);
+  }
+
+  function closeModal(){
+    const e=E();
+    if(!e.modal) return;
+    e.modal.hidden=true;
+    e.modal.setAttribute("hidden","");
+    e.modal.setAttribute("aria-hidden","true");
+    e.modal.style.removeProperty("display");
+    e.modal.style.removeProperty("visibility");
+    e.modal.style.removeProperty("opacity");
+    e.modal.style.removeProperty("pointer-events");
+    e.modal.style.removeProperty("z-index");
+    document.body.classList.remove("cpAuthModalOpen");
+    msg("");
+  }
+
+  function setBusy(v){
+    busy=!!v;
+    const e=E();
+    [e.google,e.submit,e.tabLogin,e.tabRegister,e.switchBtn,e.forgot]
+      .filter(Boolean).forEach(b=>b.disabled=busy);
+  }
+
+  async function loadFirebase(){
+    if(firebaseApi) return firebaseApi;
+    firebaseApi = await import("./firebase-client.js?v=20260910-v164");
+    return firebaseApi;
+  }
+
+  async function serverProfile(user, force=false){
+    const token = await user.getIdToken(force);
+
+    const a = await fetch("/auth/firebase",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token}),
+      cache:"no-store"
+    });
+    const ad = await a.json().catch(()=>({}));
+    if(!a.ok) throw new Error(ad?.error || "Falha ao autenticar no servidor.");
+
+    const m = await fetch("/auth/me",{
+      headers:{Authorization:`Bearer ${token}`},
+      cache:"no-store"
+    });
+    const md = await m.json().catch(()=>({}));
+    if(!m.ok) throw new Error(md?.error || "Falha ao carregar seu perfil.");
+
+    return {...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true};
+  }
+
+  function renderUser(user, profile){
+    const e=E();
+
+    if(!user){
+      if(e.loginBtn){
+        e.loginBtn.hidden=false;
+        unlock();
+      }
+      if(e.profile)e.profile.hidden=true;
+      return;
+    }
+
+    if(e.loginBtn)e.loginBtn.hidden=true;
+    if(e.profile)e.profile.hidden=false;
+
+    const name=user.displayName||profile?.user?.nome||user.email?.split("@")[0]||"Usuário";
+    const premium=profile?.premium===true||profile?.user?.premium===true;
+
+    if(e.userName)e.userName.textContent=name;
+    if(e.plan)e.plan.textContent=premium?"CORNERPRO PRO":"PLANO GRATUITO";
+
+    if(e.photo){
+      if(user.photoURL){
+        e.photo.src=user.photoURL;
+        e.photo.hidden=false;
+      }else{
+        e.photo.hidden=true;
+        e.photo.removeAttribute("src");
+      }
+    }
+  }
+
+  async function googleLogin(){
+    if(busy)return;
+    setBusy(true); msg("");
+    try{
+      const api=await loadFirebase();
+      const r=await api.entrarComGoogle();
+      const user=r?.usuario||r?.user||api.firebaseAuth?.currentUser;
+      if(!user)throw new Error("Não foi possível confirmar a conta Google.");
+      const profile=await serverProfile(user,true);
+      renderUser(user,profile);
+      closeModal();
+    }catch(err){
+      console.error("[V164 Google]",err);
+      msg(err?.message||"Não foi possível entrar com o Google.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function emailSubmit(){
+    if(busy)return;
+    const e=E();
+    const nome=String(e.name?.value||"").trim();
+    const email=String(e.email?.value||"").trim();
+    const senha=String(e.password?.value||"");
+    const confirm=String(e.confirm?.value||"");
+
+    if(!email)return msg("Digite seu e-mail.");
+    if(!senha)return msg("Digite sua senha.");
+    if(senha.length<6)return msg("A senha precisa ter pelo menos 6 caracteres.");
+
+    if(mode==="register"){
+      if(!nome)return msg("Digite seu nome.");
+      if(senha!==confirm)return msg("As senhas não coincidem.");
+    }
+
+    setBusy(true); msg("");
+    try{
+      const api=await loadFirebase();
+      const r=mode==="register"
+        ? await api.criarContaComEmail({nome,email,senha})
+        : await api.entrarComEmail({email,senha});
+
+      const user=r?.usuario||r?.user||api.firebaseAuth?.currentUser;
+      if(!user)throw new Error("Não foi possível confirmar sua conta.");
+      const profile=await serverProfile(user,true);
+      renderUser(user,profile);
+      closeModal();
+    }catch(err){
+      console.error("[V164 Email]",err);
+      msg(err?.message||"Não foi possível concluir a autenticação.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function resetPassword(){
+    const email=String(E().email?.value||"").trim();
+    if(!email)return msg("Digite seu e-mail primeiro.");
+    if(busy)return;
+    setBusy(true);
+    try{
+      const api=await loadFirebase();
+      await api.redefinirSenha(email);
+      msg("Link de redefinição enviado para seu e-mail.","success");
+    }catch(err){
+      msg(err?.message||"Não foi possível enviar o link.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function logout(){
+    if(busy)return;
+    setBusy(true);
+    try{
+      const api=await loadFirebase();
+      await api.sairDaConta();
+      renderUser(null,null);
+    }catch(err){
+      console.error("[V164 logout]",err);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  // Captura global: funciona mesmo se outro JS substituir onclick.
+  document.addEventListener("click",function(ev){
+    if(!window.matchMedia("(min-width:981px)").matches)return;
+
+    const login=ev.target?.closest?.("#btnGoogleLogin");
+    if(login){
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      openModal();
+      return;
+    }
+
+    if(ev.target?.closest?.("#cpAuthGoogle")){
+      ev.preventDefault();ev.stopImmediatePropagation();googleLogin();return;
+    }
+    if(ev.target?.closest?.("#cpAuthTabLogin")){
+      ev.preventDefault();ev.stopImmediatePropagation();setMode("login");return;
+    }
+    if(ev.target?.closest?.("#cpAuthTabRegister")){
+      ev.preventDefault();ev.stopImmediatePropagation();setMode("register");return;
+    }
+    if(ev.target?.closest?.("#cpAuthSwitchButton")){
+      ev.preventDefault();ev.stopImmediatePropagation();setMode(mode==="login"?"register":"login");return;
+    }
+    if(ev.target?.closest?.("#cpAuthForgot")){
+      ev.preventDefault();ev.stopImmediatePropagation();resetPassword();return;
+    }
+    if(ev.target?.closest?.("#cpAuthModalClose,#cpAuthModalBackdrop")){
+      ev.preventDefault();ev.stopImmediatePropagation();closeModal();return;
+    }
+    if(ev.target?.closest?.("#btnGoogleLogout")){
+      ev.preventDefault();ev.stopImmediatePropagation();logout();return;
+    }
+  },true);
+
+  document.addEventListener("submit",function(ev){
+    if(ev.target?.id!=="cpAuthForm")return;
+    if(!window.matchMedia("(min-width:981px)").matches)return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    emailSubmit();
+  },true);
+
+  function init(){
+    unlock();
+
+    // Impede qualquer módulo antigo de retravar o botão.
+    const b=E().loginBtn;
+    if(b){
+      new MutationObserver(unlock).observe(b,{
+        attributes:true,
+        attributeFilter:["disabled","aria-busy","hidden","style"]
+      });
+    }
+
+    // Sincroniza sessão sem bloquear o botão.
+    loadFirebase().then(api=>{
+      if(typeof api.observarAutenticacao==="function"){
+        api.observarAutenticacao(async st=>{
+          const user=st?.usuario||st?.user||api.firebaseAuth?.currentUser||null;
+          if(!user){renderUser(null,null);return;}
+          try{
+            const profile=await serverProfile(user);
+            renderUser(user,profile);
+          }catch(err){
+            renderUser(user,null);
+          }
+        });
+      }
+    }).catch(err=>{
+      console.warn("[V164 Firebase init]",err);
+      unlock();
+    });
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",init,{once:true});
+  }else{
+    init();
+  }
+
+  window.addEventListener("load",unlock);
+  setInterval(unlock,1500);
+})();
+</script>
