@@ -22390,78 +22390,6 @@ const fallbackSide = target > 0
                     const time0 = clean(game?.hora || game?.time || "—");
                     const basePct = pct(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score ?? 69);
                     const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
-
-                    function pgNum(v, digits=1){
-                      const n=Number(v);
-                      return Number.isFinite(n)?n.toFixed(digits).replace(".0",""):"—";
-                    }
-                    function pgForm(arr){
-                      const xs=Array.isArray(arr)?arr:[];
-                      if(!xs.length)return `<span class="cpPgMuted">sem dados</span>`;
-                      return `<div class="cpPgForm">${xs.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`;
-                    }
-                    function pgStanding(team, row){
-                      if(!row)return `<div class="cpPgTeamRow"><strong>${esc(team)}</strong><span>posição indisponível</span></div>`;
-                      return `<div class="cpPgTeamRow"><strong>${esc(team)}</strong><b>${row.position?esc(row.position+"º"):"—"}</b><span>${row.points!=null?esc(row.points+" pts"):"—"} • ${row.played!=null?esc(row.played+" J"):"—"}</span><small>${row.wins??"—"}V ${row.draws??"—"}E ${row.losses??"—"}D • ${row.goals_for??"—"}:${row.goals_against??"—"} gols</small></div>`;
-                    }
-                    function pgRecent(team, r){
-                      return `<div class="cpPgRecentTeam"><strong>${esc(team)}</strong><div class="cpPgRecentGrid"><span><small>Cantos pró</small><b>${pgNum(r?.cornersForAvg)}</b></span><span><small>Cantos cedidos</small><b>${pgNum(r?.cornersAgainstAvg)}</b></span><span><small>Total médio</small><b>${pgNum(r?.combinedCornersAvg)}</b></span><span><small>Over 9.5</small><b>${r?.games?Math.round((Number(r.over9Count||0)/Number(r.games))*100)+"%":"—"}</b></span></div></div>`;
-                    }
-                    function pgH2HRows(matches){
-                      const xs=Array.isArray(matches)?matches:[];
-                      if(!xs.length)return `<div class="cpPgEmpty">Sem confrontos recentes com dados disponíveis.</div>`;
-                      return xs.map(m=>`<div class="cpPgH2HRow"><div><small>${esc(m.date||"")}</small><b>${esc(m.home||"Casa")} ${m.home_score??"—"} × ${m.away_score??"—"} ${esc(m.away||"Fora")}</b></div><span>${m.corners_total!=null?esc(m.corners_total+" cantos"):"cantos —"}</span></div>`).join("");
-                    }
-                    function renderPregame(data, home, away, league, time){
-                      const pg=data?.pregame||{};
-                      const ht=pg?.table?.home, at=pg?.table?.away;
-                      const hr=pg?.recent?.home, ar=pg?.recent?.away;
-                      const h2h=pg?.h2h||{};
-                      const avg=pgNum(h2h.avg_corners);
-                      const over=h2h.over95_rate!=null?Math.round(Number(h2h.over95_rate))+"%":"—";
-                      const posText=(ht?.position&&at?.position)?`${ht.position}º × ${at.position}º`:"Classificação";
-                      const lead=[];
-                      if(hr?.cornersForAvg!=null)lead.push(`${home} produz ${pgNum(hr.cornersForAvg)} cantos/jogo no recorte recente`);
-                      if(ar?.cornersAgainstAvg!=null)lead.push(`${away} cede ${pgNum(ar.cornersAgainstAvg)} cantos/jogo`);
-                      if(h2h.games)lead.push(`H2H: ${over} acima de 9.5 cantos`);
-                      const reading=lead.length?lead.join(". ")+".":"Dados pré-jogo ainda são limitados para esta partida.";
-
-                      rail.innerHTML=`
-                        <section class="railCard cpPgHead">
-                          <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-                          <div class="mcRailMeta">${esc(league)} • ${esc(time)}</div>
-                          <div class="cpPgVs"><strong>${esc(home)}</strong><span>VS</span><strong>${esc(away)}</strong></div>
-                          <div class="cpPgHeadline"><b>${esc(posText)}</b><small>contexto antes da bola rolar</small></div>
-                        </section>
-
-                        <section class="railCard cpPgCard">
-                          <div class="cpPgTitle"><h3>CLASSIFICAÇÃO</h3><span>TABELA</span></div>
-                          ${pgStanding(home,ht)}
-                          ${pgStanding(away,at)}
-                        </section>
-
-                        <section class="railCard cpPgCard">
-                          <div class="cpPgTitle"><h3>MOMENTO DAS EQUIPES</h3><span>ÚLTIMOS 5</span></div>
-                          <div class="cpPgForms"><div><small>${esc(home)}</small>${pgForm(pg?.form?.home)}</div><div><small>${esc(away)}</small>${pgForm(pg?.form?.away)}</div></div>
-                          ${pgRecent(home,hr)}
-                          ${pgRecent(away,ar)}
-                        </section>
-
-                        <section class="railCard cpPgCard">
-                          <div class="cpPgTitle"><h3>CONFRONTOS DIRETOS</h3><span>H2H</span></div>
-                          <div class="cpPgH2HSummary"><span><small>Média de cantos</small><b>${avg}</b></span><span><small>Over 9.5</small><b>${over}</b></span><span><small>Amostra</small><b>${h2h.games||0}</b></span></div>
-                          <div class="cpPgH2HList">${pgH2HRows(h2h.matches)}</div>
-                        </section>
-
-                        <section class="railCard cpPgRead">
-                          <div class="cpPgTitle"><h3>LEITURA PRÉ-JOGO</h3><span>IA</span></div>
-                          <p>${esc(reading)}</p>
-                          <small>Leitura baseada somente nos dados disponíveis da API e no histórico recente.</small>
-                        </section>
-
-                        <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
-                      `;
-                    }
             
                     function render(data = {}){
                       const isReal = !!data && Object.keys(data).length > 0 && !data.error;
@@ -22472,11 +22400,6 @@ const fallbackSide = target > 0
                       const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
                       const minute = isReal ? getMinute(data) : 0;
                       const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
-
-                      if (st === "PRÉ-JOGO" && data?.pregame) {
-                        renderPregame(data, home, away, league, time);
-                        return;
-                      }
             
                       const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
                       const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");
@@ -31496,4 +31419,183 @@ const fallbackSide = target > 0
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",start,{once:true});
   else start();
+})();
+
+/* =========================================================
+   MATCH CENTER PRÉ-JOGO V63 — SOMENTE DESKTOP
+   Corrige o problema em que /match_center sobrescrevia o pré-jogo
+   com uma tela 0-0 / estatísticas vazias antes do início.
+   ========================================================= */
+(function installDesktopPregameV63(){
+  'use strict';
+  if(!window.matchMedia || !window.matchMedia('(min-width:981px)').matches) return;
+  if(window.__CP_DESKTOP_PREGAME_V63__) return;
+  window.__CP_DESKTOP_PREGAME_V63__=true;
+
+  const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const text=(v,f='—')=>{const x=String(v??'').trim();return x&&!['undefined','null','NaN'].includes(x)?x:f};
+  const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').replace(',','.'));return Number.isFinite(n)?n:null};
+  const fmt=v=>{const n=number(v);return n===null?'—':(Number.isInteger(n)?String(n):n.toFixed(1))};
+  const pct=v=>{const n=number(v);return n===null?'—':`${Math.round(n)}%`};
+  const initials=(name,f='--')=>{const p=String(name||'').trim().split(/\s+/).filter(Boolean);return p.length?((p[0][0]||'')+(p.length>1?(p[1][0]||''):'')).toUpperCase():f};
+
+  function formHTML(arr){
+    const list=Array.isArray(arr)?arr.slice(0,5):[];
+    if(!list.length) return '<span class="cpPgMuted">sem dados</span>';
+    return `<div class="cpPgForm">${list.map(x=>`<i class="${x==='V'?'win':x==='D'?'loss':'draw'}">${escape(x)}</i>`).join('')}</div>`;
+  }
+
+  function standingLine(team,st){
+    if(!st) return `<div class="cpPgTableRow"><strong>${escape(team)}</strong><span>—</span><small>classificação indisponível</small></div>`;
+    const record=[st.wins,st.draws,st.losses].every(v=>number(v)!==null)?`${fmt(st.wins)}V ${fmt(st.draws)}E ${fmt(st.losses)}D`:'—';
+    return `<div class="cpPgTableRow">
+      <strong>${escape(team)}</strong>
+      <span>${fmt(st.position)}º</span>
+      <small>${fmt(st.points)} pts • ${fmt(st.played)}J • ${record}</small>
+    </div>`;
+  }
+
+  function recentCard(label,team,r){
+    return `<div class="cpPgRecentTeam">
+      <div class="cpPgRecentHead"><span>${escape(label)}</span><b>${escape(team)}</b></div>
+      ${formHTML(r?.form)}
+      <div class="cpPgMetrics">
+        <div><small>Cantos a favor</small><b>${fmt(r?.corners_for_avg)}</b></div>
+        <div><small>Cantos cedidos</small><b>${fmt(r?.corners_against_avg)}</b></div>
+        <div><small>Over 9.5</small><b>${pct(r?.over95_rate)}</b></div>
+      </div>
+    </div>`;
+  }
+
+  function h2hRows(h2h){
+    const rows=Array.isArray(h2h?.matches)?h2h.matches.slice(0,5):[];
+    if(!rows.length) return '<div class="cpPgEmpty">Nenhum confronto recente disponível.</div>';
+    return rows.map(m=>{
+      const score=(number(m.score_home)!==null&&number(m.score_away)!==null)?`${fmt(m.score_home)} - ${fmt(m.score_away)}`:'—';
+      const corners=number(m.corners_total)!==null?`${fmt(m.corners_total)} cantos`:'cantos —';
+      return `<div class="cpPgH2HRow">
+        <small>${escape(text(m.date,''))}</small>
+        <span><b>${escape(text(m.home,'Casa'))}</b> ${score} <b>${escape(text(m.away,'Fora'))}</b></span>
+        <em>${escape(corners)}</em>
+      </div>`;
+    }).join('');
+  }
+
+  function buildReading(data,game){
+    const h=data?.recent?.home||{},a=data?.recent?.away||{},hh=data?.h2h||{};
+    const parts=[];
+    if(number(h.corners_for_avg)!==null&&number(a.corners_against_avg)!==null){
+      if(number(h.corners_for_avg)>=5.5) parts.push(`${text(data.home,'Mandante')} chega com boa produção recente de escanteios`);
+      else parts.push(`${text(data.home,'Mandante')} tem produção recente moderada de escanteios`);
+    }
+    if(number(a.corners_for_avg)!==null){
+      parts.push(`${text(data.away,'Visitante')} registra média de ${fmt(a.corners_for_avg)} cantos a favor no recorte`);
+    }
+    if(number(hh.over95_rate)!==null){
+      parts.push(`nos confrontos diretos, ${pct(hh.over95_rate)} passaram de 9.5 cantos`);
+    }
+    const projection=number(game?.proj_cantos ?? game?.projection ?? game?.corners_projection);
+    if(projection!==null) parts.push(`a projeção atual do Corner Pro é ${fmt(projection)} cantos`);
+    if(!parts.length) return 'Os dados históricos disponíveis ainda são insuficientes para uma leitura pré-jogo completa.';
+    return parts.join('. ')+'.';
+  }
+
+  function renderPregame(rail,data,game){
+    const home=text(data?.home ?? game?.casa ?? game?.home,'Mandante');
+    const away=text(data?.away ?? game?.fora ?? game?.away,'Visitante');
+    const league=text(data?.league ?? game?.liga ?? game?.league_name,'Liga');
+    const time=text(data?.time ?? game?.hora ?? game?.time,'—');
+    const hs=data?.standings?.home, as=data?.standings?.away;
+    const hr=data?.recent?.home||{}, ar=data?.recent?.away||{};
+    const h2h=data?.h2h||{};
+    const proj=number(game?.proj_cantos ?? game?.projection ?? game?.corners_projection);
+
+    rail.innerHTML=`
+      <section class="railCard cpPgHero">
+        <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+        <div class="cpPgTeams">
+          <div><i>${initials(home,'MA')}</i><strong>${escape(home)}</strong><small>${hs?.position?`${fmt(hs.position)}º lugar`:'posição —'}</small></div>
+          <section><small>${escape(league)} • ${escape(time)}</small><b>VS</b><em>ANÁLISE PRÉ-JOGO</em></section>
+          <div><i>${initials(away,'VI')}</i><strong>${escape(away)}</strong><small>${as?.position?`${fmt(as.position)}º lugar`:'posição —'}</small></div>
+        </div>
+      </section>
+
+      <section class="railCard cpPgTable">
+        <h3>CLASSIFICAÇÃO</h3>
+        ${standingLine(home,hs)}
+        ${standingLine(away,as)}
+      </section>
+
+      <section class="railCard cpPgRecent">
+        <h3>MOMENTO DAS EQUIPES • ÚLTIMOS 5</h3>
+        ${recentCard('CASA',home,hr)}
+        ${recentCard('FORA',away,ar)}
+      </section>
+
+      <section class="railCard cpPgH2H">
+        <div class="cpPgSectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${h2h?.games||0} JOGOS</b></div>
+        <div class="cpPgH2HSummary">
+          <div><small>Média H2H</small><b>${fmt(h2h?.avg_corners)}</b><span>cantos</span></div>
+          <div><small>Over 9.5</small><b>${pct(h2h?.over95_rate)}</b><span>H2H</span></div>
+          <div><small>Projeção</small><b>${fmt(proj)}</b><span>Corner Pro</span></div>
+        </div>
+        <div class="cpPgH2HList">${h2hRows(h2h)}</div>
+      </section>
+
+      <section class="railCard cpPgReading">
+        <h3>LEITURA PRÉ-JOGO</h3>
+        <p>${escape(buildReading(data,game))}</p>
+        <small>Baseada somente nos dados disponíveis da API e no histórico recente.</small>
+      </section>`;
+    rail.dataset.cpPregame='1';
+  }
+
+  function isPregame(mc){
+    if(!mc||mc.error) return true;
+    if(mc.finished) return false;
+    const min=number(mc.minute);
+    const meaningfulStats=Boolean(mc.stats_available) && [mc?.corners?.home,mc?.corners?.away,mc?.shots?.home,mc?.shots?.away,mc?.dangerous_attacks?.home,mc?.dangerous_attacks?.away].some(v=>number(v)!==null && number(v)>0);
+    if(mc.not_started) return true;
+    if((min===null||min<=0) && !meaningfulStats) return true;
+    return !mc.live;
+  }
+
+  function install(){
+    const original=window.updateDesktopMatchRail;
+    if(typeof original!=='function'){
+      setTimeout(install,180);
+      return;
+    }
+    if(original.__cpPregameV63) return;
+
+    const wrapped=async function(game,list){
+      const rail=document.getElementById('desktopMatchRail');
+      if(!rail||!game) return original(game,list);
+      const matchId=text(game?.match_id ?? game?.id ?? game?.event_key ?? game?.event_id,'');
+      if(!matchId) return original(game,list);
+
+      rail.innerHTML=`<section class="railCard cpPgLoading"><div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div><p>Carregando classificação, forma e confrontos...</p></section>`;
+      try{
+        const [mcRes,pgRes]=await Promise.all([
+          fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`,{cache:'no-store'}),
+          fetch(`/match_center_pregame?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`,{cache:'no-store'})
+        ]);
+        const mc=mcRes.ok?await mcRes.json():null;
+        if(!isPregame(mc)) return original(game,list);
+        const pg=pgRes.ok?await pgRes.json():null;
+        if(pg&&pg.ok){
+          renderPregame(rail,pg,game);
+          return;
+        }
+      }catch(err){
+        console.warn('[CP V63 pré-jogo]',err);
+      }
+      return original(game,list);
+    };
+    wrapped.__cpPregameV63=true;
+    wrapped.__cpOriginal=original;
+    window.updateDesktopMatchRail=wrapped;
+  }
+
+  install();
 })();
