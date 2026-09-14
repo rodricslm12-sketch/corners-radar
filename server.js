@@ -12124,6 +12124,144 @@ app.get("/market_live_status", async (req, res) => {
   }
 });
 
+
+/* =========================================================
+   V64 — DADOS HISTÓRICOS DO PRÉ-JOGO NO PRÓPRIO /match_center
+   Não cria dependência de uma nova rota no frontend.
+   ========================================================= */
+function cpV64Num(v){
+  if(v===null || v===undefined || v==="") return null;
+  const n=Number(String(v).replace(",","."));
+  return Number.isFinite(n)?n:null;
+}
+function cpV64Text(v,f=""){
+  const s=String(v??"").trim();
+  return s || f;
+}
+function cpV64StandingRow(rows, team){
+  if(!Array.isArray(rows) || !team) return null;
+  const key=normTeamKey(team);
+  let best=null,bestScore=0;
+  for(const row of rows){
+    const name=row?.team_name ?? row?.team ?? row?.teamName ?? "";
+    const nk=normTeamKey(name);
+    if(!nk) continue;
+    if(nk===key || nk.includes(key) || key.includes(nk)) return row;
+    const s=tokenScore(name,team);
+    if(s>bestScore){bestScore=s;best=row;}
+  }
+  return bestScore>=0.66?best:null;
+}
+function cpV64StandingPack(row){
+  if(!row) return null;
+  return {
+    position:cpV64Num(row.overall_league_position ?? row.position ?? row.league_position),
+    points:cpV64Num(row.overall_league_PTS ?? row.points ?? row.pts),
+    played:cpV64Num(row.overall_league_payed ?? row.overall_league_played ?? row.played ?? row.matches_played),
+    wins:cpV64Num(row.overall_league_W ?? row.wins ?? row.win),
+    draws:cpV64Num(row.overall_league_D ?? row.draws ?? row.draw),
+    losses:cpV64Num(row.overall_league_L ?? row.losses ?? row.loss)
+  };
+}
+function cpV64Score(m){
+  return {
+    home:cpV64Text(m?.match_hometeam_score ?? m?.home_score ?? m?.score_home,"—"),
+    away:cpV64Text(m?.match_awayteam_score ?? m?.away_score ?? m?.score_away,"—")
+  };
+}
+function cpV64Form(m,team){
+  const sc=cpV64Score(m);
+  const hs=cpV64Num(sc.home), as=cpV64Num(sc.away);
+  if(hs===null || as===null) return "";
+  const isHome=normTeamKey(teamFromEvent(m,"home"))===normTeamKey(team) || tokenScore(teamFromEvent(m,"home"),team)>=0.66;
+  const gf=isHome?hs:as, ga=isHome?as:hs;
+  return gf>ga?"V":gf<ga?"D":"E";
+}
+async function cpV64RecentRow(m,team){
+  const pair=await webCornersPairForMatch(m).catch(()=>({home:null,away:null}));
+  const mh=teamFromEvent(m,"home"), ma=teamFromEvent(m,"away");
+  const isHome=normTeamKey(mh)===normTeamKey(team) || tokenScore(mh,team)>=0.66;
+  const isAway=normTeamKey(ma)===normTeamKey(team) || tokenScore(ma,team)>=0.66;
+  const cf=isHome?pair.home:isAway?pair.away:null;
+  const ca=isHome?pair.away:isAway?pair.home:null;
+  const total=Number.isFinite(Number(pair.home))&&Number.isFinite(Number(pair.away))
+    ? Number(pair.home)+Number(pair.away) : null;
+  return {
+    form:cpV64Form(m,team),
+    corners_for:Number.isFinite(Number(cf))?Number(cf):null,
+    corners_against:Number.isFinite(Number(ca))?Number(ca):null,
+    corners_total:Number.isFinite(Number(total))?Number(total):null
+  };
+}
+function cpV64RecentSummary(rows){
+  const list=Array.isArray(rows)?rows.filter(Boolean):[];
+  const avg=(arr)=>{
+    const a=arr.filter(Number.isFinite);
+    return a.length?Number((a.reduce((s,n)=>s+n,0)/a.length).toFixed(1)):null;
+  };
+  const totals=list.map(x=>x.corners_total).filter(Number.isFinite);
+  return {
+    games:list.length,
+    form:list.map(x=>x.form).filter(Boolean).slice(0,5),
+    corners_for_avg:avg(list.map(x=>x.corners_for)),
+    corners_against_avg:avg(list.map(x=>x.corners_against)),
+    corners_total_avg:avg(totals),
+    over95_rate:totals.length?Math.round(totals.filter(n=>n>9.5).length/totals.length*100):null
+  };
+}
+async function cpV64BuildPregame(event,matchId){
+  const home=teamFromEvent(event,"home");
+  const away=teamFromEvent(event,"away");
+  const leagueId=Number(event?.league_id ?? event?.match_league_id ?? event?.leagueId ?? 0)||null;
+
+  const [standRows,h2h]=await Promise.all([
+    leagueId ? apiGetV3({action:"get_standings",league_id:leagueId}).catch(()=>null) : Promise.resolve(null),
+    getH2H(home,away).catch(()=>null)
+  ]);
+
+  const homeRaw=Array.isArray(h2h?.firstTeam_lastResults)?h2h.firstTeam_lastResults.slice(0,5):[];
+  const awayRaw=Array.isArray(h2h?.secondTeam_lastResults)?h2h.secondTeam_lastResults.slice(0,5):[];
+  const directRaw=Array.isArray(h2h?.firstTeam_VS_secondTeam)?h2h.firstTeam_VS_secondTeam.slice(0,5):[];
+
+  const [homeRows,awayRows,directRows]=await Promise.all([
+    Promise.all(homeRaw.map(m=>cpV64RecentRow(m,home))),
+    Promise.all(awayRaw.map(m=>cpV64RecentRow(m,away))),
+    Promise.all(directRaw.map(async m=>{
+      const pair=await webCornersPairForMatch(m).catch(()=>({home:null,away:null}));
+      const sc=cpV64Score(m);
+      const total=Number.isFinite(Number(pair.home))&&Number.isFinite(Number(pair.away))
+        ? Number(pair.home)+Number(pair.away) : null;
+      return {
+        match_id:String(m?.match_id ?? m?.event_key ?? m?.id ?? ""),
+        date:cpV64Text(m?.match_date ?? m?.date,""),
+        home:teamFromEvent(m,"home"),
+        away:teamFromEvent(m,"away"),
+        score_home:sc.home,
+        score_away:sc.away,
+        corners_total:Number.isFinite(Number(total))?Number(total):null
+      };
+    }))
+  ]);
+
+  const totals=directRows.map(x=>x.corners_total).filter(Number.isFinite);
+  return {
+    standings:{
+      home:cpV64StandingPack(cpV64StandingRow(standRows,home)),
+      away:cpV64StandingPack(cpV64StandingRow(standRows,away))
+    },
+    recent:{
+      home:cpV64RecentSummary(homeRows),
+      away:cpV64RecentSummary(awayRows)
+    },
+    h2h:{
+      games:directRows.length,
+      avg_corners:totals.length?Number((totals.reduce((s,n)=>s+n,0)/totals.length).toFixed(1)):null,
+      over95_rate:totals.length?Math.round(totals.filter(n=>n>9.5).length/totals.length*100):null,
+      matches:directRows
+    }
+  };
+}
+
 app.get("/match_center", async (req, res) => {
   const matchId = cleanText(req.query.match_id || req.query.event_id || "");
   if (!matchId) return res.status(400).json({ error: "match_id obrigatório" });
@@ -12272,8 +12410,13 @@ app.get("/match_center", async (req, res) => {
     const homeScore = mcNumber(mcFirst(event, ["match_hometeam_score", "home_score", "score_home"], 0)) ?? 0;
     const awayScore = mcNumber(mcFirst(event, ["match_awayteam_score", "away_score", "score_away"], 0)) ?? 0;
 
+    const pregame = status.not_started
+      ? await cpV64BuildPregame(event, matchId).catch(() => null)
+      : null;
+
     const payload = {
       ok: true,
+      pregame,
       match_id: String(matchId),
       home: teamFromEvent(event, "home"),
       away: teamFromEvent(event, "away"),
@@ -12428,196 +12571,6 @@ app.get("/match_center", async (req, res) => {
   }
 });
 
-
-
-// =========================================================
-// MATCH CENTER PRÉ-JOGO V63 — DESKTOP ONLY
-// Classificação + forma + cantos recentes + H2H.
-// Não altera motores/mercados e não altera o app/mobile.
-// =========================================================
-function cpPregameNum(v){
-  if(v===null||v===undefined||v==='') return null;
-  const n=Number(String(v).replace('%','').replace(',','.').trim());
-  return Number.isFinite(n)?n:null;
-}
-
-function cpPregameText(v,f='—'){
-  const s=String(v??'').trim();
-  return s && !['undefined','null','NaN'].includes(s) ? s : f;
-}
-
-function cpPregameScore(match){
-  const h=cpPregameNum(match?.match_hometeam_score ?? match?.home_score ?? match?.score_home ?? match?.goals?.home);
-  const a=cpPregameNum(match?.match_awayteam_score ?? match?.away_score ?? match?.score_away ?? match?.goals?.away);
-  return {home:h,away:a};
-}
-
-function cpPregameDate(match){
-  return cpPregameText(match?.match_date ?? match?.event_date ?? match?.date,'');
-}
-
-function cpPregameFormLetter(match, teamName){
-  const h=teamFromEvent(match,'home');
-  const a=teamFromEvent(match,'away');
-  const sc=cpPregameScore(match);
-  if(sc.home===null||sc.away===null) return null;
-  const key=normTeamKey(teamName);
-  const isHome=normTeamKey(h)===key || tokenScore(h,teamName)>=0.66;
-  const isAway=normTeamKey(a)===key || tokenScore(a,teamName)>=0.66;
-  if(!isHome&&!isAway) return null;
-  const gf=isHome?sc.home:sc.away;
-  const ga=isHome?sc.away:sc.home;
-  return gf>ga?'V':gf<ga?'D':'E';
-}
-
-function cpPregameStandingRow(rows, teamName){
-  if(!Array.isArray(rows)||!teamName) return null;
-  const key=normTeamKey(teamName);
-  let best=null,bestScore=0;
-  for(const row of rows){
-    const name=row?.team_name ?? row?.team ?? row?.teamName ?? '';
-    const nk=normTeamKey(name);
-    if(!nk) continue;
-    if(nk===key || nk.includes(key) || key.includes(nk)) return row;
-    const score=tokenScore(name,teamName);
-    if(score>bestScore){bestScore=score;best=row;}
-  }
-  return bestScore>=0.66?best:null;
-}
-
-function cpPregameStandingPack(row){
-  if(!row) return null;
-  return {
-    position: cpPregameNum(row.overall_league_position ?? row.position ?? row.league_position),
-    points: cpPregameNum(row.overall_league_PTS ?? row.points ?? row.pts ?? row.league_points),
-    played: cpPregameNum(row.overall_league_payed ?? row.overall_league_played ?? row.played ?? row.matches_played),
-    wins: cpPregameNum(row.overall_league_W ?? row.wins ?? row.win),
-    draws: cpPregameNum(row.overall_league_D ?? row.draws ?? row.draw),
-    losses: cpPregameNum(row.overall_league_L ?? row.losses ?? row.loss),
-    goalsFor: cpPregameNum(row.overall_league_GF ?? row.goals_for ?? row.gf),
-    goalsAgainst: cpPregameNum(row.overall_league_GA ?? row.goals_against ?? row.ga)
-  };
-}
-
-async function cpPregameMatchRow(match, teamName){
-  const pair=await webCornersPairForMatch(match).catch(()=>({home:null,away:null}));
-  const h=teamFromEvent(match,'home');
-  const a=teamFromEvent(match,'away');
-  const sc=cpPregameScore(match);
-  const key=normTeamKey(teamName);
-  const isHome=normTeamKey(h)===key || tokenScore(h,teamName)>=0.66;
-  const isAway=normTeamKey(a)===key || tokenScore(a,teamName)>=0.66;
-  const cf=isHome?pair.home:isAway?pair.away:null;
-  const ca=isHome?pair.away:isAway?pair.home:null;
-  const total=(pair.home!==null&&pair.away!==null)?Number(pair.home)+Number(pair.away):null;
-  return {
-    match_id:String(match?.match_id ?? match?.event_key ?? match?.id ?? ''),
-    date:cpPregameDate(match),
-    home:h,
-    away:a,
-    score_home:sc.home,
-    score_away:sc.away,
-    form:cpPregameFormLetter(match,teamName),
-    corners_for:Number.isFinite(Number(cf))?Number(cf):null,
-    corners_against:Number.isFinite(Number(ca))?Number(ca):null,
-    corners_total:Number.isFinite(Number(total))?Number(total):null
-  };
-}
-
-function cpPregameSummarizeRecent(rows){
-  const valid=rows.filter(Boolean);
-  const cf=valid.map(x=>x.corners_for).filter(Number.isFinite);
-  const ca=valid.map(x=>x.corners_against).filter(Number.isFinite);
-  const totals=valid.map(x=>x.corners_total).filter(Number.isFinite);
-  const avg=a=>a.length?Number((a.reduce((s,n)=>s+n,0)/a.length).toFixed(1)):null;
-  const rate=line=>totals.length?Math.round(totals.filter(n=>n>line).length/totals.length*100):null;
-  return {
-    games:valid.length,
-    form:valid.map(x=>x.form).filter(Boolean).slice(0,5),
-    corners_for_avg:avg(cf),
-    corners_against_avg:avg(ca),
-    corners_total_avg:avg(totals),
-    over85_rate:rate(8.5),
-    over95_rate:rate(9.5),
-    over105_rate:rate(10.5),
-    matches:valid.slice(0,5)
-  };
-}
-
-app.get('/match_center_pregame', async (req,res)=>{
-  const matchId=cleanText(req.query.match_id || req.query.event_id || '');
-  if(!matchId) return res.status(400).json({ok:false,error:'match_id obrigatório'});
-  res.set('Cache-Control','no-store');
-  try{
-    let events=await apiGetFreshAny({action:'get_events',match_id:matchId,timezone:API_TIMEZONE});
-    let event=Array.isArray(events)?events.find(e=>String(e?.match_id??e?.event_key??e?.id??'')===String(matchId)):null;
-    if(!event && Array.isArray(events) && events.length===1) event=events[0];
-    if(!event){
-      events=await apiGetFreshAny({action:'get_events',event_id:matchId,timezone:API_TIMEZONE});
-      event=Array.isArray(events)?events.find(e=>String(e?.match_id??e?.event_key??e?.id??'')===String(matchId)):null;
-      if(!event && Array.isArray(events) && events.length===1) event=events[0];
-    }
-    if(!event) return res.status(404).json({ok:false,error:'Partida não encontrada'});
-
-    const home=teamFromEvent(event,'home');
-    const away=teamFromEvent(event,'away');
-    const leagueId=Number(event?.league_id ?? event?.match_league_id ?? event?.leagueId ?? 0)||null;
-
-    const [standRows,h2h]=await Promise.all([
-      leagueId?apiGetV3({action:'get_standings',league_id:leagueId}).catch(()=>null):Promise.resolve(null),
-      getH2H(home,away).catch(()=>null)
-    ]);
-
-    const homeStanding=cpPregameStandingPack(cpPregameStandingRow(standRows,home));
-    const awayStanding=cpPregameStandingPack(cpPregameStandingRow(standRows,away));
-
-    const homeRaw=Array.isArray(h2h?.firstTeam_lastResults)?h2h.firstTeam_lastResults.slice(0,5):[];
-    const awayRaw=Array.isArray(h2h?.secondTeam_lastResults)?h2h.secondTeam_lastResults.slice(0,5):[];
-    const directRaw=Array.isArray(h2h?.firstTeam_VS_secondTeam)?h2h.firstTeam_VS_secondTeam.slice(0,5):[];
-
-    const [homeRows,awayRows,directRows]=await Promise.all([
-      Promise.all(homeRaw.map(m=>cpPregameMatchRow(m,home))),
-      Promise.all(awayRaw.map(m=>cpPregameMatchRow(m,away))),
-      Promise.all(directRaw.map(async m=>{
-        const pair=await webCornersPairForMatch(m).catch(()=>({home:null,away:null}));
-        const sc=cpPregameScore(m);
-        const total=(pair.home!==null&&pair.away!==null)?Number(pair.home)+Number(pair.away):null;
-        return {
-          match_id:String(m?.match_id??m?.event_key??m?.id??''),
-          date:cpPregameDate(m),
-          home:teamFromEvent(m,'home'),
-          away:teamFromEvent(m,'away'),
-          score_home:sc.home,
-          score_away:sc.away,
-          corners_home:Number.isFinite(Number(pair.home))?Number(pair.home):null,
-          corners_away:Number.isFinite(Number(pair.away))?Number(pair.away):null,
-          corners_total:Number.isFinite(Number(total))?Number(total):null
-        };
-      }))
-    ]);
-
-    const homeRecent=cpPregameSummarizeRecent(homeRows);
-    const awayRecent=cpPregameSummarizeRecent(awayRows);
-    const h2hTotals=directRows.map(x=>x.corners_total).filter(Number.isFinite);
-    const h2hAvg=h2hTotals.length?Number((h2hTotals.reduce((s,n)=>s+n,0)/h2hTotals.length).toFixed(1)):null;
-    const h2hOver95=h2hTotals.length?Math.round(h2hTotals.filter(n=>n>9.5).length/h2hTotals.length*100):null;
-
-    return res.json({
-      ok:true,
-      match_id:String(matchId),
-      home,away,
-      league:cpPregameText(event?.league_name ?? event?.league ?? 'Liga'),
-      league_id:leagueId,
-      date:cpPregameText(event?.match_date ?? event?.date,''),
-      time:cpPregameText(event?.match_time ?? event?.time,''),
-      standings:{home:homeStanding,away:awayStanding},
-      recent:{home:homeRecent,away:awayRecent},
-      h2h:{games:directRows.length,avg_corners:h2hAvg,over95_rate:h2hOver95,matches:directRows}
-    });
-  }catch(error){
-    return res.status(500).json({ok:false,error:'Falha ao carregar pré-jogo',details:String(error?.message||error)});
-  }
-});
 
 app.get("/match_result", (req, res) => {
   const params = new URLSearchParams();

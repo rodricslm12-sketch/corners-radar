@@ -16847,6 +16847,124 @@ const fallbackSide = target > 0
                       `;
                     }
             
+
+                    /* =========================================================
+                       V64 — PRÉ-JOGO INTEGRADO AO MATCH CENTER DESKTOP
+                       Usa o próprio /match_center. Não cria um segundo fluxo.
+                       Mobile permanece intocado.
+                       ========================================================= */
+                    function buildPregameHistoryRailV64({ rail, data, matchId, home, away, league, time, pct, proj }){
+                      const pg = data?.pregame || {};
+                      const stHome = pg?.standings?.home || {};
+                      const stAway = pg?.standings?.away || {};
+                      const recHome = pg?.recent?.home || {};
+                      const recAway = pg?.recent?.away || {};
+                      const h2h = pg?.h2h || {};
+
+                      const safeNum = (v) => {
+                        const n = Number(v);
+                        return Number.isFinite(n) ? n : null;
+                      };
+                      const val = (v, suffix="") => {
+                        const n = safeNum(v);
+                        return n === null ? "—" : `${Number.isInteger(n) ? n : n.toFixed(1)}${suffix}`;
+                      };
+                      const percent = (v) => {
+                        const n = safeNum(v);
+                        return n === null ? "—" : `${Math.round(n)}%`;
+                      };
+                      const formHtml = (arr) => {
+                        const list = Array.isArray(arr) ? arr.slice(0,5) : [];
+                        if (!list.length) return `<span class="cpV64Muted">Sem histórico</span>`;
+                        return `<div class="cpV64Form">${list.map(x => {
+                          const k = String(x||"").toUpperCase();
+                          const cls = k==="V" ? "win" : k==="D" ? "loss" : "draw";
+                          return `<i class="${cls}">${esc(k || "—")}</i>`;
+                        }).join("")}</div>`;
+                      };
+                      const standingLine = (name, s) => `
+                        <div class="cpV64StandingLine">
+                          <div class="cpV64StandingTeam">
+                            <b>${esc(name)}</b>
+                            <small>${s?.position ? `${esc(String(s.position))}º lugar` : "posição indisponível"}</small>
+                          </div>
+                          <div><small>PTS</small><b>${val(s?.points)}</b></div>
+                          <div><small>J</small><b>${val(s?.played)}</b></div>
+                          <div><small>V</small><b>${val(s?.wins)}</b></div>
+                          <div><small>E</small><b>${val(s?.draws)}</b></div>
+                          <div><small>D</small><b>${val(s?.losses)}</b></div>
+                        </div>`;
+                      const recent = (label, name, r) => `
+                        <div class="cpV64RecentTeam">
+                          <div class="cpV64RecentHead"><span>${label}</span><b>${esc(name)}</b>${formHtml(r?.form)}</div>
+                          <div class="cpV64Metrics">
+                            <div><small>Cantos a favor</small><b>${val(r?.corners_for_avg)}</b></div>
+                            <div><small>Cantos cedidos</small><b>${val(r?.corners_against_avg)}</b></div>
+                            <div><small>Média total</small><b>${val(r?.corners_total_avg)}</b></div>
+                            <div><small>Over 9.5</small><b>${percent(r?.over95_rate)}</b></div>
+                          </div>
+                        </div>`;
+                      const h2hRows = Array.isArray(h2h?.matches) && h2h.matches.length
+                        ? h2h.matches.slice(0,5).map(m => `
+                            <div class="cpV64H2HRow">
+                              <small>${esc(clean(m?.date,"—"))}</small>
+                              <span>${esc(clean(m?.home,"Casa"))} <b>${esc(clean(m?.score_home,"—"))} × ${esc(clean(m?.score_away,"—"))}</b> ${esc(clean(m?.away,"Fora"))}</span>
+                              <em>${safeNum(m?.corners_total)!==null ? `${val(m.corners_total)} cantos` : "cantos —"}</em>
+                            </div>`).join("")
+                        : `<div class="cpV64Empty">Sem confrontos diretos com dados suficientes.</div>`;
+
+                      const reading = [];
+                      if (safeNum(recHome?.corners_for_avg)!==null)
+                        reading.push(`${home} tem média recente de ${val(recHome.corners_for_avg)} escanteios a favor`);
+                      if (safeNum(recAway?.corners_against_avg)!==null)
+                        reading.push(`${away} cede ${val(recAway.corners_against_avg)} escanteios por jogo no recorte`);
+                      if (safeNum(h2h?.over95_rate)!==null)
+                        reading.push(`${percent(h2h.over95_rate)} dos H2H disponíveis passaram de 9.5 cantos`);
+                      if (proj !== "—") reading.push(`a projeção atual do Corner Pro é ${proj} cantos`);
+                      const readingText = reading.length
+                        ? reading.join(". ") + "."
+                        : "Ainda não há histórico suficiente na API para uma leitura completa desta partida.";
+
+                      rail.innerHTML = `
+                        <section class="railCard cpV64Hero">
+                          <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+                          <div class="cpV64Teams">
+                            <div><strong>${esc(home)}</strong><small>${stHome?.position ? `${esc(String(stHome.position))}º` : "—"}</small></div>
+                            <section><small>${esc(league)} • ${esc(time)}</small><b>VS</b><em>ANÁLISE</em></section>
+                            <div><strong>${esc(away)}</strong><small>${stAway?.position ? `${esc(String(stAway.position))}º` : "—"}</small></div>
+                          </div>
+                        </section>
+
+                        <section class="railCard cpV64Card">
+                          <h3>CLASSIFICAÇÃO</h3>
+                          ${standingLine(home,stHome)}
+                          ${standingLine(away,stAway)}
+                        </section>
+
+                        <section class="railCard cpV64Card">
+                          <h3>MOMENTO • ÚLTIMOS 5</h3>
+                          ${recent("CASA",home,recHome)}
+                          ${recent("FORA",away,recAway)}
+                        </section>
+
+                        <section class="railCard cpV64Card">
+                          <div class="cpV64SectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${val(h2h?.games)} jogos</b></div>
+                          <div class="cpV64Summary">
+                            <div><small>Média H2H</small><b>${val(h2h?.avg_corners)}</b><span>cantos</span></div>
+                            <div><small>Over 9.5</small><b>${percent(h2h?.over95_rate)}</b><span>H2H</span></div>
+                            <div><small>Projeção</small><b>${proj}</b><span>Corner Pro</span></div>
+                          </div>
+                          <div class="cpV64H2H">${h2hRows}</div>
+                        </section>
+
+                        <section class="railCard cpV64Reading">
+                          <h3>LEITURA PRÉ-JOGO</h3>
+                          <p>${esc(readingText)}</p>
+                          <small>Dados reais disponíveis na API. Sem preencher números ausentes.</small>
+                        </section>
+                      `;
+                    }
+
                     window.updateDesktopMatchRail = async function updateDesktopMatchRail(game, list){
                       const rail = document.getElementById("desktopMatchRail");
                       if (!rail || !game) return;
@@ -16868,7 +16986,32 @@ const fallbackSide = target > 0
                         if (!res.ok) return;
                         const data = await res.json();
                         if (data && !data.error){
-                          buildRealRail({ rail, data, matchId, home: clean(data.home, home), away: clean(data.away, away), league: clean(data.league, league), time: clean(data.time, time), pct });
+                          const finalHome = clean(data.home, home);
+                          const finalAway = clean(data.away, away);
+                          const finalLeague = clean(data.league, league);
+                          const finalTime = clean(data.time, time);
+
+                          // V64: antes do jogo, NÃO transforma 0x0/0' em "AO VIVO".
+                          // O próprio /match_center devolve o pacote histórico em data.pregame.
+                          if (data.not_started === true && data.pregame){
+                            buildPregameHistoryRailV64({
+                              rail, data, matchId,
+                              home: finalHome,
+                              away: finalAway,
+                              league: finalLeague,
+                              time: finalTime,
+                              pct, proj
+                            });
+                          } else {
+                            buildRealRail({
+                              rail, data, matchId,
+                              home: finalHome,
+                              away: finalAway,
+                              league: finalLeague,
+                              time: finalTime,
+                              pct
+                            });
+                          }
                         }
                       }catch(err){
                         console.warn("Right rail Premium Match Center falhou:", err);
@@ -31419,183 +31562,4 @@ const fallbackSide = target > 0
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",start,{once:true});
   else start();
-})();
-
-/* =========================================================
-   MATCH CENTER PRÉ-JOGO V63 — SOMENTE DESKTOP
-   Corrige o problema em que /match_center sobrescrevia o pré-jogo
-   com uma tela 0-0 / estatísticas vazias antes do início.
-   ========================================================= */
-(function installDesktopPregameV63(){
-  'use strict';
-  if(!window.matchMedia || !window.matchMedia('(min-width:981px)').matches) return;
-  if(window.__CP_DESKTOP_PREGAME_V63__) return;
-  window.__CP_DESKTOP_PREGAME_V63__=true;
-
-  const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  const text=(v,f='—')=>{const x=String(v??'').trim();return x&&!['undefined','null','NaN'].includes(x)?x:f};
-  const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').replace(',','.'));return Number.isFinite(n)?n:null};
-  const fmt=v=>{const n=number(v);return n===null?'—':(Number.isInteger(n)?String(n):n.toFixed(1))};
-  const pct=v=>{const n=number(v);return n===null?'—':`${Math.round(n)}%`};
-  const initials=(name,f='--')=>{const p=String(name||'').trim().split(/\s+/).filter(Boolean);return p.length?((p[0][0]||'')+(p.length>1?(p[1][0]||''):'')).toUpperCase():f};
-
-  function formHTML(arr){
-    const list=Array.isArray(arr)?arr.slice(0,5):[];
-    if(!list.length) return '<span class="cpPgMuted">sem dados</span>';
-    return `<div class="cpPgForm">${list.map(x=>`<i class="${x==='V'?'win':x==='D'?'loss':'draw'}">${escape(x)}</i>`).join('')}</div>`;
-  }
-
-  function standingLine(team,st){
-    if(!st) return `<div class="cpPgTableRow"><strong>${escape(team)}</strong><span>—</span><small>classificação indisponível</small></div>`;
-    const record=[st.wins,st.draws,st.losses].every(v=>number(v)!==null)?`${fmt(st.wins)}V ${fmt(st.draws)}E ${fmt(st.losses)}D`:'—';
-    return `<div class="cpPgTableRow">
-      <strong>${escape(team)}</strong>
-      <span>${fmt(st.position)}º</span>
-      <small>${fmt(st.points)} pts • ${fmt(st.played)}J • ${record}</small>
-    </div>`;
-  }
-
-  function recentCard(label,team,r){
-    return `<div class="cpPgRecentTeam">
-      <div class="cpPgRecentHead"><span>${escape(label)}</span><b>${escape(team)}</b></div>
-      ${formHTML(r?.form)}
-      <div class="cpPgMetrics">
-        <div><small>Cantos a favor</small><b>${fmt(r?.corners_for_avg)}</b></div>
-        <div><small>Cantos cedidos</small><b>${fmt(r?.corners_against_avg)}</b></div>
-        <div><small>Over 9.5</small><b>${pct(r?.over95_rate)}</b></div>
-      </div>
-    </div>`;
-  }
-
-  function h2hRows(h2h){
-    const rows=Array.isArray(h2h?.matches)?h2h.matches.slice(0,5):[];
-    if(!rows.length) return '<div class="cpPgEmpty">Nenhum confronto recente disponível.</div>';
-    return rows.map(m=>{
-      const score=(number(m.score_home)!==null&&number(m.score_away)!==null)?`${fmt(m.score_home)} - ${fmt(m.score_away)}`:'—';
-      const corners=number(m.corners_total)!==null?`${fmt(m.corners_total)} cantos`:'cantos —';
-      return `<div class="cpPgH2HRow">
-        <small>${escape(text(m.date,''))}</small>
-        <span><b>${escape(text(m.home,'Casa'))}</b> ${score} <b>${escape(text(m.away,'Fora'))}</b></span>
-        <em>${escape(corners)}</em>
-      </div>`;
-    }).join('');
-  }
-
-  function buildReading(data,game){
-    const h=data?.recent?.home||{},a=data?.recent?.away||{},hh=data?.h2h||{};
-    const parts=[];
-    if(number(h.corners_for_avg)!==null&&number(a.corners_against_avg)!==null){
-      if(number(h.corners_for_avg)>=5.5) parts.push(`${text(data.home,'Mandante')} chega com boa produção recente de escanteios`);
-      else parts.push(`${text(data.home,'Mandante')} tem produção recente moderada de escanteios`);
-    }
-    if(number(a.corners_for_avg)!==null){
-      parts.push(`${text(data.away,'Visitante')} registra média de ${fmt(a.corners_for_avg)} cantos a favor no recorte`);
-    }
-    if(number(hh.over95_rate)!==null){
-      parts.push(`nos confrontos diretos, ${pct(hh.over95_rate)} passaram de 9.5 cantos`);
-    }
-    const projection=number(game?.proj_cantos ?? game?.projection ?? game?.corners_projection);
-    if(projection!==null) parts.push(`a projeção atual do Corner Pro é ${fmt(projection)} cantos`);
-    if(!parts.length) return 'Os dados históricos disponíveis ainda são insuficientes para uma leitura pré-jogo completa.';
-    return parts.join('. ')+'.';
-  }
-
-  function renderPregame(rail,data,game){
-    const home=text(data?.home ?? game?.casa ?? game?.home,'Mandante');
-    const away=text(data?.away ?? game?.fora ?? game?.away,'Visitante');
-    const league=text(data?.league ?? game?.liga ?? game?.league_name,'Liga');
-    const time=text(data?.time ?? game?.hora ?? game?.time,'—');
-    const hs=data?.standings?.home, as=data?.standings?.away;
-    const hr=data?.recent?.home||{}, ar=data?.recent?.away||{};
-    const h2h=data?.h2h||{};
-    const proj=number(game?.proj_cantos ?? game?.projection ?? game?.corners_projection);
-
-    rail.innerHTML=`
-      <section class="railCard cpPgHero">
-        <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-        <div class="cpPgTeams">
-          <div><i>${initials(home,'MA')}</i><strong>${escape(home)}</strong><small>${hs?.position?`${fmt(hs.position)}º lugar`:'posição —'}</small></div>
-          <section><small>${escape(league)} • ${escape(time)}</small><b>VS</b><em>ANÁLISE PRÉ-JOGO</em></section>
-          <div><i>${initials(away,'VI')}</i><strong>${escape(away)}</strong><small>${as?.position?`${fmt(as.position)}º lugar`:'posição —'}</small></div>
-        </div>
-      </section>
-
-      <section class="railCard cpPgTable">
-        <h3>CLASSIFICAÇÃO</h3>
-        ${standingLine(home,hs)}
-        ${standingLine(away,as)}
-      </section>
-
-      <section class="railCard cpPgRecent">
-        <h3>MOMENTO DAS EQUIPES • ÚLTIMOS 5</h3>
-        ${recentCard('CASA',home,hr)}
-        ${recentCard('FORA',away,ar)}
-      </section>
-
-      <section class="railCard cpPgH2H">
-        <div class="cpPgSectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${h2h?.games||0} JOGOS</b></div>
-        <div class="cpPgH2HSummary">
-          <div><small>Média H2H</small><b>${fmt(h2h?.avg_corners)}</b><span>cantos</span></div>
-          <div><small>Over 9.5</small><b>${pct(h2h?.over95_rate)}</b><span>H2H</span></div>
-          <div><small>Projeção</small><b>${fmt(proj)}</b><span>Corner Pro</span></div>
-        </div>
-        <div class="cpPgH2HList">${h2hRows(h2h)}</div>
-      </section>
-
-      <section class="railCard cpPgReading">
-        <h3>LEITURA PRÉ-JOGO</h3>
-        <p>${escape(buildReading(data,game))}</p>
-        <small>Baseada somente nos dados disponíveis da API e no histórico recente.</small>
-      </section>`;
-    rail.dataset.cpPregame='1';
-  }
-
-  function isPregame(mc){
-    if(!mc||mc.error) return true;
-    if(mc.finished) return false;
-    const min=number(mc.minute);
-    const meaningfulStats=Boolean(mc.stats_available) && [mc?.corners?.home,mc?.corners?.away,mc?.shots?.home,mc?.shots?.away,mc?.dangerous_attacks?.home,mc?.dangerous_attacks?.away].some(v=>number(v)!==null && number(v)>0);
-    if(mc.not_started) return true;
-    if((min===null||min<=0) && !meaningfulStats) return true;
-    return !mc.live;
-  }
-
-  function install(){
-    const original=window.updateDesktopMatchRail;
-    if(typeof original!=='function'){
-      setTimeout(install,180);
-      return;
-    }
-    if(original.__cpPregameV63) return;
-
-    const wrapped=async function(game,list){
-      const rail=document.getElementById('desktopMatchRail');
-      if(!rail||!game) return original(game,list);
-      const matchId=text(game?.match_id ?? game?.id ?? game?.event_key ?? game?.event_id,'');
-      if(!matchId) return original(game,list);
-
-      rail.innerHTML=`<section class="railCard cpPgLoading"><div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div><p>Carregando classificação, forma e confrontos...</p></section>`;
-      try{
-        const [mcRes,pgRes]=await Promise.all([
-          fetch(`/match_center?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`,{cache:'no-store'}),
-          fetch(`/match_center_pregame?match_id=${encodeURIComponent(matchId)}&t=${Date.now()}`,{cache:'no-store'})
-        ]);
-        const mc=mcRes.ok?await mcRes.json():null;
-        if(!isPregame(mc)) return original(game,list);
-        const pg=pgRes.ok?await pgRes.json():null;
-        if(pg&&pg.ok){
-          renderPregame(rail,pg,game);
-          return;
-        }
-      }catch(err){
-        console.warn('[CP V63 pré-jogo]',err);
-      }
-      return original(game,list);
-    };
-    wrapped.__cpPregameV63=true;
-    wrapped.__cpOriginal=original;
-    window.updateDesktopMatchRail=wrapped;
-  }
-
-  install();
 })();
