@@ -12124,6 +12124,141 @@ app.get("/market_live_status", async (req, res) => {
   }
 });
 
+
+/* =========================================================
+   MATCH CENTER V62 — CONTEXTO PRÉ-JOGO EXPLICATIVO (DESKTOP)
+   Tabela + forma + cantos recentes + H2H.
+   Apenas fornece dados; não altera nenhum motor de mercado.
+   ========================================================= */
+async function mcGetStandingsDetails(leagueId) {
+  if (!leagueId) return [];
+  try {
+    const data = await apiGetV3({ action: "get_standings", league_id: leagueId });
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function mcStandingRow(rows, teamName) {
+  if (!Array.isArray(rows) || !teamName) return null;
+  const key = normTeamKey(teamName);
+  let row = rows.find(r => normTeamKey(r?.team_name || r?.team || r?.teamName) === key) || null;
+  if (!row) {
+    let best = null, bestScore = 0;
+    for (const r of rows) {
+      const name = r?.team_name || r?.team || r?.teamName || "";
+      const s = tokenScore(name, teamName);
+      if (s > bestScore) { bestScore = s; best = r; }
+    }
+    if (bestScore >= 0.66) row = best;
+  }
+  if (!row) return null;
+
+  const n = (...vals) => {
+    for (const v of vals) {
+      if (v === null || v === undefined || v === "") continue;
+      const x = Number(String(v).replace(",", "."));
+      if (Number.isFinite(x)) return x;
+    }
+    return null;
+  };
+
+  return {
+    position: n(row.overall_league_position, row.position, row.league_position),
+    points: n(row.overall_league_PTS, row.points, row.pts, row.league_points),
+    played: n(row.overall_league_payed, row.overall_league_played, row.played, row.games, row.matches),
+    wins: n(row.overall_league_W, row.wins, row.win),
+    draws: n(row.overall_league_D, row.draws, row.draw),
+    losses: n(row.overall_league_L, row.losses, row.loss),
+    goals_for: n(row.overall_league_GF, row.goals_for, row.gf),
+    goals_against: n(row.overall_league_GA, row.goals_against, row.ga)
+  };
+}
+
+function mcRecentForm(list, teamName, limit = 5) {
+  const rows = Array.isArray(list) ? list.slice(0, limit) : [];
+  const key = normTeamKey(teamName);
+  return rows.map(m => {
+    const h = teamFromEvent(m, "home");
+    const a = teamFromEvent(m, "away");
+    const hs = Number(m?.match_hometeam_score ?? m?.home_score ?? NaN);
+    const as = Number(m?.match_awayteam_score ?? m?.away_score ?? NaN);
+    if (!Number.isFinite(hs) || !Number.isFinite(as)) return null;
+    const isHome = normTeamKey(h) === key;
+    const gf = isHome ? hs : as;
+    const ga = isHome ? as : hs;
+    return gf > ga ? "V" : gf < ga ? "D" : "E";
+  }).filter(Boolean);
+}
+
+async function mcH2HRows(h2hBlock, limit = 5) {
+  const list = Array.isArray(h2hBlock?.firstTeam_VS_secondTeam)
+    ? h2hBlock.firstTeam_VS_secondTeam.slice(0, limit)
+    : [];
+  const out = [];
+  for (const m of list) {
+    const pair = await webCornersPairForMatch(m).catch(() => ({home:null,away:null}));
+    const hs = Number(m?.match_hometeam_score ?? m?.home_score ?? NaN);
+    const as = Number(m?.match_awayteam_score ?? m?.away_score ?? NaN);
+    const total = Number.isFinite(pair?.home) && Number.isFinite(pair?.away)
+      ? Number(pair.home) + Number(pair.away)
+      : null;
+    out.push({
+      date: cleanText(m?.match_date ?? m?.event_date ?? ""),
+      home: teamFromEvent(m, "home"),
+      away: teamFromEvent(m, "away"),
+      home_score: Number.isFinite(hs) ? hs : null,
+      away_score: Number.isFinite(as) ? as : null,
+      corners_home: Number.isFinite(pair?.home) ? Number(pair.home) : null,
+      corners_away: Number.isFinite(pair?.away) ? Number(pair.away) : null,
+      corners_total: Number.isFinite(total) ? total : null
+    });
+  }
+  return out;
+}
+
+async function buildMatchCenterPregame(event) {
+  try {
+    const home = teamFromEvent(event, "home");
+    const away = teamFromEvent(event, "away");
+    const leagueId = Number(event?.league_id ?? event?.match_league_id ?? event?.leagueId ?? 0) || null;
+
+    const [standRows, h2h] = await Promise.all([
+      mcGetStandingsDetails(leagueId),
+      getH2H(home, away).catch(() => null)
+    ]);
+
+    const homeStanding = mcStandingRow(standRows, home);
+    const awayStanding = mcStandingRow(standRows, away);
+
+    const [homeRecent, awayRecent, h2hRows] = await Promise.all([
+      h2h ? recentTeamAverages(home, h2h, "firstTeam_lastResults", 5).catch(() => null) : null,
+      h2h ? recentTeamAverages(away, h2h, "secondTeam_lastResults", 5).catch(() => null) : null,
+      h2h ? mcH2HRows(h2h, 5).catch(() => []) : []
+    ]);
+
+    const h2hProfile = calcH2HCornersProfile(h2h);
+    const homeForm = mcRecentForm(h2h?.firstTeam_lastResults, home, 5);
+    const awayForm = mcRecentForm(h2h?.secondTeam_lastResults, away, 5);
+
+    return {
+      available: Boolean(homeStanding || awayStanding || homeRecent || awayRecent || h2hRows.length),
+      table: { home: homeStanding, away: awayStanding },
+      form: { home: homeForm, away: awayForm },
+      recent: { home: homeRecent, away: awayRecent },
+      h2h: {
+        games: h2hProfile?.games || 0,
+        avg_corners: Number.isFinite(h2hProfile?.avgCorners) ? h2hProfile.avgCorners : null,
+        over95_rate: Number.isFinite(h2hProfile?.over95Rate) ? h2hProfile.over95Rate : null,
+        matches: h2hRows
+      }
+    };
+  } catch (error) {
+    return { available:false, error:String(error?.message || error) };
+  }
+}
+
 app.get("/match_center", async (req, res) => {
   const matchId = cleanText(req.query.match_id || req.query.event_id || "");
   if (!matchId) return res.status(400).json({ error: "match_id obrigatório" });
@@ -12165,6 +12300,9 @@ app.get("/match_center", async (req, res) => {
       : null;
 
     const status = mcStatusInfo(event);
+    const pregame = status.not_started
+      ? await buildMatchCenterPregame(event)
+      : null;
     const statsResult = await getMatchCenterStatsFresh(
       matchId,
       event,
@@ -12285,6 +12423,7 @@ app.get("/match_center", async (req, res) => {
       live: status.live,
       finished: status.finished,
       not_started: status.not_started,
+      pregame,
       cancelled: status.cancelled,
       minute: status.minute,
       status_inferred_by_clock: status.inferred_by_clock,

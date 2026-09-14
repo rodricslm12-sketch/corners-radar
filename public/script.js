@@ -22390,6 +22390,78 @@ const fallbackSide = target > 0
                     const time0 = clean(game?.hora || game?.time || "—");
                     const basePct = pct(game?.markets?.prob?.all ?? game?.over95_prob_adj ?? game?.over95_prob ?? game?.ai_score ?? 69);
                     const proj = Number.isFinite(Number(game?.proj_cantos)) ? Number(game.proj_cantos).toFixed(1).replace(".0","") : "—";
+
+                    function pgNum(v, digits=1){
+                      const n=Number(v);
+                      return Number.isFinite(n)?n.toFixed(digits).replace(".0",""):"—";
+                    }
+                    function pgForm(arr){
+                      const xs=Array.isArray(arr)?arr:[];
+                      if(!xs.length)return `<span class="cpPgMuted">sem dados</span>`;
+                      return `<div class="cpPgForm">${xs.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`;
+                    }
+                    function pgStanding(team, row){
+                      if(!row)return `<div class="cpPgTeamRow"><strong>${esc(team)}</strong><span>posição indisponível</span></div>`;
+                      return `<div class="cpPgTeamRow"><strong>${esc(team)}</strong><b>${row.position?esc(row.position+"º"):"—"}</b><span>${row.points!=null?esc(row.points+" pts"):"—"} • ${row.played!=null?esc(row.played+" J"):"—"}</span><small>${row.wins??"—"}V ${row.draws??"—"}E ${row.losses??"—"}D • ${row.goals_for??"—"}:${row.goals_against??"—"} gols</small></div>`;
+                    }
+                    function pgRecent(team, r){
+                      return `<div class="cpPgRecentTeam"><strong>${esc(team)}</strong><div class="cpPgRecentGrid"><span><small>Cantos pró</small><b>${pgNum(r?.cornersForAvg)}</b></span><span><small>Cantos cedidos</small><b>${pgNum(r?.cornersAgainstAvg)}</b></span><span><small>Total médio</small><b>${pgNum(r?.combinedCornersAvg)}</b></span><span><small>Over 9.5</small><b>${r?.games?Math.round((Number(r.over9Count||0)/Number(r.games))*100)+"%":"—"}</b></span></div></div>`;
+                    }
+                    function pgH2HRows(matches){
+                      const xs=Array.isArray(matches)?matches:[];
+                      if(!xs.length)return `<div class="cpPgEmpty">Sem confrontos recentes com dados disponíveis.</div>`;
+                      return xs.map(m=>`<div class="cpPgH2HRow"><div><small>${esc(m.date||"")}</small><b>${esc(m.home||"Casa")} ${m.home_score??"—"} × ${m.away_score??"—"} ${esc(m.away||"Fora")}</b></div><span>${m.corners_total!=null?esc(m.corners_total+" cantos"):"cantos —"}</span></div>`).join("");
+                    }
+                    function renderPregame(data, home, away, league, time){
+                      const pg=data?.pregame||{};
+                      const ht=pg?.table?.home, at=pg?.table?.away;
+                      const hr=pg?.recent?.home, ar=pg?.recent?.away;
+                      const h2h=pg?.h2h||{};
+                      const avg=pgNum(h2h.avg_corners);
+                      const over=h2h.over95_rate!=null?Math.round(Number(h2h.over95_rate))+"%":"—";
+                      const posText=(ht?.position&&at?.position)?`${ht.position}º × ${at.position}º`:"Classificação";
+                      const lead=[];
+                      if(hr?.cornersForAvg!=null)lead.push(`${home} produz ${pgNum(hr.cornersForAvg)} cantos/jogo no recorte recente`);
+                      if(ar?.cornersAgainstAvg!=null)lead.push(`${away} cede ${pgNum(ar.cornersAgainstAvg)} cantos/jogo`);
+                      if(h2h.games)lead.push(`H2H: ${over} acima de 9.5 cantos`);
+                      const reading=lead.length?lead.join(". ")+".":"Dados pré-jogo ainda são limitados para esta partida.";
+
+                      rail.innerHTML=`
+                        <section class="railCard cpPgHead">
+                          <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+                          <div class="mcRailMeta">${esc(league)} • ${esc(time)}</div>
+                          <div class="cpPgVs"><strong>${esc(home)}</strong><span>VS</span><strong>${esc(away)}</strong></div>
+                          <div class="cpPgHeadline"><b>${esc(posText)}</b><small>contexto antes da bola rolar</small></div>
+                        </section>
+
+                        <section class="railCard cpPgCard">
+                          <div class="cpPgTitle"><h3>CLASSIFICAÇÃO</h3><span>TABELA</span></div>
+                          ${pgStanding(home,ht)}
+                          ${pgStanding(away,at)}
+                        </section>
+
+                        <section class="railCard cpPgCard">
+                          <div class="cpPgTitle"><h3>MOMENTO DAS EQUIPES</h3><span>ÚLTIMOS 5</span></div>
+                          <div class="cpPgForms"><div><small>${esc(home)}</small>${pgForm(pg?.form?.home)}</div><div><small>${esc(away)}</small>${pgForm(pg?.form?.away)}</div></div>
+                          ${pgRecent(home,hr)}
+                          ${pgRecent(away,ar)}
+                        </section>
+
+                        <section class="railCard cpPgCard">
+                          <div class="cpPgTitle"><h3>CONFRONTOS DIRETOS</h3><span>H2H</span></div>
+                          <div class="cpPgH2HSummary"><span><small>Média de cantos</small><b>${avg}</b></span><span><small>Over 9.5</small><b>${over}</b></span><span><small>Amostra</small><b>${h2h.games||0}</b></span></div>
+                          <div class="cpPgH2HList">${pgH2HRows(h2h.matches)}</div>
+                        </section>
+
+                        <section class="railCard cpPgRead">
+                          <div class="cpPgTitle"><h3>LEITURA PRÉ-JOGO</h3><span>IA</span></div>
+                          <p>${esc(reading)}</p>
+                          <small>Leitura baseada somente nos dados disponíveis da API e no histórico recente.</small>
+                        </section>
+
+                        <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>
+                      `;
+                    }
             
                     function render(data = {}){
                       const isReal = !!data && Object.keys(data).length > 0 && !data.error;
@@ -22400,6 +22472,11 @@ const fallbackSide = target > 0
                       const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
                       const minute = isReal ? getMinute(data) : 0;
                       const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
+
+                      if (st === "PRÉ-JOGO" && data?.pregame) {
+                        renderPregame(data, home, away, league, time);
+                        return;
+                      }
             
                       const gh = clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score ?? 0, "0");
                       const ga = clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score ?? 0, "0");

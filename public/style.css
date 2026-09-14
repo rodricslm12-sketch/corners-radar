@@ -23421,3 +23421,56 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
     font-weight:950!important;
   }
 }
+
+/* =========================================================
+   CORNER PRO V62 — MATCH CENTER PRÉ-JOGO EXPLICATIVO
+   SOMENTE DESKTOP. Mobile/app permanece intacto.
+   ========================================================= */
+@media (min-width:981px){
+  #desktopMatchRail .cpPgHead,
+  #desktopMatchRail .cpPgCard,
+  #desktopMatchRail .cpPgRead{padding:12px 13px}
+  #desktopMatchRail .cpPgVs{display:grid;grid-template-columns:1fr 34px 1fr;align-items:center;gap:6px;margin:13px 0 8px;text-align:center}
+  #desktopMatchRail .cpPgVs strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #desktopMatchRail .cpPgVs span{color:var(--green);font-weight:950;font-size:12px}
+  #desktopMatchRail .cpPgHeadline{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:7px;background:#09130f;border:1px solid rgba(99,241,39,.16)}
+  #desktopMatchRail .cpPgHeadline b{color:var(--green);font-size:11px}
+  #desktopMatchRail .cpPgHeadline small{color:#84918d;font-size:7px;text-transform:uppercase;font-weight:900}
+  #desktopMatchRail .cpPgTitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  #desktopMatchRail .cpPgTitle h3{margin:0;font-size:10px;letter-spacing:.2px}
+  #desktopMatchRail .cpPgTitle span{font-size:7px;color:var(--green);font-weight:950;border:1px solid rgba(99,241,39,.28);padding:3px 6px;border-radius:99px;background:rgba(99,241,39,.06)}
+  #desktopMatchRail .cpPgTeamRow{display:grid;grid-template-columns:minmax(0,1fr) 34px auto;gap:5px 8px;align-items:center;padding:8px 0;border-top:1px solid #17252a}
+  #desktopMatchRail .cpPgTeamRow strong{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #desktopMatchRail .cpPgTeamRow>b{font-size:13px;color:var(--green);text-align:center}
+  #desktopMatchRail .cpPgTeamRow>span{font-size:8px;color:#d6dfdb;text-align:right}
+  #desktopMatchRail .cpPgTeamRow>small{grid-column:1/-1;font-size:7px;color:#7f8d88}
+  #desktopMatchRail .cpPgForms{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  #desktopMatchRail .cpPgForms>div{padding:7px;background:#091116;border:1px solid #17262c;border-radius:7px}
+  #desktopMatchRail .cpPgForms small{display:block;margin-bottom:5px;color:#8a9793;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #desktopMatchRail .cpPgForm{display:flex;gap:4px}
+  #desktopMatchRail .cpPgForm i{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;font-style:normal;font-size:7px;font-weight:950;background:#26302d;color:#dbe3df}
+  #desktopMatchRail .cpPgForm i.win{background:#17491e;color:#77ff43}
+  #desktopMatchRail .cpPgForm i.draw{background:#5b4714;color:#ffd45a}
+  #desktopMatchRail .cpPgForm i.loss{background:#57221e;color:#ff7c6c}
+  #desktopMatchRail .cpPgMuted{font-size:7px;color:#73807c}
+  #desktopMatchRail .cpPgRecentTeam{padding:8px 0;border-top:1px solid #17252a}
+  #desktopMatchRail .cpPgRecentTeam>strong{display:block;margin-bottom:6px;font-size:8px;color:#dce4e0}
+  #desktopMatchRail .cpPgRecentGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  #desktopMatchRail .cpPgRecentGrid span{min-width:0;padding:6px 3px;text-align:center;border-radius:6px;background:#091116;border:1px solid #16262c}
+  #desktopMatchRail .cpPgRecentGrid small{display:block;color:#72817c;font-size:6px;line-height:1.15;min-height:14px}
+  #desktopMatchRail .cpPgRecentGrid b{display:block;margin-top:3px;font-size:10px;color:#fff}
+  #desktopMatchRail .cpPgH2HSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:7px}
+  #desktopMatchRail .cpPgH2HSummary span{padding:7px 4px;text-align:center;border-radius:6px;background:#091116;border:1px solid #17262c}
+  #desktopMatchRail .cpPgH2HSummary small{display:block;font-size:6px;color:#788681}
+  #desktopMatchRail .cpPgH2HSummary b{display:block;margin-top:3px;font-size:11px;color:var(--green)}
+  #desktopMatchRail .cpPgH2HList{display:flex;flex-direction:column;gap:4px}
+  #desktopMatchRail .cpPgH2HRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 7px;border-radius:6px;background:#081015}
+  #desktopMatchRail .cpPgH2HRow>div{min-width:0}
+  #desktopMatchRail .cpPgH2HRow small{display:block;color:#66746f;font-size:6px}
+  #desktopMatchRail .cpPgH2HRow b{display:block;margin-top:2px;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #desktopMatchRail .cpPgH2HRow>span{flex:0 0 auto;font-size:7px;color:#a8b7b0}
+  #desktopMatchRail .cpPgEmpty{padding:9px;text-align:center;color:#74817d;font-size:7px;border:1px dashed #23342e;border-radius:7px}
+  #desktopMatchRail .cpPgRead{border-color:rgba(99,241,39,.24);background:linear-gradient(180deg,#0b1712,#08100d)}
+  #desktopMatchRail .cpPgRead p{margin:0;color:#d9e2de;font-size:8px;line-height:1.5}
+  #desktopMatchRail .cpPgRead>small{display:block;margin-top:7px;color:#6f7e78;font-size:6.5px;line-height:1.35}
+}
