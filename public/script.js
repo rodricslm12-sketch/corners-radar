@@ -2839,6 +2839,25 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(market==="cards") return num(r?.cards_avg,r?.total_cards_avg,projection(g,market));
               return projection(g,market);
             }
+
+            /* DESKTOP V170 — ESCANTEIOS: exibição sempre em linha de mercado .5.
+               IMPORTANTE: isso NÃO altera a projeção matemática nem o ranking da IA.
+               Apenas evita mostrar 6.8, 10.2, 10.3 etc. como se fossem linhas apostáveis. */
+            function cornersMarketLineDisplay(value){
+              const n=Number(value);
+              if(!Number.isFinite(n)) return "—";
+              const allowed=[8.5,9.5,10.5,11.5,12.5];
+              let best=allowed[0];
+              for(const line of allowed){
+                if(Math.abs(line-n)<Math.abs(best-n)) best=line;
+              }
+              return best.toFixed(1);
+            }
+
+            function desktopMetricDisplay(value, market=state.market){
+              if(value===null || value===undefined || !Number.isFinite(Number(value))) return "—";
+              return market==="corners" ? cornersMarketLineDisplay(value) : Number(value).toFixed(1);
+            }
           
             function lineText(g, market=state.market){
               return clean(decision(g,market)?.line,"").toUpperCase();
@@ -3830,7 +3849,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                            p!==null && ["corners","goals","cards"].includes(state.market)
                              ? `<small class="cpd3AiProjection">${
                                  state.market==="corners"
-                                   ? `Proj. ${p.toFixed(1)} cantos`
+                                   ? `Linha ${desktopMetricDisplay(p,"corners")} cantos`
                                    : state.market==="goals"
                                      ? `Proj. ${p.toFixed(1)} gols`
                                      : `Proj. ${p.toFixed(1)} cartões`
@@ -3845,9 +3864,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                          </span>`
                       : ["result","doublechance","teamgoals"].includes(state.market)
                         ? `<span class="cpd3PickBadge">${esc(marketPickText(g))}</span>`
-                        : (p===null?"—":p.toFixed(1))
+                        : desktopMetricDisplay(p,state.market)
                 }</div>
-                <div class="cpd3Num">${a===null?"—":a.toFixed(1)}</div>
+                <div class="cpd3Num">${desktopMetricDisplay(a,state.market)}</div>
                 <div class="cpd3Confidence">${c?`${c}%`:"—"}</div>
                 <div class="cpd3Trend"><i>☁</i><b>${c>=68?"ALTA":c>=55?"MÉDIA":"BAIXA"}</b></div>
                 <button type="button" class="cpd3Analyze" data-cpd3-open="${esc(gid)}">Ver análise</button>
