@@ -1,16 +1,14 @@
-/* CORNER PRO MOBILE V119 — visual forte em todos os mercados */
-if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
-  (()=>{
-    "use strict";
-    if(window.__CP_MOBILE_V110__) return;
-    window.__CP_MOBILE_V110__=true;
-  
+/\* CORNER PRO MOBILE V119 --- visual forte em todos os mercados \*/ if
+(window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
+(()=\>{ "use strict"; if(window.\_\_CP_MOBILE_V110\_\_) return;
+window.\_\_CP_MOBILE_V110\_\_=true;
+
     const $=(s,r=document)=>r.querySelector(s);
     const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
     const clean=(v,f="")=>{const s=String(v??"").trim();return s&&!["undefined","null","NaN"].includes(s)?s:f};
     const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
     const num=(...xs)=>{for(const x of xs){if(x===null||x===undefined||x==="")continue;const n=Number(String(x).replace("%","").replace(",","."));if(Number.isFinite(n))return n}return null};
-  
+
     const MARKETS={
       corners:{label:"Escanteios",icon:"⚑",hint:"9.5 • 10.5 • 11.5",field:"corners_ai",lines:["IA","TODOS","8.5","9.5","10.5","11.5","12.5"]},
       goals:{label:"Gols",icon:"⚽",hint:"2.5 • 3.5 • 4.5",field:"goals_ai",lines:["IA","TODOS","1.5","2.5","3.5","4.5"]},
@@ -22,7 +20,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       teamgoals:{label:"Gols do Time",icon:"◉",hint:"0.5 • 1.5 • 2.5",field:null,lines:["IA","TODOS","0.5","1.5","2.5"]},
       builder:{label:"Aposta Pronta",icon:"⚡",hint:"Maior confiança",field:null,lines:["IA","TODOS"]}
     };
-  
+
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
     const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,loadingProgress:6,loadingStatus:"Preparando painel...",request:0};
@@ -171,7 +169,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const active=isFavoriteTeam(name);
       return `<button type="button" class="v110Fav ${extraClass} ${active?"active":""}" data-v110-fav-team="${esc(name)}" aria-label="${active?"Remover":"Adicionar"} ${esc(name)} dos favoritos" aria-pressed="${active?"true":"false"}">${active?"★":"☆"}</button>`;
     }
-  
+
     const raw=g=>g?.raw||g||{};
     const home=g=>clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??raw(g)?.casa??raw(g)?.match_hometeam_name,"Casa");
     const away=g=>clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??raw(g)?.fora??raw(g)?.match_awayteam_name,"Fora");
@@ -217,11 +215,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       return false;
     }
-  
+
     function ymd(offset=0){const d=new Date();d.setDate(d.getDate()+offset);try{const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return d.toISOString().slice(0,10)}}
     function dateLong(x){const [Y,M,D]=String(x).split("-").map(Number);if(!Y)return "Hoje";return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","")}
     function dayChip(offset){const x=ymd(offset),[Y,M,D]=x.split("-").map(Number);const w=new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","").toUpperCase();return `${w} ${D}`}
-  
+
     function dec(g,m=state.market){const f=MARKETS[m]?.field;return f?(raw(g)?.[f]||g?.[f]||{}):{}}
     function confidence(g,m=state.market){let n;if(m==="builder")n=Math.max(...["corners","goals","cards","handicap","btts"].map(x=>confidence(g,x)),0);else if(["result","doublechance","teamgoals"].includes(m))n=num(raw(g)?.handicap_ai?.confidence,raw(g)?.goals_ai?.confidence,raw(g)?.ai_score);else n=num(dec(g,m)?.confidence,dec(g,m)?.probability,raw(g)?.ai_score);if(n!==null&&n>0&&n<=1)n*=100;return n===null?0:Math.max(0,Math.min(99,Math.round(n)))}
     /* =========================================================
@@ -405,7 +403,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     function logo(g,side){const src=badgeUrl(g,side),n=side==="home"?home(g):away(g);return `<span class="v110Logo">${src?`<img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none">${esc(initials(n))}</i>`:`<i>${esc(initials(n))}</i>`}</span>`}
     function form(g,side){const r=raw(g),v=side==="home"?(r.home_form??r.form_home??r.home_recent_form??r.home_last5):(r.away_form??r.form_away??r.away_recent_form??r.away_last5);const a=Array.isArray(v)?v:(typeof v==="string"?v.split(/[\s,;|/-]+/):[]);const vals=a.map(x=>clean(x).charAt(0).toUpperCase()).filter(Boolean).slice(0,5);return vals.length?`<div class="v110Form">${vals.map(x=>`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</i>`).join("")}</div>`:""}
     function trend(g){const c=confidence(g,"corners"),p=projection(g,"corners");return c>=72||(p!==null&&p>=10.8)?"ALTA":c>=62||(p!==null&&p>=9.8)?"MÉDIA":"CAUTELA"}
-  
+
     function merge(){
       const map=new Map();
       const add=(g,m=null)=>{
@@ -476,7 +474,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     }
     function extract(payload,key=null,seen=new Set()){if(Array.isArray(payload))return payload.filter(x=>x&&typeof x==="object");if(!payload||typeof payload!=="object"||seen.has(payload))return[];seen.add(payload);if(key&&Array.isArray(payload[key]))return payload[key];for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","list","top","top6","recommendations","opportunities","corners"]){const v=payload[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}for(const v of Object.values(payload)){if(v&&typeof v==="object"){const x=extract(v,key,seen);if(x.length)return x}}return[]}
     async function fetchJ(url,t=22000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(tm)}}
-  
+
     /* =========================================================
        APP V148 — LOADING INTELIGENTE
        Atualiza SOMENTE o visual do carregamento conforme as etapas reais.
@@ -648,16 +646,16 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         });
       }
     }
-  
-    
+
+
     const GAME_THEMES=["lime","cyan","amber","violet","coral","blue"];
     function gameTheme(i){return GAME_THEMES[Math.abs(Number(i)||0)%GAME_THEMES.length]}
-  
-    
+
+
     let selectedMatch=null;
     let matchPollTimer=null;
     let baseStatusPollTimer=null;
-  
+
     let calendarCursor=new Date();
     function ptMonthLabel(d){
       try{return new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"America/Manaus"}).format(d).toUpperCase()}
@@ -702,8 +700,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       closeCalendar();
       load();
     }
-  
-  
+
+
     function pair(data,name){
       const block=data?.[name]||data?.statistics?.[name]||data?.stats?.[name]||{};
       const h=block?.home??block?.casa??block?.local??"—";
@@ -739,7 +737,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       const cards=pair(data||{},"yellow_cards");
       const events=Array.isArray(data?.events)?data.events.slice(-8):[];
       const noRealStats=[corners,shots,target,possession,attacks,passes,fouls,cards].every(x=>x.home==="—"&&x.away==="—");
-  
+
       body.innerHTML=`
         <section class="v110MatchCard v110McHero">
           <div class="v110McTop"><small>${esc(clean(data?.league,league(g)))} • ${esc(clean(data?.time,time(g)))}</small><b class="${s.live?"live":s.finished?"finished":""}">${esc(s.label)}</b></div>
@@ -749,13 +747,13 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             <div>${logo(g,"away")}<strong>${esc(clean(data?.away,away(g)))}</strong></div>
           </div>
         </section>
-  
+
         <section class="v110MatchCard v110McPrediction">
           <div><small>${esc(m.label.toUpperCase())}</small><h2>${esc(pick(g))}</h2></div>
           <div><small>PROJEÇÃO</small><b>${pr!==null?pr.toFixed(1):"—"}</b></div>
           <div><small>CONFIANÇA</small><b>${cf?cf+"%":"—"}</b></div>
         </section>
-  
+
         <section class="v110MatchCard v110McStats">
           <div class="v110McTitle"><h3>ESTATÍSTICAS DA PARTIDA</h3>${loading?'<span class="v110McUpdating">ATUALIZANDO</span>':""}</div>
           ${error?`<p class="v110McNotice">${esc(error)}</p>`:""}
@@ -769,18 +767,18 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           ${mcMetric("Faltas",fouls)}
           ${mcMetric("Cartões",cards)}
         </section>
-  
+
         <section class="v110MatchCard v110McEvents">
           <h3>EVENTOS / LEITURA</h3>
           ${events.length?events.map(e=>`<p><b>${esc(e?.minute??"")}${e?.minute?"'":""}</b><span>${esc(e?.label??e?.type??"Evento")}</span></p>`).join(""):`<p class="v110McNotice">${s.finished?"Nenhum evento detalhado disponível.":s.live||s.ht?"Aguardando novos eventos da partida.":"Eventos serão exibidos durante a partida."}</p>`}
         </section>
-  
+
         <section class="v110MatchCard">
           <h3>LEITURA DA IA</h3>
           <p>${esc(clean(d?.reason??d?.explanation??d?.analysis,"Análise carregada pelos mesmos motores utilizados no site desktop."))}</p>
         </section>`;
     }
-  
+
     async function refreshMatchCenter(g,{silent=false}={}){
       if(!g)return;
       const gid=id(g);
@@ -805,7 +803,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
       }
     }
-  
+
     async function refreshBaseStatus(){
       if(document.hidden)return;
       try{
@@ -818,11 +816,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
       }catch(e){console.warn("[V115 live status]",e)}
     }
-  
+
     function renderDates(){const dt=$("#cpV110DateText");if(dt)dt.textContent=`📅 Hoje, ${dateLong(state.date||ymd())}`;for(let i=2;i<=4;i++){const e=$(`#cpV110Day${i}`);if(e)e.textContent=dayChip(i)}}
     function renderMarkets(){const el=$("#cpV110Markets");if(!el)return;el.innerHTML=Object.entries(MARKETS).map(([k,m],idx)=>`<button class="v110Market ${state.market===k?"active":""}" data-v110-market="${k}">${idx===0?'<em>HOT</em>':""}<span>${m.icon}</span><b>${m.label.toUpperCase()}</b><small>${m.hint}</small><div class="v110Spark"><i></i><i></i><i></i><i></i><i></i></div><p>${filtered(k,"IA").length||source(k).length} jogos hoje</p></button>`).join("")}
     function renderLines(){const el=$("#cpV110Lines"),m=MARKETS[state.market];if(!el)return;$("#cpV110MarketTitle").textContent=m.label.toUpperCase();el.innerHTML=m.lines.map(x=>`<button class="${state.line===x?"active":""}" data-v110-line="${x}">${x==="IA"?"✦ IA":x}</button>`).join("")}
-    
+
     function legInfo(g){
       const r=raw(g), er=r?.event_raw||{};
       const fh=num(r?.first_leg_home_score,r?.leg1_home_score,r?.firstLeg?.home,r?.aggregate?.first_leg?.home,er?.first_leg_home_score,er?.leg1_home_score);
@@ -979,12 +977,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       })
     }
     function render(){window.__cpV110VisibleGames=state.games.slice();renderDates();renderMarkets();renderLines();renderHero();renderFeatured();renderGames();applyView();syncAuth();setTimeout(()=>window.CornerProPressureAlerts?.paint?.(),0)}
-  
+
     let firebaseApi=null,currentUser=null,currentProfile=null,authBusy=false;
-  
+
     const DAILY_LOGIN_KEY="cornerpro_daily_google_login_v1";
     const DAILY_UID_KEY="cornerpro_daily_google_uid_v1";
-  
+
     function manausToday(){
       try{
         const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
@@ -1022,7 +1020,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       document.documentElement.classList.remove("cpDailyLoginRequired");
       closeLogin();
     }
-  
+
     async function serverProfile(user,force=false){if(!user)return null;const token=await user.getIdToken(force);const a=await fetch("/auth/firebase",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});const ad=await a.json().catch(()=>({}));if(!a.ok)throw new Error(ad?.error||"Falha ao autenticar");const m=await fetch("/auth/me",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});const md=await m.json().catch(()=>({}));if(!m.ok)throw new Error(md?.error||"Falha ao carregar perfil");return{...md,user:md?.user||ad?.user||null,premium:md?.premium===true||ad?.user?.premium===true}}
     function syncAuth(){
       const img=$("#cpV110UserImg"),dot=$("#cpV110User i"),btn=$("#cpV110User");
@@ -1030,7 +1028,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(img){if(photo){img.src=photo;img.hidden=false}else img.hidden=true}
       if(btn)btn.title=currentUser?(currentUser.displayName||currentUser.email||"Perfil"):"Entrar com Google";
       if(dot)dot.style.background=currentUser?"#66ff2a":"#6f7a75";
-  
+
       const logged=$("#cpV116Logged"),google=$("#cpV116GoogleLogin"),loggedOut=$("#v155LoggedOut");
       const planBadge=$("#v155PlanBadge");
       if(planBadge){
@@ -1162,14 +1160,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         firebaseApi=await import("./firebase-client.js");
         firebaseApi.observarAutenticacao(async st=>{
           currentUser=st?.usuario||null;
-  
+
           if(!currentUser){
             currentProfile=null;
             syncAuth();
             lockAppForDailyLogin();
             return;
           }
-  
+
           // Mesmo que o Firebase tenha mantido a sessão, exigimos uma confirmação Google
           // uma vez por dia no fuso de Manaus.
           if(!dailyLoginValid(currentUser)){
@@ -1185,7 +1183,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             lockAppForDailyLogin();
             return;
           }
-  
+
           try{
             currentProfile=await serverProfile(currentUser);
           }catch(e){
@@ -1203,7 +1201,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     async function openAuth(){
       if(authBusy||!firebaseApi)return;
       authBusy=true;
-  
+
       const btn=$("#cpV116GoogleLogin");
       const oldLabel=btn?.innerHTML||"";
       const err=$("#cpV116Login .v116LoginError");
@@ -1212,7 +1210,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         btn.disabled=true;
         btn.innerHTML='<span>G</span><b>Conectando...</b>';
       }
-  
+
       try{
         // Se havia uma sessão persistida de outro momento, encerra antes do login diário.
         try{
@@ -1221,20 +1219,20 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             else if(firebaseApi.firebaseAuth?.signOut) await firebaseApi.firebaseAuth.signOut();
           }
         }catch(e){console.warn("[V118 pre-signout]",e)}
-  
+
         const r=await firebaseApi.entrarComGoogle();
         currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;
-  
+
         if(!currentUser)throw new Error("O Google não retornou um usuário autenticado.");
-  
+
         markDailyLogin(currentUser);
-  
+
         try{
           currentProfile=await serverProfile(currentUser,true);
         }catch(e){
           console.warn("[V118 profile]",e);
         }
-  
+
         syncAuth();
         unlockAppAfterDailyLogin();
       }catch(e){
@@ -1281,7 +1279,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         }
       },45000);
     }
-  
+
     document.addEventListener("click",e=>{
       const bottomButton=e.target.closest?.("#cpNewMobileV110 .v110Bottom button");
       if(bottomButton && document.documentElement.classList.contains("cpV110MatchOpen")){
@@ -1480,7 +1478,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         })();
         return;
       }
-  
+
       const fav=e.target.closest("[data-v110-fav-team]");
       if(fav){
         e.preventDefault();
@@ -1488,7 +1486,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         toggleFavoriteTeam(fav.dataset.v110FavTeam||"");
         return;
       }
-  
+
       const market=e.target.closest("[data-v110-market]");if(market){
         state.mode="all";
         state.market=market.dataset.v110Market;
@@ -1535,7 +1533,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       if(e.target.closest("#cpV127MoreLogin")){document.documentElement.classList.remove("cpV127MoreOpen");openLogin();return}
       if(e.target.closest("#cpV110User")){openLogin();return}
     },true);
-  
+
     state.date=$("#date")?.value||ymd();if($("#date"))$("#date").value=state.date;
     const hadMobileCache=hydrateMobileHomeSnapshot(state.date);
     if(!hadMobileCache) state.loading=true;
@@ -1548,50 +1546,34 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       render();
     });
     if(!baseStatusPollTimer)baseStatusPollTimer=setInterval(refreshBaseStatus,45000);
-  })();
-  } else {
-  /* =========================================================
-     CORNER PRO MOBILE V92 — FONTE ÚNICA DO DESKTOP
-     1) O Top 1 mobile de cantos passa a usar /web_corners_ai,
-        exatamente como o desktop, em vez de /official_corner_pick.
-     ========================================================= */
-     (() => {
-      "use strict";
-      if (window.__cpMobileDesktopSourceV92Fetch) return;
-      window.__cpMobileDesktopSourceV92Fetch = true;
-      const nativeFetch = window.fetch.bind(window);
-      const isMobile = () => window.matchMedia?.("(max-width:980px)")?.matches;
-      const clean = v => String(v ?? "").trim();
-      const num = (...vals) => {
-        for (const v of vals) {
-          const n = Number(String(v ?? "").replace("%", "").replace(",", "."));
-          if (Number.isFinite(n)) return n;
-        }
-        return null;
-      };
-      function extract(payload, seen = new Set()) {
-        if (Array.isArray(payload)) return payload.filter(x => x && typeof x === "object");
-        if (!payload || typeof payload !== "object" || seen.has(payload)) return [];
-        seen.add(payload);
-        for (const key of ["corners","games","jogos","matches","data","items","results","top","top6","recommendations","opportunities"]) {
-          const value = payload[key];
-          if (Array.isArray(value) && value.length) return value.filter(x => x && typeof x === "object");
-          if (value && typeof value === "object") {
-            const nested = extract(value, seen);
-            if (nested.length) return nested;
-          }
-        }
-        for (const value of Object.values(payload)) {
-          if (!value || typeof value !== "object") continue;
-          const nested = extract(value, seen);
-          if (nested.length) return nested;
-        }
-        return [];
-      }
-      function validCorner(g) {
-        const d = g?.corners_ai || {};
-        const line = clean(d.line).toUpperCase();
-        if (/^OVER\s+(8\.5|9\.5|10\.5|11\.5|12\.5)$/.test(line)) return true;
+
+})(); } else { /\*
+========================================================= CORNER PRO
+MOBILE V92 --- FONTE ÚNICA DO DESKTOP 1) O Top 1 mobile de cantos passa
+a usar /web_corners_ai, exatamente como o desktop, em vez de
+/official_corner_pick.
+========================================================= \*/ (() =\> {
+"use strict"; if (window.\_\_cpMobileDesktopSourceV92Fetch) return;
+window.\_\_cpMobileDesktopSourceV92Fetch = true; const nativeFetch =
+window.fetch.bind(window); const isMobile = () =\>
+window.matchMedia?.("(max-width:980px)")?.matches; const clean = v =\>
+String(v ?? "").trim(); const num = (...vals) =\> { for (const v of
+vals) { const n = Number(String(v
+??"").replace("%","").replace(",",".")); if (Number.isFinite(n)) return
+n; } return null; }; function extract(payload, seen = new Set()) { if
+(Array.isArray(payload)) return payload.filter(x =\> x && typeof x ===
+"object"); if (!payload \|\| typeof payload !== "object" \|\|
+seen.has(payload)) return \[\]; seen.add(payload); for (const key of
+\["corners","games","jogos","matches","data","items","results","top","top6","recommendations","opportunities"\])
+{ const value = payload\[key\]; if (Array.isArray(value) &&
+value.length) return value.filter(x =\> x && typeof x === "object"); if
+(value && typeof value === "object") { const nested = extract(value,
+seen); if (nested.length) return nested; } } for (const value of
+Object.values(payload)) { if (!value \|\| typeof value !== "object")
+continue; const nested = extract(value, seen); if (nested.length) return
+nested; } return \[\]; } function validCorner(g) { const d =
+g?.corners_ai \|\| {}; const line = clean(d.line).toUpperCase(); if
+(/\^OVER`\s`{=tex}+(8.5\|9.5\|10.5\|11.5\|12.5)$/.test(line)) return true;
         const p = num(d.projection, g?.proj_cantos, g?.projected_corners);
         return Number.isFinite(p) && p >= 9.55;
       }
@@ -1604,43 +1586,27 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           const requested = new URL(raw, location.origin);
           const date = requested.searchParams.get("date") || "";
           const stamp = Date.now();
-          const response = await nativeFetch(`/web_corners_ai?date=${encodeURIComponent(date)}&_web=${stamp}&v=24`, {
-            cache: "no-store",
-            headers: { Accept: "application/json" }
-          });
-          if (!response.ok) return response;
-          const payload = await response.json();
-          const list = extract(payload?.corners ?? payload).filter(validCorner);
-          const game = list[0] || null;
-          return new Response(JSON.stringify(game ? {
-            game,
-            top1_reason: "Mesmo Top 1 do motor WEB /web_corners_ai",
-            source: "web_corners_ai"
-          } : {
-            game: null,
-            message: "Nenhuma oportunidade aprovada pelo motor WEB de escanteios.",
-            source: "web_corners_ai"
-          }), {
-            status: 200,
-            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
-          });
-        } catch (error) {
-          console.warn("[CP MOBILE V92 official->web_corners_ai]", error);
-          return nativeFetch(input, init);
-        }
-      };
-    })();
-    /* =========================================================
-       CORNER PRO — SITE PC — GUARD DE CARREGAMENTO ÚNICO
-       Inserido antes do código legado para impedir chamadas GET
-       idênticas simultâneas dos motores do dashboard desktop.
-       Não atua no mobile/app.
-       ========================================================= */
-       (function installCornerProDesktopFetchGuard(){
-        "use strict";
-        if (window.__cpDesktopFetchGuardInstalled) return;
-        window.__cpDesktopFetchGuardInstalled = true;
-      
+          const response = await nativeFetch(`/web_corners_ai?date=${encodeURIComponent(date)}&\_web=\${stamp}&v=24\`,
+{ cache: "no-store", headers: { Accept: "application/json" } }); if
+(!response.ok) return response; const payload = await response.json();
+const list = extract(payload?.corners ?? payload).filter(validCorner);
+const game = list\[0\] \|\| null; return new
+Response(JSON.stringify(game ? { game, top1_reason: "Mesmo Top 1 do
+motor WEB /web_corners_ai", source: "web_corners_ai" } : { game: null,
+message: "Nenhuma oportunidade aprovada pelo motor WEB de escanteios.",
+source: "web_corners_ai" }), { status: 200, headers: { "Content-Type":
+"application/json", "Cache-Control": "no-store" } }); } catch (error) {
+console.warn("\[CP MOBILE V92 official-\>web_corners_ai\]", error);
+return nativeFetch(input, init); } }; })(); /\*
+========================================================= CORNER PRO ---
+SITE PC --- GUARD DE CARREGAMENTO ÚNICO Inserido antes do código legado
+para impedir chamadas GET idênticas simultâneas dos motores do dashboard
+desktop. Não atua no mobile/app.
+========================================================= \*/ (function
+installCornerProDesktopFetchGuard(){ "use strict"; if
+(window.\_\_cpDesktopFetchGuardInstalled) return;
+window.\_\_cpDesktopFetchGuardInstalled = true;
+
         const originalFetch = window.fetch.bind(window);
         const inflight = new Map();
         const DESKTOP_ENDPOINTS = [
@@ -2213,14 +2179,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           function renderMcEmpty() {
             const target = rail();
             if (!target) return;
-    
+
             if (typeof window.resetDesktopMatchRailToEmpty === "function") {
               try {
                 window.resetDesktopMatchRailToEmpty();
                 return;
               } catch (_) {}
             }
-    
+
             target.innerHTML = `
               <section class="railCard matchRailCard railEmptyHero">
                 <div class="railTitle">
@@ -2302,46 +2268,46 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               </section>
             `;
           }
-    
+
           function clearMatchCenterSelection() {
             window.__cpV28MatchCenterToken = (window.__cpV28MatchCenterToken || 0) + 1;
             window.__selectedMatchCenterGame = null;
             window.__selectedMatchCenterKey = null;
-    
+
             document.querySelectorAll("[data-cpd3-open].is-open")
               .forEach(el => el.classList.remove("is-open"));
-    
+
             document.querySelectorAll(".cpd3Row.match-center-selected")
               .forEach(el => el.classList.remove("match-center-selected"));
-    
+
             rail()?.classList.remove("mc-selected");
             renderMcEmpty();
           }
-    
+
           async function openMatchCenter(game, sourceButton = null) {
             if (!game) return;
-    
+
             const selectedKey = gameId(game) || localKey(game);
             const requestToken = (window.__cpV28MatchCenterToken || 0) + 1;
             window.__cpV28MatchCenterToken = requestToken;
-    
+
             window.__selectedMatchCenterGame = game;
             window.__selectedMatchCenterKey = selectedKey;
-    
+
             document.querySelectorAll("[data-cpd3-open].is-open")
               .forEach(el => el.classList.remove("is-open"));
-    
+
             document.querySelectorAll(".cpd3Row.match-center-selected")
               .forEach(el => el.classList.remove("match-center-selected"));
-    
+
             sourceButton?.classList.add("is-open");
             sourceButton?.closest?.(".cpd3Row")?.classList.add("match-center-selected");
             rail()?.classList.add("mc-selected");
-    
+
             renderMcLoading(game);
-    
+
             const id = gameId(game);
-    
+
             if (!id) {
               renderMcError(
                 game,
@@ -2349,7 +2315,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               );
               return;
             }
-    
+
             try {
               const response = await fetch(
                 `/match_center?match_id=${encodeURIComponent(id)}&fresh=1&t=${Date.now()}`,
@@ -2361,26 +2327,26 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   }
                 }
               );
-    
+
               const data = await response.json().catch(() => null);
-    
+
               // Se fechou ou trocou de jogo enquanto carregava, ignora a resposta antiga.
               if (
                 requestToken !== window.__cpV28MatchCenterToken ||
                 window.__selectedMatchCenterKey !== selectedKey
               ) return;
-    
+
               if (!response.ok || !data || data?.error) {
                 throw new Error(data?.error || `HTTP ${response.status}`);
               }
-    
+
               renderMcData(game, data);
             } catch (error) {
               if (
                 requestToken !== window.__cpV28MatchCenterToken ||
                 window.__selectedMatchCenterKey !== selectedKey
               ) return;
-    
+
               console.error("[CP V28 Match Center]", error);
               renderMcError(
                 game,
@@ -2388,7 +2354,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               );
             }
           }
-    
+
           /* WINDOW + CAPTURE:
              executa antes dos listeners antigos registrados no document. */
           window.addEventListener("click", event => {
@@ -2458,12 +2424,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             if (analysis) {
               event.preventDefault();
               event.stopImmediatePropagation();
-    
+
               const game = resolveGame(analysis);
-    
+
               if (game) {
                 const clickedKey = gameId(game) || localKey(game);
-    
+
                 // 1) Segundo clique no MESMO "Ver análise" = fecha.
                 if (
                   window.__selectedMatchCenterKey &&
@@ -2487,14 +2453,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               }
               return;
             }
-    
+
             if (
               $("#topCalendarDropdown")?.classList.contains("is-open") &&
               !target.closest("#topCalendarDropdown")
             ) {
               closeCalendar();
             }
-    
+
             // 3) Clique fora do Match Center fecha a seleção.
             // Clique dentro do próprio Match Center NÃO fecha.
             if (
@@ -2504,7 +2470,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               clearMatchCenterSelection();
             }
           }, true);
-    
+
           window.addEventListener("resize", () => {
             if (
               desktop() &&
@@ -2708,7 +2674,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               [18,"Libertadores"],[3,"Champions League"],[4,"Europa League"],
               [63,"Belgium First Division A"],[279,"Premiership"],[322,"Süper Lig"]
             ]);
-    
+
             function validLeagueText(value){
               if(value && typeof value==="object"){
                 value = value?.name ?? value?.league_name ?? "";
@@ -2719,26 +2685,26 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               if(/^(undefined|null|nan|\[object object\])$/i.test(s)) return "";
               return s;
             }
-    
+
             function league(g){
               const r=raw(g);
               const er=r?.event_raw || g?.event_raw || {};
               const id=num(g?.league_id,r?.league_id,er?.league_id,er?.match_league_id);
-    
+
               const candidates=[
                 g?.liga,g?.league_name,g?.league,
                 r?.liga,r?.league_name,r?.league,
                 er?.league_name,er?.match_league_name,er?.league
               ];
-    
+
               for(const candidate of candidates){
                 const text=validLeagueText(candidate);
                 if(text) return text;
               }
-    
+
               return CP_LEAGUE_NAMES.get(Number(id)) || (id ? `Liga ${id}` : "Liga");
             }
-    
+
             function country(g){
               const r=raw(g);
               const er=r?.event_raw || g?.event_raw || {};
@@ -3019,9 +2985,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             function mergeGame(base, extra){
               if(!base) return extra;
               if(!extra) return base;
-    
+
               const br=raw(base), er=raw(extra);
-    
+
               // Engines não podem apagar uma liga válida com "Liga undefined".
               const baseLeague=league(base);
               const extraLeague=league(extra);
@@ -3029,7 +2995,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 validLeagueText(extraLeague) && !/^liga\s*$/i.test(extraLeague)
                   ? extraLeague
                   : baseLeague;
-    
+
               const merged={
                 ...base,
                 ...extra,
@@ -3044,21 +3010,21 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   handicap_ai:er?.handicap_ai ?? br?.handicap_ai
                 }
               };
-    
+
               if(validLeagueText(finalLeague)){
                 merged.liga=finalLeague;
                 merged.raw.liga=finalLeague;
               }
-    
+
               const finalLeagueId=num(extra?.league_id,er?.league_id,base?.league_id,br?.league_id);
               if(finalLeagueId!==null){
                 merged.league_id=finalLeagueId;
                 merged.raw.league_id=finalLeagueId;
               }
-    
+
               return merged;
             }
-    
+
             function mergeLists(base,incoming){
               const map=new Map();
               for(const g of (Array.isArray(base)?base:[])) map.set(String(key(g)),g);
@@ -3338,7 +3304,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 if(!Number.isFinite(target)){
                   return {valid:false,probability:0,pick:"—",source:"invalid-line",pickedSide:"all"};
                 }
-    
+
                 const r=raw(g);
                 const engineSide=handicapSide(g); // favorito/lado escolhido pela IA automática
                 const markets=Array.isArray(r?.asian_handicap_markets)
@@ -3346,7 +3312,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   : Array.isArray(g?.asian_handicap_markets)
                     ? g.asian_handicap_markets
                     : [];
-    
+
                 // Cada botão de Handicap passa a consultar a linha REAL daquele lado.
                 // Ex.: -1.0 procura CASA -1.0 ou FORA -1.0; +1.0 procura CASA +1.0 ou FORA +1.0.
                 const candidates=[];
@@ -3360,14 +3326,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     candidates.push({side:"away",team:away(g),line:al,odd:ao});
                   }
                 }
-    
+
                 // Se a API não trouxe a grade AH completa, ainda podemos usar a lista de
                 // linhas do servidor, mas sem inventar uma confiança de 95%.
                 const available=[
                   ...(Array.isArray(r?.handicap_available_lines)?r.handicap_available_lines:[]),
                   ...(Array.isArray(decision(g,"handicap")?.available_lines)?decision(g,"handicap").available_lines:[])
                 ].map(v=>Number(String(v).replace("+","").replace(",","."))).filter(Number.isFinite);
-    
+
                 let chosen=null;
                 if(candidates.length){
                   // Linha negativa/zero: buscamos o lado forte indicado pela IA.
@@ -3375,7 +3341,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   const preferredSide = target>0
                     ? (engineSide==="home"?"away":engineSide==="away"?"home":"all")
                     : engineSide;
-    
+
                   candidates.sort((a,b)=>{
                     const ap = a.side===preferredSide ? 1 : 0;
                     const bp = b.side===preferredSide ? 1 : 0;
@@ -3385,10 +3351,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   });
                   chosen=candidates[0];
                 }
-    
+
                 if(!chosen){
                   const lineExists=available.some(v=>Math.abs(v-target)<0.001);
-    
+
                   // V3: não zera a lista quando a API não publica a grade AH completa.
                   // A linha exata continua tendo prioridade quando existe; quando não existe,
                   // usamos a força do motor para ESTIMAR a adequação da linha escolhida.
@@ -3407,7 +3373,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     estimated:!lineExists
                   };
                 }
-    
+
                 // Confiança específica da linha. Não aumenta todos os jogos para 95% só
                 // porque o handicap ficou positivo. Em + linhas, valorizamos jogos mais
                 // equilibrados; em - linhas, favoritos realmente fortes.
@@ -3424,13 +3390,13 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 }else{
                   prob = baseConf;
                 }
-    
+
                 if(Number.isFinite(chosen.odd)){
                   const implied=100/chosen.odd;
                   prob = prob*0.72 + implied*0.28;
                 }
                 prob=clampPct(prob) ?? 0;
-    
+
                 const signed=target>0?`+${target.toFixed(1)}`:target.toFixed(1);
                 return {
                   valid:prob>=48,
@@ -3583,15 +3549,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     (y.a.probability||0)-(x.a.probability||0) ||
                     time(x.g).localeCompare(time(y.g))
                   );
-    
+
                 const valid=analyzed.filter(x=>x.a.valid);
-    
+
                 // Se houver recomendações válidas, usa-as. Se a API não trouxe linhas AH
                 // suficientes naquele dia, mantém os jogos analisáveis em vez de mostrar 0.
                 const selected=valid.length ? valid : analyzed.filter(x=>x.a.pickedSide!=="all");
                 return selected.map(x=>x.g);
               }
-    
+
               // DEMAIS LINHAS MANUAIS:
               return base.sort((a,b)=>
                 marketSuitability(b)-marketSuitability(a) ||
@@ -4564,44 +4530,44 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   return new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
                 }
               }
-    
+
               function mobileSelectedDate() {
                 const isYMD = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
-    
+
                 try {
                   const params = new URLSearchParams(window.location.search);
                   const urlDate = params.get("date") || params.get("data");
                   if (isYMD(urlDate)) return urlDate;
                 } catch (_) {}
-    
+
                 if (isYMD(window.__cornerProSelectedDate)) {
                   return window.__cornerProSelectedDate;
                 }
-    
+
                 const inputDate = document.getElementById("date")?.value;
                 if (isYMD(inputDate)) return inputDate;
-    
+
                 try {
                   const stored = localStorage.getItem("cornerProSelectedDate");
                   if (isYMD(stored)) return stored;
                 } catch (_) {}
-    
+
                 return todayManaus();
               }
-    
+
               function syncMobileSelectedDate(ymd) {
                 if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || ""))) return;
-    
+
                 state.date = ymd;
                 window.__cornerProSelectedDate = ymd;
-    
+
                 try {
                   localStorage.setItem("cornerProSelectedDate", ymd);
                 } catch (_) {}
-    
+
                 const hidden = document.getElementById("date");
                 if (hidden) hidden.value = ymd;
-    
+
                 try {
                   const url = new URL(window.location.href);
                   url.hash = "";
@@ -4610,7 +4576,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   window.history.replaceState({}, "", `${url.pathname}${url.search}`);
                 } catch (_) {}
               }
-    
+
             
               function extract(payload, seen = new Set()) {
                 if (Array.isArray(payload)) {
@@ -5909,7 +5875,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const incoming = buildMarket(incomingRaw, type);
                 if (!current.length) return incoming;
                 if (!incoming.length) return current;
-    
+
                 // V91 — o /mercados e os motores podem usar identificadores diferentes
                 // para a mesma partida. O mobile agora casa primeiro por ID e depois por
                 // mandante + visitante + horário, evitando deixar a tela em
@@ -5920,7 +5886,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   .toLowerCase()
                   .replace(/[^a-z0-9]+/g, " ")
                   .trim();
-    
+
                 const gameSignature = item => {
                   const raw = item?.raw || item || {};
                   const h = keyText(item?.home ?? raw?.casa ?? raw?.home ?? raw?.home_name ?? raw?.match_hometeam_name);
@@ -5929,22 +5895,22 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     .match(/(\d{1,2}):(\d{2})/);
                   return `${h}|${a}|${t ? `${t[1].padStart(2,"0")}:${t[2]}` : ""}`;
                 };
-    
+
                 const incomingById = new Map(incoming.map(item => [String(item.id), item]));
                 const incomingBySignature = new Map(incoming.map(item => [gameSignature(item), item]));
                 const used = new Set();
-    
+
                 const merged = current.map(previous => {
                   let next = incomingById.get(String(previous.id));
                   if (!next) next = incomingBySignature.get(gameSignature(previous));
                   if (!next) return previous;
-    
+
                   used.add(next);
                   const field = ENGINE_DECISION_FIELD[type];
                   const previousDecision = previous?.raw?.[field];
                   const nextDecision = next?.raw?.[field];
                   const status = cprMarketStatus(next);
-    
+
                   if (
                     (status.live || status.finished) &&
                     cprStableMarketDecision(previousDecision)
@@ -5955,7 +5921,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       type
                     )[0] || previous;
                   }
-    
+
                   return {
                     ...previous,
                     ...next,
@@ -5966,14 +5932,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     }
                   };
                 });
-    
+
                 // Se a IA do site trouxe partidas que não estavam na lista-base do
                 // /mercados, elas também entram no mobile. Assim o app não fica preso
                 // apenas em jogos encerrados/sem decisão enquanto o desktop já possui picks.
                 for (const item of incoming) {
                   if (!used.has(item)) merged.push(item);
                 }
-    
+
                 return merged.sort((a,b) => {
                   const ad = a?.raw?.[ENGINE_DECISION_FIELD[type]];
                   const bd = b?.raw?.[ENGINE_DECISION_FIELD[type]];
@@ -5988,9 +5954,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 date = /^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))
                   ? String(date)
                   : mobileSelectedDate();
-    
+
                 console.info("[CP MOBILE V81] IAs desktop para data:", date);
-    
+
                 const applyEnginePayload = (payload, source = "full") => {
                   if (state.date !== date || !payload || typeof payload !== "object") return;
           
@@ -6129,7 +6095,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       const activeDetailedLine =
                         $(".cpAnalysisLines button.active", openMarketLayer)
                           ?.dataset?.analysisLine || "IA";
-    
+
                       renderDetailedMarket(
                         openMarketLayer,
                         state.activeMarket,
@@ -6153,17 +6119,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   .then(payload => {
                     const cornerGames = extract(payload?.corners ?? payload);
                     if (!cornerGames.length || state.date !== date) return;
-    
+
                     state.corners = cprMergeEngineKeepingVisibleGames(
                       state.corners,
                       cornerGames,
                       "corners"
                     );
-    
+
                     window.__cpMobileDirectGames = activeList();
                     renderActive({ animate: false });
                   saveMobileMarketsCache(date);
-    
+
                     const layer = $("#cpMobileMarketsLayer");
                     if (
                       state.activeMarket === "corners" &&
@@ -6185,7 +6151,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       error?.message || error
                     );
                   });
-    
+
                 // V53 — FAST PATH: BTTS + Handicap não podem depender do motor completo.
                 // O motor completo faz muitas chamadas (ligas, standings, H2H, odds, recentes)
                 // e pode ultrapassar o timeout do celular/Render. Esta rota rápida entrega
@@ -6528,14 +6494,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       
               async function loadData() {
                 if (state.loading) return;
-    
+
                 const resolvedDate = mobileSelectedDate();
                 if (resolvedDate !== state.date) {
                   syncMobileSelectedDate(resolvedDate);
                 }
-    
+
                 setLoading(true);
-    
+
                 const stamp = Date.now();
                 const date = state.date;
                 state.officialCornerBest = null;
@@ -6755,9 +6721,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   raw?.btts_ai && typeof raw.btts_ai === "object"
                     ? raw.btts_ai
                     : null;
-    
+
                 const stateInfo = bttsGameState(game);
-    
+
                 if (!decision) {
                   return {
                     choice: "",
@@ -6768,14 +6734,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "updating"
                   };
                 }
-    
+
                 const explicitLine = clean(decision?.line, "").toUpperCase();
                 const explicitSkip = Boolean(decision?.skip);
                 const updating =
                   Boolean(decision?.updating) ||
                   explicitLine === "DADOS EM ATUALIZAÇÃO" ||
                   explicitLine === "ANALISANDO PARTIDA";
-    
+
                 let choice = "";
                 if (!explicitSkip && !updating) {
                   if (explicitLine.includes("NÃO") || explicitLine.includes("NAO")) {
@@ -6787,14 +6753,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     choice = "SIM";
                   }
                 }
-    
+
                 let confidence = numberFrom(decision?.confidence);
                 if (confidence !== null) {
                   if (confidence > 0 && confidence <= 1) confidence *= 100;
                   while (confidence > 100) confidence /= 10;
                   confidence = Math.max(0, Math.min(95, Math.round(confidence)));
                 }
-    
+
                 if (stateInfo.finished) {
                   return {
                     choice,
@@ -6810,7 +6776,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "server"
                   };
                 }
-    
+
                 if (updating) {
                   return {
                     choice: "",
@@ -6821,7 +6787,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "updating"
                   };
                 }
-    
+
                 if (explicitSkip || !choice) {
                   return {
                     choice: "",
@@ -6835,7 +6801,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "server"
                   };
                 }
-    
+
                 return {
                   choice,
                   confidence,
@@ -6878,17 +6844,17 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       )
                     );
                   }
-    
+
                   return 0;
                 });
-    
+
                 const rows = orderedGames.map((game, index) => {
                   const serverRec = bttsDecisionForGame(game);
                   const manualAnalysis =
                     selectedLine === "SIM" || selectedLine === "NÃO"
                       ? mobileExactDesktopLineAnalysis(game, "btts", selectedLine)
                       : null;
-    
+
                   const rec = manualAnalysis
                     ? {
                         choice: selectedLine,
@@ -7283,7 +7249,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               function handicapAutoRecommendation(game) {
                 const raw = game?.raw || game || {};
                 const decision = raw?.handicap_ai;
-    
+
                 if (!decision || typeof decision !== "object") {
                   return {
                     skip: true,
@@ -7298,30 +7264,30 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "server"
                   };
                 }
-    
+
                 const sideKey = String(
                   decision.side_key ??
                   decision.side ??
                   ""
                 ).toLowerCase();
-    
+
                 const side =
                   sideKey === "away" || sideKey === "fora"
                     ? "away"
                     : sideKey === "home" || sideKey === "casa"
                       ? "home"
                       : "home";
-    
+
                 const line = clean(
                   decision.line,
                   decision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
                 );
-    
+
                 const updating =
                   Boolean(decision.updating) ||
                   line === "DADOS EM ATUALIZAÇÃO" ||
                   line === "ANALISANDO PARTIDA";
-    
+
                 if (updating) {
                   return {
                     skip: true,
@@ -7336,24 +7302,24 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "server"
                   };
                 }
-    
+
                 const validLines = new Set([
                   "-2.0", "-1.5", "-1.0", "-0.75", "-0.5", "-0.25",
                   "0.0",
                   "+0.25", "+0.5", "+0.75", "+1.0", "+1.5", "+2.0",
                   "SEM APOSTA"
                 ]);
-    
+
                 const validLine = validLines.has(line) ? line : "SEM APOSTA";
                 const skip =
                   Boolean(decision.skip) ||
                   validLine === "SEM APOSTA";
-    
+
                 let confidence = Number(decision.confidence || 0);
                 if (confidence > 0 && confidence <= 1) confidence *= 100;
                 while (confidence > 100) confidence /= 10;
                 confidence = Math.max(0, Math.min(95, Math.round(confidence)));
-    
+
                 return {
                   skip,
                   updating: false,
@@ -7404,7 +7370,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   : originalSourceGames;
           
                 const handicapUiLines = MARKET.handicap.lines;
-    
+
                 const safeRequestedLine = handicapUiLines.includes(requestedLine)
                   ? requestedLine
                   : "IA";
@@ -7421,7 +7387,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                             safeRequestedLine
                           )
                         : null;
-    
+
                     return {
                       game,
                       originalIndex,
@@ -7462,31 +7428,31 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   const isManualLine =
                     safeRequestedLine !== "IA" &&
                     safeRequestedLine !== "TODOS";
-    
+
                   const line = isManualLine
                     ? safeRequestedLine
                     : recommendation.line;
-    
+
                   const side = isManualLine
                     ? (manualAnalysis?.pickedSide || recommendation.side)
                     : recommendation.side;
-    
+
                   const manualInvalid =
                     isManualLine &&
                     (!manualAnalysis || !manualAnalysis.valid);
-    
+
                   const effectiveSkip = isManualLine
                     ? manualInvalid
                     : recommendation.skip;
-    
+
                   const sideLabel = effectiveSkip
                     ? "IA"
                     : side === "home"
                       ? "CASA"
                       : "FORA";
-    
+
                   const teamName = side === "home" ? game.home : game.away;
-    
+
                   const confidence = effectiveSkip
                     ? 0
                     : isManualLine
@@ -8484,7 +8450,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 return decision;
               }
             
-    
+
               /* =========================================================
                  MOBILE APP — GOLS: TRAVA DA DECISÃO PRÉ-JOGO
                  ========================================================= */
@@ -8496,12 +8462,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`;
                 return `cornerProGoalsPregameLock:v1:${String(id)}`;
               }
-    
+
               function readGoalsLocalLock(game) {
                 try { return JSON.parse(localStorage.getItem(goalsLocalLockKey(game)) || "null"); }
                 catch (_) { return null; }
               }
-    
+
               function writeGoalsLocalLock(game, decision) {
                 try {
                   const line = String(decision?.line || "").toUpperCase().trim();
@@ -8518,22 +8484,22 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   );
                 } catch (_) {}
               }
-    
+
               function applyGoalsLocalLineLock(game, decision) {
                 if (!decision) return decision;
-    
+
                 const status = marketLiveStatus(game);
                 const existing = readGoalsLocalLock(game);
                 const line = String(decision.line || "").toUpperCase().trim();
                 const validLine = /^(OVER|UNDER)\s+(0\.5|1\.5|2\.5|3\.5|4\.5)$/.test(line);
                 const stable = validLine && !decision.skip && !decision.updating;
-    
+
                 if (!status.live && !status.finished && stable) {
                   if (!existing?.line) {
                     writeGoalsLocalLock(game, decision);
                     return { ...decision, pregame_locked:true, local_pregame_locked:true };
                   }
-    
+
                   return {
                     ...decision,
                     line: existing.line,
@@ -8546,7 +8512,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     local_pregame_locked:true
                   };
                 }
-    
+
                 if ((status.live || status.finished) && existing?.line) {
                   return {
                     ...decision,
@@ -8562,7 +8528,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     final_settlement_locked: status.finished
                   };
                 }
-    
+
                 if ((status.live || status.finished) && !existing?.line) {
                   return {
                     ...decision,
@@ -8572,14 +8538,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     reason:"O jogo já começou e não existe uma recomendação pré-jogo salva para esta partida."
                   };
                 }
-    
+
                 return decision;
               }
-    
+
               function goalsPregameListKey() {
                 return `cornerProGoalsPregameList:v1:${String(state.date || todayManaus())}`;
               }
-    
+
               function goalItemKey(game) {
                 const raw = game?.raw || game || {};
                 return String(
@@ -8588,44 +8554,44 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   `${game?.home || ""}|${game?.away || ""}|${game?.time || ""}`
                 );
               }
-    
+
               function readGoalsPregameList() {
                 try {
                   const parsed = JSON.parse(localStorage.getItem(goalsPregameListKey()) || "null");
                   return Array.isArray(parsed) ? parsed : [];
                 } catch (_) { return []; }
               }
-    
+
               function saveGoalsPregameList(entries) {
                 try {
                   const data = entries.map(({game}) => ({ key:goalItemKey(game), snapshot:game }));
                   localStorage.setItem(goalsPregameListKey(), JSON.stringify(data));
                 } catch (_) {}
               }
-    
+
               function preserveGoalsPreparedList(prepared) {
                 if (!Array.isArray(prepared)) return [];
-    
+
                 const anyStarted = prepared.some(({game}) => {
                   const s = marketLiveStatus(game);
                   return s.live || s.finished;
                 });
-    
+
                 if (!anyStarted) {
                   const first = prepared.slice(0,7);
                   if (first.length) saveGoalsPregameList(first);
                   return first;
                 }
-    
+
                 const locked = readGoalsPregameList();
                 if (!locked.length) return prepared.slice(0,7);
-    
+
                 const currentByKey = new Map(prepared.map(entry => [goalItemKey(entry.game), entry]));
-    
+
                 return locked.slice(0,7).map((saved,index) => {
                   const current = currentByKey.get(String(saved.key));
                   if (current) return current;
-    
+
                   const game = saved.snapshot;
                   return {
                     game,
@@ -8634,11 +8600,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   };
                 }).filter(Boolean);
               }
-    
+
               function analysisProjection(game, marketType) {
                 const raw = game?.raw || game || {};
                 const serverDecision = raw?.[`${marketType}_ai`];
-    
+
                 if (!serverDecision || typeof serverDecision !== "object") {
                   return {
                     line: "DADOS EM ATUALIZAÇÃO",
@@ -8650,28 +8616,28 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "server"
                   };
                 }
-    
+
                 let line = clean(
                   serverDecision.line,
                   serverDecision.updating ? "DADOS EM ATUALIZAÇÃO" : "SEM APOSTA"
                 ).toUpperCase();
-    
+
                 let confidence = numberFrom(serverDecision.confidence);
                 if (confidence === null) confidence = 0;
                 if (confidence > 0 && confidence <= 1) confidence *= 100;
                 while (confidence > 100) confidence /= 10;
                 confidence = Math.max(0, Math.min(95, Math.round(confidence)));
-    
+
                 const projection = numberFrom(serverDecision.projection);
                 const updating =
                   Boolean(serverDecision.updating) ||
                   ["DADOS EM ATUALIZAÇÃO", "ANALISANDO PARTIDA"].includes(line);
-    
+
                 const skip =
                   Boolean(serverDecision.skip) ||
                   line === "SEM APOSTA" ||
                   updating;
-    
+
                 return {
                   line: updating ? "DADOS EM ATUALIZAÇÃO" : line,
                   projection: Number.isFinite(projection)
@@ -8719,7 +8685,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 return "▯";
               }
             
-    
+
               /* =========================================================
                  MOBILE = DESKTOP — PARIDADE DAS LINHAS MANUAIS
                  Replica a mesma leitura usada pelo WEB V11:
@@ -8733,11 +8699,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const n = Number(value);
                 return Number.isFinite(n) ? Math.max(1, Math.min(95, n)) : null;
               }
-    
+
               function mobileDesktopParityProjection(game, marketType) {
                 const raw = game?.raw || game || {};
                 const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
-    
+
                 if (marketType === "corners") {
                   return numberFrom(
                     decision?.projection,
@@ -8747,7 +8713,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.total_corners_avg
                   );
                 }
-    
+
                 if (marketType === "goals") {
                   return numberFrom(
                     decision?.projection,
@@ -8756,7 +8722,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.total_goals_avg
                   );
                 }
-    
+
                 if (marketType === "cards") {
                   return numberFrom(
                     decision?.projection,
@@ -8766,31 +8732,31 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.media_cartoes
                   );
                 }
-    
+
                 return numberFrom(decision?.projection);
               }
-    
+
               function mobileDesktopParityBaseConfidence(game, marketType) {
                 const raw = game?.raw || game || {};
                 const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
                 let value = numberFrom(decision?.confidence, game?.confidence, raw?.ai_score);
-    
+
                 if (value !== null && value > 0 && value <= 1) value *= 100;
                 return value === null ? 0 : Math.max(0, Math.min(95, Math.round(value)));
               }
-    
+
               function mobileDesktopParityDirectProbability(game, marketType, target) {
                 const raw = game?.raw || game || {};
                 const decision = raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
                 const plain = String(target).replace(".", "");
                 const candidates = [];
-    
+
                 const push = value => {
                   if (value !== undefined && value !== null && value !== "") {
                     candidates.push(value);
                   }
                 };
-    
+
                 if (marketType === "corners") {
                   push(decision?.[`over${plain}_prob`]);
                   push(decision?.[`over_${plain}_prob`]);
@@ -8818,34 +8784,34 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   push(raw?.[`over${plain}_prob`]);
                   push(raw?.[`over_${plain}_prob`]);
                 }
-    
+
                 for (const value of candidates) {
                   let n = numberFrom(value);
                   if (n === null) continue;
                   if (n > 0 && n <= 1) n *= 100;
                   if (Number.isFinite(n)) return mobileDesktopParityClampPct(n);
                 }
-    
+
                 return null;
               }
-    
+
               function mobileDesktopParityPoisson(lambda, line) {
                 if (!Number.isFinite(lambda) || lambda <= 0 || !Number.isFinite(line)) {
                   return null;
                 }
-    
+
                 const threshold = Math.floor(line) + 1;
                 let term = Math.exp(-lambda);
                 let cdf = term;
-    
+
                 for (let k = 1; k < threshold; k += 1) {
                   term *= lambda / k;
                   cdf += term;
                 }
-    
+
                 return mobileDesktopParityClampPct((1 - cdf) * 100);
               }
-    
+
               function mobileExactDesktopLineAnalysis(game, marketType, selectedLine) {
                 const selectedText = String(selectedLine || "").toUpperCase();
                 const numericText = selectedText
@@ -8853,10 +8819,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   .replace("+", "")
                   .trim()
                   .replace(",", ".");
-    
+
                 const target = Number(numericText);
                 const baseConf = mobileDesktopParityBaseConfidence(game, marketType);
-    
+
                 if (!Number.isFinite(target)) {
                   return {
                     valid: false,
@@ -8867,7 +8833,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "invalid-line"
                   };
                 }
-    
+
                 const projection = mobileDesktopParityProjection(game, marketType);
                 let probability = mobileDesktopParityDirectProbability(
                   game,
@@ -8875,7 +8841,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   target
                 );
                 let source = "server-line";
-    
+
                 if (probability === null) {
                   probability = mobileDesktopParityPoisson(
                     Number(projection),
@@ -8883,14 +8849,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   );
                   source = "projection-line";
                 }
-    
+
                 // MESMA moderação do desktop WEB V11.
                 if (probability !== null && baseConf > 0) {
                   probability = mobileDesktopParityClampPct(
                     probability * 0.78 + baseConf * 0.22
                   );
                 }
-    
+
                 return {
                   valid: probability !== null,
                   probability: probability ?? Math.max(0, baseConf - 25),
@@ -8902,51 +8868,51 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   source
                 };
               }
-    
+
               function mobileLegacyParityScore_UNUSED(game, marketType, selectedLine) {
                 const analysis = mobileExactDesktopLineAnalysis(
                   game,
                   marketType,
                   selectedLine
                 );
-    
+
                 const projection = Number(analysis.projection);
                 const margin = Number.isFinite(analysis.margin)
                   ? analysis.margin
                   : 0;
-    
+
                 return (
                   Number(analysis.probability || 0) * 2 +
                   margin * 6 +
                   (Number.isFinite(projection) ? projection : 0)
                 );
               }
-    
+
               function mobileExactDesktopLineScore(game, marketType, selectedLine) {
                 const analysis = mobileExactDesktopLineAnalysis(
                   game,
                   marketType,
                   selectedLine
                 );
-    
+
                 const projection = Number(analysis.projection);
                 const margin = Number.isFinite(analysis.margin)
                   ? analysis.margin
                   : 0;
-    
+
                 return (
                   Number(analysis.probability || 0) * 2 +
                   margin * 6 +
                   (Number.isFinite(projection) ? projection : 0)
                 );
               }
-    
+
               window.CornerProMobileDesktopParity = {
                 analyze: mobileExactDesktopLineAnalysis,
                 score: mobileExactDesktopLineScore
               };
-    
-    
+
+
               /* =========================================================
                  V70 — LINHAS MOBILE = LINHAS DESKTOP
                  Fórmulas copiadas da lógica WEB V11.
@@ -8955,12 +8921,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 const n = Number(value);
                 return Number.isFinite(n) ? Math.max(1, Math.min(95, n)) : null;
               }
-    
+
               function mobileExactDecision(game, marketType) {
                 const raw = game?.raw || game || {};
                 return raw?.[ENGINE_DECISION_FIELD[marketType]] || {};
               }
-    
+
               function mobileExactBaseConfidence(game, marketType) {
                 const decision = mobileExactDecision(game, marketType);
                 let n = numberFrom(decision?.confidence);
@@ -8969,11 +8935,11 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 while (n > 100) n /= 10;
                 return Math.max(0, Math.min(95, Math.round(n)));
               }
-    
+
               function mobileExactProjection(game, marketType) {
                 const raw = game?.raw || game || {};
                 const decision = mobileExactDecision(game, marketType);
-    
+
                 if (marketType === "corners") {
                   return numberFrom(
                     decision?.projection,
@@ -8983,7 +8949,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.total_corners_avg
                   );
                 }
-    
+
                 if (marketType === "goals") {
                   return numberFrom(
                     decision?.projection,
@@ -8992,7 +8958,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.total_goals_avg
                   );
                 }
-    
+
                 if (marketType === "cards") {
                   return numberFrom(
                     decision?.projection,
@@ -9002,10 +8968,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     raw?.media_cartoes
                   );
                 }
-    
+
                 return numberFrom(decision?.projection);
               }
-    
+
               function mobileExactDirectProbability(game, marketType, target) {
                 const raw = game?.raw || game || {};
                 const decision = mobileExactDecision(game, marketType);
@@ -9017,7 +8983,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     candidates.push(value);
                   }
                 };
-    
+
                 if (marketType === "corners") {
                   push(decision?.[`over${plain}_prob`]);
                   push(decision?.[`over_${plain}_prob`]);
@@ -9050,34 +9016,34 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                   push(raw?.handicap_probabilities?.[target]);
                   push(raw?.[`handicap_${compact}_prob`]);
                 }
-    
+
                 for (const value of candidates) {
                   let n = numberFrom(value);
                   if (n === null) continue;
                   if (n > 0 && n <= 1) n *= 100;
                   if (Number.isFinite(n)) return mobileExactClampPct(n);
                 }
-    
+
                 return null;
               }
-    
+
               function mobileExactPoissonOver(lambda, line) {
                 if (!Number.isFinite(lambda) || lambda <= 0 || !Number.isFinite(line)) {
                   return null;
                 }
-    
+
                 const threshold = Math.floor(line) + 1;
                 let term = Math.exp(-lambda);
                 let cdf = term;
-    
+
                 for (let k = 1; k < threshold; k += 1) {
                   term *= lambda / k;
                   cdf += term;
                 }
-    
+
                 return mobileExactClampPct((1 - cdf) * 100);
               }
-    
+
               function mobileExactHandicapSide(game) {
                 const decision = mobileExactDecision(game, "handicap");
                 const side = String(decision?.side_key ?? decision?.side ?? "").toLowerCase();
@@ -9085,10 +9051,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 if (side.includes("home") || side.includes("casa")) return "home";
                 return "all";
               }
-    
+
               function mobileExactDesktopLineAnalysis(game, marketType, selectedLine) {
                 const baseConf = mobileExactBaseConfidence(game, marketType);
-    
+
                 if (["IA", "TODOS"].includes(selectedLine)) {
                   return {
                     valid: true,
@@ -9097,7 +9063,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source: "engine"
                   };
                 }
-    
+
                 if (["corners", "goals", "cards"].includes(marketType)) {
                   const target = Number(
                     String(selectedLine)
@@ -9107,9 +9073,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       .trim()
                       .replace(",", ".")
                   );
-    
+
                   const projection = mobileExactProjection(game, marketType);
-    
+
                   if (!Number.isFinite(target)) {
                     return {
                       valid: false,
@@ -9118,21 +9084,21 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       source: "none"
                     };
                   }
-    
+
                   let probability = mobileExactDirectProbability(game, marketType, target);
                   let source = "server-line";
-    
+
                   if (probability === null) {
                     probability = mobileExactPoissonOver(Number(projection), target);
                     source = "projection-line";
                   }
-    
+
                   if (probability !== null && baseConf > 0) {
                     probability = mobileExactClampPct(
                       probability * 0.78 + baseConf * 0.22
                     );
                   }
-    
+
                   return {
                     valid: probability !== null,
                     probability: probability ?? Math.max(0, baseConf - 25),
@@ -9142,12 +9108,12 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     source
                   };
                 }
-    
+
                 if (marketType === "handicap") {
                   const target = Number(
                     String(selectedLine).replace("+", "").replace(",", ".")
                   );
-    
+
                   if (!Number.isFinite(target)) {
                     return {
                       valid: false,
@@ -9157,7 +9123,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       pickedSide: "all"
                     };
                   }
-    
+
                   const raw = game?.raw || game || {};
                   const engineSide = mobileExactHandicapSide(game);
                   const markets = Array.isArray(raw?.asian_handicap_markets)
@@ -9165,15 +9131,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                     : Array.isArray(game?.asian_handicap_markets)
                       ? game.asian_handicap_markets
                       : [];
-    
+
                   const candidates = [];
-    
+
                   for (const item of markets) {
                     const homeLine = Number(item?.home_line);
                     const awayLine = Number(item?.away_line);
                     const homeOdd = Number(item?.home_odd);
                     const awayOdd = Number(item?.away_odd);
-    
+
                     if (
                       Number.isFinite(homeLine) &&
                       Math.abs(homeLine - target) < 0.001 &&
@@ -9187,7 +9153,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                         odd: homeOdd
                       });
                     }
-    
+
                     if (
                       Number.isFinite(awayLine) &&
                       Math.abs(awayLine - target) < 0.001 &&
@@ -9202,7 +9168,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       });
                     }
                   }
-    
+
                   const available = [
                     ...(Array.isArray(raw?.handicap_available_lines)
                       ? raw.handicap_available_lines
@@ -9215,9 +9181,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       Number(String(value).replace("+", "").replace(",", "."))
                     )
                     .filter(Number.isFinite);
-    
+
                   let chosen = null;
-    
+
                   if (candidates.length) {
                     const preferredSide = target > 0
                       ? (
@@ -9228,22 +9194,22 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                               : "all"
                         )
                       : engineSide;
-    
+
                     candidates.sort((a, b) => {
                       const aPreferred = a.side === preferredSide ? 1 : 0;
                       const bPreferred = b.side === preferredSide ? 1 : 0;
                       if (bPreferred !== aPreferred) return bPreferred - aPreferred;
                       return a.odd - b.odd;
                     });
-    
+
                     chosen = candidates[0];
                   }
-    
+
                   if (!chosen) {
                     const lineExists = available.some(
                       value => Math.abs(value - target) < 0.001
                     );
-    
+
                     
                     // V143: não inventa linhas. Se a linha não veio nas cotações/
                     // available_lines, este jogo não pertence a esta aba.
@@ -9257,16 +9223,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                       };
                     }
 
-const fallbackSide = target > 0
-                      ? (
-                          engineSide === "home"
-                            ? "away"
-                            : engineSide === "away"
-                              ? "home"
-                              : "all"
-                        )
-                      : engineSide;
-    
+const fallbackSide = target \> 0 ? ( engineSide === "home" ? "away" :
+engineSide === "away" ? "home" : "all" ) : engineSide;
+
                     if (fallbackSide === "all") {
                       return {
                         valid: false,
@@ -9276,7 +9235,7 @@ const fallbackSide = target > 0
                         pickedSide: "all"
                       };
                     }
-    
+
                     chosen = {
                       side: fallbackSide,
                       team: fallbackSide === "home" ? game.home : game.away,
@@ -9285,9 +9244,9 @@ const fallbackSide = target > 0
                       estimated: false
                     };
                   }
-    
+
                   let probability;
-    
+
                   if (target > 0) {
                     probability =
                       72 -
@@ -9301,19 +9260,19 @@ const fallbackSide = target > 0
                   } else {
                     probability = baseConf;
                   }
-    
+
                   if (Number.isFinite(chosen.odd)) {
                     const implied = 100 / chosen.odd;
                     probability = probability * 0.72 + implied * 0.28;
                   }
-    
+
                   probability = mobileExactClampPct(probability) ?? 0;
-    
+
                   const signed =
                     target > 0
                       ? `+${target.toFixed(1)}`
                       : target.toFixed(1);
-    
+
                   return {
                     valid: probability >= 48,
                     probability,
@@ -9327,20 +9286,20 @@ const fallbackSide = target > 0
                     marketOdd: Number.isFinite(chosen.odd) ? chosen.odd : null
                   };
                 }
-    
+
                 if (marketType === "btts") {
                   const line = clean(mobileExactDecision(game, "btts")?.line, "").toUpperCase();
                   const wantsYes = selectedLine === "SIM";
                   const agrees = wantsYes
                     ? /(SIM|YES)/.test(line) && !/(NAO|NÃO|NO)/.test(line)
                     : /(NAO|NÃO|NO)/.test(line);
-    
+
                   const probability = mobileExactClampPct(
                     agrees
                       ? baseConf
                       : (baseConf ? 100 - baseConf : 45)
                   );
-    
+
                   return {
                     valid: true,
                     probability,
@@ -9348,7 +9307,7 @@ const fallbackSide = target > 0
                     source: "engine-side"
                   };
                 }
-    
+
                 return {
                   valid: true,
                   probability: baseConf,
@@ -9356,7 +9315,7 @@ const fallbackSide = target > 0
                   source: "engine"
                 };
               }
-    
+
               function analysisOdd(confidence, game = null, marketType = "") {
                 const variation = game
                   ? analysisFactor(game, marketType, "ODD") * .12
@@ -9459,7 +9418,7 @@ const fallbackSide = target > 0
                     )
                       ? mobileExactDesktopLineAnalysis(game, marketType, requestedLine)
                       : null;
-    
+
                     return {
                       game,
                       originalIndex,
@@ -9497,22 +9456,22 @@ const fallbackSide = target > 0
                         )
                       );
                     }
-    
+
                     const projectionDiff =
                       Number(b.recommendation.projection) -
                       Number(a.recommendation.projection);
-    
+
                     if (Math.abs(projectionDiff) > 0.05) return projectionDiff;
-    
+
                     return b.recommendation.confidence - a.recommendation.confidence;
                   });
-    
+
                 if (marketType === "goals" && requestedLine === "IA") {
                   prepared = preserveGoalsPreparedList(prepared);
                 } else {
                   prepared = prepared.slice(0, 7);
                 }
-    
+
                 const settlementEntries = [];
                 const liveEntries = [];
             
@@ -10755,7 +10714,7 @@ const fallbackSide = target > 0
                 });
               }
             
-    
+
               // V70 — API pública da camada mobile oficial.
               window.cpMobileOpenMarket = function(type) {
                 if (!mobileMedia.matches) return;
@@ -10763,20 +10722,20 @@ const fallbackSide = target > 0
                   openMarkets(type);
                 }
               };
-    
+
               window.cpMobileCloseLayers = function() {
                 const markets = $("#cpMobileMarketsLayer");
                 const match = $("#cpMobileMatchLayer");
                 if (match?.classList.contains("is-open")) closeLayer(match);
                 if (markets?.classList.contains("is-open")) closeLayer(markets);
               };
-    
+
               window.cpMobileOpenBestMatch = function() {
                 if (!mobileMedia.matches) return;
                 const best = activeList()[0];
                 if (best) openMatch(best);
               };
-    
+
               window.CornerProMobileOfficialV80 = {
                 version: "V80",
                 state,
@@ -10792,7 +10751,7 @@ const fallbackSide = target > 0
                   return loadMarketEnginesInBackground(date, Date.now());
                 }
               };
-    
+
               function bind() {
                 document.addEventListener("click", event => {
                   const dot = event.target.closest("[data-cp-home-dot]");
@@ -11031,7 +10990,7 @@ const fallbackSide = target > 0
                 mobileMedia.addEventListener?.("change", event => event.matches ? startAutoSlide() : stopAutoSlide());
               }
             
-    
+
               window.CornerProMobileParityV70 = {
                 version: "V70",
                 markets: {
@@ -11044,7 +11003,7 @@ const fallbackSide = target > 0
                 analyzeLine: mobileExactDesktopLineAnalysis,
                 serverOnlyAI: true
               };
-    
+
               async function start() {
                 if (!mobileMedia.matches || !$("#cpMobileHome")) return;
           
@@ -22540,99 +22499,6 @@ const fallbackSide = target > 0
                       const away = clean(data?.away || data?.fora || data?.away_team || away0);
                       const league = clean(data?.league || data?.liga || league0);
                       const time = clean(data?.time || data?.hora || time0);
-                      // V65 — RELATÓRIO PRÉ-JOGO REAL.
-                      // Esta é a última implementação de updateDesktopMatchRail do arquivo;
-                      // por isso o tratamento precisa existir AQUI para não ser sobrescrito
-                      // pelas versões antigas do Match Center.
-                      if (isReal && data?.not_started === true && data?.pregame) {
-                        const pg = data.pregame || {};
-                        const stHome = pg?.standings?.home || {};
-                        const stAway = pg?.standings?.away || {};
-                        const recHome = pg?.recent?.home || {};
-                        const recAway = pg?.recent?.away || {};
-                        const h2h = pg?.h2h || {};
-
-                        const safeN = v => {
-                          const n = Number(v);
-                          return Number.isFinite(n) ? n : null;
-                        };
-                        const val = v => {
-                          const n = safeN(v);
-                          return n === null ? "—" : (Number.isInteger(n) ? String(n) : n.toFixed(1));
-                        };
-                        const percent = v => {
-                          const n = safeN(v);
-                          return n === null ? "—" : `${Math.round(n)}%`;
-                        };
-                        const formHtml = arr => {
-                          const list = Array.isArray(arr) ? arr.slice(0,5) : [];
-                          if (!list.length) return `<span class="cpV64Muted">Sem histórico</span>`;
-                          return `<div class="cpV64Form">${list.map(x => {
-                            const k = String(x || "").toUpperCase();
-                            const cls = k === "V" ? "win" : k === "D" ? "loss" : "draw";
-                            return `<i class="${cls}">${esc(k || "—")}</i>`;
-                          }).join("")}</div>`;
-                        };
-                        const standingLine = (name, row) => `
-                          <div class="cpV64StandingLine">
-                            <div class="cpV64StandingTeam"><b>${esc(name)}</b><small>${row?.position ? `${esc(row.position)}º lugar` : "posição indisponível"}</small></div>
-                            <div><small>PTS</small><b>${val(row?.points)}</b></div>
-                            <div><small>J</small><b>${val(row?.played)}</b></div>
-                            <div><small>V</small><b>${val(row?.wins)}</b></div>
-                            <div><small>E</small><b>${val(row?.draws)}</b></div>
-                            <div><small>D</small><b>${val(row?.losses)}</b></div>
-                          </div>`;
-                        const recentBox = (label, name, row) => `
-                          <div class="cpV64RecentTeam">
-                            <div class="cpV64RecentHead"><span>${label}</span><b>${esc(name)}</b>${formHtml(row?.form)}</div>
-                            <div class="cpV64Metrics">
-                              <div><small>Cantos a favor</small><b>${val(row?.corners_for_avg)}</b></div>
-                              <div><small>Cantos cedidos</small><b>${val(row?.corners_against_avg)}</b></div>
-                              <div><small>Média total</small><b>${val(row?.corners_total_avg)}</b></div>
-                              <div><small>Over 9.5</small><b>${percent(row?.over95_rate)}</b></div>
-                            </div>
-                          </div>`;
-                        const h2hRows = Array.isArray(h2h?.matches) && h2h.matches.length
-                          ? h2h.matches.slice(0,5).map(m => `
-                              <div class="cpV64H2HRow">
-                                <small>${esc(clean(m?.date,"—"))}</small>
-                                <span>${esc(clean(m?.home,"Casa"))} <b>${esc(clean(m?.score_home,"—"))} × ${esc(clean(m?.score_away,"—"))}</b> ${esc(clean(m?.away,"Fora"))}</span>
-                                <em>${safeN(m?.corners_total) !== null ? `${val(m.corners_total)} cantos` : "cantos —"}</em>
-                              </div>`).join("")
-                          : `<div class="cpV64Empty">Sem confrontos diretos com dados suficientes.</div>`;
-
-                        const reading = [];
-                        if (safeN(recHome?.corners_for_avg) !== null) reading.push(`${home} tem média recente de ${val(recHome.corners_for_avg)} escanteios a favor`);
-                        if (safeN(recAway?.corners_against_avg) !== null) reading.push(`${away} cede ${val(recAway.corners_against_avg)} escanteios por jogo`);
-                        if (safeN(h2h?.over95_rate) !== null) reading.push(`${percent(h2h.over95_rate)} dos H2H disponíveis passaram de 9.5 cantos`);
-                        if (proj !== "—") reading.push(`a projeção atual do Corner Pro é ${proj} cantos`);
-                        const readingText = reading.length ? reading.join(". ") + "." : "Ainda não há histórico suficiente na API para uma leitura completa desta partida.";
-
-                        rail.innerHTML = `
-                          <section class="railCard cpV64Hero">
-                            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
-                            <div class="cpV64Teams">
-                              <div><strong>${esc(home)}</strong><small>${stHome?.position ? `${esc(stHome.position)}º` : "—"}</small></div>
-                              <section><small>${esc(league)} • ${esc(time)}</small><b>VS</b><em>ANÁLISE</em></section>
-                              <div><strong>${esc(away)}</strong><small>${stAway?.position ? `${esc(stAway.position)}º` : "—"}</small></div>
-                            </div>
-                          </section>
-                          <section class="railCard cpV64Card"><h3>CLASSIFICAÇÃO</h3>${standingLine(home,stHome)}${standingLine(away,stAway)}</section>
-                          <section class="railCard cpV64Card"><h3>MOMENTO • ÚLTIMOS 5</h3>${recentBox("CASA",home,recHome)}${recentBox("FORA",away,recAway)}</section>
-                          <section class="railCard cpV64Card">
-                            <div class="cpV64SectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${val(h2h?.games)} jogos</b></div>
-                            <div class="cpV64Summary">
-                              <div><small>Média H2H</small><b>${val(h2h?.avg_corners)}</b><span>cantos</span></div>
-                              <div><small>Over 9.5</small><b>${percent(h2h?.over95_rate)}</b><span>H2H</span></div>
-                              <div><small>Projeção</small><b>${proj}</b><span>Corner Pro</span></div>
-                            </div>
-                            <div class="cpV64H2H">${h2hRows}</div>
-                          </section>
-                          <section class="railCard cpV64Reading"><h3>LEITURA PRÉ-JOGO</h3><p>${esc(readingText)}</p><small>Dados reais disponíveis na API. Sem inventar números ausentes.</small></section>
-                          <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>`;
-                        return;
-                      }
-
                       const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
                       const minute = isReal ? getMinute(data) : 0;
                       const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
@@ -29347,7 +29213,7 @@ const fallbackSide = target > 0
           };
         }catch(e){ return {error:String(e)}; }
       };
-    
+
     /* =========================================================
        CORNER PRO — FIX DE RÓTULOS DO MENU DESKTOP
        Corrige traduções indevidas no topo:
@@ -29357,76 +29223,76 @@ const fallbackSide = target > 0
        ========================================================= */
     (function installCornerProDesktopMenuLabelFix(){
       "use strict";
-    
+
       if (window.__cpDesktopMenuLabelFixInstalled) return;
       window.__cpDesktopMenuLabelFixInstalled = true;
-    
+
       const normalize = value => String(value ?? "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .trim()
         .toUpperCase();
-    
+
       function fixTextNode(el){
         if (!el) return;
-    
+
         const txt = normalize(el.textContent);
-    
+
         if (txt === "CARRINHO" || txt === "CARRINHOS") {
           el.textContent = "CARTÕES";
           return;
         }
-    
+
         if (txt === "DESVANTAGEM") {
           el.textContent = "HANDICAP";
         }
       }
-    
+
       function applyFix(){
         if (window.matchMedia && !window.matchMedia("(min-width:981px)").matches) return;
-    
+
         document.querySelectorAll(
           ".topbar .nav a, .topbar .nav button, " +
           ".cpd3MarketNav button, " +
           "[data-cpd3-market='cards'], [data-cpd3-market='handicap']"
         ).forEach(el => {
           const market = String(el.dataset?.cpd3Market || "").toLowerCase();
-    
+
           if (market === "cards") {
             el.textContent = "CARTÕES";
             return;
           }
-    
+
           if (market === "handicap") {
             el.textContent = "HANDICAP";
             return;
           }
-    
+
           fixTextNode(el);
         });
       }
-    
+
       function start(){
         applyFix();
-    
+
         const observer = new MutationObserver(() => applyFix());
         observer.observe(document.documentElement, {
           subtree: true,
           childList: true,
           characterData: true
         });
-    
+
         window.addEventListener("pageshow", applyFix);
         window.addEventListener("focus", applyFix);
       }
-    
+
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", start, { once:true });
       } else {
         start();
       }
     })();
-    
+
     /* =========================================================
        CORNER PRO MOBILE V80 — AUTORIDADE FINAL
        Desktop IA -> Mobile, sem controlador paralelo.
@@ -29434,22 +29300,22 @@ const fallbackSide = target > 0
        ========================================================= */
     (function installCornerProMobileDesktopIAAuthorityV80(){
       "use strict";
-    
+
       if (window.__cpMobileDesktopIAAuthorityV80) return;
       window.__cpMobileDesktopIAAuthorityV80 = true;
-    
+
       const mobile = () =>
         Boolean(
           window.matchMedia &&
           window.matchMedia("(max-width:980px)").matches
         );
-    
+
       const marketFromText = value => {
         const text = String(value || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase();
-    
+
         if (text.includes("escante")) return "corners";
         if (text.includes("gol")) return "goals";
         if (text.includes("cart")) return "cards";
@@ -29457,29 +29323,29 @@ const fallbackSide = target > 0
         if (text.includes("ambas")) return "btts";
         return "";
       };
-    
+
       const api = () => window.CornerProMobileOfficialV80 || null;
-    
+
       function open(type){
         const official = api();
         if (!official || !type) return false;
         official.openMarket(type);
         return true;
       }
-    
+
       // Captura no WINDOW: executa antes de listeners antigos no document/body.
       window.addEventListener("click", event => {
         if (!mobile()) return;
-    
+
         const official = api();
         if (!official) return;
-    
+
         const analysisLine = event.target.closest?.("[data-analysis-line]");
         if (analysisLine) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-    
+
           official.renderDetailed(
             document.getElementById("cpMobileMarketsLayer"),
             analysisLine.dataset.analysisMarket,
@@ -29487,26 +29353,26 @@ const fallbackSide = target > 0
           );
           return;
         }
-    
+
         const handicapLine = event.target.closest?.("[data-handicap-line]");
         if (handicapLine) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-    
+
           official.renderHandicap(
             document.getElementById("cpMobileMarketsLayer"),
             handicapLine.dataset.handicapLine
           );
           return;
         }
-    
+
         const bttsLine = event.target.closest?.("[data-btts-tab]");
         if (bttsLine) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-    
+
           official.renderBtts(
             document.getElementById("cpMobileMarketsLayer"),
             String(
@@ -29517,16 +29383,16 @@ const fallbackSide = target > 0
           );
           return;
         }
-    
+
         const explicit = event.target.closest?.(
           "[data-home-market],[data-cp-market]"
         );
-    
+
         if (explicit) {
           const type =
             explicit.dataset.homeMarket ||
             explicit.dataset.cpMarket;
-    
+
           if (["corners","goals","cards","handicap","btts"].includes(type)) {
             event.preventDefault();
             event.stopPropagation();
@@ -29535,7 +29401,7 @@ const fallbackSide = target > 0
           }
           return;
         }
-    
+
         const marketTab = event.target.closest?.(".marketTabs .marketTab");
         if (marketTab) {
           const type = marketFromText(marketTab.textContent);
@@ -29547,7 +29413,7 @@ const fallbackSide = target > 0
           }
           return;
         }
-    
+
         const sideItem = event.target.closest?.(".side-item");
         if (sideItem) {
           const type = marketFromText(sideItem.textContent);
@@ -29559,13 +29425,13 @@ const fallbackSide = target > 0
           }
         }
       }, true);
-    
+
       // Se algum módulo antigo sobrescrever as funções públicas,
       // restauramos a API oficial após toda a carga.
       function restoreOfficialGlobals(){
         const official = api();
         if (!official) return;
-    
+
         window.cpMobileOpenMarket = type => {
           if (!mobile()) return;
           if (["corners","goals","cards","handicap","btts"].includes(type)) {
@@ -29573,7 +29439,7 @@ const fallbackSide = target > 0
           }
         };
       }
-    
+
       restoreOfficialGlobals();
       window.addEventListener("load", restoreOfficialGlobals);
       window.addEventListener("pageshow", restoreOfficialGlobals);
@@ -29582,7 +29448,7 @@ const fallbackSide = target > 0
       setTimeout(restoreOfficialGlobals, 1200);
       setTimeout(restoreOfficialGlobals, 4000);
     })();
-    
+
     /* =========================================================
        CORNER PRO MOBILE V90 — PARIDADE TOTAL COM O SITE DESKTOP
        Ativa no app os mercados do WEB V11 sem criar um segundo motor.
@@ -29591,10 +29457,10 @@ const fallbackSide = target > 0
        ========================================================= */
     (() => {
       "use strict";
-    
+
       if (window.__cpMobileDesktopParityV90) return;
       window.__cpMobileDesktopParityV90 = true;
-    
+
       const isMobile = () => !!window.matchMedia && window.matchMedia("(max-width:980px)").matches;
       const $ = (s, r = document) => r.querySelector(s);
       const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -29616,7 +29482,7 @@ const fallbackSide = target > 0
       const esc = v => String(v ?? "")
         .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-    
+
       function boot() {
         if (!isMobile()) return;
         const api = window.CornerProMobileOfficialV80;
@@ -29626,10 +29492,10 @@ const fallbackSide = target > 0
         }
         if (api.__desktopParityV90Ready) return;
         api.__desktopParityV90Ready = true;
-    
+
         const state = api.state;
         const markets = api.markets;
-    
+
         Object.assign(markets, {
           result: {
             label: "RESULTADO",
@@ -29656,7 +29522,7 @@ const fallbackSide = target > 0
             lines: ["TODOS"]
           }
         });
-    
+
         function rawGame(item) { return item?.raw || item || {}; }
         function home(g) {
           const r = rawGame(g);
@@ -29733,7 +29599,7 @@ const fallbackSide = target > 0
           }
           return "—";
         }
-    
+
         function build(type) {
           const base = Array.isArray(state.all) ? state.all : [];
           const seen = new Set();
@@ -29754,14 +29620,14 @@ const fallbackSide = target > 0
             return true;
           }).sort((a, b) => b.confidence - a.confidence);
         }
-    
+
         function refreshDerivedMarkets() {
           state.result = build("result");
           state.doublechance = build("doublechance");
           state.teamgoals = build("teamgoals");
           state.builder = build("builder");
         }
-    
+
         function ensureHomeCards() {
           const row = $(".cprMarkets");
           if (!row) return;
@@ -29780,7 +29646,7 @@ const fallbackSide = target > 0
             row.appendChild(button);
           }
         }
-    
+
         function ensureLayerTabs() {
           const nav = $("#cpMobileMarketsLayer .cpMobileMarketTypes");
           if (!nav) return;
@@ -29799,7 +29665,7 @@ const fallbackSide = target > 0
             nav.appendChild(b);
           }
         }
-    
+
         function lineMatches(game, type, line) {
           line = String(line || "TODOS").toUpperCase();
           if (line === "TODOS") return true;
@@ -29807,7 +29673,7 @@ const fallbackSide = target > 0
           if (type === "teamgoals") return true;
           return p === line || p.includes(` ${line}`) || p.endsWith(line);
         }
-    
+
         function renderGenericLine(type, line) {
           refreshDerivedMarkets();
           state.activeMarket = type;
@@ -29816,14 +29682,14 @@ const fallbackSide = target > 0
             .filter(g => lineMatches(g, type, line))
             .sort((a, b) => b.confidence - a.confidence)
             .slice(0, 8);
-    
+
           const selected = $("#cpMobileSelectedLine");
           if (selected) selected.textContent = line === "TODOS" ? markets[type].label : line;
           const recommended = $("#cpMobileRecommended");
           if (recommended) recommended.hidden = false;
           const carousel = $("#cpMobileGameCarousel");
           if (!carousel) return;
-    
+
           carousel.innerHTML = list.length ? list.map((g, index) => `
             <button type="button" data-v90-generic-game="${index}" data-v90-market="${type}">
               <b>${esc(g.home)} × ${esc(g.away)}</b>
@@ -29832,11 +29698,11 @@ const fallbackSide = target > 0
             </button>`).join("") : `<div class="cpV90Empty"><b>NENHUM JOGO NESTA LINHA</b><small>A IA do site não encontrou partida compatível para ${esc(line)}.</small></div>`;
           recommended?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
-    
+
         refreshDerivedMarkets();
         ensureHomeCards();
         ensureLayerTabs();
-    
+
         // Atualiza derivados quando as IAs oficiais terminarem de enriquecer state.all.
         const oldReload = api.reloadEngines;
         if (typeof oldReload === "function") {
@@ -29846,17 +29712,17 @@ const fallbackSide = target > 0
             return result;
           };
         }
-    
+
         // Autoriza a API pública a abrir TODOS os mercados do desktop.
         window.cpMobileOpenMarket = function(type) {
           if (!isMobile()) return;
           refreshDerivedMarkets();
           if (markets[type]) api.openMarket(type);
         };
-    
+
         document.addEventListener("click", event => {
           if (!isMobile()) return;
-    
+
           const homeButton = event.target.closest("[data-home-market]");
           if (homeButton && ["result", "doublechance", "teamgoals", "builder"].includes(homeButton.dataset.homeMarket)) {
             event.preventDefault();
@@ -29864,13 +29730,13 @@ const fallbackSide = target > 0
             api.openMarket(homeButton.dataset.homeMarket);
             return;
           }
-    
+
           const marketTab = event.target.closest("#cpMobileMarketsLayer [data-cp-market]");
           if (marketTab && ["result", "doublechance", "teamgoals", "builder"].includes(marketTab.dataset.cpMarket)) {
             refreshDerivedMarkets();
           }
         }, true);
-    
+
         // Intercepta as linhas dos mercados derivados para que cada clique realmente
         // mude a lista de jogos, em vez de repetir a mesma relação.
         document.addEventListener("click", event => {
@@ -29885,7 +29751,7 @@ const fallbackSide = target > 0
           $$("#cpMobileMarketsLayer [data-v9-line], #cpMobileMarketsLayer [data-v8-line]").forEach(b => b.classList.toggle("active", b === lineButton));
           renderGenericLine(type, line);
         }, true);
-    
+
         // Mantém os mercados derivados atualizados quando a data muda (hoje/amanhã/calendário).
         $("#date")?.addEventListener("change", () => {
           setTimeout(() => {
@@ -29894,20 +29760,20 @@ const fallbackSide = target > 0
             ensureLayerTabs();
           }, 900);
         });
-    
+
         // Uma segunda sincronização curta cobre o carregamento assíncrono inicial.
         setTimeout(refreshDerivedMarkets, 1200);
         setTimeout(refreshDerivedMarkets, 3500);
-    
+
         console.info("[CP MOBILE V90] Paridade de mercados desktop ativa:", Object.keys(markets));
       }
-    
+
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
       else boot();
     })();
-    
-    
-    
+
+
+
     /* =========================================================
        CORNER PRO MOBILE V91 — SINCRONIZAÇÃO VISUAL DAS IAs
        Garante que uma tela de mercado já aberta seja repintada quando
@@ -29948,7 +29814,7 @@ const fallbackSide = target > 0
         }
       }, 900);
     })();
-    
+
     /* =========================================================
        CORNER PRO MOBILE V92 — PARIDADE VISUAL DOS MERCADOS
        A tela IA mostra somente decisões já resolvidas pelo mesmo motor
@@ -29973,7 +29839,7 @@ const fallbackSide = target > 0
         return null;
       };
       const field = {corners:"corners_ai",goals:"goals_ai",cards:"cards_ai",handicap:"handicap_ai",btts:"btts_ai"};
-    
+
       function resolved(game, type) {
         const r = game?.raw || game || {};
         const d = r?.[field[type]];
@@ -30001,7 +29867,7 @@ const fallbackSide = target > 0
       }
       function api(){ return window.CornerProMobileOfficialV80 || null; }
       function layer(){ return document.getElementById("cpMobileMarketsLayer"); }
-    
+
       function renderParity(type, line="IA") {
         const a=api(), l=layer();
         if (!a || !l || !["corners","goals","cards","handicap","btts"].includes(type)) return false;
@@ -30024,7 +29890,7 @@ const fallbackSide = target > 0
         else a.renderDetailed(l, type, line);
         return true;
       }
-    
+
       function openParity(type) {
         const a=api(); if (!a) return;
         a.state.activeMarket=type;
@@ -30033,7 +29899,7 @@ const fallbackSide = target > 0
         a.state.__selectedParityLine = "IA";
         setTimeout(()=>renderParity(type,"IA"),0);
       }
-    
+
       // Captura os cliques dos 5 mercados oficiais antes dos listeners legados.
       document.addEventListener("click", event => {
         if (!mobile()) return;
@@ -30075,14 +29941,14 @@ const fallbackSide = target > 0
           }
         }
       }, true);
-    
+
       // API externa também passa pela paridade.
       window.cpMobileOpenMarket = type => {
         if (!mobile()) return;
         if (["corners","goals","cards","handicap","btts"].includes(type)) openParity(type);
         else api()?.openMarket?.(type);
       };
-    
+
       // Quando market_engines termina, repinta a tela aberta automaticamente.
       let last="";
       setInterval(()=>{
@@ -30098,7 +29964,7 @@ const fallbackSide = target > 0
           renderParity(type,selected);
         }
       },700);
-    
+
       console.info("[CP MOBILE V92] Desktop é a fonte única das IAs de mercado.");
     })();
 
@@ -30378,51 +30244,39 @@ const fallbackSide = target > 0
       console.info("[CP SITE V121] Status da tabela sincronizado com /match_center.");
     })();
 
-  }
+}
 
+/\* ========================================================= CORNER PRO
+V135 --- ALERTA DE PRESSÃO Refeito do zero. - Cantos: 32'--39',
+intervalo e 83'--95' - Gols: intervalo - Sem critério forte = sem sino
+========================================================= \*/ (function
+installCornerProPressureAlertsV135(){ "use strict";
+if(window.\_\_CP_PRESSURE_V135\_\_) return;
+window.\_\_CP_PRESSURE_V135\_\_ = true;
 
-/* =========================================================
-   CORNER PRO V135 — ALERTA DE PRESSÃO
-   Refeito do zero.
-   - Cantos: 32'–39', intervalo e 83'–95'
-   - Gols: intervalo
-   - Sem critério forte = sem sino
-   ========================================================= */
-(function installCornerProPressureAlertsV135(){
-  "use strict";
-  if(window.__CP_PRESSURE_V135__) return;
-  window.__CP_PRESSURE_V135__ = true;
+const alerts = new Map(); const cache = new Map(); let busy = false;
 
-  const alerts = new Map();
-  const cache = new Map();
-  let busy = false;
+const N = (v, fb=0) =\> { const x = Number(String(v ??
+"").replace("%","").replace(",",".").replace(/\[\^\\d.-\]/g,"")); return
+Number.isFinite(x) ? x : fb; }; const S = (v, fb="") =\> { const s =
+String(v ??"").trim(); return s &&
+\!["undefined","null","NaN"\].includes(s) ? s : fb; };
 
-  const N = (v, fb=0) => {
-    const x = Number(String(v ?? "").replace("%","").replace(",",".").replace(/[^\d.-]/g,""));
-    return Number.isFinite(x) ? x : fb;
-  };
-  const S = (v, fb="") => {
-    const s = String(v ?? "").trim();
-    return s && !["undefined","null","NaN"].includes(s) ? s : fb;
-  };
+function matchId(g){ const r = g?.raw \|\| g \|\| {}; return
+S(r.match_id ?? r.event_id ?? r.event_key ?? r.fixture_id ?? r.id ??
+g?.match_id ?? g?.id); }
 
-  function matchId(g){
-    const r = g?.raw || g || {};
-    return S(r.match_id ?? r.event_id ?? r.event_key ?? r.fixture_id ?? r.id ?? g?.match_id ?? g?.id);
-  }
+function pair(d, key){ const o = d?.\[key\] \|\| {}; return {
+home:N(o.home), away:N(o.away) }; }
 
-  function pair(d, key){
-    const o = d?.[key] || {};
-    return { home:N(o.home), away:N(o.away) };
-  }
+function isHalftime(d){ const s = S(d?.status_raw ??
+d?.status).toLowerCase(); return Boolean(d?.halftime \|\| d?.half_time)
+\|\|
+/half.?time\|`\bht`{=tex}`\b|`{=tex}intervalo\|interval\|break/.test(s);
+}
 
-  function isHalftime(d){
-    const s = S(d?.status_raw ?? d?.status).toLowerCase();
-    return Boolean(d?.halftime || d?.half_time) || /half.?time|\bht\b|intervalo|interval|break/.test(s);
-  }
-
-  function evaluate(d){
-    if(!d || d.finished || d.not_started || d.cancelled) return [];
+function evaluate(d){ if(!d \|\| d.finished \|\| d.not_started \|\|
+d.cancelled) return \[\];
 
     const minute = N(d.minute);
     const ht = isHalftime(d);
@@ -30524,81 +30378,55 @@ const fallbackSide = target > 0
     }
 
     return out;
-  }
 
-  async function matchCenter(id){
-    const now = Date.now();
-    const old = cache.get(id);
-    if(old && now - old.at < 20000) return old.data;
+}
+
+async function matchCenter(id){ const now = Date.now(); const old =
+cache.get(id); if(old && now - old.at \< 20000) return old.data;
 
     const res = await fetch(`/match_center?match_id=${encodeURIComponent(id)}&fresh=1&_=${now}`, {cache:"no-store"});
     if(!res.ok) throw new Error(`match_center ${res.status}`);
     const data = await res.json();
     cache.set(id,{at:now,data});
     return data;
-  }
 
-  function allVisibleGames(){
-    const pools = [
-      window.__cpV110VisibleGames,
-      window.__cornerProAllGames,
-      window.__lastRawGames,
-      window.__lastRenderedTopGames
-    ];
-    const out = [], seen = new Set();
-    for(const pool of pools){
-      if(!Array.isArray(pool)) continue;
-      for(const g of pool){
-        const id = matchId(g);
-        if(id && !seen.has(id)){ seen.add(id); out.push(g); }
-      }
-    }
-    return out;
-  }
+}
 
-  function strongest(market){
-    const rank = {"ALTA":1,"MUITO ALTA":2};
-    return [...alerts.values()].flat()
-      .filter(a => a.market === market)
-      .sort((a,b)=>(rank[b.level]||0)-(rank[a.level]||0))[0] || null;
-  }
+function allVisibleGames(){ const pools = \[
+window.\_\_cpV110VisibleGames, window.\_\_cornerProAllGames,
+window.\_\_lastRawGames, window.\_\_lastRenderedTopGames \]; const out =
+\[\], seen = new Set(); for(const pool of pools){
+if(!Array.isArray(pool)) continue; for(const g of pool){ const id =
+matchId(g); if(id && !seen.has(id)){ seen.add(id); out.push(g); } } }
+return out; }
 
-  function bell(a, extra="", market=""){
-    const active = Boolean(a);
-    const m = a?.market || market || "";
-    return `<span role="button" tabindex="0" class="cpPressureBell ${extra} ${active?"is-active":"is-idle"}" data-cp-pressure-market="${m}" data-cp-pressure-active="${active?"1":"0"}" aria-label="${active?"Abrir alerta de pressão":"Monitorando pressão"}">🔔</span>`;
-  }
+function strongest(market){ const rank = {"ALTA":1,"MUITO ALTA":2};
+return \[...alerts.values()\].flat() .filter(a =\> a.market === market)
+.sort((a,b)=\>(rank\[b.level\]\|\|0)-(rank\[a.level\]\|\|0))\[0\] \|\|
+null; }
 
-  function ensureModal(){
-    if(document.getElementById("cpPressureModal")) return;
-    const modal = document.createElement("div");
-    modal.id = "cpPressureModal";
-    modal.className = "cpPressureModal";
-    modal.innerHTML = `
-      <div class="cpPressureSheet" role="dialog" aria-modal="true">
-        <button type="button" class="cpPressureClose" aria-label="Fechar">×</button>
-        <div class="cpPressureBigBell">🔔</div>
-        <small id="cpPressurePhase"></small>
-        <h3 id="cpPressureTitle"></h3>
-        <p id="cpPressureText"></p>
-        <b id="cpPressureLevel"></b>
-      </div>`;
-    document.body.appendChild(modal);
-  }
+function bell(a, extra="", market=""){ const active = Boolean(a); const
+m = a?.market \|\| market \|\|""; return
+`<span role="button" tabindex="0" class="cpPressureBell ${extra} ${active?"is-active":"is-idle"}" data-cp-pressure-market="${m}" data-cp-pressure-active="${active?"1":"0"}" aria-label="${active?"Abrir alerta de pressão":"Monitorando pressão"}">🔔</span>`;
+}
 
-  function showAlert(a){
-    if(!a) return;
-    ensureModal();
-    document.getElementById("cpPressurePhase").textContent = a.phase;
-    document.getElementById("cpPressureTitle").textContent = a.title;
-    document.getElementById("cpPressureText").textContent = a.text;
-    document.getElementById("cpPressureLevel").textContent = `INTENSIDADE ${a.level}`;
-    document.getElementById("cpPressureModal").classList.add("open");
-  }
+function ensureModal(){ if(document.getElementById("cpPressureModal"))
+return; const modal = document.createElement("div"); modal.id =
+"cpPressureModal"; modal.className = "cpPressureModal"; modal.innerHTML
+=
+`<div class="cpPressureSheet" role="dialog" aria-modal="true">         <button type="button" class="cpPressureClose" aria-label="Fechar">×</button>         <div class="cpPressureBigBell">🔔</div>         <small id="cpPressurePhase"></small>         <h3 id="cpPressureTitle"></h3>         <p id="cpPressureText"></p>         <b id="cpPressureLevel"></b>       </div>`;
+document.body.appendChild(modal); }
 
-  function paint(){
-    const cornerAlert = strongest("corners");
-    const goalAlert = strongest("goals");
+function showAlert(a){ if(!a) return; ensureModal();
+document.getElementById("cpPressurePhase").textContent = a.phase;
+document.getElementById("cpPressureTitle").textContent = a.title;
+document.getElementById("cpPressureText").textContent = a.text;
+document.getElementById("cpPressureLevel").textContent =
+`INTENSIDADE ${a.level}`;
+document.getElementById("cpPressureModal").classList.add("open"); }
+
+function paint(){ const cornerAlert = strongest("corners"); const
+goalAlert = strongest("goals");
 
     // Dashboard mobile: sino SEMPRE visível em Escanteios e Gols.
     // Limpa qualquer sino que versões anteriores tenham colocado na navegação inferior.
@@ -30649,14 +30477,13 @@ const fallbackSide = target > 0
         el.insertAdjacentHTML("beforeend", bell(a,"desktop",market));
       });
     }
-  }
 
-  async function sync(){
-    if(busy || document.hidden) return;
-    busy = true;
-    try{
-      const ids = [...new Set(allVisibleGames().map(matchId).filter(Boolean))].slice(0,18);
-      if(!ids.length){ alerts.clear(); paint(); return; }
+}
+
+async function sync(){ if(busy \|\| document.hidden) return; busy =
+true; try{ const ids = \[...new
+Set(allVisibleGames().map(matchId).filter(Boolean))\].slice(0,18);
+if(!ids.length){ alerts.clear(); paint(); return; }
 
       const today = new Intl.DateTimeFormat("en-CA",{
         timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"
@@ -30695,14 +30522,12 @@ const fallbackSide = target > 0
     }finally{
       busy = false;
     }
-  }
 
-  document.addEventListener("click", e=>{
-    const bellBtn = e.target.closest?.("[data-cp-pressure-market]");
-    if(bellBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+}
+
+document.addEventListener("click", e=\>{ const bellBtn =
+e.target.closest?.("\[data-cp-pressure-market\]"); if(bellBtn){
+e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
       const market = bellBtn.dataset.cpPressureMarket;
       const active = bellBtn.dataset.cpPressureActive === "1";
@@ -30726,62 +30551,43 @@ const fallbackSide = target > 0
     if(e.target.closest?.(".cpPressureClose") || e.target.id === "cpPressureModal"){
       document.getElementById("cpPressureModal")?.classList.remove("open");
     }
-  }, true);
 
-  const boot = ()=>{
-    ensureModal();
-    sync();
-    setInterval(sync,30000);
-    window.addEventListener("focus",sync);
-    document.addEventListener("visibilitychange",()=>{ if(!document.hidden) sync(); });
-  };
+}, true);
 
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
-  else boot();
+const boot = ()=\>{ ensureModal(); sync(); setInterval(sync,30000);
+window.addEventListener("focus",sync);
+document.addEventListener("visibilitychange",()=\>{ if(!document.hidden)
+sync(); }); };
 
+if(document.readyState === "loading")
+document.addEventListener("DOMContentLoaded",boot,{once:true}); else
+boot();
 
-  document.addEventListener("keydown", e=>{
-    if((e.key==="Enter" || e.key===" ") && e.target?.matches?.("[data-cp-pressure-market]")){
-      e.preventDefault();
-      e.target.click();
-    }
-  });
+document.addEventListener("keydown", e=\>{ if((e.key==="Enter" \|\|
+e.key===" ") && e.target?.matches?.("\[data-cp-pressure-market\]")){
+e.preventDefault(); e.target.click(); } });
 
-  window.CornerProPressureAlerts = {sync,paint,alerts};
-})();
+window.CornerProPressureAlerts = {sync,paint,alerts}; })();
 
+/\* ========================================================= CORNER PRO
+V136 --- CORREÇÃO DE TÍTULO DOS MERCADOS MOBILE
+========================================================= \*/ (function
+installMobileMarketTitleFixV136(){ if(window.\_\_CP_TITLE_FIX_V136\_\_)
+return; window.\_\_CP_TITLE_FIX_V136\_\_ = true;
 
+const MAP = { corners:"ESCANTEIOS", goals:"GOLS", cards:"CARTÕES",
+handicap:"HANDICAP", btts:"AMBAS MARCAM", result:"RESULTADO",
+doublechance:"DUPLA CHANCE", teamgoals:"GOLS DO TIME", builder:"APOSTA
+PRONTA" };
 
+function normalize(text){ return String(text\|\|"").toLowerCase()
+.normalize("NFD").replace(/\[`\u0`{=tex}300-`\u0`{=tex}36f\]/g,""); }
 
-/* =========================================================
-   CORNER PRO V136 — CORREÇÃO DE TÍTULO DOS MERCADOS MOBILE
-   ========================================================= */
-(function installMobileMarketTitleFixV136(){
-  if(window.__CP_TITLE_FIX_V136__) return;
-  window.__CP_TITLE_FIX_V136__ = true;
-
-  const MAP = {
-    corners:"ESCANTEIOS",
-    goals:"GOLS",
-    cards:"CARTÕES",
-    handicap:"HANDICAP",
-    btts:"AMBAS MARCAM",
-    result:"RESULTADO",
-    doublechance:"DUPLA CHANCE",
-    teamgoals:"GOLS DO TIME",
-    builder:"APOSTA PRONTA"
-  };
-
-  function normalize(text){
-    return String(text||"").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  }
-
-  function detectFromDom(){
-    const active =
-      document.querySelector('#cpNewMobileV110 [data-v110-market].active') ||
-      document.querySelector('#cpNewMobileV110 [data-v110-market][aria-selected="true"]') ||
-      document.querySelector('#cpNewMobileV110 .v110Bottom button.active');
+function detectFromDom(){ const active =
+document.querySelector('#cpNewMobileV110 \[data-v110-market\].active')
+\|\| document.querySelector('#cpNewMobileV110
+\[data-v110-market\]\[aria-selected="true"\]') \|\|
+document.querySelector('#cpNewMobileV110 .v110Bottom button.active');
 
     const direct = active?.dataset?.v110Market || active?.dataset?.market;
     if(direct && MAP[direct]) return direct;
@@ -30798,58 +30604,49 @@ const fallbackSide = target > 0
     if(title.includes("escante")) return "corners";
 
     return window.__cpCurrentMobileMarket || "corners";
-  }
 
-  function apply(market){
-    const el = document.getElementById("cpV110MarketTitle");
-    if(!el || !MAP[market]) return;
-    const next = MAP[market];
-    if(el.textContent !== next) el.textContent = next;
-    window.__cpCurrentMobileMarket = market;
-  }
+}
 
-  document.addEventListener("click", e=>{
-    const marketBtn = e.target.closest?.("[data-v110-market],[data-home-market],[data-cp-market]");
-    if(marketBtn){
-      const m = marketBtn.dataset.v110Market || marketBtn.dataset.homeMarket || marketBtn.dataset.cpMarket;
-      if(MAP[m]){
-        window.__cpCurrentMobileMarket = m;
-        setTimeout(()=>apply(m),0);
-        setTimeout(()=>apply(m),80);
-        setTimeout(()=>apply(m),250);
-      }
-    }
-  }, true);
+function apply(market){ const el =
+document.getElementById("cpV110MarketTitle"); if(!el \|\|
+!MAP\[market\]) return; const next = MAP\[market\]; if(el.textContent
+!== next) el.textContent = next; window.\_\_cpCurrentMobileMarket =
+market; }
 
-  const boot = ()=>{
-    apply(detectFromDom());
+document.addEventListener("click", e=\>{ const marketBtn =
+e.target.closest?.("\[data-v110-market\],\[data-home-market\],\[data-cp-market\]");
+if(marketBtn){ const m = marketBtn.dataset.v110Market \|\|
+marketBtn.dataset.homeMarket \|\| marketBtn.dataset.cpMarket;
+if(MAP\[m\]){ window.\_\_cpCurrentMobileMarket = m;
+setTimeout(()=\>apply(m),0); setTimeout(()=\>apply(m),80);
+setTimeout(()=\>apply(m),250); } } }, true);
+
+const boot = ()=\>{ apply(detectFromDom());
 
     // Reaplica apenas em momentos seguros, sem observar mutações do DOM.
     window.addEventListener("pageshow",()=>setTimeout(()=>apply(detectFromDom()),80));
     window.addEventListener("focus",()=>setTimeout(()=>apply(detectFromDom()),80));
-  };
 
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
-  else boot();
-})();
+};
 
-/* =========================================================
-   CORNER PRO APP V128 — SINCRONIZAÇÃO DO PRIMEIRO CARREGAMENTO
-   Somente mobile <=980px.
-   Não cria outro motor e não toca no desktop.
-   ========================================================= */
-(function cpMobileInitialPaintGuardV128(){
-  if(!window.matchMedia || !window.matchMedia("(max-width:980px)").matches) return;
-  if(window.__cpMobileInitialPaintGuardV128) return;
-  window.__cpMobileInitialPaintGuardV128=true;
+if(document.readyState==="loading")
+document.addEventListener("DOMContentLoaded",boot,{once:true}); else
+boot(); })();
 
-  function homeVisible(){
-    const home=document.getElementById("cpMobileHome");
-    return !!home && !home.hidden && getComputedStyle(home).display!=="none";
-  }
+/\* ========================================================= CORNER PRO
+APP V128 --- SINCRONIZAÇÃO DO PRIMEIRO CARREGAMENTO Somente mobile
+\<=980px. Não cria outro motor e não toca no desktop.
+========================================================= \*/ (function
+cpMobileInitialPaintGuardV128(){ if(!window.matchMedia \|\|
+!window.matchMedia("(max-width:980px)").matches) return;
+if(window.\_\_cpMobileInitialPaintGuardV128) return;
+window.\_\_cpMobileInitialPaintGuardV128=true;
 
-  function nudge(){
-    if(!homeVisible()) return;
+function homeVisible(){ const
+home=document.getElementById("cpMobileHome"); return !!home &&
+!home.hidden && getComputedStyle(home).display!=="none"; }
+
+function nudge(){ if(!homeVisible()) return;
 
     // A V119 expõe a UI pelos próprios eventos. Se dados já chegaram mas uma
     // camada antiga deixou o HTML inicial vazio, uma troca interna home->home
@@ -30867,211 +30664,203 @@ const fallbackSide = target > 0
     ){
       homeBtn.click();
     }
-  }
 
-  // Atua só durante a janela inicial; não fica interferindo no uso normal.
-  window.addEventListener("load",()=>{
-    setTimeout(nudge,900);
-    setTimeout(nudge,1800);
-    setTimeout(nudge,3200);
-    setTimeout(nudge,5500);
-  },{once:true});
-})();
+}
 
-/* ================================================================
-   CORNER PRO V147 — FAVORITOS ATIVOS / FIX APP
-   Sem MutationObserver e sem pointerdown global.
-   ================================================================ */
-(()=>{
-  "use strict";
-  if(window.__CP_FAVORITES_V147__) return;
-  window.__CP_FAVORITES_V147__=true;
+// Atua só durante a janela inicial; não fica interferindo no uso
+normal. window.addEventListener("load",()=\>{ setTimeout(nudge,900);
+setTimeout(nudge,1800); setTimeout(nudge,3200); setTimeout(nudge,5500);
+},{once:true}); })();
 
-  const KEY_BASES=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
-  const CACHE_BASE="cornerpro_favorites_home_v147";
+/\* ================================================================
+CORNER PRO V147 --- FAVORITOS ATIVOS / FIX APP Sem MutationObserver e
+sem pointerdown global.
+================================================================ \*/
+(()=\>{ "use strict"; if(window.\_\_CP_FAVORITES_V147\_\_) return;
+window.\_\_CP_FAVORITES_V147\_\_=true;
 
-  function favUid(){return String(window.__cornerProUserId||"").trim()}
-  function scopedKeys(){
-    const uid=favUid();
-    return uid?KEY_BASES.map(k=>`${k}:${uid}`):[];
-  }
-  function cacheKey(){
-    const uid=favUid();
-    return uid?`${CACHE_BASE}:${uid}`:null;
-  }
-  const TTL=10*60*1000;
-  let busy=false,timer=null;
+const
+KEY_BASES=\["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"\];
+const CACHE_BASE="cornerpro_favorites_home_v147";
 
-  const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-  const clean=v=>{const s=String(v??"").trim();return s&&!/^(undefined|null|nan)$/i.test(s)?s:""};
-  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function favUid(){return
+String(window.\_\_cornerProUserId\|\|"").trim()} function scopedKeys(){
+const uid=favUid(); return uid?KEY_BASES.map(k=\>`${k}:${uid}`):\[\]; }
+function cacheKey(){ const uid=favUid(); return
+uid?`${CACHE_BASE}:${uid}`:null; } const TTL=10*60*1000; let
+busy=false,timer=null;
 
-  function favorites(){
-    const m=new Map();
-    for(const key of scopedKeys()){
-      try{
-        const a=JSON.parse(localStorage.getItem(key)||"[]");
-        if(!Array.isArray(a))continue;
-        for(const x of a){
-          const name=clean(typeof x==="string"?x:(x?.name??x?.team??x?.team_name));
-          const k=norm(name);if(k&&!m.has(k))m.set(k,name);
-        }
-      }catch{}
-    }
-    return m;
-  }
-  function ymd(off=0){const d=new Date();d.setDate(d.getDate()+off);try{const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d),o=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${o.year}-${o.month}-${o.day}`}catch{return d.toISOString().slice(0,10)}}
-  function day(off){if(off===0)return"HOJE";if(off===1)return"AMANHÃ";const [Y,M,D]=ymd(off).split("-").map(Number);try{return new Intl.DateTimeFormat("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",timeZone:"America/Manaus"}).format(new Date(Y,M-1,D,12)).replace(".","").toUpperCase()}catch{return ymd(off)}}
-  const raw=g=>g?.raw||g||{};
-  function home(g){const r=raw(g);return clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??r?.casa??r?.home??r?.match_hometeam_name)}
-  function away(g){const r=raw(g);return clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??r?.fora??r?.away??r?.match_awayteam_name)}
-  function hour(g){const r=raw(g);return clean(g?.hora??g?.time??g?.match_time??r?.hora??r?.time??r?.match_time)||"--:--"}
-  function league(g){const r=raw(g),x=g?.liga??g?.league_name??g?.league??r?.liga??r?.league_name??r?.league;return clean(typeof x==="object"?(x?.name??x?.league_name):x)||"Liga"}
-  function extract(p,seen=new Set()){
-    if(Array.isArray(p))return p.filter(x=>x&&typeof x==="object");
-    if(!p||typeof p!=="object"||seen.has(p))return[];seen.add(p);
-    for(const k of ["games","jogos","matches","fixtures","events","data","items","results","response","quentes","mercados","list","top","top6"]){const v=p[k];if(Array.isArray(v)&&v.length)return v.filter(x=>x&&typeof x==="object")}
-    for(const v of Object.values(p)){if(v&&typeof v==="object"){const a=extract(v,seen);if(a.length)return a}}
-    return[];
-  }
-  function same(name,map){const n=norm(name);if(!n)return false;if(map.has(n))return true;for(const k of map.keys())if(k.length>=5&&n.length>=5&&(n.includes(k)||k.includes(n)))return true;return false}
-  async function fetchDay(date){
-    for(const url of [`/mercados?date=${encodeURIComponent(date)}&_fav147=1&t=${Date.now()}`,`/quentes?date=${encodeURIComponent(date)}&_fav147=1&ai=0&t=${Date.now()}`]){
-      let tm=null;
-      try{const c=new AbortController();tm=setTimeout(()=>c.abort(),10000);const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});clearTimeout(tm);tm=null;if(!r.ok)continue;const a=extract(await r.json());if(a.length)return a}catch{}finally{if(tm)clearTimeout(tm)}
-    }
-    return[];
-  }
-  function getCache(){const k=cacheKey();if(!k)return null;try{const c=JSON.parse(localStorage.getItem(k)||"null");return c&&Date.now()-Number(c.at||0)<TTL&&Array.isArray(c.alerts)?c.alerts:null}catch{return null}}
-  function setCache(alerts){const k=cacheKey();if(!k)return;try{localStorage.setItem(k,JSON.stringify({at:Date.now(),alerts}))}catch{}}
+const
+norm=v=\>String(v??"").normalize("NFD").replace(/\[`\u0`{=tex}300-`\u0`{=tex}36f\]/g,"").toLowerCase().replace(/\[\^a-z0-9\]+/g,"
+").trim(); const clean=v=\>{const s=String(v??"").trim();return
+s&&!/\^(undefined\|null\|nan)\$/i.test(s)?s:""}; const
+esc=v=\>String(v??"").replace(/\[&\<\>"'\]/g,c=\>({"&":"&","\<":"\<","\>":"\>",'"':"\"","'":"\'"}\[c\]));
 
-  function style(){
-    if(document.getElementById("cpFav147Style"))return;
-    const s=document.createElement("style");s.id="cpFav147Style";s.textContent=`
-      .cpFav147Badge{margin-left:auto;min-width:20px;height:19px;padding:0 6px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;background:#70ff32;color:#061006;font-size:9px;font-weight:950;box-shadow:0 0 12px rgba(112,255,50,.28)}
-      .cpFav147Badge.tomorrow{background:#ffd348;color:#161000}.cpFav147Host{display:flex!important;align-items:center!important;gap:8px!important}
-      .cpFav147Overlay{position:fixed;inset:0;z-index:2147483600;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78);backdrop-filter:blur(8px)}.cpFav147Overlay.open{display:flex}
-      .cpFav147Box{width:min(680px,96vw);max-height:88vh;overflow:auto;border:1px solid #1c3528;border-radius:18px;background:linear-gradient(180deg,#0b1410,#050907);color:#fff;box-shadow:0 30px 90px #000}
-      .cpFav147Head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:16px 18px;background:#08100c;border-bottom:1px solid #17291f}.cpFav147Head i{font-style:normal;color:#70ff32;font-size:24px}.cpFav147Head div{flex:1}.cpFav147Head small{display:block;color:#70ff32;font-size:8px;font-weight:950}.cpFav147Head h2{margin:2px 0 0;font-size:20px}.cpFav147Close{width:38px;height:38px;border:1px solid #24362e;border-radius:11px;background:#0c1511;color:#fff;font-size:22px}
-      .cpFav147Summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px}.cpFav147Summary div{padding:12px;border:1px solid #182a21;border-radius:12px;background:#0b1410}.cpFav147Summary small{display:block;color:#849189;font-size:7px;font-weight:900}.cpFav147Summary b{display:block;margin-top:4px;color:#70ff32;font-size:19px}
-      .cpFav147Body{padding:0 16px 18px}.cpFav147Chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}.cpFav147Chips span{padding:7px 10px;border:1px solid #1d3528;border-radius:99px;background:#0d1912;font-size:9px}.cpFav147Empty{padding:28px 18px;text-align:center;border:1px dashed #24362e;border-radius:14px;color:#89968f}.cpFav147Empty b{display:block;color:#fff;margin-bottom:5px}
-      .cpFav147Day{margin-top:12px}.cpFav147DayTitle{display:flex;justify-content:space-between;margin-bottom:7px}.cpFav147DayTitle b{color:#70ff32;font-size:10px}.cpFav147DayTitle span{color:#7f8d86;font-size:8px}.cpFav147Game{display:grid;grid-template-columns:1.4fr .6fr .9fr;gap:10px;align-items:center;padding:12px;margin-bottom:7px;border:1px solid #172820;border-radius:12px;background:#09110d}.cpFav147Game strong{display:block;font-size:11px}.cpFav147Game .teams span{display:block;color:#96a39c;font-size:9px;margin-top:3px}.cpFav147Game .when{text-align:center}.cpFav147Game .when small{display:block;color:#70ff32;font-size:6px;font-weight:950}.cpFav147Game .league{text-align:right;color:#89968f;font-size:8px}
-      @media(max-width:980px){.cpFav147Overlay{padding:0;align-items:flex-end}.cpFav147Box{width:100%;max-width:520px;max-height:88dvh;border-radius:22px 22px 0 0}.cpFav147Summary{padding:12px}.cpFav147Body{padding:0 12px 18px}.cpFav147Game{grid-template-columns:1.35fr .55fr}.cpFav147Game .league{grid-column:1/-1;text-align:left}.v110Quick button.cpFav147Host{position:relative}.v110Quick .cpFav147Badge{position:absolute;top:6px;right:7px;margin:0}}
-    `;document.head.appendChild(s);
-  }
-  function desktop(){return [...document.querySelectorAll(".sidebar-nav .side-item")].find(x=>norm(x.querySelector("b")?.textContent||x.textContent)==="favoritos")||null}
-  function mobile(){return [...document.querySelectorAll("#cpNewMobileV110 .v110Quick button,.v110Quick button")].find(x=>norm(x.querySelector("b")?.textContent)==="favoritos")||null}
-  function paint(alerts=[]){style();for(const h of [desktop(),mobile()].filter(Boolean)){h.classList.add("cpFav147Host");let b=h.querySelector(".cpFav147Badge");if(!alerts.length){b?.remove();continue}if(!b){b=document.createElement("span");b.className="cpFav147Badge";h.appendChild(b)}b.textContent=String(alerts.length);b.classList.toggle("tomorrow",alerts.some(x=>x.offset===1));const f=alerts[0];h.title=`${alerts.length} favorito(s) joga(m) em casa. Próximo: ${f.home} x ${f.away} • ${day(f.offset)} ${f.time}`}}
-  function overlay(){style();let o=document.getElementById("cpFav147Overlay");if(o)return o;o=document.createElement("section");o.id="cpFav147Overlay";o.className="cpFav147Overlay";o.innerHTML=`<div class="cpFav147Box"><header class="cpFav147Head"><i>☆</i><div><small>SEUS TIMES</small><h2>Favoritos</h2></div><button class="cpFav147Close" data-cpfav-close type="button">×</button></header><div id="cpFav147Content"></div></div>`;document.body.appendChild(o);return o}
-  function close(){const o=document.getElementById("cpFav147Overlay");o?.classList.remove("open")}
-  function render(alerts=[]){const o=overlay(),body=o.querySelector("#cpFav147Content"),f=[...favorites().values()],groups=new Map();alerts.forEach(a=>{if(!groups.has(a.offset))groups.set(a.offset,[]);groups.get(a.offset).push(a)});body.innerHTML=`<div class="cpFav147Summary"><div><small>TIMES FAVORITOS</small><b>${f.length}</b></div><div><small>EM CASA HOJE</small><b>${alerts.filter(x=>x.offset===0).length}</b></div><div><small>EM CASA AMANHÃ</small><b>${alerts.filter(x=>x.offset===1).length}</b></div></div><div class="cpFav147Body">${f.length?`<div class="cpFav147Chips">${f.map(n=>`<span>☆ ${esc(n)}</span>`).join("")}</div>`:""}${!f.length?'<div class="cpFav147Empty"><b>Nenhum time favoritado.</b>Clique na estrela de um time para adicioná-lo.</div>':!alerts.length?'<div class="cpFav147Empty"><b>Nenhum favorito joga em casa nos próximos dias.</b>O alerta aparecerá automaticamente.</div>':[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([off,list])=>`<section class="cpFav147Day"><div class="cpFav147DayTitle"><b>${day(Number(off))}</b><span>${list.length} jogo(s)</span></div>${list.map(x=>`<article class="cpFav147Game"><div class="teams"><strong>${esc(x.home)}</strong><span>x ${esc(x.away)}</span></div><div class="when"><b>${esc(x.time)}</b><small>EM CASA</small></div><div class="league">${esc(x.league)}</div></article>`).join("")}</section>`).join("")}</div>`}
+function favorites(){ const m=new Map(); for(const key of scopedKeys()){
+try{ const a=JSON.parse(localStorage.getItem(key)\|\|"\[\]");
+if(!Array.isArray(a))continue; for(const x of a){ const
+name=clean(typeof x==="string"?x:(x?.name??x?.team??x?.team_name));
+const k=norm(name);if(k&&!m.has(k))m.set(k,name); } }catch{} } return m;
+} function ymd(off=0){const d=new
+Date();d.setDate(d.getDate()+off);try{const p=new
+Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d),o=Object.fromEntries(p.map(x=\>\[x.type,x.value\]));return
+`${o.year}-${o.month}-${o.day}`}catch{return
+d.toISOString().slice(0,10)}} function
+day(off){if(off===0)return"HOJE";if(off===1)return"AMANHÃ";const
+\[Y,M,D\]=ymd(off).split("-").map(Number);try{return new
+Intl.DateTimeFormat("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",timeZone:"America/Manaus"}).format(new
+Date(Y,M-1,D,12)).replace(".","").toUpperCase()}catch{return ymd(off)}}
+const raw=g=\>g?.raw\|\|g\|\|{}; function home(g){const r=raw(g);return
+clean(g?.casa??g?.home??g?.home_name??g?.home_team??g?.match_hometeam_name??r?.casa??r?.home??r?.match_hometeam_name)}
+function away(g){const r=raw(g);return
+clean(g?.fora??g?.away??g?.away_name??g?.away_team??g?.match_awayteam_name??r?.fora??r?.away??r?.match_awayteam_name)}
+function hour(g){const r=raw(g);return
+clean(g?.hora??g?.time??g?.match_time??r?.hora??r?.time??r?.match_time)\|\|"--:--"}
+function league(g){const
+r=raw(g),x=g?.liga??g?.league_name??g?.league??r?.liga??r?.league_name??r?.league;return
+clean(typeof x==="object"?(x?.name??x?.league_name):x)\|\|"Liga"}
+function extract(p,seen=new Set()){ if(Array.isArray(p))return
+p.filter(x=\>x&&typeof x==="object"); if(!p\|\|typeof
+p!=="object"\|\|seen.has(p))return\[\];seen.add(p); for(const k of
+\["games","jogos","matches","fixtures","events","data","items","results","response","quentes","mercados","list","top","top6"\]){const
+v=p\[k\];if(Array.isArray(v)&&v.length)return v.filter(x=\>x&&typeof
+x==="object")} for(const v of Object.values(p)){if(v&&typeof
+v==="object"){const a=extract(v,seen);if(a.length)return a}} return\[\];
+} function same(name,map){const n=norm(name);if(!n)return
+false;if(map.has(n))return true;for(const k of
+map.keys())if(k.length\>=5&&n.length\>=5&&(n.includes(k)\|\|k.includes(n)))return
+true;return false} async function fetchDay(date){ for(const url of
+\[`/mercados?date=${encodeURIComponent(date)}&_fav147=1&t=${Date.now()}`,`/quentes?date=${encodeURIComponent(date)}&_fav147=1&ai=0&t=${Date.now()}`\]){
+let tm=null; try{const c=new
+AbortController();tm=setTimeout(()=\>c.abort(),10000);const r=await
+fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:c.signal});clearTimeout(tm);tm=null;if(!r.ok)continue;const
+a=extract(await r.json());if(a.length)return
+a}catch{}finally{if(tm)clearTimeout(tm)} } return\[\]; } function
+getCache(){const k=cacheKey();if(!k)return null;try{const
+c=JSON.parse(localStorage.getItem(k)\|\|"null");return
+c&&Date.now()-Number(c.at\|\|0)\<TTL&&Array.isArray(c.alerts)?c.alerts:null}catch{return
+null}} function setCache(alerts){const
+k=cacheKey();if(!k)return;try{localStorage.setItem(k,JSON.stringify({at:Date.now(),alerts}))}catch{}}
+
+function style(){ if(document.getElementById("cpFav147Style"))return;
+const
+s=document.createElement("style");s.id="cpFav147Style";s.textContent=`.cpFav147Badge{margin-left:auto;min-width:20px;height:19px;padding:0 6px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;background:#70ff32;color:#061006;font-size:9px;font-weight:950;box-shadow:0 0 12px rgba(112,255,50,.28)}       .cpFav147Badge.tomorrow{background:#ffd348;color:#161000}.cpFav147Host{display:flex!important;align-items:center!important;gap:8px!important}       .cpFav147Overlay{position:fixed;inset:0;z-index:2147483600;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78);backdrop-filter:blur(8px)}.cpFav147Overlay.open{display:flex}       .cpFav147Box{width:min(680px,96vw);max-height:88vh;overflow:auto;border:1px solid #1c3528;border-radius:18px;background:linear-gradient(180deg,#0b1410,#050907);color:#fff;box-shadow:0 30px 90px #000}       .cpFav147Head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:16px 18px;background:#08100c;border-bottom:1px solid #17291f}.cpFav147Head i{font-style:normal;color:#70ff32;font-size:24px}.cpFav147Head div{flex:1}.cpFav147Head small{display:block;color:#70ff32;font-size:8px;font-weight:950}.cpFav147Head h2{margin:2px 0 0;font-size:20px}.cpFav147Close{width:38px;height:38px;border:1px solid #24362e;border-radius:11px;background:#0c1511;color:#fff;font-size:22px}       .cpFav147Summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px}.cpFav147Summary div{padding:12px;border:1px solid #182a21;border-radius:12px;background:#0b1410}.cpFav147Summary small{display:block;color:#849189;font-size:7px;font-weight:900}.cpFav147Summary b{display:block;margin-top:4px;color:#70ff32;font-size:19px}       .cpFav147Body{padding:0 16px 18px}.cpFav147Chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}.cpFav147Chips span{padding:7px 10px;border:1px solid #1d3528;border-radius:99px;background:#0d1912;font-size:9px}.cpFav147Empty{padding:28px 18px;text-align:center;border:1px dashed #24362e;border-radius:14px;color:#89968f}.cpFav147Empty b{display:block;color:#fff;margin-bottom:5px}       .cpFav147Day{margin-top:12px}.cpFav147DayTitle{display:flex;justify-content:space-between;margin-bottom:7px}.cpFav147DayTitle b{color:#70ff32;font-size:10px}.cpFav147DayTitle span{color:#7f8d86;font-size:8px}.cpFav147Game{display:grid;grid-template-columns:1.4fr .6fr .9fr;gap:10px;align-items:center;padding:12px;margin-bottom:7px;border:1px solid #172820;border-radius:12px;background:#09110d}.cpFav147Game strong{display:block;font-size:11px}.cpFav147Game .teams span{display:block;color:#96a39c;font-size:9px;margin-top:3px}.cpFav147Game .when{text-align:center}.cpFav147Game .when small{display:block;color:#70ff32;font-size:6px;font-weight:950}.cpFav147Game .league{text-align:right;color:#89968f;font-size:8px}       @media(max-width:980px){.cpFav147Overlay{padding:0;align-items:flex-end}.cpFav147Box{width:100%;max-width:520px;max-height:88dvh;border-radius:22px 22px 0 0}.cpFav147Summary{padding:12px}.cpFav147Body{padding:0 12px 18px}.cpFav147Game{grid-template-columns:1.35fr .55fr}.cpFav147Game .league{grid-column:1/-1;text-align:left}.v110Quick button.cpFav147Host{position:relative}.v110Quick .cpFav147Badge{position:absolute;top:6px;right:7px;margin:0}}`;document.head.appendChild(s);
+} function desktop(){return \[...document.querySelectorAll(".sidebar-nav
+.side-item")\].find(x=\>norm(x.querySelector("b")?.textContent\|\|x.textContent)==="favoritos")\|\|null}
+function mobile(){return
+\[...document.querySelectorAll("#cpNewMobileV110 .v110Quick
+button,.v110Quick
+button")\].find(x=\>norm(x.querySelector("b")?.textContent)==="favoritos")\|\|null}
+function paint(alerts=\[\]){style();for(const h of
+\[desktop(),mobile()\].filter(Boolean)){h.classList.add("cpFav147Host");let
+b=h.querySelector(".cpFav147Badge");if(!alerts.length){b?.remove();continue}if(!b){b=document.createElement("span");b.className="cpFav147Badge";h.appendChild(b)}b.textContent=String(alerts.length);b.classList.toggle("tomorrow",alerts.some(x=\>x.offset===1));const
+f=alerts\[0\];h.title=`${alerts.length} favorito(s) joga(m) em casa. Próximo: ${f.home} x ${f.away} • ${day(f.offset)} ${f.time}`}}
+function overlay(){style();let
+o=document.getElementById("cpFav147Overlay");if(o)return
+o;o=document.createElement("section");o.id="cpFav147Overlay";o.className="cpFav147Overlay";o.innerHTML=`<div class="cpFav147Box"><header class="cpFav147Head"><i>☆</i><div><small>SEUS TIMES</small><h2>Favoritos</h2></div><button class="cpFav147Close" data-cpfav-close type="button">×</button></header><div id="cpFav147Content"></div></div>`;document.body.appendChild(o);return
+o} function close(){const
+o=document.getElementById("cpFav147Overlay");o?.classList.remove("open")}
+function render(alerts=\[\]){const
+o=overlay(),body=o.querySelector("#cpFav147Content"),f=\[...favorites().values()\],groups=new
+Map();alerts.forEach(a=\>{if(!groups.has(a.offset))groups.set(a.offset,\[\]);groups.get(a.offset).push(a)});body.innerHTML=`<div class="cpFav147Summary"><div><small>TIMES FAVORITOS</small><b>${f.length}</b></div><div><small>EM CASA HOJE</small><b>${alerts.filter(x=>x.offset===0).length}</b></div><div><small>EM CASA AMANHÃ</small><b>${alerts.filter(x=>x.offset===1).length}</b></div></div><div class="cpFav147Body">${f.length?`
+
+::: cpFav147Chips
+\${f.map(n=\>`<span>☆ ${esc(n)}</span>`).join("")}
+:::
+
+`:""}${!f.length?'<div class="cpFav147Empty"><b>Nenhum time favoritado.</b>Clique na estrela de um time para adicioná-lo.</div>':!alerts.length?'<div class="cpFav147Empty"><b>Nenhum favorito joga em casa nos próximos dias.</b>O alerta aparecerá automaticamente.</div>':[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([off,list])=>`
+```{=html}
+<section class="cpFav147Day">
+```
+::: cpFav147DayTitle
+`<b>`{=html}${day(Number(off))}</b><span>${list.length}
+jogo(s)`</span>`{=html}
+:::
+
+${list.map(x=>`<article class="cpFav147Game"><div class="teams"><strong>${esc(x.home)}`</strong>`{=html}`<span>`{=html}x
+${esc(x.away)}</span></div><div class="when"><b>${esc(x.time)}`</b>`{=html}`<small>`{=html}EM
+CASA`</small>`{=html}
+```{=html}
+</div>
+```
+```{=html}
+<div class="league">
+```
+${esc(x.league)}</div></article>`).join("")}</section>`).join("")}</div>`}
   function open(){const o=overlay(),a=getCache()||window.__cpFav147Alerts||[];render(a);o.classList.add("open");schedule(true,true)}
   async function refresh(force=false,rerender=false){
     if(busy)return;const fav=favorites();if(!fav.size){setCache([]);window.__cpFav147Alerts=[];paint([]);if(rerender)render([]);return}
     if(!force){const c=getCache();if(c){window.__cpFav147Alerts=c;paint(c);if(rerender)render(c);return}}
-    busy=true;try{const alerts=[],seen=new Set();for(let off=0;off<4;off++){const games=await fetchDay(ymd(off));for(const g of games){const h=home(g);if(!same(h,fav))continue;const a=away(g),k=`${off}|${norm(h)}|${norm(a)}|${hour(g)}`;if(seen.has(k))continue;seen.add(k);alerts.push({offset:off,home:h,away:a,time:hour(g),league:league(g)})}}alerts.sort((a,b)=>a.offset-b.offset||String(a.time).localeCompare(String(b.time)));setCache(alerts);window.__cpFav147Alerts=alerts;paint(alerts);if(rerender)render(alerts)}finally{busy=false}}
-  function schedule(force=false,rerender=false){clearTimeout(timer);timer=setTimeout(()=>refresh(force,rerender),force?450:1500)}
+    busy=true;try{const alerts=[],seen=new Set();for(let off=0;off<4;off++){const games=await fetchDay(ymd(off));for(const g of games){const h=home(g);if(!same(h,fav))continue;const a=away(g),k=`${off}\|${norm(h)}|${norm(a)}\|\${hour(g)}\`;if(seen.has(k))continue;seen.add(k);alerts.push({offset:off,home:h,away:a,time:hour(g),league:league(g)})}}alerts.sort((a,b)=\>a.offset-b.offset\|\|String(a.time).localeCompare(String(b.time)));setCache(alerts);window.\_\_cpFav147Alerts=alerts;paint(alerts);if(rerender)render(alerts)}finally{busy=false}}
+function
+schedule(force=false,rerender=false){clearTimeout(timer);timer=setTimeout(()=\>refresh(force,rerender),force?450:1500)}
 
-  document.addEventListener("click",e=>{
-    const d=desktop(),m=mobile();
-    if((d&&d.contains(e.target))||(m&&m.contains(e.target))){e.preventDefault();e.stopPropagation();open();return}
-    if(e.target.closest?.("[data-cpfav-close]")){e.preventDefault();close();return}
-    const o=document.getElementById("cpFav147Overlay");if(o&&e.target===o){close();return}
-    if(e.target.closest?.("[data-v110-fav-team],[data-cpd3-fav],[data-cpd3-hero-fav],[data-cpr-match-fav],[data-cpr-fav],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav")){try{const k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}
-  },true);
-  document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
-  window.addEventListener("storage",e=>{if(scopedKeys().includes(e.key)){try{const k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}});
+document.addEventListener("click",e=\>{ const d=desktop(),m=mobile();
+if((d&&d.contains(e.target))\|\|(m&&m.contains(e.target))){e.preventDefault();e.stopPropagation();open();return}
+if(e.target.closest?.("\[data-cpfav-close\]")){e.preventDefault();close();return}
+const
+o=document.getElementById("cpFav147Overlay");if(o&&e.target===o){close();return}
+if(e.target.closest?.("\[data-v110-fav-team\],\[data-cpd3-fav\],\[data-cpd3-hero-fav\],\[data-cpr-match-fav\],\[data-cpr-fav\],.premiumFavoriteBtn,.mcFavBtn,.cpMatchTeamFav,.v110Fav,.cpd3Fav")){try{const
+k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}
+},true);
+document.addEventListener("keydown",e=\>{if(e.key==="Escape")close()});
+window.addEventListener("storage",e=\>{if(scopedKeys().includes(e.key)){try{const
+k=cacheKey();if(k)localStorage.removeItem(k)}catch{};schedule(true,false)}});
 
-  window.addEventListener("cornerpro:auth-user",()=>{
-    window.__cpFav147Alerts=[];
-    paint([]);
-    schedule(true,false);
-  });
+window.addEventListener("cornerpro:auth-user",()=\>{
+window.\_\_cpFav147Alerts=\[\]; paint(\[\]); schedule(true,false); });
 
-  // Sem observer: não cria ciclo de DOM e não bloqueia o card principal do app.
-  style();const c=getCache();if(c){window.__cpFav147Alerts=c;setTimeout(()=>paint(c),250)}
-  setTimeout(()=>{paint(window.__cpFav147Alerts||[]);schedule(false,false)},2500);
-  setInterval(()=>schedule(true,false),15*60*1000);
-})();
+// Sem observer: não cria ciclo de DOM e não bloqueia o card principal
+do app. style();const
+c=getCache();if(c){window.\_\_cpFav147Alerts=c;setTimeout(()=\>paint(c),250)}
+setTimeout(()=\>{paint(window.\_\_cpFav147Alerts\|\|\[\]);schedule(false,false)},2500);
+setInterval(()=\>schedule(true,false),15*60*1000); })();
 
-/* =========================================================
-   CORNERPRO DESKTOP V162 — ENTRAR / CRIAR CONTA
-   SOMENTE DESKTOP (min-width:981px)
-   - Abre o modal já existente no HTML.
-   - Google, e-mail/senha, cadastro e recuperação de senha.
-   - Sincroniza usuário com /auth/firebase e /auth/me.
-   - Não altera MOBILE nem motores/mercados.
-   ========================================================= */
-(function cornerProDesktopAccountV162(){
-  "use strict";
+/\* ========================================================= CORNERPRO
+DESKTOP V162 --- ENTRAR / CRIAR CONTA SOMENTE DESKTOP
+(min-width:981px) - Abre o modal já existente no HTML. - Google,
+e-mail/senha, cadastro e recuperação de senha. - Sincroniza usuário com
+/auth/firebase e /auth/me. - Não altera MOBILE nem motores/mercados.
+========================================================= \*/ (function
+cornerProDesktopAccountV162(){ "use strict";
 
-  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__CP_DESKTOP_ACCOUNT_V162__) return;
-  window.__CP_DESKTOP_ACCOUNT_V162__ = true;
+if (!window.matchMedia \|\|
+!window.matchMedia("(min-width:981px)").matches) return; if
+(window.\_\_CP_DESKTOP_ACCOUNT_V162\_\_) return;
+window.\_\_CP_DESKTOP_ACCOUNT_V162\_\_ = true;
 
-  let api = null;
-  let mode = "login";
-  let busy = false;
+let api = null; let mode = "login"; let busy = false;
 
-  const $ = (s, r=document) => r.querySelector(s);
+const \$ = (s, r=document) =\> r.querySelector(s);
 
-  function els(){
-    return {
-      modal: $("#cpAuthModal"),
-      title: $("#cpAuthModalTitle"),
-      subtitle: $("#cpAuthModalSubtitle"),
-      tabLogin: $("#cpAuthTabLogin"),
-      tabRegister: $("#cpAuthTabRegister"),
-      google: $("#cpAuthGoogle"),
-      form: $("#cpAuthForm"),
-      nameWrap: $("#cpAuthNameWrap"),
-      name: $("#cpAuthName"),
-      email: $("#cpAuthEmail"),
-      password: $("#cpAuthPassword"),
-      confirmWrap: $("#cpAuthConfirmWrap"),
-      confirm: $("#cpAuthPasswordConfirm"),
-      forgot: $("#cpAuthForgot"),
-      submit: $("#cpAuthSubmit"),
-      submitText: $("#cpAuthSubmit span"),
-      switchText: $("#cpAuthSwitchText"),
-      switchBtn: $("#cpAuthSwitchButton"),
-      message: $("#cpAuthFormMessage")
-    };
-  }
+function els(){ return { modal: \$("#cpAuthModal"), title:
+\$("#cpAuthModalTitle"), subtitle: \$("#cpAuthModalSubtitle"), tabLogin:
+\$("#cpAuthTabLogin"), tabRegister: \$("#cpAuthTabRegister"), google:
+\$("#cpAuthGoogle"), form: \$("#cpAuthForm"), nameWrap:
+\$("#cpAuthNameWrap"), name: \$("#cpAuthName"), email:
+\$("#cpAuthEmail"), password: \$("#cpAuthPassword"), confirmWrap:
+\$("#cpAuthConfirmWrap"), confirm: \$("#cpAuthPasswordConfirm"), forgot:
+\$("#cpAuthForgot"), submit: \$("#cpAuthSubmit"), submitText:
+\$("#cpAuthSubmit span"), switchText: \$("#cpAuthSwitchText"),
+switchBtn: \$("#cpAuthSwitchButton"), message: \$("#cpAuthFormMessage")
+}; }
 
-  function message(msg="", type="error"){
-    const box = els().message;
-    if (!box) return;
-    box.textContent = msg;
-    box.hidden = !msg;
-    if (msg) box.dataset.type = type;
-    else box.removeAttribute("data-type");
-  }
+function message(msg="", type="error"){ const box = els().message; if
+(!box) return; box.textContent = msg; box.hidden = !msg; if (msg)
+box.dataset.type = type; else box.removeAttribute("data-type"); }
 
-  function openModal(){
-    const e = els();
-    if (!e.modal) return;
-    setMode("login");
-    message("");
-    e.modal.hidden = false;
-    e.modal.setAttribute("aria-hidden","false");
-    document.body.classList.add("cpAuthModalOpen");
-    setTimeout(() => e.email?.focus(), 80);
-  }
+function openModal(){ const e = els(); if (!e.modal) return;
+setMode("login"); message(""); e.modal.hidden = false;
+e.modal.setAttribute("aria-hidden","false");
+document.body.classList.add("cpAuthModalOpen"); setTimeout(() =\>
+e.email?.focus(), 80); }
 
-  function closeModal(){
-    const e = els();
-    if (!e.modal) return;
-    e.modal.hidden = true;
-    e.modal.setAttribute("aria-hidden","true");
-    document.body.classList.remove("cpAuthModalOpen");
-    message("");
-  }
+function closeModal(){ const e = els(); if (!e.modal) return;
+e.modal.hidden = true; e.modal.setAttribute("aria-hidden","true");
+document.body.classList.remove("cpAuthModalOpen"); message(""); }
 
-  function setMode(next){
-    mode = next === "register" ? "register" : "login";
-    const reg = mode === "register";
-    const e = els();
+function setMode(next){ mode = next === "register" ? "register" :
+"login"; const reg = mode === "register"; const e = els();
 
     e.tabLogin?.classList.toggle("active", !reg);
     e.tabRegister?.classList.toggle("active", reg);
@@ -31093,18 +30882,15 @@ const fallbackSide = target > 0
     if (e.switchBtn) e.switchBtn.textContent = reg ? "Entrar" : "Criar conta";
 
     message("");
-  }
 
-  function setBusy(value){
-    busy = !!value;
-    const e = els();
-    [e.google,e.submit,e.tabLogin,e.tabRegister,e.switchBtn,e.forgot]
-      .filter(Boolean).forEach(btn => btn.disabled = busy);
-  }
+}
 
-  async function syncServer(user, force=false){
-    if (!user) return null;
-    const token = await user.getIdToken(force);
+function setBusy(value){ busy = !!value; const e = els();
+\[e.google,e.submit,e.tabLogin,e.tabRegister,e.switchBtn,e.forgot\]
+.filter(Boolean).forEach(btn =\> btn.disabled = busy); }
+
+async function syncServer(user, force=false){ if (!user) return null;
+const token = await user.getIdToken(force);
 
     const login = await fetch("/auth/firebase", {
       method:"POST",
@@ -31123,15 +30909,14 @@ const fallbackSide = target > 0
     if (!me.ok) throw new Error(meData?.error || "Falha ao carregar seu perfil.");
 
     return {...meData, user:meData?.user || loginData?.user || null};
-  }
 
-  function paintDesktopUser(user, profile=null){
-    const loginButton = $("#btnGoogleLogin");
-    const profileBox = $("#authUserProfile");
-    const photo = $("#authUserPhoto");
-    const name = $("#authUserName");
-    const plan = $("#authUserPlan");
-    const premium = profile?.premium === true || profile?.user?.premium === true;
+}
+
+function paintDesktopUser(user, profile=null){ const loginButton =
+\$("#btnGoogleLogin"); const profileBox = \$("#authUserProfile"); const
+photo = \$("#authUserPhoto"); const name = \$("#authUserName"); const
+plan = \$("#authUserPlan"); const premium = profile?.premium === true
+\|\| profile?.user?.premium === true;
 
     if (!user){
       if (loginButton){
@@ -31161,33 +30946,23 @@ const fallbackSide = target > 0
         photo.removeAttribute("src");
       }
     }
-  }
 
-  async function googleLogin(){
-    if (busy || !api) return;
-    setBusy(true);
-    message("");
-    try{
-      const result = await api.entrarComGoogle();
-      const user = result?.usuario || result?.user || api.firebaseAuth?.currentUser;
-      if (!user) throw new Error("Não foi possível confirmar sua conta Google.");
-      const profile = await syncServer(user, true);
-      paintDesktopUser(user, profile);
-      closeModal();
-    }catch(err){
-      message(err?.message || "Não foi possível entrar com o Google.");
-    }finally{
-      setBusy(false);
-    }
-  }
+}
 
-  async function submitEmail(){
-    if (busy || !api) return;
-    const e = els();
-    const nome = String(e.name?.value || "").trim();
-    const email = String(e.email?.value || "").trim();
-    const senha = String(e.password?.value || "");
-    const confirmar = String(e.confirm?.value || "");
+async function googleLogin(){ if (busy \|\| !api) return; setBusy(true);
+message(""); try{ const result = await api.entrarComGoogle(); const user
+= result?.usuario \|\| result?.user \|\| api.firebaseAuth?.currentUser;
+if (!user) throw new Error("Não foi possível confirmar sua conta
+Google."); const profile = await syncServer(user, true);
+paintDesktopUser(user, profile); closeModal(); }catch(err){
+message(err?.message \|\| "Não foi possível entrar com o Google.");
+}finally{ setBusy(false); } }
+
+async function submitEmail(){ if (busy \|\| !api) return; const e =
+els(); const nome = String(e.name?.value \|\| "").trim(); const email =
+String(e.email?.value \|\|"").trim(); const senha =
+String(e.password?.value \|\|""); const confirmar =
+String(e.confirm?.value \|\|"");
 
     if (!email) return message("Digite seu e-mail.");
     if (!senha) return message("Digite sua senha.");
@@ -31216,12 +30991,12 @@ const fallbackSide = target > 0
     }finally{
       setBusy(false);
     }
-  }
 
-  async function forgotPassword(){
-    if (busy || !api) return;
-    const email = String(els().email?.value || "").trim();
-    if (!email) return message("Digite seu e-mail para redefinir a senha.");
+}
+
+async function forgotPassword(){ if (busy \|\| !api) return; const email
+= String(els().email?.value \|\| "").trim(); if (!email) return
+message("Digite seu e-mail para redefinir a senha.");
 
     setBusy(true);
     try{
@@ -31232,25 +31007,18 @@ const fallbackSide = target > 0
     }finally{
       setBusy(false);
     }
-  }
 
-  async function logout(){
-    if (busy || !api) return;
-    setBusy(true);
-    try{
-      await api.sairDaConta();
-      paintDesktopUser(null);
-    }catch(err){
-      console.error("[Desktop V162 logout]", err);
-    }finally{
-      setBusy(false);
-    }
-  }
+}
 
-  /* Captura antes do bridge legado: o botão do desktop passa a ABRIR O MODAL,
-     em vez de disparar o Google imediatamente. */
-  document.addEventListener("click", function(ev){
-    if (!window.matchMedia("(min-width:981px)").matches) return;
+async function logout(){ if (busy \|\| !api) return; setBusy(true); try{
+await api.sairDaConta(); paintDesktopUser(null); }catch(err){
+console.error("\[Desktop V162 logout\]", err); }finally{ setBusy(false);
+} }
+
+/\* Captura antes do bridge legado: o botão do desktop passa a ABRIR O
+MODAL, em vez de disparar o Google imediatamente. \*/
+document.addEventListener("click", function(ev){ if
+(!window.matchMedia("(min-width:981px)").matches) return;
 
     if (ev.target.closest("#btnGoogleLogin")){
       ev.preventDefault();
@@ -31288,23 +31056,18 @@ const fallbackSide = target > 0
     if (ev.target.closest("#btnGoogleLogout")){
       ev.preventDefault(); ev.stopImmediatePropagation(); logout(); return;
     }
-  }, true);
 
-  document.addEventListener("submit", function(ev){
-    if (!window.matchMedia("(min-width:981px)").matches) return;
-    if (ev.target?.id !== "cpAuthForm") return;
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    submitEmail();
-  }, true);
+}, true);
 
-  document.addEventListener("keydown", function(ev){
-    if (ev.key === "Escape" && !els().modal?.hidden) closeModal();
-  });
+document.addEventListener("submit", function(ev){ if
+(!window.matchMedia("(min-width:981px)").matches) return; if
+(ev.target?.id !== "cpAuthForm") return; ev.preventDefault();
+ev.stopImmediatePropagation(); submitEmail(); }, true);
 
-  async function init(){
-    try{
-      api = await import("./firebase-client.js");
+document.addEventListener("keydown", function(ev){ if (ev.key ===
+"Escape" && !els().modal?.hidden) closeModal(); });
+
+async function init(){ try{ api = await import("./firebase-client.js");
 
       if (typeof api.observarAutenticacao === "function"){
         api.observarAutenticacao(async state => {
@@ -31327,44 +31090,37 @@ const fallbackSide = target > 0
       const btn = $("#btnGoogleLogin");
       if (btn) btn.disabled = true;
     }
-  }
 
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", init, {once:true});
-  }else{
-    init();
-  }
-})();
+}
 
+if (document.readyState === "loading"){
+document.addEventListener("DOMContentLoaded", init, {once:true}); }else{
+init(); } })();
 
-/* =========================================================
-   CORNERPRO DESKTOP V163 — FAILSAFE DO BOTÃO DE CONTA
-   Somente desktop. Impede módulos legados de desabilitarem
-   novamente #btnGoogleLogin e garante clique no modal.
-   ========================================================= */
-(function cornerProDesktopAuthButtonFailsafeV163(){
-  "use strict";
-  if (!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if (window.__CP_DESKTOP_AUTH_FAILSAFE_V163__) return;
-  window.__CP_DESKTOP_AUTH_FAILSAFE_V163__ = true;
+/\* ========================================================= CORNERPRO
+DESKTOP V163 --- FAILSAFE DO BOTÃO DE CONTA Somente desktop. Impede
+módulos legados de desabilitarem novamente #btnGoogleLogin e garante
+clique no modal.
+========================================================= \*/ (function
+cornerProDesktopAuthButtonFailsafeV163(){ "use strict"; if
+(!window.matchMedia \|\|
+!window.matchMedia("(min-width:981px)").matches) return; if
+(window.\_\_CP_DESKTOP_AUTH_FAILSAFE_V163\_\_) return;
+window.\_\_CP_DESKTOP_AUTH_FAILSAFE_V163\_\_ = true;
 
-  function unlockButton(){
-    const btn=document.getElementById("btnGoogleLogin");
-    if(!btn)return;
-    btn.disabled=false;
-    btn.removeAttribute("disabled");
-    btn.removeAttribute("aria-busy");
-    btn.style.setProperty("pointer-events","auto","important");
-    btn.style.setProperty("cursor","pointer","important");
-    btn.style.setProperty("opacity","1","important");
-    btn.style.setProperty("visibility","visible","important");
-    btn.style.setProperty("position","relative");
-    btn.style.setProperty("z-index","2147483000");
-  }
+function unlockButton(){ const
+btn=document.getElementById("btnGoogleLogin"); if(!btn)return;
+btn.disabled=false; btn.removeAttribute("disabled");
+btn.removeAttribute("aria-busy");
+btn.style.setProperty("pointer-events","auto","important");
+btn.style.setProperty("cursor","pointer","important");
+btn.style.setProperty("opacity","1","important");
+btn.style.setProperty("visibility","visible","important");
+btn.style.setProperty("position","relative");
+btn.style.setProperty("z-index","2147483000"); }
 
-  function openDesktopAuthModal(ev){
-    const btn=ev.target?.closest?.("#btnGoogleLogin");
-    if(!btn)return;
+function openDesktopAuthModal(ev){ const
+btn=ev.target?.closest?.("#btnGoogleLogin"); if(!btn)return;
 
     ev.preventDefault();
     ev.stopPropagation();
@@ -31395,81 +31151,65 @@ const fallbackSide = target > 0
     if(switcher)switcher.hidden=false;
     if(google)google.hidden=false;
     if(mobileAccount)mobileAccount.hidden=true;
-  }
 
-  // Captura antes de qualquer onclick/listener legado.
-  document.addEventListener("click",openDesktopAuthModal,true);
+}
 
-  // Se algum módulo tentar colocar disabled depois, desfaz na hora.
-  const observe=()=>{
-    const btn=document.getElementById("btnGoogleLogin");
-    if(!btn)return;
-    unlockButton();
-    new MutationObserver(unlockButton).observe(btn,{
-      attributes:true,
-      attributeFilter:["disabled","aria-busy","hidden"]
-    });
-  };
+// Captura antes de qualquer onclick/listener legado.
+document.addEventListener("click",openDesktopAuthModal,true);
 
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",observe,{once:true});
-  }else{
-    observe();
-  }
+// Se algum módulo tentar colocar disabled depois, desfaz na hora. const
+observe=()=\>{ const btn=document.getElementById("btnGoogleLogin");
+if(!btn)return; unlockButton(); new
+MutationObserver(unlockButton).observe(btn,{ attributes:true,
+attributeFilter:\["disabled","aria-busy","hidden"\] }); };
 
-  window.addEventListener("load",unlockButton);
-  setTimeout(unlockButton,100);
-  setTimeout(unlockButton,600);
-  setTimeout(unlockButton,1800);
-})();
-/* DESKTOP V170 — reforço da vitrine bloqueada.
-   A autenticação principal continua sendo controlada pelo gate V164/V168 do HTML.
-   Este trecho não roda no mobile. */
+if(document.readyState==="loading"){
+document.addEventListener("DOMContentLoaded",observe,{once:true});
+}else{ observe(); }
+
+window.addEventListener("load",unlockButton);
+setTimeout(unlockButton,100); setTimeout(unlockButton,600);
+setTimeout(unlockButton,1800); })(); /\* DESKTOP V170 --- reforço da
+vitrine bloqueada. A autenticação principal continua sendo controlada
+pelo gate V164/V168 do HTML. Este trecho não roda no mobile. \*/
 (function(){
-  if(!window.matchMedia?.('(min-width:981px)').matches)return;
-  document.addEventListener('click',function(ev){
-    if(!document.documentElement.classList.contains('cpAuthGateLocked'))return;
-    const teaser=ev.target.closest?.('.cpd3MarketNav button,.cpd3SubNav button,.cpd3LineNav button,[data-cpd3-market],[data-cpd3-line]');
-    if(!teaser)return;
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    document.getElementById('btnGoogleLogin')?.click();
-  },true);
-})();
+if(!window.matchMedia?.('(min-width:981px)').matches)return;
+document.addEventListener('click',function(ev){
+if(!document.documentElement.classList.contains('cpAuthGateLocked'))return;
+const teaser=ev.target.closest?.('.cpd3MarketNav button,.cpd3SubNav
+button,.cpd3LineNav button,\[data-cpd3-market\],\[data-cpd3-line\]');
+if(!teaser)return; ev.preventDefault(); ev.stopImmediatePropagation();
+document.getElementById('btnGoogleLogin')?.click(); },true); })();
 
-/* =========================================================
-   CORNERPRO DESKTOP V171 — LOGIN AO CLICAR EM QUALQUER MERCADO
-   Somente desktop.
-   - Antes do login, qualquer clique em mercado/linha (ex.: Gols Over 1.5)
-     abre imediatamente o modal de login.
-   - Impede trocar o mercado ou revelar resultados antes da autenticação.
-   - Depois do login, os cliques funcionam normalmente.
-   ========================================================= */
-(function cornerProDesktopMarketLoginGateV171(){
-  "use strict";
+/\* ========================================================= CORNERPRO
+DESKTOP V171 --- LOGIN AO CLICAR EM QUALQUER MERCADO Somente desktop. -
+Antes do login, qualquer clique em mercado/linha (ex.: Gols Over 1.5)
+abre imediatamente o modal de login. - Impede trocar o mercado ou
+revelar resultados antes da autenticação. - Depois do login, os cliques
+funcionam normalmente.
+========================================================= \*/ (function
+cornerProDesktopMarketLoginGateV171(){ "use strict";
 
-  if(!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if(window.__CP_DESKTOP_MARKET_LOGIN_GATE_V171__) return;
-  window.__CP_DESKTOP_MARKET_LOGIN_GATE_V171__ = true;
+if(!window.matchMedia \|\|
+!window.matchMedia("(min-width:981px)").matches) return;
+if(window.\_\_CP_DESKTOP_MARKET_LOGIN_GATE_V171\_\_) return;
+window.\_\_CP_DESKTOP_MARKET_LOGIN_GATE_V171\_\_ = true;
 
-  function userIsLoggedIn(){
-    const profile = document.getElementById("authUserProfile");
-    if(profile && profile.hidden === false) return true;
+function userIsLoggedIn(){ const profile =
+document.getElementById("authUserProfile"); if(profile && profile.hidden
+=== false) return true;
 
     const loginBtn = document.getElementById("btnGoogleLogin");
     if(loginBtn && loginBtn.hidden === true) return true;
 
     return false;
-  }
 
-  function openLoginModal(){
-    const loginBtn = document.getElementById("btnGoogleLogin");
-    if(loginBtn){
-      loginBtn.disabled = false;
-      loginBtn.removeAttribute("disabled");
-      loginBtn.click();
-      return;
-    }
+}
+
+function openLoginModal(){ const loginBtn =
+document.getElementById("btnGoogleLogin"); if(loginBtn){
+loginBtn.disabled = false; loginBtn.removeAttribute("disabled");
+loginBtn.click(); return; }
 
     const modal = document.getElementById("cpAuthModal");
     if(!modal) return;
@@ -31478,10 +31218,10 @@ const fallbackSide = target > 0
     modal.removeAttribute("hidden");
     modal.setAttribute("aria-hidden","false");
     document.body.classList.add("cpAuthModalOpen");
-  }
 
-  function isMarketInteraction(target){
-    if(!target?.closest) return false;
+}
+
+function isMarketInteraction(target){ if(!target?.closest) return false;
 
     return !!target.closest([
       ".cpd3MarketNav button",
@@ -31498,44 +31238,41 @@ const fallbackSide = target > 0
       "[data-premium-market]",
       ".premiumMarket"
     ].join(","));
-  }
 
-  document.addEventListener("click", function(ev){
-    if(!window.matchMedia("(min-width:981px)").matches) return;
-    if(userIsLoggedIn()) return;
-    if(!isMarketInteraction(ev.target)) return;
+}
+
+document.addEventListener("click", function(ev){
+if(!window.matchMedia("(min-width:981px)").matches) return;
+if(userIsLoggedIn()) return; if(!isMarketInteraction(ev.target)) return;
 
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation();
 
     openLoginModal();
-  }, true);
-})();
 
-/* =========================================================
-   CORNERPRO DESKTOP V172 — LOGIN IMEDIATO + MATCH CENTER VISÍVEL
-   Somente desktop.
-   - Captura o clique no WINDOW (antes de listeners antigos do document).
-   - Visitante: qualquer mercado/linha abre o login imediatamente.
-   - Match Center continua visível como vitrine, porém bloqueado.
-   - Não altera mobile nem motor da IA.
-   ========================================================= */
-(function cornerProDesktopGuestGateV172(){
-  "use strict";
+}, true); })();
 
-  if(!window.matchMedia || !window.matchMedia("(min-width:981px)").matches) return;
-  if(window.__CP_DESKTOP_GUEST_GATE_V172__) return;
-  window.__CP_DESKTOP_GUEST_GATE_V172__ = true;
+/\* ========================================================= CORNERPRO
+DESKTOP V172 --- LOGIN IMEDIATO + MATCH CENTER VISÍVEL Somente
+desktop. - Captura o clique no WINDOW (antes de listeners antigos do
+document). - Visitante: qualquer mercado/linha abre o login
+imediatamente. - Match Center continua visível como vitrine, porém
+bloqueado. - Não altera mobile nem motor da IA.
+========================================================= \*/ (function
+cornerProDesktopGuestGateV172(){ "use strict";
 
-  const root = document.documentElement;
+if(!window.matchMedia \|\|
+!window.matchMedia("(min-width:981px)").matches) return;
+if(window.\_\_CP_DESKTOP_GUEST_GATE_V172\_\_) return;
+window.\_\_CP_DESKTOP_GUEST_GATE_V172\_\_ = true;
 
-  function guestLocked(){
-    return root.classList.contains("cpAuthGateLocked");
-  }
+const root = document.documentElement;
 
-  function forceOpenLogin(){
-    root.classList.add("cpAuthGatePromptOpen");
+function guestLocked(){ return
+root.classList.contains("cpAuthGateLocked"); }
+
+function forceOpenLogin(){ root.classList.add("cpAuthGatePromptOpen");
 
     const modal = document.getElementById("cpAuthModal");
     if(modal){
@@ -31562,43 +31299,36 @@ const fallbackSide = target > 0
       if(google) google.hidden = false;
       if(mobileAccount) mobileAccount.hidden = true;
     }
-  }
 
-  function marketTarget(target){
-    if(!target?.closest) return null;
-    return target.closest([
-      "#cpDesktopExperienceV3 .cpd3MarketNav button",
-      "#cpDesktopExperienceV3 .cpd3SubNav button",
-      "#cpDesktopExperienceV3 .cpd3LineNav button",
-      "#cpDesktopExperienceV3 [data-cpd3-market]",
-      "#cpDesktopExperienceV3 [data-cpd3-line]",
-      "#cpDesktopExperienceV3 [data-market-line]",
-      "#cpDesktopExperienceV3 [data-analysis-line]",
-      "#cpDesktopExperienceV3 .marketInlineItem",
-      "#cpDesktopExperienceV3 .marketChipPremium",
-      "#cpDesktopExperienceV3 [data-premium-market]",
-      "#cpDesktopExperienceV3 .premiumMarket",
-      "#cpDesktopExperienceV3 .marketTab",
-      "#cpDesktopExperienceV3 .marketTabs button",
-      "#cpDesktopExperienceV3 .filterPills button"
-    ].join(","));
-  }
+}
 
-  /* WINDOW capture: roda antes dos listeners legados registrados no document. */
-  window.addEventListener("click", function(ev){
-    if(!window.matchMedia("(min-width:981px)").matches) return;
-    if(!guestLocked()) return;
-    if(!marketTarget(ev.target)) return;
+function marketTarget(target){ if(!target?.closest) return null; return
+target.closest(\[ "#cpDesktopExperienceV3 .cpd3MarketNav button",
+"#cpDesktopExperienceV3 .cpd3SubNav button", "#cpDesktopExperienceV3
+.cpd3LineNav button", "#cpDesktopExperienceV3 \[data-cpd3-market\]",
+"#cpDesktopExperienceV3 \[data-cpd3-line\]", "#cpDesktopExperienceV3
+\[data-market-line\]", "#cpDesktopExperienceV3 \[data-analysis-line\]",
+"#cpDesktopExperienceV3 .marketInlineItem", "#cpDesktopExperienceV3
+.marketChipPremium", "#cpDesktopExperienceV3 \[data-premium-market\]",
+"#cpDesktopExperienceV3 .premiumMarket", "#cpDesktopExperienceV3
+.marketTab", "#cpDesktopExperienceV3 .marketTabs button",
+"#cpDesktopExperienceV3 .filterPills button" \].join(",")); }
+
+/\* WINDOW capture: roda antes dos listeners legados registrados no
+document. \*/ window.addEventListener("click", function(ev){
+if(!window.matchMedia("(min-width:981px)").matches) return;
+if(!guestLocked()) return; if(!marketTarget(ev.target)) return;
 
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     forceOpenLogin();
-  }, true);
 
-  function guestRailMarkup(){
-    return `
-      <div class="cpGuestMatchRail" aria-hidden="true">
+}, true);
+
+function guestRailMarkup(){ return \`
+
+::: {.cpGuestMatchRail aria-hidden="true"}
         <div class="cpGuestRailHead">
           <strong><span>▮</span> MATCH CENTER</strong>
           <b>PRÉ-JOGO</b>
@@ -31624,11 +31354,12 @@ const fallbackSide = target > 0
           <small>Conteúdo exclusivo para usuários cadastrados.</small>
         </section>
       </div>`;
-  }
 
-  function syncGuestRail(){
-    const rail = document.getElementById("desktopMatchRail") || document.querySelector(".dashboardRightRail");
-    if(!rail) return;
+}
+
+function syncGuestRail(){ const rail =
+document.getElementById("desktopMatchRail") \|\|
+document.querySelector(".dashboardRightRail"); if(!rail) return;
 
     let guest = rail.querySelector(":scope > .cpGuestMatchRail");
     if(guestLocked()){
@@ -31636,10 +31367,10 @@ const fallbackSide = target > 0
     }else if(guest){
       guest.remove();
     }
-  }
 
-  function start(){
-    syncGuestRail();
+}
+
+function start(){ syncGuestRail();
 
     const observer = new MutationObserver(()=>{
       clearTimeout(window.__cpGuestRailV172Timer);
@@ -31651,8 +31382,178 @@ const fallbackSide = target > 0
     setTimeout(syncGuestRail,120);
     setTimeout(syncGuestRail,600);
     setTimeout(syncGuestRail,1800);
-  }
 
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",start,{once:true});
-  else start();
-})();
+}
+
+if(document.readyState === "loading")
+document.addEventListener("DOMContentLoaded",start,{once:true}); else
+start(); })();
+
+/\* ========================================================= CORNERPRO
+V173 --- PRÉ-JOGO DESKTOP DEFINITIVO Última definição vence as versões
+antigas do Match Center.
+========================================================= \*/
+(function(){ if(window.\_\_cpV173Pregame)return;
+window.\_\_cpV173Pregame=true; const
+oldUpdate=window.updateDesktopMatchRail; const
+e=v=\>String(v??"").replace(/\[&\<\>"'\]/g,c=\>({"&":"&","\<":"\<","\>":"\>",'"':"\"","'":"\'"}\[c\]));
+const n=v=\>{if(v===null\|\|v===undefined\|\|v==="")return null;const
+x=Number(String(v).replace("%","").replace(",","."));return
+Number.isFinite(x)?x:null}; const
+v=x=\>n(x)===null?"---":(Number.isInteger(n(x))?String(n(x)):n(x).toFixed(1));
+const p=x=\>n(x)===null?"---":Math.round(n(x))+"%"; const
+c=(x,f="---")=\>{const s=String(x??"").trim();return
+s&&s!=="undefined"&&s!=="null"?s:f};
+
+function kickoff(g,d){ const
+dt=c(d?.date??g?.match_date??g?.event_date??g?.date,""); const
+tm=c(d?.time??g?.match_time??g?.hora??g?.time,"");
+if(!/\^`\d{4}`{=tex}-`\d{2}`{=tex}-`\d{2}`{=tex}$/.test(dt)||!/^\d{1,2}:\d{2}/.test(tm))return null;
+    const z=new Date(`${dt}T${tm.slice(0,5)}:00-04:00`);
+    return Number.isNaN(z.getTime())?null:z;
+  }
+  function pre(g,d){
+    if(d?.pregame||d?.not_started===true)return true;
+    if(d?.finished===true)return false;
+    const k=kickoff(g,d);
+    if(k&&k.getTime()>Date.now()+30000)return true;
+    const s=String(g?.match_status??g?.status??g?.event_status??"").toLowerCase();
+    return /pré.?jogo|pre.?game|not started|scheduled|aguardando|\bns\b/.test(s);
+  }
+  function form(a){
+    a=Array.isArray(a)?a.slice(0,5):[];
+    return a.length?`<div class="cpV64Form">${a.map(x=\>{x=String(x\|\|"").toUpperCase();return
+`<i class="${x==="V"?"win":x==="D"?"loss":"draw"}">${e(x||"—")}</i>`}).join("")}
+:::
+
+`:`[Sem
+histórico]{.cpV64Muted}`;   }   function standing(name,s={}){     return`
+
+::: cpV64StandingLine
+::: cpV64StandingTeam
+`<b>`{=html}${e(name)}</b><small>${s.position?e(s.position)+"º
+lugar":"posição indisponível"}`</small>`{=html}
+:::
+
+<div>
+
+`<small>`{=html}PTS`</small>`{=html}`<b>`{=html}${v(s.points)}</b></div><div><small>J</small><b>${v(s.played)}`</b>`{=html}
+
+</div>
+
+<div>
+
+`<small>`{=html}V`</small>`{=html}`<b>`{=html}${v(s.wins)}</b></div><div><small>E</small><b>${v(s.draws)}`</b>`{=html}
+
+</div>
+
+<div>
+
+`<small>`{=html}D`</small>`{=html}`<b>`{=html}${v(s.losses)}</b></div></div>`;
+  }
+  function recent(label,name,r={}){
+    return `<div class="cpV64RecentTeam"><div class="cpV64RecentHead"><span>${label}`</span>`{=html}`<b>`{=html}${e(name)}</b>${form(r.form)}
+
+</div>
+
+::: cpV64Metrics
+<div>
+
+`<small>`{=html}Cantos a
+favor`</small>`{=html}`<b>`{=html}${v(r.corners_for_avg)}</b></div><div><small>Cantos cedidos</small><b>${v(r.corners_against_avg)}`</b>`{=html}
+
+</div>
+
+<div>
+
+`<small>`{=html}Média
+total`</small>`{=html}`<b>`{=html}${v(r.corners_total_avg)}</b></div><div><small>Over 9.5</small><b>${p(r.over95_rate)}`</b>`{=html}
+
+</div>
+:::
+:::
+
+`;   }   function render(rail,g,d){     const pg=d.pregame||{}, sh=pg?.standings?.home||{}, sa=pg?.standings?.away||{}, rh=pg?.recent?.home||{}, ra=pg?.recent?.away||{}, h=pg?.h2h||{};     const home=c(d.home??g.casa??g.home,"Mandante"), away=c(d.away??g.fora??g.away,"Visitante"), league=c(d.league??g.liga??g.league_name,"Liga"), time=c(d.time??g.hora??g.time,"—");     const id=c(d.match_id??g.match_id??g.event_id??g.event_key??g.id,""), proj=v(g.proj_cantos);     const rows=Array.isArray(h.matches)&&h.matches.length?h.matches.slice(0,5).map(m=>`
+
+::: cpV64H2HRow
+`<small>`{=html}${e(c(m.date))}</small><span>${e(c(m.home,"Casa"))}
+`<b>`{=html}\${e(c(m.score_home))} × \${e(c(m.score_away))}`</b>`{=html}
+${e(c(m.away,"Fora"))}</span><em>${n(m.corners_total)!==null?v(m.corners_total)+"
+cantos":"cantos ---"}`</em>`{=html}
+:::
+
+`).join(""):`
+
+::: cpV64Empty
+Sem confrontos diretos com dados suficientes.
+:::
+
+`;     const read=[];     if(n(rh.corners_for_avg)!==null)read.push(`\${home}
+média ${v(rh.corners_for_avg)} cantos a favor`);
+    if(n(ra.corners_against_avg)!==null)read.push(`${away} cede
+\${v(ra.corners_against_avg)} cantos por
+jogo`);     if(n(h.avg_corners)!==null)read.push(`H2H com média
+${v(h.avg_corners)} cantos`);
+    if(n(h.over95_rate)!==null)read.push(`${p(h.over95_rate)} dos H2H
+passaram de 9.5`);     rail.innerHTML=`
+```{=html}
+<section class="railCard cpV64Hero">
+```
+::: railTitle
+▣ MATCH CENTER`<b>`{=html}PRÉ-JOGO`</b>`{=html}
+:::
+
+```{=html}
+<div class="cpV64Teams">
+```
+<div>
+
+`<strong>`{=html}${e(home)}</strong><small>${sh.position?e(sh.position)+"º":"---"}`</small>`{=html}
+
+</div>
+
+```{=html}
+<section>
+```
+`<small>`{=html}\${e(league)} •
+${e(time)}</small><b>VS</b><em>ANÁLISE</em></section><div><strong>${e(away)}`</strong>`{=html}`<small>`{=html}${sa.position?e(sa.position)+"º":"—"}</small></div></div></section>
+    <section class="railCard cpV64Card"><h3>CLASSIFICAÇÃO</h3>${standing(home,sh)}${standing(away,sa)}</section>
+    <section class="railCard cpV64Card"><h3>MOMENTO • ÚLTIMOS 5</h3>${recent("CASA",home,rh)}${recent("FORA",away,ra)}</section>
+    <section class="railCard cpV64Card"><div class="cpV64SectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${v(h.games)}
+jogos`</b>`{=html}
+```{=html}
+</div>
+```
+```{=html}
+<div class="cpV64Summary">
+```
+<div>
+
+`<small>`{=html}Média
+H2H`</small>`{=html}`<b>`{=html}${v(h.avg_corners)}</b><span>cantos</span></div><div><small>Over 9.5</small><b>${p(h.over95_rate)}`</b>`{=html}H2H
+
+</div>
+
+<div>
+
+`<small>`{=html}Projeção`</small>`{=html}`<b>`{=html}${proj}</b><span>CornerPro</span></div></div><div class="cpV64H2H">${rows}
+
+</div>
+
+```{=html}
+</section>
+```
+    <section class="railCard cpV64Reading"><h3>LEITURA PRÉ-JOGO</h3><p>${e(read.length?read.join(". ")+".":"Histórico ainda não disponível na API.")}</p><small>Dados reais da API; ausências permanecem como “—”.</small></section>
+    <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${e(id)}" data-home="${e(home)}" data-away="${e(away)}" data-league="${e(league)}" data-time="${e(time)}">VER PARTIDA COMPLETA →</button>`;
+
+} window.updateDesktopMatchRail=async function(g,list){
+if(window.innerWidth\<=980)return typeof
+oldUpdate==="function"?oldUpdate.call(this,g,list):undefined; const
+rail=document.getElementById("desktopMatchRail"); if(!rail\|\|!g)return;
+const id=c(g.match_id??g.event_id??g.event_key??g.id,""); if(id)try{
+const r=await
+fetch(`/match_center?match_id=${encodeURIComponent(id)}&fresh=1&_=${Date.now()}`,{cache:"no-store",headers:{"Cache-Control":"no-cache"}});
+const d=r.ok?await r.json():null;
+if(d&&!d.error&&pre(g,d)){render(rail,g,d);return}
+}catch(err){console.warn("\[V173 pregame\]",err)} if(typeof
+oldUpdate==="function")return oldUpdate.call(this,g,list); }; })();
