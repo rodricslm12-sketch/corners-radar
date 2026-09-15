@@ -12303,6 +12303,15 @@ app.get("/match_center", async (req, res) => {
       : null;
 
     const status = mcStatusInfo(event);
+
+    // V65 — segurança de pré-jogo: se o horário oficial ainda está no futuro,
+    // a partida continua sendo tratada como pré-jogo mesmo que o provedor
+    // envie um status textual incomum. Não interfere em jogos ao vivo/finalizados.
+    const kickoffV65 = mcKickoffDate(event);
+    if (!status.finished && !status.live && !status.cancelled && kickoffV65 && kickoffV65.getTime() > Date.now()) {
+      status.not_started = true;
+    }
+
     const statsResult = await getMatchCenterStatsFresh(
       matchId,
       event,

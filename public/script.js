@@ -22540,6 +22540,99 @@ const fallbackSide = target > 0
                       const away = clean(data?.away || data?.fora || data?.away_team || away0);
                       const league = clean(data?.league || data?.liga || league0);
                       const time = clean(data?.time || data?.hora || time0);
+                      // V65 — RELATÓRIO PRÉ-JOGO REAL.
+                      // Esta é a última implementação de updateDesktopMatchRail do arquivo;
+                      // por isso o tratamento precisa existir AQUI para não ser sobrescrito
+                      // pelas versões antigas do Match Center.
+                      if (isReal && data?.not_started === true && data?.pregame) {
+                        const pg = data.pregame || {};
+                        const stHome = pg?.standings?.home || {};
+                        const stAway = pg?.standings?.away || {};
+                        const recHome = pg?.recent?.home || {};
+                        const recAway = pg?.recent?.away || {};
+                        const h2h = pg?.h2h || {};
+
+                        const safeN = v => {
+                          const n = Number(v);
+                          return Number.isFinite(n) ? n : null;
+                        };
+                        const val = v => {
+                          const n = safeN(v);
+                          return n === null ? "—" : (Number.isInteger(n) ? String(n) : n.toFixed(1));
+                        };
+                        const percent = v => {
+                          const n = safeN(v);
+                          return n === null ? "—" : `${Math.round(n)}%`;
+                        };
+                        const formHtml = arr => {
+                          const list = Array.isArray(arr) ? arr.slice(0,5) : [];
+                          if (!list.length) return `<span class="cpV64Muted">Sem histórico</span>`;
+                          return `<div class="cpV64Form">${list.map(x => {
+                            const k = String(x || "").toUpperCase();
+                            const cls = k === "V" ? "win" : k === "D" ? "loss" : "draw";
+                            return `<i class="${cls}">${esc(k || "—")}</i>`;
+                          }).join("")}</div>`;
+                        };
+                        const standingLine = (name, row) => `
+                          <div class="cpV64StandingLine">
+                            <div class="cpV64StandingTeam"><b>${esc(name)}</b><small>${row?.position ? `${esc(row.position)}º lugar` : "posição indisponível"}</small></div>
+                            <div><small>PTS</small><b>${val(row?.points)}</b></div>
+                            <div><small>J</small><b>${val(row?.played)}</b></div>
+                            <div><small>V</small><b>${val(row?.wins)}</b></div>
+                            <div><small>E</small><b>${val(row?.draws)}</b></div>
+                            <div><small>D</small><b>${val(row?.losses)}</b></div>
+                          </div>`;
+                        const recentBox = (label, name, row) => `
+                          <div class="cpV64RecentTeam">
+                            <div class="cpV64RecentHead"><span>${label}</span><b>${esc(name)}</b>${formHtml(row?.form)}</div>
+                            <div class="cpV64Metrics">
+                              <div><small>Cantos a favor</small><b>${val(row?.corners_for_avg)}</b></div>
+                              <div><small>Cantos cedidos</small><b>${val(row?.corners_against_avg)}</b></div>
+                              <div><small>Média total</small><b>${val(row?.corners_total_avg)}</b></div>
+                              <div><small>Over 9.5</small><b>${percent(row?.over95_rate)}</b></div>
+                            </div>
+                          </div>`;
+                        const h2hRows = Array.isArray(h2h?.matches) && h2h.matches.length
+                          ? h2h.matches.slice(0,5).map(m => `
+                              <div class="cpV64H2HRow">
+                                <small>${esc(clean(m?.date,"—"))}</small>
+                                <span>${esc(clean(m?.home,"Casa"))} <b>${esc(clean(m?.score_home,"—"))} × ${esc(clean(m?.score_away,"—"))}</b> ${esc(clean(m?.away,"Fora"))}</span>
+                                <em>${safeN(m?.corners_total) !== null ? `${val(m.corners_total)} cantos` : "cantos —"}</em>
+                              </div>`).join("")
+                          : `<div class="cpV64Empty">Sem confrontos diretos com dados suficientes.</div>`;
+
+                        const reading = [];
+                        if (safeN(recHome?.corners_for_avg) !== null) reading.push(`${home} tem média recente de ${val(recHome.corners_for_avg)} escanteios a favor`);
+                        if (safeN(recAway?.corners_against_avg) !== null) reading.push(`${away} cede ${val(recAway.corners_against_avg)} escanteios por jogo`);
+                        if (safeN(h2h?.over95_rate) !== null) reading.push(`${percent(h2h.over95_rate)} dos H2H disponíveis passaram de 9.5 cantos`);
+                        if (proj !== "—") reading.push(`a projeção atual do Corner Pro é ${proj} cantos`);
+                        const readingText = reading.length ? reading.join(". ") + "." : "Ainda não há histórico suficiente na API para uma leitura completa desta partida.";
+
+                        rail.innerHTML = `
+                          <section class="railCard cpV64Hero">
+                            <div class="railTitle"><span>▣ MATCH CENTER</span><b>PRÉ-JOGO</b></div>
+                            <div class="cpV64Teams">
+                              <div><strong>${esc(home)}</strong><small>${stHome?.position ? `${esc(stHome.position)}º` : "—"}</small></div>
+                              <section><small>${esc(league)} • ${esc(time)}</small><b>VS</b><em>ANÁLISE</em></section>
+                              <div><strong>${esc(away)}</strong><small>${stAway?.position ? `${esc(stAway.position)}º` : "—"}</small></div>
+                            </div>
+                          </section>
+                          <section class="railCard cpV64Card"><h3>CLASSIFICAÇÃO</h3>${standingLine(home,stHome)}${standingLine(away,stAway)}</section>
+                          <section class="railCard cpV64Card"><h3>MOMENTO • ÚLTIMOS 5</h3>${recentBox("CASA",home,recHome)}${recentBox("FORA",away,recAway)}</section>
+                          <section class="railCard cpV64Card">
+                            <div class="cpV64SectionHead"><h3>CONFRONTOS DIRETOS</h3><b>${val(h2h?.games)} jogos</b></div>
+                            <div class="cpV64Summary">
+                              <div><small>Média H2H</small><b>${val(h2h?.avg_corners)}</b><span>cantos</span></div>
+                              <div><small>Over 9.5</small><b>${percent(h2h?.over95_rate)}</b><span>H2H</span></div>
+                              <div><small>Projeção</small><b>${proj}</b><span>Corner Pro</span></div>
+                            </div>
+                            <div class="cpV64H2H">${h2hRows}</div>
+                          </section>
+                          <section class="railCard cpV64Reading"><h3>LEITURA PRÉ-JOGO</h3><p>${esc(readingText)}</p><small>Dados reais disponíveis na API. Sem inventar números ausentes.</small></section>
+                          <button class="railFullBtn" type="button" data-open-match-center-table="1" data-match-id="${esc(matchId)}" data-home="${esc(home)}" data-away="${esc(away)}" data-league="${esc(league)}" data-time="${esc(time)}">VER PARTIDA COMPLETA →</button>`;
+                        return;
+                      }
+
                       const st = isReal ? statusLabel(data) : "PRÉ-JOGO";
                       const minute = isReal ? getMinute(data) : 0;
                       const progress = st === "ENCERRADO" ? 100 : st === "AO VIVO" ? clamp(minute, 6, 96) : basePct;
