@@ -942,10 +942,30 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       // V160: depois que o Card do Dia é escolhido, ele fica fixo naquela data.
       // Mesmo se a partida terminar e sair das rotas pré-jogo, continua visível.
       const storedHero=mergeDailyHeroWithCurrent(loadDailyHero(state.date||ymd()));
-      const g=storedHero||approved[0]||fallback[0]||null;
 
-      if(g && !storedHero){
-        // salva imediatamente a primeira escolha válida do dia, antes de qualquer polling
+      // V170: o card só fica congelado depois que a partida começa/termina.
+      // Antes do kickoff, a decisão atual do servidor tem prioridade: se escalação,
+      // contexto casa/fora ou filtros premium reprovarem o jogo antigo, ele é substituído.
+      const storedStatus=storedHero?status(storedHero):null;
+      const storedStarted=Boolean(storedStatus&&(storedStatus.live||storedStatus.ht||storedStatus.finished));
+      const currentApproved=approved[0]||null;
+      const storedStillApproved=Boolean(
+        storedHero && approved.some(item=>id(item)===id(storedHero))
+      );
+
+      let g=null;
+      if(storedHero && storedStarted){
+        g=storedHero;
+      }else if(currentApproved){
+        g=currentApproved;
+      }else if(storedHero && storedStillApproved){
+        g=storedHero;
+      }else{
+        // Não promove jogo fraco para "Melhor aposta" apenas para preencher o card.
+        g=null;
+      }
+
+      if(g && (!storedHero || id(g)!==id(storedHero))){
         saveDailyHero(g,state.date||ymd());
       }
       state.heroGame=g;

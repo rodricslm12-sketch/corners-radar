@@ -2716,9 +2716,20 @@ function extractMatchMetrics(statsMap) {
   };
 }
 
-async function recentTeamAverages(teamName, h2hBlock, which, lastN) {
+async function recentTeamAverages(teamName, h2hBlock, which, lastN, venue = null) {
   const list = Array.isArray(h2hBlock?.[which]) ? h2hBlock[which] : [];
-  const slice = list.slice(0, lastN);
+  const teamKey = normTeamKey(teamName);
+  const venueFiltered = venue === "home" || venue === "away"
+    ? list.filter(g => {
+        const homeKey = normTeamKey(g?.match_hometeam_name || g?.home_name || g?.home || "");
+        const awayKey = normTeamKey(g?.match_awayteam_name || g?.away_name || g?.away || "");
+        return venue === "home" ? homeKey === teamKey : awayKey === teamKey;
+      })
+    : list;
+  // Contexto casa/fora é prioritário. Se a API não tiver ao menos 2 jogos no recorte,
+  // cai para a amostra geral para não fabricar uma leitura com 1 partida isolada.
+  const sourceList = venueFiltered.length >= 2 ? venueFiltered : list;
+  const slice = sourceList.slice(0, lastN);
 
   let games = 0;
   let cornersFor = 0;
@@ -4603,8 +4614,8 @@ if (isEuropeanClassic(casaN, foraN)) {
 
     if (h2h) {
       try {
-        homeRecent = await recentTeamAverages(casaN, h2h, "firstTeam_lastResults", lastN);
-        awayRecent = await recentTeamAverages(foraN, h2h, "secondTeam_lastResults", lastN);
+        homeRecent = await recentTeamAverages(casaN, h2h, "firstTeam_lastResults", lastN, "home");
+        awayRecent = await recentTeamAverages(foraN, h2h, "secondTeam_lastResults", lastN, "away");
       } catch {
         homeRecent = null;
         awayRecent = null;
@@ -6750,9 +6761,18 @@ async function engineRecentEventsByTeam(teamId, date, limit = 8) {
   return finished;
 }
 
-async function engineRecentProfile(teamName, matches, limit = MULTI_MARKET_ENGINE.RECENT_N) {
+async function engineRecentProfile(teamName, matches, limit = MULTI_MARKET_ENGINE.RECENT_N, venue = null) {
   const teamKey = normTeamKey(teamName);
-  const list = Array.isArray(matches) ? matches.slice(0, limit) : [];
+  const all = Array.isArray(matches) ? matches : [];
+  const venueFiltered = venue === "home" || venue === "away"
+    ? all.filter(match => {
+        const homeKey = normTeamKey(teamFromEvent(match, "home"));
+        const awayKey = normTeamKey(teamFromEvent(match, "away"));
+        return venue === "home" ? homeKey === teamKey : awayKey === teamKey;
+      })
+    : all;
+  const sourceList = venueFiltered.length >= 2 ? venueFiltered : all;
+  const list = sourceList.slice(0, limit);
 
   let games = 0;
   let points = 0;
@@ -8982,12 +9002,14 @@ async function buildAllMarketEngines({ date }) {
         engineRecentProfile(
           game.casa,
           homeMatches,
-          MULTI_MARKET_ENGINE.RECENT_N
+          MULTI_MARKET_ENGINE.RECENT_N,
+          "home"
         ),
         engineRecentProfile(
           game.fora,
           awayMatches,
-          MULTI_MARKET_ENGINE.RECENT_N
+          MULTI_MARKET_ENGINE.RECENT_N,
+          "away"
         )
       ]);
 
@@ -9903,9 +9925,18 @@ async function webCornersPairForMatch(match) {
   return { home: null, away: null, source: "none" };
 }
 
-async function webCornersRecentProfile(teamName, matches, limit = WEB_CORNERS_RECENT_N) {
+async function webCornersRecentProfile(teamName, matches, limit = WEB_CORNERS_RECENT_N, venue = null) {
   const teamKey = normTeamKey(teamName);
-  const list = Array.isArray(matches) ? matches.slice(0, Math.max(limit, 8)) : [];
+  const all = Array.isArray(matches) ? matches : [];
+  const venueFiltered = venue === "home" || venue === "away"
+    ? all.filter(match => {
+        const homeKey = normTeamKey(teamFromEvent(match, "home"));
+        const awayKey = normTeamKey(teamFromEvent(match, "away"));
+        return venue === "home" ? homeKey === teamKey : awayKey === teamKey;
+      })
+    : all;
+  const sourceList = venueFiltered.length >= 2 ? venueFiltered : all;
+  const list = sourceList.slice(0, Math.max(limit, 8));
 
   const rows = [];
 
@@ -10186,8 +10217,8 @@ async function buildWebCornersAi({ date }) {
           : [];
 
       const [homeProfile, awayProfile] = await Promise.all([
-        webCornersRecentProfile(game.casa, homeMatches, WEB_CORNERS_RECENT_N),
-        webCornersRecentProfile(game.fora, awayMatches, WEB_CORNERS_RECENT_N)
+        webCornersRecentProfile(game.casa, homeMatches, WEB_CORNERS_RECENT_N, "home"),
+        webCornersRecentProfile(game.fora, awayMatches, WEB_CORNERS_RECENT_N, "away")
       ]);
 
       const corners_ai = webCornersIndividualDecision(
@@ -11386,7 +11417,9 @@ function officialCornerRank(games, favoriteTeams = new Set()) {
       top1_score: Number(
         (
           Number(game?.corner_elite_score ?? -999) +
-          officialCornerFavoriteBonus(game, favoriteTeams)
+          officialCornerFavoriteBonus(game, favoriteTeams) -
+          (officialCornerContextRisk(game).softRisk ? 8 : 0) -
+          (officialCornerContextRisk(game).hardBlock ? 100 : 0)
         ).toFixed(2)
       )
     }))
@@ -11395,6 +11428,68 @@ function officialCornerRank(games, favoriteTeams = new Set()) {
       if (scoreDiff !== 0) return scoreDiff;
       return Number(b?.corner_elite_score ?? -999) - Number(a?.corner_elite_score ?? -999);
     });
+}
+
+// TOP1 V170 — contexto de escalação/rotação. Só pune quando a própria API/evento
+// entrega evidência concreta; ausência de lineup nunca é tratada como desfalque.
+function officialCornerLineupContext(game) {
+  const raw = game?.event_raw || game || {};
+  const lineup = raw?.lineup || raw?.lineups || raw?.starting_lineups || raw?.match_lineup || game?.lineups || null;
+  const absences = raw?.injuries || raw?.absences || raw?.missing_players || game?.injuries || null;
+
+  const countArray = value => Array.isArray(value) ? value.length : 0;
+  const homeLine = lineup?.home || lineup?.hometeam || lineup?.local || lineup?.casa || null;
+  const awayLine = lineup?.away || lineup?.awayteam || lineup?.visitor || lineup?.fora || null;
+  const homeAbs = absences?.home || absences?.hometeam || absences?.casa || null;
+  const awayAbs = absences?.away || absences?.awayteam || absences?.fora || null;
+
+  const homeStarters = countArray(homeLine?.starting || homeLine?.starters || homeLine?.starting_lineup || homeLine);
+  const awayStarters = countArray(awayLine?.starting || awayLine?.starters || awayLine?.starting_lineup || awayLine);
+  const homeMissing = countArray(homeAbs);
+  const awayMissing = countArray(awayAbs);
+
+  // Campos opcionais aceitos caso a API/backend já forneça comparação com o XI habitual.
+  const homeRotation = Number(raw?.home_rotation_count ?? game?.home_rotation_count ?? NaN);
+  const awayRotation = Number(raw?.away_rotation_count ?? game?.away_rotation_count ?? NaN);
+  const maxRotation = Math.max(Number.isFinite(homeRotation) ? homeRotation : 0, Number.isFinite(awayRotation) ? awayRotation : 0);
+  const totalMissing = homeMissing + awayMissing;
+
+  return {
+    available: Boolean(lineup || absences || Number.isFinite(homeRotation) || Number.isFinite(awayRotation)),
+    homeStarters, awayStarters, homeMissing, awayMissing, homeRotation, awayRotation,
+    highRotation: maxRotation >= 4,
+    mediumRotation: maxRotation >= 3 || totalMissing >= 5,
+    totalMissing
+  };
+}
+
+function officialCornerContextRisk(game) {
+  const lineup = officialCornerLineupContext(game);
+  const home = game?.engine_profiles?.home || {};
+  const away = game?.engine_profiles?.away || {};
+  const homeFor = Number(home?.cornersForAvg ?? NaN);
+  const awayFor = Number(away?.cornersForAvg ?? NaN);
+  const homeAgainst = Number(home?.cornersAgainstAvg ?? NaN);
+  const awayAgainst = Number(away?.cornersAgainstAvg ?? NaN);
+
+  // Top 1 precisa de contribuição dos dois lados; evita favorito dominante contra rival passivo.
+  const passiveSide =
+    (Number.isFinite(homeFor) && homeFor < 3.7) ||
+    (Number.isFinite(awayFor) && awayFor < 3.7);
+  const bothContribute =
+    Number.isFinite(homeFor) && Number.isFinite(awayFor) &&
+    homeFor >= 4.0 && awayFor >= 4.0;
+  const concedeSupport =
+    Number.isFinite(homeAgainst) && Number.isFinite(awayAgainst) &&
+    (homeAgainst + awayAgainst) >= 8.5;
+
+  return {
+    lineup,
+    hardBlock: lineup.highRotation,
+    softRisk: lineup.mediumRotation || passiveSide,
+    bothContribute,
+    concedeSupport
+  };
 }
 
 function officialCornerIsStrong(game, date) {
@@ -11469,10 +11564,22 @@ function officialCornerIsStrong(game, date) {
     line === 'OVER 10.5' ? 71 :
     Math.max(68, OFFICIAL_CORNER_MIN_CONFIDENCE);
 
+  const contextRisk = officialCornerContextRisk(game);
+  if (contextRisk.hardBlock) return false;
+
+  // Margem extra quando existe rotação moderada ou um dos lados cria poucos cantos.
+  const contextualProjectionFloor = lineProjectionFloor + (contextRisk.softRisk ? 0.45 : 0);
+  const contextualConfidenceFloor = lineConfidenceFloor + (contextRisk.softRisk ? 3 : 0);
+
+  // Para o card premium, quando os perfis existem, exige contribuição bilateral
+  // ou evidência de que os adversários cedem cantos em volume suficiente.
+  const contributionApproved = contextRisk.bothContribute || contextRisk.concedeSupport;
+
   const strongBase =
-    confidence >= lineConfidenceFloor &&
-    projection >= Math.max(OFFICIAL_CORNER_MIN_PROJECTION, lineProjectionFloor) &&
-    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE;
+    confidence >= contextualConfidenceFloor &&
+    projection >= Math.max(OFFICIAL_CORNER_MIN_PROJECTION, contextualProjectionFloor) &&
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE &&
+    contributionApproved;
 
   return strongBase;
 }
@@ -11521,6 +11628,7 @@ function officialCornerSnapshot(game) {
       game?.corner_elite_score ??
       cornerEliteScore(game)
     ),
+    top1_context: officialCornerContextRisk(game),
     selected_at: new Date().toISOString()
   };
 }
