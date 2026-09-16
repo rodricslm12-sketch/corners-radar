@@ -119,7 +119,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
         state.base=Array.isArray(parsed.base)?parsed.base:[];
         state.engines={
-          corners:Array.isArray(parsed.engines?.corners)?parsed.engines.corners:[],
+          // V173: não hidrata recomendação de cantos antiga. Os jogos aparecem
+          // pelo cache, mas o selo IA RECOMENDA espera /web_corners_ai atual.
+          corners:[],
           goals:Array.isArray(parsed.engines?.goals)?parsed.engines.goals:[],
           cards:Array.isArray(parsed.engines?.cards)?parsed.engines.cards:[],
           handicap:Array.isArray(parsed.engines?.handicap)?parsed.engines.handicap:[],
@@ -421,9 +423,15 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       state.base.forEach(g=>add(g));
       Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));
 
-      // V161: o Card do Dia salvo nunca é removido por refresh/polling.
+      // V173: recomendação pré-jogo NUNCA volta do localStorage para o merge.
+      // O servidor/motor de corners é a única autoridade antes do kickoff.
+      // O Card do Dia salvo só é reinserido depois que a partida começou,
+      // para permitir acompanhamento/resultado sem ressuscitar pick antigo.
       const savedHero=loadDailyHero(state.date||ymd());
-      if(savedHero)add(savedHero,"corners");
+      if(savedHero){
+        const ss=status(savedHero);
+        if(ss.live||ss.ht||ss.finished)add(savedHero,"corners");
+      }
 
       state.games=[...map.values()].filter(isMainLeagueGame)
     }
@@ -545,7 +553,8 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       // mantém o jogo que foi escolhido anteriormente como Card do Dia.
       const persistedHero=loadDailyHero(date);
       if(persistedHero && !state.games.some(g=>id(g)===id(persistedHero))){
-        state.games.push(persistedHero);
+        const ps=status(persistedHero);
+        if(ps.live||ps.ht||ps.finished) state.games.push(persistedHero);
       }
 
       if(!backgroundRefresh)setSmartLoading(34,"Jogos encontrados. Carregando estatísticas...");
@@ -940,7 +949,13 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         return;
       }
 
-      const approved=filtered("corners","IA");
+      // V173: o HERO pré-jogo só aceita decisão que veio do motor atual
+      // /web_corners_ai. Base, snapshot e dailyHero não podem aprovar aposta.
+      const currentCornerIds=new Set((state.engines?.corners||[]).map(id).filter(Boolean));
+      const approved=filtered("corners","IA").filter(g=>{
+        const sg=status(g);
+        return sg.live||sg.ht||sg.finished||currentCornerIds.has(id(g));
+      });
       const fallback=state.games
         .filter(isMainLeagueGame)
         // V161: permite recuperar o melhor jogo do dia mesmo se já ENCERRADO.
