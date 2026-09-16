@@ -119,9 +119,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
         state.base=Array.isArray(parsed.base)?parsed.base:[];
         state.engines={
-          // V173: não hidrata recomendação de cantos antiga. Os jogos aparecem
-          // pelo cache, mas o selo IA RECOMENDA espera /web_corners_ai atual.
-          corners:[],
+          corners:Array.isArray(parsed.engines?.corners)?parsed.engines.corners:[],
           goals:Array.isArray(parsed.engines?.goals)?parsed.engines.goals:[],
           cards:Array.isArray(parsed.engines?.cards)?parsed.engines.cards:[],
           handicap:Array.isArray(parsed.engines?.handicap)?parsed.engines.handicap:[],
@@ -423,15 +421,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       state.base.forEach(g=>add(g));
       Object.entries(state.engines).forEach(([m,list])=>(list||[]).forEach(g=>add(g,m)));
 
-      // V173: recomendação pré-jogo NUNCA volta do localStorage para o merge.
-      // O servidor/motor de corners é a única autoridade antes do kickoff.
-      // O Card do Dia salvo só é reinserido depois que a partida começou,
-      // para permitir acompanhamento/resultado sem ressuscitar pick antigo.
+      // V161: o Card do Dia salvo nunca é removido por refresh/polling.
       const savedHero=loadDailyHero(state.date||ymd());
-      if(savedHero){
-        const ss=status(savedHero);
-        if(ss.live||ss.ht||ss.finished)add(savedHero,"corners");
-      }
+      if(savedHero)add(savedHero,"corners");
 
       state.games=[...map.values()].filter(isMainLeagueGame)
     }
@@ -541,20 +533,14 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
       if(req!==state.request)return;
 
-      // V172: refresh nunca apaga uma base já visível por resposta vazia.
-      // IA decide recomendação; não decide se o confronto existe no calendário.
-      if(base.length){
-        const previous=new Map((Array.isArray(state.base)?state.base:[]).map(g=>[id(g),g]));
-        state.base=base.map(g=>({...previous.get(id(g)),...g}));
-      }
+      state.base=base;
       merge();
 
       // V160: se o provedor já retirou o jogo encerrado da lista do dia,
       // mantém o jogo que foi escolhido anteriormente como Card do Dia.
       const persistedHero=loadDailyHero(date);
       if(persistedHero && !state.games.some(g=>id(g)===id(persistedHero))){
-        const ps=status(persistedHero);
-        if(ps.live||ps.ht||ps.finished) state.games.push(persistedHero);
+        state.games.push(persistedHero);
       }
 
       if(!backgroundRefresh)setSmartLoading(34,"Jogos encontrados. Carregando estatísticas...");
@@ -827,12 +813,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         const a=extract(await fetchJ(`/quentes?date=${encodeURIComponent(state.date||ymd())}&_mobile=1&ai=0&t=${stamp}`,12000));
         if(a.length){
           const current=new Map(state.base.map(g=>[id(g),g]));
-          // V172: atualiza/insere os jogos recebidos sem remover os que já estavam
-          // visíveis e que podem não ter vindo em uma resposta parcial do backend.
-          for(const g of a){
-            current.set(id(g),{...current.get(id(g)),...g});
-          }
-          state.base=[...current.values()];
+          state.base=a.map(g=>({...current.get(id(g)),...g}));
           merge();render();
         }
       }catch(e){console.warn("[V115 live status]",e)}
@@ -949,13 +930,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         return;
       }
 
-      // V173: o HERO pré-jogo só aceita decisão que veio do motor atual
-      // /web_corners_ai. Base, snapshot e dailyHero não podem aprovar aposta.
-      const currentCornerIds=new Set((state.engines?.corners||[]).map(id).filter(Boolean));
-      const approved=filtered("corners","IA").filter(g=>{
-        const sg=status(g);
-        return sg.live||sg.ht||sg.finished||currentCornerIds.has(id(g));
-      });
+      const approved=filtered("corners","IA");
       const fallback=state.games
         .filter(isMainLeagueGame)
         // V161: permite recuperar o melhor jogo do dia mesmo se já ENCERRADO.
@@ -967,30 +942,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       // V160: depois que o Card do Dia é escolhido, ele fica fixo naquela data.
       // Mesmo se a partida terminar e sair das rotas pré-jogo, continua visível.
       const storedHero=mergeDailyHeroWithCurrent(loadDailyHero(state.date||ymd()));
+      const g=storedHero||approved[0]||fallback[0]||null;
 
-      // V170: o card só fica congelado depois que a partida começa/termina.
-      // Antes do kickoff, a decisão atual do servidor tem prioridade: se escalação,
-      // contexto casa/fora ou filtros premium reprovarem o jogo antigo, ele é substituído.
-      const storedStatus=storedHero?status(storedHero):null;
-      const storedStarted=Boolean(storedStatus&&(storedStatus.live||storedStatus.ht||storedStatus.finished));
-      const currentApproved=approved[0]||null;
-      const storedStillApproved=Boolean(
-        storedHero && approved.some(item=>id(item)===id(storedHero))
-      );
-
-      let g=null;
-      if(storedHero && storedStarted){
-        g=storedHero;
-      }else if(currentApproved){
-        g=currentApproved;
-      }else if(storedHero && storedStillApproved){
-        g=storedHero;
-      }else{
-        // Não promove jogo fraco para "Melhor aposta" apenas para preencher o card.
-        g=null;
-      }
-
-      if(g && (!storedHero || id(g)!==id(storedHero))){
+      if(g && !storedHero){
+        // salva imediatamente a primeira escolha válida do dia, antes de qualquer polling
         saveDailyHero(g,state.date||ymd());
       }
       state.heroGame=g;
