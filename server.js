@@ -11492,96 +11492,94 @@ function officialCornerContextRisk(game) {
   };
 }
 
-function officialCornerIsStrong(game, date) {
-  if (!game || !officialCornerIsFuture(game, date)) return false;
-  if (!officialCornerPremiumLeague(game)) return false;
-  if (officialCornerBlockedReturnLeg(game)) return false;
+// TOP1 V171 — avaliação em 3 estados: APROVADO / EM_ANALISE / REPROVADO.
+// O estado intermediário evita perder um jogo estatisticamente forte apenas porque
+// falta um dado secundário. Ele NUNCA recebe o selo IA RECOMENDA.
+function officialCornerAssessment(game, date) {
+  const reject = reason => ({ status: "REJECTED", reason, approved: false, review: false });
+  if (!game || !officialCornerIsFuture(game, date)) return reject("not_future");
+  if (!officialCornerPremiumLeague(game)) return reject("non_premium_league");
+  if (officialCornerBlockedReturnLeg(game)) return reject("uefa_second_leg");
 
   const decision = game?.corners_ai || {};
-  if (decision.skip || decision.updating) return false;
+  if (decision.skip || decision.updating) return reject("engine_skip_or_updating");
 
-  const line = String(decision.line || '').toUpperCase().trim();
+  const line = String(decision.line || "").toUpperCase().trim();
+  if (!["OVER 9.5", "OVER 10.5", "OVER 11.5"].includes(line)) return reject("line_not_premium");
 
-  // Top 1 não trabalha com 8.5. A menor linha aceita é Over 9.5.
-  if (!['OVER 9.5', 'OVER 10.5', 'OVER 11.5'].includes(line)) return false;
-
-  const confidence = Number(
-    decision.confidence ??
-    game?.over95_prob_adj ??
-    game?.over95_prob ??
-    0
-  );
-
-  const projection = Number(
-    decision.projection ??
-    game?.proj_cantos ??
-    game?.projection ??
-    0
-  );
-
-  const eliteScore = Number(
-    game?.corner_elite_score ??
-    cornerEliteScore(game)
-  );
-
-  const dataQuality = Number(
-    decision?.data_quality ??
-    decision?.extra?.data_quality ??
-    0
-  );
-
-  const sampleGames = Number(
-    decision?.sample_games ??
-    decision?.extra?.sample_games ??
-    0
-  );
-
-  const source = String(
-    decision?.calculation_source ??
-    decision?.extra?.calculation_source ??
-    ''
-  );
-
+  const confidence = Number(decision.confidence ?? game?.over95_prob_adj ?? game?.over95_prob ?? 0);
+  const projection = Number(decision.projection ?? game?.proj_cantos ?? game?.projection ?? 0);
+  const eliteScore = Number(game?.corner_elite_score ?? cornerEliteScore(game));
+  const dataQuality = Number(decision?.data_quality ?? decision?.extra?.data_quality ?? 0);
+  const sampleGames = Number(decision?.sample_games ?? decision?.extra?.sample_games ?? 0);
+  const source = String(decision?.calculation_source ?? decision?.extra?.calculation_source ?? "");
   const flags = Array.isArray(game?.flags) ? game.flags : [];
-  const weakSource = source === 'fallback' || source === 'mobile_fast' || flags.includes('mobile_fast_initial');
-  if (weakSource) return false;
-
-  const dataApproved =
-    dataQuality >= TOP1_CORNER_MIN_DATA_QUALITY ||
-    sampleGames >= TOP1_CORNER_MIN_SAMPLE_GAMES ||
-    (source === 'recent_form' && sampleGames >= 3);
-
-  if (!dataApproved) return false;
-
-  // A linha sobe junto com a exigência. Não basta projetar 9.7 e vender 10.5/11.5.
-  const lineProjectionFloor =
-    line === 'OVER 11.5' ? 12.35 :
-    line === 'OVER 10.5' ? 11.35 :
-    10.25;
-
-  const lineConfidenceFloor =
-    line === 'OVER 11.5' ? 74 :
-    line === 'OVER 10.5' ? 71 :
-    Math.max(68, OFFICIAL_CORNER_MIN_CONFIDENCE);
+  const weakSource = source === "fallback" || source === "mobile_fast" || flags.includes("mobile_fast_initial");
+  if (weakSource) return reject("weak_source");
 
   const contextRisk = officialCornerContextRisk(game);
-  if (contextRisk.hardBlock) return false;
+  if (contextRisk.hardBlock) return reject("high_rotation");
 
-  // Margem extra quando existe rotação moderada ou um dos lados cria poucos cantos.
+  const lineProjectionFloor = line === "OVER 11.5" ? 12.35 : line === "OVER 10.5" ? 11.35 : 10.25;
+  const lineConfidenceFloor = line === "OVER 11.5" ? 74 : line === "OVER 10.5" ? 71 : Math.max(68, OFFICIAL_CORNER_MIN_CONFIDENCE);
+
+  const dataApproved = dataQuality >= TOP1_CORNER_MIN_DATA_QUALITY ||
+    sampleGames >= TOP1_CORNER_MIN_SAMPLE_GAMES ||
+    (source === "recent_form" && sampleGames >= 3);
+
+  const contributionKnown =
+    Number.isFinite(Number(game?.engine_profiles?.home?.cornersForAvg)) &&
+    Number.isFinite(Number(game?.engine_profiles?.away?.cornersForAvg));
+  const contributionApproved = contextRisk.bothContribute || contextRisk.concedeSupport;
+
   const contextualProjectionFloor = lineProjectionFloor + (contextRisk.softRisk ? 0.45 : 0);
   const contextualConfidenceFloor = lineConfidenceFloor + (contextRisk.softRisk ? 3 : 0);
 
-  // Para o card premium, quando os perfis existem, exige contribuição bilateral
-  // ou evidência de que os adversários cedem cantos em volume suficiente.
-  const contributionApproved = contextRisk.bothContribute || contextRisk.concedeSupport;
-
-  const strongBase =
+  const premium = dataApproved && contributionApproved &&
     confidence >= contextualConfidenceFloor &&
     projection >= Math.max(OFFICIAL_CORNER_MIN_PROJECTION, contextualProjectionFloor) &&
-    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE &&
-    contributionApproved;
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE;
 
-  return strongBase;
+  if (premium) {
+    return { status: "APPROVED", reason: "premium_pass", approved: true, review: false,
+      confidence, projection, eliteScore, dataQuality, sampleGames, contextRisk };
+  }
+
+  // EM ANÁLISE: mantém na vitrine jogos próximos do padrão premium.
+  // Falta de perfil bilateral NÃO é veto quando a API ainda não entregou esse dado.
+  const reviewData = dataQuality >= Math.max(2, TOP1_CORNER_MIN_DATA_QUALITY - 1) ||
+    sampleGames >= Math.max(3, TOP1_CORNER_MIN_SAMPLE_GAMES - 2) ||
+    (source === "recent_form" && sampleGames >= 2);
+  const reviewProjectionFloor = lineProjectionFloor - 0.35 + (contextRisk.softRisk ? 0.25 : 0);
+  const reviewConfidenceFloor = lineConfidenceFloor - 5 + (contextRisk.softRisk ? 2 : 0);
+  const contributionReviewOk = !contributionKnown || contributionApproved || contextRisk.concedeSupport;
+
+  const review = reviewData && contributionReviewOk &&
+    confidence >= reviewConfidenceFloor &&
+    projection >= reviewProjectionFloor &&
+    eliteScore >= OFFICIAL_CORNER_MIN_ELITE_SCORE - 15;
+
+  if (review) {
+    const reasons = [];
+    if (!dataApproved) reasons.push("amostra_a_confirmar");
+    if (!contributionKnown) reasons.push("contribuicao_sem_dado");
+    else if (!contributionApproved) reasons.push("contribuicao_bilateral_fraca");
+    if (contextRisk.softRisk) reasons.push("contexto_cautela");
+    if (confidence < lineConfidenceFloor) reasons.push("confianca_proxima_do_minimo");
+    if (projection < lineProjectionFloor) reasons.push("margem_da_linha_curta");
+    return { status: "REVIEW", reason: reasons.join(",") || "near_premium", approved: false, review: true,
+      confidence, projection, eliteScore, dataQuality, sampleGames, contextRisk };
+  }
+
+  return reject("below_review_floor");
+}
+
+function officialCornerIsReviewCandidate(game, date) {
+  return officialCornerAssessment(game, date).review;
+}
+
+function officialCornerIsStrong(game, date) {
+  return officialCornerAssessment(game, date).approved;
 }
 
 function officialCornerSnapshot(game) {
@@ -11629,6 +11627,7 @@ function officialCornerSnapshot(game) {
       cornerEliteScore(game)
     ),
     top1_context: officialCornerContextRisk(game),
+    top1_assessment: officialCornerAssessment(game, toISODate()),
     selected_at: new Date().toISOString()
   };
 }
@@ -11731,6 +11730,10 @@ function resolveOfficialCornerPick({ date, games, favoriteTeams = new Set() }) {
   const next = ranked.find(game => officialCornerIsStrong(game, date));
 
   if (!next) {
+    // V171: nenhum Premium aprovado. Mantém o melhor candidato próximo do padrão
+    // como EM ANÁLISE, sem transformar isso em recomendação.
+    const reviewCandidate = ranked.find(game => officialCornerIsReviewCandidate(game, date)) || null;
+    const reviewAssessment = reviewCandidate ? officialCornerAssessment(reviewCandidate, date) : null;
     day.current = null;
     day.favorite_signature = favoriteSignature;
     day.updated_at = new Date().toISOString();
@@ -11739,10 +11742,14 @@ function resolveOfficialCornerPick({ date, games, favoriteTeams = new Set() }) {
 
     return {
       game: null,
+      review_game: reviewCandidate ? { ...officialCornerSnapshot(reviewCandidate), top1_assessment: reviewAssessment } : null,
+      review_status: reviewCandidate ? "EM_ANALISE" : null,
       locked: false,
-      no_more_opportunities: true,
+      no_more_opportunities: !reviewCandidate,
       favorite_considered: favoriteTeams.size > 0,
-      message: 'A IA não encontrou um Top 1 de cantos suficientemente forte. Nenhuma entrada é melhor do que forçar um jogo fraco.'
+      message: reviewCandidate
+        ? 'Nenhum jogo foi liberado como Premium, mas existe um candidato forte em análise aguardando confirmação.'
+        : 'A IA não encontrou um Top 1 de cantos suficientemente forte. Nenhuma entrada é melhor do que forçar um jogo fraco.'
     };
   }
 

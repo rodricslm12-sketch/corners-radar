@@ -25,7 +25,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
     const LAST_MARKET_KEY="cornerpro_mobile_last_market_v1";
     const savedMarket=(()=>{try{const m=localStorage.getItem(LAST_MARKET_KEY);return MARKETS[m]?m:"corners"}catch{return "corners"}})();
-    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,loading:true,loadingProgress:6,loadingStatus:"Preparando painel...",request:0};
+    const state={date:"",market:savedMarket,line:"IA",view:"home",mode:"all",base:[],engines:{corners:[],goals:[],cards:[],handicap:[],btts:[]},games:[],heroGame:null,officialCorner:null,reviewCorner:null,officialCornerLoaded:false,loading:true,loadingProgress:6,loadingStatus:"Preparando painel...",request:0};
     /* =========================================================
        APP V130 — CACHE DO PRIMEIRO CARREGAMENTO
        Primeiro acesso da data: mostra loading.
@@ -610,6 +610,23 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
 
       if(req!==state.request)return;
 
+      // V171: a Home consulta a decisão OFICIAL do servidor.
+      // Premium e EM ANÁLISE são estados diferentes; um candidato em revisão
+      // nunca recebe automaticamente o selo IA RECOMENDA.
+      try{
+        const official=await fetchJ(`/official_corner_pick?date=${encodeURIComponent(date)}&fresh=1&t=${Date.now()}`,28000);
+        if(req!==state.request)return;
+        state.officialCorner=official?.game&&typeof official.game==="object"?official.game:null;
+        state.reviewCorner=official?.review_game&&typeof official.review_game==="object"?official.review_game:null;
+        state.officialCornerLoaded=true;
+        if(state.officialCorner)state.base=[...state.base,state.officialCorner];
+        if(state.reviewCorner)state.base=[...state.base,state.reviewCorner];
+        merge();
+      }catch(e){
+        console.warn("[V171 official corner]",e);
+        state.officialCornerLoaded=false;
+      }
+
       if(!backgroundRefresh)setSmartLoading(92,"Abrindo painel...");
       if(!filtered("corners","IA").length){
         try{
@@ -931,47 +948,40 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
       }
 
       const approved=filtered("corners","IA");
-      const fallback=state.games
-        .filter(isMainLeagueGame)
-        // V161: permite recuperar o melhor jogo do dia mesmo se já ENCERRADO.
-        .sort((a,b)=>
-          (confidence(b,"corners")-confidence(a,"corners")) ||
-          ((projection(b,"corners")||0)-(projection(a,"corners")||0))
-        );
-
-      // V160: depois que o Card do Dia é escolhido, ele fica fixo naquela data.
-      // Mesmo se a partida terminar e sair das rotas pré-jogo, continua visível.
       const storedHero=mergeDailyHeroWithCurrent(loadDailyHero(state.date||ymd()));
-
-      // V170: o card só fica congelado depois que a partida começa/termina.
-      // Antes do kickoff, a decisão atual do servidor tem prioridade: se escalação,
-      // contexto casa/fora ou filtros premium reprovarem o jogo antigo, ele é substituído.
       const storedStatus=storedHero?status(storedHero):null;
       const storedStarted=Boolean(storedStatus&&(storedStatus.live||storedStatus.ht||storedStatus.finished));
-      const currentApproved=approved[0]||null;
-      const storedStillApproved=Boolean(
-        storedHero && approved.some(item=>id(item)===id(storedHero))
-      );
 
       let g=null;
+      let heroMode="none";
+
+      // Depois do início preserva o card que realmente foi recomendado.
       if(storedHero && storedStarted){
         g=storedHero;
-      }else if(currentApproved){
-        g=currentApproved;
-      }else if(storedHero && storedStillApproved){
-        g=storedHero;
+        heroMode="approved";
+      }else if(state.officialCornerLoaded){
+        // Antes do kickoff, o servidor é a autoridade final.
+        if(state.officialCorner){
+          g=mergeDailyHeroWithCurrent(state.officialCorner)||state.officialCorner;
+          heroMode="approved";
+        }else if(state.reviewCorner){
+          g=mergeDailyHeroWithCurrent(state.reviewCorner)||state.reviewCorner;
+          heroMode="review";
+        }
       }else{
-        // Não promove jogo fraco para "Melhor aposta" apenas para preencher o card.
-        g=null;
+        // Compatibilidade somente se a rota oficial estiver temporariamente indisponível.
+        g=approved[0]||null;
+        heroMode=g?"approved":"none";
       }
 
-      if(g && (!storedHero || id(g)!==id(storedHero))){
+      // Só persiste como Card do Dia uma recomendação Premium; EM ANÁLISE não congela.
+      if(g && heroMode==="approved" && (!storedHero || id(g)!==id(storedHero))){
         saveDailyHero(g,state.date||ymd());
       }
       state.heroGame=g;
 
       if(!g){
-        el.innerHTML=`<div class="v110HeroLoading"><b>Nenhuma oportunidade aprovada</b><small>Veja os mercados abaixo.</small></div>`;
+        el.innerHTML=`<div class="v110HeroLoading"><b>Nenhuma oportunidade aprovada</b><small>Nenhum candidato forte em análise neste momento.</small></div>`;
         return;
       }
 
@@ -980,8 +990,10 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         ? rawRec
         : {...rawRec,line:pr!==null?(pr>=10.75?"OVER 10.5":pr>=9.55?"OVER 9.5":"EM ANÁLISE"):"EM ANÁLISE"};
       const heroDay=state.date===ymd()?"HOJE":state.date===ymd(1)?"AMANHÃ":dateLong(state.date).toUpperCase();
-      const heroBadge=s.finished?"ENCERRADO":s.ht?"INTERVALO":s.live?"AO VIVO":"IA RECOMENDA";
-      el.innerHTML=`<div class="v110HeroTop"><b>🔥 MELHOR APOSTA • ESCANTEIOS</b><span>${heroBadge}</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${heroDay} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
+      const isReview=heroMode==="review";
+      const heroBadge=s.finished?"ENCERRADO":s.ht?"INTERVALO":s.live?"AO VIVO":isReview?"EM ANÁLISE":"IA RECOMENDA";
+      const heroTitle=isReview?"🔎 CANDIDATO • ESCANTEIOS":"🔥 MELHOR APOSTA • ESCANTEIOS";
+      el.innerHTML=`<div class="v110HeroTop"><b>${heroTitle}</b><span>${heroBadge}</span></div><div class="v110HeroMatch"><div class="v110HeroTeam">${favButton(home(g),"hero")} ${logo(g,"home")}<strong>${esc(home(g))}</strong>${form(g,"home")}</div><div class="v110HeroMid"><small>${heroDay} • ${esc(time(g))}<br>${esc(league(g))}</small><b>${esc(s.score)}</b></div><div class="v110HeroTeam">${favButton(away(g),"hero")} ${logo(g,"away")}<strong>${esc(away(g))}</strong>${form(g,"away")}</div></div><div class="v110HeroPick"><div><b>${esc(rec.line)} ESCANTEIOS</b><small>PROJEÇÃO: ${pr!==null?pr.toFixed(1):"—"}${cf?"  •  CONFIANÇA: "+cf+"%":""}</small></div><div><small>TENDÊNCIA</small><b>${trend(g)}</b><i>▂▄▆█</i></div></div><button class="v110HeroOpen" type="button" data-v110-hero>▥ &nbsp; VER ANÁLISE COMPLETA <span>›</span></button>`}
     function applyView(){
       const root=$("#cpNewMobileV110");
       if(root){
