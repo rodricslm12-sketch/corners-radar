@@ -32003,3 +32003,116 @@ const fallbackSide = target > 0
     if(e.key==="Escape" && document.getElementById("cpNewMatchCenterV170")?.classList.contains("is-open")) close();
   });
 })();
+
+
+/* =========================================================
+   CORNER PRO V172 — HOTFIX FINAL: CLIQUE NA TABELA CPD3
+   Fica no FINAL do arquivo para não depender dos seletores antigos.
+   DESKTOP SOMENTE. Não altera mobile nem o Match Center antigo.
+   ========================================================= */
+(function CP_MATCH_CENTER_CPD3_V172(){
+  "use strict";
+
+  function desktop(){
+    return window.matchMedia("(min-width:981px)").matches;
+  }
+
+  function norm(v){
+    return String(v ?? "").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g," ");
+  }
+
+  function gid(g){
+    return String(
+      g?.match_id ?? g?.matchId ?? g?.id ?? g?.event_key ?? g?.event_id ?? g?.fixture?.id ?? ""
+    ).trim();
+  }
+
+  function home(g){
+    return String(g?.casa ?? g?.home ?? g?.home_name ?? g?.match_hometeam_name ??
+      g?.teams?.home?.name ?? g?.fixture?.home?.name ?? "").trim();
+  }
+
+  function away(g){
+    return String(g?.fora ?? g?.away ?? g?.away_name ?? g?.match_awayteam_name ??
+      g?.teams?.away?.name ?? g?.fixture?.away?.name ?? "").trim();
+  }
+
+  function allGames(){
+    const panel=document.querySelector(".gamesPanel");
+    const pools=[
+      window.__cornerProAllGames,
+      window.__lastRawGames,
+      window.__lastRenderedTopGames,
+      window.__premiumFilteredGames,
+      panel?.__cornerProAllGames,
+      panel?.__cornerProGames
+    ];
+    const out=[], seen=new Set();
+    for(const pool of pools){
+      if(!Array.isArray(pool)) continue;
+      for(const item of pool){
+        const g=item?.raw || item;
+        if(!g) continue;
+        const k=gid(g) || `${norm(home(g))}|${norm(away(g))}`;
+        if(!k || seen.has(k)) continue;
+        seen.add(k); out.push(g);
+      }
+    }
+    return out;
+  }
+
+  function resolve(row){
+    const key=String(row.dataset.cpd3Game || row.getAttribute("data-cpd3-game") || "").trim();
+    const games=allGames();
+
+    if(key){
+      let g=games.find(x => gid(x)===key);
+      if(g) return g;
+    }
+
+    const names=[...row.querySelectorAll(".cpd3Names b")].map(x=>x.textContent.trim()).filter(Boolean);
+    if(names.length>=2){
+      const h=norm(names[0]), a=norm(names[1]);
+      const g=games.find(x => norm(home(x))===h && norm(away(x))===a);
+      if(g) return g;
+    }
+
+    if(key){
+      return { match_id:key, id:key, event_key:key,
+        casa:names[0]||"", fora:names[1]||"" };
+    }
+    return null;
+  }
+
+  // pointerdown em capture: acontece antes dos handlers de click antigos.
+  window.addEventListener("pointerdown", function(ev){
+    if(!desktop()) return;
+    const row=ev.target?.closest?.(".cpd3Row[data-cpd3-game]");
+    if(!row) return;
+
+    // mantém estrelas e botão Ver análise com as funções atuais.
+    if(ev.target.closest("button,a,input,select,textarea,.cpd3Fav,[data-cpd3-analysis]")) return;
+
+    const game=resolve(row);
+    if(!game) return;
+
+    if(typeof window.cpOpenNewMatchCenter === "function"){
+      ev.preventDefault();
+      ev.stopPropagation();
+      if(typeof ev.stopImmediatePropagation==="function") ev.stopImmediatePropagation();
+      window.cpOpenNewMatchCenter(game);
+    }
+  }, true);
+
+  // cursor deixa claro que a linha é clicável
+  function mark(){
+    document.querySelectorAll(".cpd3Row[data-cpd3-game]").forEach(r=>{
+      r.style.cursor="pointer";
+      r.dataset.newMatchCenterClick="v172";
+    });
+  }
+  mark();
+  new MutationObserver(mark).observe(document.documentElement,{childList:true,subtree:true});
+})();
