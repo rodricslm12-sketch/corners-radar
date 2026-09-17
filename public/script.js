@@ -31565,7 +31565,7 @@ const fallbackSide = target > 0
 })();
 
 /* =========================================================
-   CORNER PRO V170 — NOVO MATCH CENTER DESKTOP
+   CORNER PRO V171 — NOVO MATCH CENTER DESKTOP — CPD3 ROW FIX
    ---------------------------------------------------------
    - NÃO altera nem reutiliza a interface do Match Center antigo.
    - Abre ao clicar diretamente na linha/card de uma partida.
@@ -31576,8 +31576,8 @@ const fallbackSide = target > 0
    ========================================================= */
 (function installCPNewMatchCenterV170(){
   "use strict";
-  if (window.__CP_NEW_MATCH_CENTER_V170__) return;
-  window.__CP_NEW_MATCH_CENTER_V170__ = true;
+  if (window.__CP_NEW_MATCH_CENTER_V171__) return;
+  window.__CP_NEW_MATCH_CENTER_V171__ = true;
 
   const desktop = () =>
     !!(window.matchMedia && window.matchMedia("(min-width:981px)").matches);
@@ -31660,7 +31660,12 @@ const fallbackSide = target > 0
 
   function gameFromRow(row){
     const list=allKnownGames();
-    const rid=clean(row?.dataset?.matchId ?? row?.dataset?.matchKey, "");
+    const rid=clean(
+      row?.dataset?.matchId ??
+      row?.dataset?.matchKey ??
+      row?.dataset?.cpd3Game,
+      ""
+    );
     if(rid){
       const found=list.find(g=>gameId(g)===rid);
       if(found) return found;
@@ -31955,7 +31960,7 @@ const fallbackSide = target > 0
       renderData(data,game);
     }catch(err){
       if(token!==window.__cpNmcRequestToken) return;
-      console.error("[CP NEW MATCH CENTER V170]",err);
+      console.error("[CP NEW MATCH CENTER V171]",err);
       renderError(game,err?.message || "Erro desconhecido.");
     }
   }
@@ -31975,6 +31980,8 @@ const fallbackSide = target > 0
       ".gamesPanel .premiumGameRow,"+
       ".gamesPanel .cleanDashRow,"+
       ".gamesPanel [data-match-center-row],"+
+      ".gamesPanel .cpd3Row,"+
+      ".cpd3Row[data-cpd3-game],"+
       "#cpHomeGames .gameRow,"+
       "#cpHomeGames [data-match-center-row]"
     );
