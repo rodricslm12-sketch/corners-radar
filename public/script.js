@@ -31566,7 +31566,7 @@ const fallbackSide = target > 0
 
 
 /* =========================================================
-   CORNER PRO WEB V170 — MATCH CENTER OVERLAY POR CLIQUE NO JOGO
+   CORNER PRO WEB V171 — MATCH CENTER OVERLAY POR CLIQUE NO JOGO
    - Desktop only
    - Clique na linha do jogo abre o overlay grande
    - "Ver análise", favorito e demais botões continuam intactos
@@ -31829,34 +31829,67 @@ const fallbackSide = target > 0
 
   window.CornerProRowMatchCenter={open,close};
 
-  document.addEventListener("click",e=>{
+  /* V171 — CAPTURE no WINDOW.
+     O projeto já possui um listener antigo no window/capture para "Ver análise".
+     Por isso o clique da linha precisa ser capturado aqui, antes dele. */
+  window.addEventListener("click",e=>{
     if(!desktop()) return;
+    const target=e.target;
+    if(!(target instanceof Element)) return;
 
-    if(e.target?.closest?.("[data-cprow-close]")){e.preventDefault();close();return;}
+    if(target.closest("[data-cprow-close]")){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      close();
+      return;
+    }
 
-    const tab=e.target?.closest?.("[data-cprow-tab]");
+    const tab=target.closest("[data-cprow-tab]");
     if(tab && $("#cpRowMatchOverlay")?.classList.contains("is-open")){
+      e.preventDefault();
+      e.stopImmediatePropagation();
       const key=tab.dataset.cprowTab;
       document.querySelectorAll("#cpRowMatchOverlay [data-cprow-tab]").forEach(x=>x.classList.toggle("active",x===tab));
       document.querySelectorAll("#cpRowMatchOverlay [data-cprow-panel]").forEach(x=>x.classList.toggle("active",x.dataset.cprowPanel===key));
       return;
     }
 
-    /* IMPORTANTE: o botão "Ver análise" e qualquer controle interativo
-       ficam fora deste novo comportamento. */
-    if(e.target?.closest?.("[data-cpd3-open],.cpd3Open,button,a,input,select,textarea,label,[role='button']")) return;
+    /* Mantém VER ANÁLISE, favoritos e controles com as funções antigas. */
+    if(target.closest("[data-cpd3-open],.cpd3Analyze,.cpd3Fav,button,a,input,select,textarea,label,[role='button']")) return;
 
-    const row=e.target?.closest?.(
-      ".cpd3Row[data-cpd3-game],.cpd3Row,.marketGameRow,.compactGameRow,.gameRow"
-    );
+    const row=target.closest(".cpd3Row[data-cpd3-game]");
     if(!row) return;
 
-    const g=resolveGame(row);
-    if(!g) return;
+    /* Usa primeiro o próprio ID gravado na linha pelo render atual. */
+    const requested=String(row.dataset.cpd3Game||"").trim();
+    let g=null;
+
+    /* Reaproveita a coleção oficial do Match Center antigo, que já funciona
+       com esta mesma tabela. */
+    const official=window.CornerProV28?.collectGames?.();
+    const games=Array.isArray(official)&&official.length ? official : allGames();
+
+    if(requested){
+      g=games.find(x=>String(gid(x))===requested || localKey(x)===requested) || null;
+    }
+
+    /* fallback pelos dois nomes mostrados na linha */
+    if(!g){
+      const names=[...row.querySelectorAll(".cpd3Names b")]
+        .map(x=>String(x.textContent||"").trim()).filter(Boolean);
+      const rh=norm(names[0]||""), ra=norm(names[1]||"");
+      g=games.find(x=>(!rh||norm(home(x))===rh)&&(!ra||norm(away(x))===ra))||null;
+    }
+
+    if(!g){
+      console.warn("[CornerPro V171] Jogo não localizado para a linha:",requested);
+      return;
+    }
 
     e.preventDefault();
+    e.stopImmediatePropagation();
     open(g);
-  },false);
+  },true);
 
   document.addEventListener("keydown",e=>{
     if(e.key==="Escape" && $("#cpRowMatchOverlay")?.classList.contains("is-open")) close();
