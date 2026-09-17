@@ -4269,6 +4269,28 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
                 return;
               }
           
+              /* NOVO MATCH CENTER V180 — clique direto na linha CPD3.
+                 Integrado ao controlador original; "Ver análise" e Match Center antigo ficam intactos. */
+              const newMcRow=event.target.closest?.(".cpd3Row[data-cpd3-game]");
+              if(newMcRow && !event.target.closest?.("button,a,input,select,textarea")){
+                event.preventDefault();
+                const rowKey=String(newMcRow.dataset.cpd3Game || "").trim();
+                const g=findGame(rowKey);
+                if(g && typeof window.cpOpenNewMatchCenter==="function"){
+                  const r=raw(g);
+                  window.cpOpenNewMatchCenter({
+                    ...r,...g,
+                    match_id:clean(
+                      g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? g?.id ??
+                      r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id,
+                      rowKey
+                    ),
+                    casa:home(g), fora:away(g), liga:league(g), hora:time(g), raw:r
+                  });
+                }
+                return;
+              }
+
               const open=event.target.closest?.("[data-cpd3-open]");
               if(open){
                 event.preventDefault();
@@ -31565,7 +31587,7 @@ const fallbackSide = target > 0
 })();
 
 /* =========================================================
-   CORNER PRO V171 — NOVO MATCH CENTER DESKTOP — CPD3 ROW FIX
+   CORNER PRO V180 — NOVO MATCH CENTER DESKTOP — CONSOLIDADO
    ---------------------------------------------------------
    - NÃO altera nem reutiliza a interface do Match Center antigo.
    - Abre ao clicar diretamente na linha/card de uma partida.
@@ -31576,8 +31598,8 @@ const fallbackSide = target > 0
    ========================================================= */
 (function installCPNewMatchCenterV170(){
   "use strict";
-  if (window.__CP_NEW_MATCH_CENTER_V171__) return;
-  window.__CP_NEW_MATCH_CENTER_V171__ = true;
+  if (window.__CP_NEW_MATCH_CENTER_V180__) return;
+  window.__CP_NEW_MATCH_CENTER_V180__ = true;
 
   const desktop = () =>
     !!(window.matchMedia && window.matchMedia("(min-width:981px)").matches);
@@ -31660,12 +31682,7 @@ const fallbackSide = target > 0
 
   function gameFromRow(row){
     const list=allKnownGames();
-    const rid=clean(
-      row?.dataset?.matchId ??
-      row?.dataset?.matchKey ??
-      row?.dataset?.cpd3Game,
-      ""
-    );
+    const rid=clean(row?.dataset?.matchId ?? row?.dataset?.matchKey, "");
     if(rid){
       const found=list.find(g=>gameId(g)===rid);
       if(found) return found;
@@ -31701,11 +31718,11 @@ const fallbackSide = target > 0
   }
 
   function ensureModal(){
-    let layer=document.getElementById("cpNewMatchCenterV170");
+    let layer=document.getElementById("cpNewMatchCenterV180");
     if(layer) return layer;
 
     layer=document.createElement("div");
-    layer.id="cpNewMatchCenterV170";
+    layer.id="cpNewMatchCenterV180";
     layer.className="cpNmcLayer";
     layer.setAttribute("aria-hidden","true");
     layer.innerHTML=`
@@ -31735,7 +31752,7 @@ const fallbackSide = target > 0
   }
 
   function close(){
-    const layer=document.getElementById("cpNewMatchCenterV170");
+    const layer=document.getElementById("cpNewMatchCenterV180");
     if(!layer) return;
     layer.classList.remove("is-open");
     layer.setAttribute("aria-hidden","true");
@@ -31960,7 +31977,7 @@ const fallbackSide = target > 0
       renderData(data,game);
     }catch(err){
       if(token!==window.__cpNmcRequestToken) return;
-      console.error("[CP NEW MATCH CENTER V171]",err);
+      console.error("[CP NEW MATCH CENTER V180]",err);
       renderError(game,err?.message || "Erro desconhecido.");
     }
   }
@@ -31968,151 +31985,7 @@ const fallbackSide = target > 0
   window.cpOpenNewMatchCenter = open;
   window.cpCloseNewMatchCenter = close;
 
-  /* O ponto principal do conserto:
-     WINDOW + capture recebe o clique antes dos listeners antigos do document. */
-  window.addEventListener("click", function(event){
-    if(!desktop()) return;
-    if(document.getElementById("cpNewMatchCenterV170")?.classList.contains("is-open")) return;
-
-    const row=event.target?.closest?.(
-      ".gamesPanel .gameRow,"+
-      ".gamesPanel .compactGameRow,"+
-      ".gamesPanel .premiumGameRow,"+
-      ".gamesPanel .cleanDashRow,"+
-      ".gamesPanel [data-match-center-row],"+
-      ".gamesPanel .cpd3Row,"+
-      ".cpd3Row[data-cpd3-game],"+
-      "#cpHomeGames .gameRow,"+
-      "#cpHomeGames [data-match-center-row]"
-    );
-    if(!row) return;
-
-    /* Botões/links internos continuam com sua função própria. */
-    if(event.target.closest("button,a,input,select,textarea,[data-open-detail],[data-open-match-center],[data-open-match-center-table]")) return;
-
-    const game=gameFromRow(row);
-    if(!game) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    if(typeof event.stopImmediatePropagation==="function") event.stopImmediatePropagation();
-    open(game);
-  }, true);
-
   window.addEventListener("keydown", e=>{
-    if(e.key==="Escape" && document.getElementById("cpNewMatchCenterV170")?.classList.contains("is-open")) close();
+    if(e.key==="Escape" && document.getElementById("cpNewMatchCenterV180")?.classList.contains("is-open")) close();
   });
-})();
-
-
-/* =========================================================
-   CORNER PRO V172 — HOTFIX FINAL: CLIQUE NA TABELA CPD3
-   Fica no FINAL do arquivo para não depender dos seletores antigos.
-   DESKTOP SOMENTE. Não altera mobile nem o Match Center antigo.
-   ========================================================= */
-(function CP_MATCH_CENTER_CPD3_V172(){
-  "use strict";
-
-  function desktop(){
-    return window.matchMedia("(min-width:981px)").matches;
-  }
-
-  function norm(v){
-    return String(v ?? "").trim().toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .replace(/\s+/g," ");
-  }
-
-  function gid(g){
-    return String(
-      g?.match_id ?? g?.matchId ?? g?.id ?? g?.event_key ?? g?.event_id ?? g?.fixture?.id ?? ""
-    ).trim();
-  }
-
-  function home(g){
-    return String(g?.casa ?? g?.home ?? g?.home_name ?? g?.match_hometeam_name ??
-      g?.teams?.home?.name ?? g?.fixture?.home?.name ?? "").trim();
-  }
-
-  function away(g){
-    return String(g?.fora ?? g?.away ?? g?.away_name ?? g?.match_awayteam_name ??
-      g?.teams?.away?.name ?? g?.fixture?.away?.name ?? "").trim();
-  }
-
-  function allGames(){
-    const panel=document.querySelector(".gamesPanel");
-    const pools=[
-      window.__cornerProAllGames,
-      window.__lastRawGames,
-      window.__lastRenderedTopGames,
-      window.__premiumFilteredGames,
-      panel?.__cornerProAllGames,
-      panel?.__cornerProGames
-    ];
-    const out=[], seen=new Set();
-    for(const pool of pools){
-      if(!Array.isArray(pool)) continue;
-      for(const item of pool){
-        const g=item?.raw || item;
-        if(!g) continue;
-        const k=gid(g) || `${norm(home(g))}|${norm(away(g))}`;
-        if(!k || seen.has(k)) continue;
-        seen.add(k); out.push(g);
-      }
-    }
-    return out;
-  }
-
-  function resolve(row){
-    const key=String(row.dataset.cpd3Game || row.getAttribute("data-cpd3-game") || "").trim();
-    const games=allGames();
-
-    if(key){
-      let g=games.find(x => gid(x)===key);
-      if(g) return g;
-    }
-
-    const names=[...row.querySelectorAll(".cpd3Names b")].map(x=>x.textContent.trim()).filter(Boolean);
-    if(names.length>=2){
-      const h=norm(names[0]), a=norm(names[1]);
-      const g=games.find(x => norm(home(x))===h && norm(away(x))===a);
-      if(g) return g;
-    }
-
-    if(key){
-      return { match_id:key, id:key, event_key:key,
-        casa:names[0]||"", fora:names[1]||"" };
-    }
-    return null;
-  }
-
-  // pointerdown em capture: acontece antes dos handlers de click antigos.
-  window.addEventListener("pointerdown", function(ev){
-    if(!desktop()) return;
-    const row=ev.target?.closest?.(".cpd3Row[data-cpd3-game]");
-    if(!row) return;
-
-    // mantém estrelas e botão Ver análise com as funções atuais.
-    if(ev.target.closest("button,a,input,select,textarea,.cpd3Fav,[data-cpd3-analysis]")) return;
-
-    const game=resolve(row);
-    if(!game) return;
-
-    if(typeof window.cpOpenNewMatchCenter === "function"){
-      ev.preventDefault();
-      ev.stopPropagation();
-      if(typeof ev.stopImmediatePropagation==="function") ev.stopImmediatePropagation();
-      window.cpOpenNewMatchCenter(game);
-    }
-  }, true);
-
-  // cursor deixa claro que a linha é clicável
-  function mark(){
-    document.querySelectorAll(".cpd3Row[data-cpd3-game]").forEach(r=>{
-      r.style.cursor="pointer";
-      r.dataset.newMatchCenterClick="v172";
-    });
-  }
-  mark();
-  new MutationObserver(mark).observe(document.documentElement,{childList:true,subtree:true});
 })();
