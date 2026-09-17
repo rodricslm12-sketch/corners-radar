@@ -31565,8 +31565,69 @@ const fallbackSide = target > 0
 })();
 
 
+
 /* =========================================================
-   CORNER PRO WEB V172 — MATCH CENTER OVERLAY POR CLIQUE NO JOGO
+   CORNER PRO WEB V173 — BRIDGE DE CLIQUE DA TABELA
+   Usa POINTERDOWN porque os controladores antigos bloqueiam CLICK.
+   Instalado antes do módulo V171 e chama o overlay depois que ele existe.
+   ========================================================= */
+(() => {
+  "use strict";
+  if (window.__CP_ROW_POINTER_BRIDGE_V173__) return;
+  window.__CP_ROW_POINTER_BRIDGE_V173__ = true;
+
+  const isDesktop=()=>window.matchMedia?.("(min-width:981px)")?.matches;
+
+  window.addEventListener("pointerdown", (e) => {
+    if(!isDesktop()) return;
+    const t=e.target;
+    if(!(t instanceof Element)) return;
+
+    // Não interfere em Ver análise, favoritos ou qualquer botão/controle.
+    if(t.closest("[data-cpd3-open],.cpd3Analyze,.cpd3Fav,button,a,input,select,textarea,label,[role='button']")) return;
+
+    const row=t.closest("#cpd3Rows .cpd3Row[data-cpd3-game]");
+    if(!row) return;
+
+    const matchId=String(row.dataset.cpd3Game||"").trim();
+    const names=[...row.querySelectorAll(".cpd3Names b")]
+      .map(x=>String(x.textContent||"").trim()).filter(Boolean);
+    const league=String(row.querySelector(".cpd3League b")?.textContent||"").trim();
+    const start=String(row.querySelector(".cpd3Start")?.textContent||"")
+      .replace(/^INÍCIO\s*[•:—-]?\s*/i,"").trim();
+
+    const game={
+      match_id:matchId,
+      event_id:matchId,
+      casa:names[0]||"Casa",
+      fora:names[1]||"Fora",
+      liga:league,
+      hora:start,
+      raw:{
+        match_id:matchId,
+        match_hometeam_name:names[0]||"Casa",
+        match_awayteam_name:names[1]||"Fora",
+        league_name:league,
+        match_time:start
+      }
+    };
+
+    // O módulo V171 é registrado no mesmo arquivo, mas o clique só acontece
+    // depois do carregamento; portanto a API já deve existir.
+    const api=window.CornerProRowMatchCenter;
+    if(!api?.open){
+      console.error("[CornerPro V173] Overlay API não encontrada.");
+      return;
+    }
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    api.open(game);
+  }, true);
+})();
+
+/* =========================================================
+   CORNER PRO WEB V173 — MATCH CENTER OVERLAY POR CLIQUE NO JOGO
    - Desktop only
    - Clique na linha do jogo abre o overlay grande
    - "Ver análise", favorito e demais botões continuam intactos
@@ -31881,78 +31942,14 @@ const fallbackSide = target > 0
       g=games.find(x=>(!rh||norm(home(x))===rh)&&(!ra||norm(away(x))===ra))||null;
     }
 
-    /* V172: fallback DEFINITIVO.
-       A própria linha já contém match_id, nomes, liga e horário.
-       Portanto não dependemos mais de caches/globais para abrir a tela. */
     if(!g){
-      const names=[...row.querySelectorAll(".cpd3Names b")]
-        .map(x=>String(x.textContent||"").trim()).filter(Boolean);
-      const leagueText=String(row.querySelector(".cpd3League b")?.textContent||"").trim();
-      const startText=String(row.querySelector(".cpd3Start")?.textContent||"").trim();
-      const buttonId=String(row.querySelector("[data-cpd3-open]")?.dataset?.cpd3Open||"").trim();
-
-      g={
-        match_id: requested || buttonId,
-        event_id: requested || buttonId,
-        casa:names[0]||"Casa",
-        fora:names[1]||"Fora",
-        liga:leagueText,
-        hora:startText.replace(/^INÍCIO\s*[•:-]?\s*/i,"").trim(),
-        raw:{
-          match_id:requested||buttonId,
-          match_hometeam_name:names[0]||"Casa",
-          match_awayteam_name:names[1]||"Fora",
-          league_name:leagueText,
-          match_time:startText.replace(/^INÍCIO\s*[•:-]?\s*/i,"").trim()
-        }
-      };
+      console.warn("[CornerPro V171] Jogo não localizado para a linha:",requested);
+      return;
     }
 
     e.preventDefault();
     e.stopImmediatePropagation();
     open(g);
-  },true);
-
-  /* V172 — abre no POINTERDOWN, antes de qualquer listener antigo de CLICK.
-     Isso elimina a disputa com os vários controladores antigos do desktop. */
-  window.addEventListener("pointerdown",e=>{
-    if(!desktop()) return;
-    const target=e.target;
-    if(!(target instanceof Element)) return;
-
-    /* controles continuam independentes */
-    if(target.closest("[data-cpd3-open],.cpd3Analyze,.cpd3Fav,button,a,input,select,textarea,label,[role='button']")) return;
-
-    const row=target.closest("#cpd3Rows .cpd3Row[data-cpd3-game]");
-    if(!row) return;
-
-    const requested=String(row.dataset.cpd3Game||row.querySelector("[data-cpd3-open]")?.dataset?.cpd3Open||"").trim();
-    const names=[...row.querySelectorAll(".cpd3Names b")]
-      .map(x=>String(x.textContent||"").trim()).filter(Boolean);
-    const leagueText=String(row.querySelector(".cpd3League b")?.textContent||"").trim();
-    const startText=String(row.querySelector(".cpd3Start")?.textContent||"").trim();
-    const cleanTime=startText.replace(/^INÍCIO\s*[•:-]?\s*/i,"").trim();
-
-    /* objeto suficiente para abrir e consultar /match_center */
-    const game={
-      match_id:requested,
-      event_id:requested,
-      casa:names[0]||"Casa",
-      fora:names[1]||"Fora",
-      liga:leagueText,
-      hora:cleanTime,
-      raw:{
-        match_id:requested,
-        match_hometeam_name:names[0]||"Casa",
-        match_awayteam_name:names[1]||"Fora",
-        league_name:leagueText,
-        match_time:cleanTime
-      }
-    };
-
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    open(game);
   },true);
 
   document.addEventListener("keydown",e=>{
