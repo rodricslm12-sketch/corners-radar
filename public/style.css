@@ -23462,3 +23462,40 @@ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;a
   #desktopMatchRail .cpV64Reading p{margin:0;color:#cbd5d0;font-size:9px;line-height:1.45}
   #desktopMatchRail .cpV64Reading small{display:block;margin-top:7px;color:#6d7a74;font-size:6.5px}
 }
+
+
+/* =========================================================
+   CORNER PRO WEB V13 — MATCH CENTER OVERLAY / DESKTOP
+   Somente desktop. Mobile/app não é alterado.
+   ========================================================= */
+@media (min-width:981px){
+  html.cpV13ModalOpen, body.cpV13ModalOpen{overflow:hidden!important}
+  .cpV13Overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;padding:22px}
+  .cpV13Overlay.is-open{display:flex}
+  .cpV13Backdrop{position:absolute;inset:0;background:rgba(0,5,8,.82);backdrop-filter:blur(5px)}
+  .cpV13Modal{position:relative;width:min(1500px,96vw);height:min(920px,94vh);overflow:hidden;background:#071116;border:1px solid #24404a;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.72),0 0 40px rgba(82,255,33,.08);color:#edf7f5}
+  #cpV13Content{height:100%;display:flex;flex-direction:column}
+  .cpV13Header{min-height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #18303a;background:linear-gradient(90deg,#081319,#071116)}
+  .cpV13Brand{display:flex;flex-direction:column;gap:3px}.cpV13Brand b{font-size:19px;font-style:italic}.cpV13Brand b::first-letter{color:#5cff28}.cpV13Brand span{font-size:10px;letter-spacing:1.4px;color:#9aabb1}
+  .cpV13HeadActions{display:flex;align-items:center;gap:12px}.cpV13Status{padding:7px 14px;border:1px solid #35a923;border-radius:999px;color:#68ff38;font-size:11px;font-weight:900}
+  .cpV13Close{width:42px;height:42px;border:1px solid #24404a;border-radius:50%;background:#0b1a21;color:#fff;font-size:29px;line-height:1;cursor:pointer}.cpV13Close:hover{border-color:#5cff28;color:#5cff28}
+  .cpV13MatchHero{min-height:128px;display:grid;grid-template-columns:1fr 190px 1fr;align-items:center;padding:14px 70px;background:radial-gradient(circle at center,rgba(46,145,34,.18),transparent 48%),#071218;border-bottom:1px solid #18303a}
+  .cpV13Team{display:flex;align-items:center;gap:18px;font-size:24px}.cpV13Team:last-child{justify-content:flex-end;flex-direction:row-reverse}.cpV13Team img,.cpV13FallbackLogo{width:70px;height:70px;object-fit:contain;display:grid;place-items:center;font-size:40px}
+  .cpV13Center{text-align:center;display:flex;flex-direction:column;gap:6px}.cpV13Center small,.cpV13Center span{color:#9babb0}.cpV13Center b{font-size:28px}
+  .cpV13Tabs{display:flex;min-height:52px;border-bottom:1px solid #19323a;padding:0 22px;background:#081218}.cpV13Tabs button{border:0;background:transparent;color:#b8c6c9;font-weight:800;padding:0 25px;cursor:pointer;border-bottom:3px solid transparent}.cpV13Tabs button.active{color:#62ff32;border-bottom-color:#62ff32}
+  .cpV13Body{overflow:auto;padding:18px;background:#061015;flex:1}.cpV13Panel{display:none}.cpV13Panel.active{display:block}
+  .cpV13Section,.cpV13Recent{border:1px solid #1c3943;background:#09161c;border-radius:10px;padding:15px;margin-bottom:14px}.cpV13Section h2,.cpV13Recent h3{font-size:13px;margin:0 0 14px;color:#f4fbfa}
+  .cpV13Stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.cpV13StatCard{min-height:112px;border:1px solid #18323b;border-radius:8px;background:#0b1a21;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center}.cpV13StatCard i{font-style:normal;font-size:25px}.cpV13StatCard span{font-size:11px;color:#b7c4c7}.cpV13StatCard strong{font-size:23px;color:#65ff34}.cpV13StatCard small{font-size:9px;color:#74898f}
+  .cpV13Two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cpV13Standings{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cpV13Standing{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:center;border:1px solid #17343e;background:#0b1a21;border-radius:8px;padding:12px}.cpV13Standing>small,.cpV13Standing>b{grid-column:1/-1}.cpV13Standing>small{color:#63ff34;font-size:9px}.cpV13Standing>b{font-size:15px}.cpV13Standing div{display:flex;flex-direction:column}.cpV13Standing div strong{font-size:18px}.cpV13Standing div span{font-size:9px;color:#7f9298}
+  .cpV13Strength{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cpV13Strength>div{border:1px solid #17343e;background:#0b1a21;border-radius:8px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:6px}.cpV13Strength b{grid-column:1/-1}.cpV13Strength strong{font-size:28px;color:#65ff34}.cpV13Strength span,.cpV13Strength em{font-size:10px;color:#8da0a5;font-style:normal}
+  .cpV13Form{display:flex;gap:6px;margin-bottom:13px}.cpV13Form b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px}.cpV13Form .win{background:#249d2c}.cpV13Form .loss{background:#a62e35}.cpV13Form .draw{background:#b08322}
+  .cpV13RecentGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.cpV13RecentGrid div{background:#0b1a21;border:1px solid #17343e;border-radius:7px;padding:10px}.cpV13RecentGrid small{display:block;color:#81959a;font-size:9px}.cpV13RecentGrid b{display:block;font-size:18px;margin-top:5px}.cpV13Foot{display:block;color:#71868b;margin-top:9px}
+  .cpV13H2HSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.cpV13H2HSummary>div{border:1px solid #17343e;background:#0b1a21;border-radius:7px;padding:10px}.cpV13H2HSummary small{color:#81959a}.cpV13H2HSummary b{display:block;font-size:20px;color:#65ff34;margin-top:4px}
+  .cpV13H2HList{border:1px solid #17343e;border-radius:8px;overflow:hidden}.cpV13H2HList>div{display:grid;grid-template-columns:100px 1fr 120px;gap:10px;padding:10px 12px;border-bottom:1px solid #142a32;align-items:center}.cpV13H2HList>div:last-child{border-bottom:0}.cpV13H2HList span,.cpV13H2HList em{color:#82969b;font-size:10px;font-style:normal}.cpV13H2HList em{text-align:right}
+  .cpV13Compare{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.cpV13Compare>div{text-align:center;border:1px solid #17343e;background:#0b1a21;border-radius:9px;padding:22px}.cpV13Compare span,.cpV13Compare small{display:block;color:#91a3a8}.cpV13Compare b{display:block;font-size:34px;color:#63ff34;margin:8px}
+  .cpV13Insight{border:1px solid #50d72b;background:linear-gradient(90deg,rgba(50,190,34,.09),rgba(5,18,22,.8));border-radius:10px;padding:15px 18px}.cpV13Insight b{color:#67ff36}.cpV13Insight p{margin:6px 0 0;color:#c3d0d2;font-size:11px}
+  .cpV13Muted,.cpV13Empty{color:#82969b}.cpV13Empty{padding:20px;text-align:center;border:1px dashed #25434c;border-radius:8px}.cpV13TableNote{margin:12px 0 0}
+  .cpV13Loading,.cpV13Fatal{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#aababe}.cpV13Loading strong,.cpV13Fatal b{font-size:22px;color:#fff}.cpV13Spinner{width:42px;height:42px;border:3px solid #1e3941;border-top-color:#5cff2d;border-radius:50%;animation:cpV13Spin .8s linear infinite}.cpV13Fatal span{color:#ff8585}
+  @keyframes cpV13Spin{to{transform:rotate(360deg)}}
+}
+@media (max-width:980px){.cpV13Overlay{display:none!important}}

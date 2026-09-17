@@ -28900,270 +28900,357 @@ const fallbackSide = target > 0
           })();
 
         /* =========================================================
-           CORNER PRO WEB V12 — MATCH CENTER FINAL / DESKTOP
-           Este bloco fica NO FINAL do script para não ser sobrescrito
-           pelos vários módulos legados existentes no arquivo.
+           CORNER PRO WEB V13 — MATCH CENTER OVERLAY / DESKTOP
+           ÚNICO controlador do clique "Ver análise" no desktop.
+           Fonte oficial: /match_center
+           Mobile/app permanece intacto.
            ========================================================= */
         (() => {
           "use strict";
 
-          if (window.__cpDesktopMatchCenterV12Installed) return;
-          window.__cpDesktopMatchCenterV12Installed = true;
+          if (window.__cpDesktopMatchCenterV13Installed) return;
+          window.__cpDesktopMatchCenterV13Installed = true;
 
           const desktop = () =>
             window.matchMedia && window.matchMedia("(min-width:981px)").matches;
 
-          const esc = (v) => String(v ?? "").replace(/[&<>"']/g, ch => ({
-            "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+          const esc = v => String(v ?? "").replace(/[&<>"']/g, ch => ({
+            "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
           }[ch]));
 
-          const clean = (v, fallback="") => {
-            const s = String(v ?? "").trim();
+          const clean = (v, fallback="—") => {
+            const s=String(v ?? "").trim();
             return s && !["undefined","null","NaN"].includes(s) ? s : fallback;
           };
 
-          const norm = (v) => String(v ?? "")
-            .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-            .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+          const num = v => {
+            if(v===null || v===undefined || v==="") return null;
+            const n=Number(String(v).replace("%","").replace(",","."));
+            return Number.isFinite(n) ? n : null;
+          };
 
-          const raw = (g) => g?.raw || g || {};
+          const fmt = (v, suffix="") => {
+            const n=num(v);
+            return n===null ? "—" : `${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
+          };
+
+          const raw = g => g?.raw || g || {};
 
           function home(g){
             const r=raw(g);
             return clean(g?.casa ?? g?.home ?? r?.casa ?? r?.home ??
               r?.match_hometeam_name ?? r?.event_home_team, "Casa");
           }
-
           function away(g){
             const r=raw(g);
             return clean(g?.fora ?? g?.away ?? r?.fora ?? r?.away ??
               r?.match_awayteam_name ?? r?.event_away_team, "Fora");
           }
-
+          function logo(g,side){
+            const r=raw(g);
+            const src=side==="home"
+              ? (g?.home_logo ?? g?.logo_home ?? r?.team_home_badge ?? r?.home_team_logo ?? r?.home_logo)
+              : (g?.away_logo ?? g?.logo_away ?? r?.team_away_badge ?? r?.away_team_logo ?? r?.away_logo);
+            return src ? `<img src="${esc(src)}" alt="" loading="lazy">`
+                       : `<span class="cpV13FallbackLogo">⚽</span>`;
+          }
           function gameId(g){
             const r=raw(g);
             return clean(
               g?.match_id ?? g?.event_id ?? g?.event_key ?? g?.fixture_id ?? g?.id ??
-              r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id,
-              ""
+              r?.match_id ?? r?.event_id ?? r?.event_key ?? r?.fixture_id ?? r?.id, ""
             );
           }
-
+          function norm(v){
+            return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+              .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+          }
           function localKey(g){
             const r=raw(g);
-            const t=clean(g?.hora ?? g?.time ?? r?.hora ?? r?.match_time ?? "");
+            const t=clean(g?.hora ?? g?.time ?? r?.hora ?? r?.match_time,"");
             return `${norm(home(g))}|${norm(away(g))}|${t}`;
           }
-
-          function findDesktopGame(button){
+          function findGame(button){
             const wanted=String(button?.dataset?.cpd3Open ?? "");
-            const games=Array.isArray(window.__cornerProAllGames)
-              ? window.__cornerProAllGames
-              : [];
-
-            let game=games.find(g =>
-              String(gameId(g))===wanted ||
-              String(localKey(g))===wanted
-            );
-
-            if(game) return game;
-
+            const games=Array.isArray(window.__cornerProAllGames) ? window.__cornerProAllGames : [];
+            let g=games.find(x=>String(gameId(x))===wanted || localKey(x)===wanted);
+            if(g) return g;
             const row=button?.closest?.("[data-cpd3-game]");
             const rowKey=String(row?.dataset?.cpd3Game ?? "");
-            game=games.find(g =>
-              String(gameId(g))===rowKey ||
-              String(localKey(g))===rowKey
-            );
-
-            return game || window.__selectedMatchCenterGame || null;
+            g=games.find(x=>String(gameId(x))===rowKey || localKey(x)===rowKey);
+            return g || null;
           }
 
-          function pair(data, name){
-            const block=data?.[name] || {};
-            return {
-              home: clean(block?.home, "—"),
-              away: clean(block?.away, "—")
-            };
+          function ensureModal(){
+            let modal=document.getElementById("cpMatchOverlayV13");
+            if(modal) return modal;
+            modal=document.createElement("div");
+            modal.id="cpMatchOverlayV13";
+            modal.className="cpV13Overlay";
+            modal.setAttribute("aria-hidden","true");
+            modal.innerHTML=`
+              <div class="cpV13Backdrop" data-cpv13-close></div>
+              <section class="cpV13Modal" role="dialog" aria-modal="true" aria-label="Match Center">
+                <div id="cpV13Content"></div>
+              </section>`;
+            document.body.appendChild(modal);
+            return modal;
           }
 
-          function statusLabel(data, fallbackGame){
+          function close(){
+            const modal=document.getElementById("cpMatchOverlayV13");
+            if(!modal) return;
+            modal.classList.remove("is-open");
+            modal.setAttribute("aria-hidden","true");
+            document.documentElement.classList.remove("cpV13ModalOpen");
+            document.body.classList.remove("cpV13ModalOpen");
+          }
+
+          function openShell(game){
+            const modal=ensureModal();
+            document.documentElement.classList.add("cpV13ModalOpen");
+            document.body.classList.add("cpV13ModalOpen");
+            modal.classList.add("is-open");
+            modal.setAttribute("aria-hidden","false");
+            const content=document.getElementById("cpV13Content");
+            content.innerHTML=`
+              <header class="cpV13Header">
+                <div class="cpV13Brand"><b>⚑ MATCH CENTER</b><span>ANÁLISE COMPLETA DO JOGO</span></div>
+                <button class="cpV13Close" type="button" data-cpv13-close aria-label="Fechar">×</button>
+              </header>
+              <div class="cpV13Loading">
+                <div class="cpV13Spinner"></div>
+                <strong>${esc(home(game))} × ${esc(away(game))}</strong>
+                <span>Buscando tabela, histórico, escanteios e dados da partida...</span>
+              </div>`;
+          }
+
+          function statusLabel(data){
             if(data?.finished) return "ENCERRADO";
-            const s=String(data?.status ?? data?.status_raw ?? "").toLowerCase();
-            if(/half.?time|\bht\b|interval/.test(s)) return "INTERVALO";
             if(data?.live) return data?.minute ? `AO VIVO • ${data.minute}'` : "AO VIVO";
-
-            const r=raw(fallbackGame);
-            const fs=String(
-              fallbackGame?.match_status ?? fallbackGame?.status ??
-              r?.match_status ?? r?.status ?? ""
-            ).toLowerCase();
-
-            if(/finished|full.?time|\bft\b|encerr|finaliz|ended/.test(fs)) return "ENCERRADO";
-            if(/half.?time|\bht\b|interval/.test(fs)) return "INTERVALO";
-
-            const minute=Number(r?.minute ?? r?.match_minute ?? r?.elapsed);
-            if(Number.isFinite(minute) && minute>0) return `AO VIVO • ${Math.round(minute)}'`;
-
-            const m=fs.match(/^(\d{1,3})(?:\+(\d{1,2}))?'?$/);
-            if(m){
-              const min=Number(m[1])+(m[2]?Number(m[2]):0);
-              return `AO VIVO • ${min}'`;
-            }
-
+            const s=String(data?.status ?? "").toLowerCase();
+            if(/half.?time|\bht\b|interval/.test(s)) return "INTERVALO";
             return "PRÉ-JOGO";
           }
 
-          function metric(label, values){
-            return `<div class="cpV12McMetric">
-              <strong>${esc(values.home)}</strong>
-              <span>${esc(label)}</span>
-              <strong>${esc(values.away)}</strong>
+          function statCard(icon,title,value,sub){
+            return `<div class="cpV13StatCard"><i>${icon}</i><span>${esc(title)}</span>
+              <strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`;
+          }
+
+          function standingCard(label,team,s){
+            if(!s) return `<div class="cpV13Standing"><b>${esc(team)}</b><span>Dados de tabela indisponíveis</span></div>`;
+            return `<div class="cpV13Standing">
+              <small>${esc(label)}</small><b>${esc(team)}</b>
+              <div><strong>${fmt(s.position)}º</strong><span>posição</span></div>
+              <div><strong>${fmt(s.points)}</strong><span>pontos</span></div>
+              <div><strong>${fmt(s.played)}</strong><span>jogos</span></div>
+              <div><strong>${fmt(s.wins)} / ${fmt(s.draws)} / ${fmt(s.losses)}</strong><span>V / E / D</span></div>
             </div>`;
           }
 
-          function renderLoading(rail, game){
-            const matchId=gameId(game);
-            rail.innerHTML=`
-              <section class="railCard cpV12McHead">
-                <div class="railTitle"><span>▣ MATCH CENTER</span><b>CARREGANDO</b></div>
-                <div class="cpV12McTeams">
-                  <strong>${esc(home(game))}</strong><em>VS</em><strong>${esc(away(game))}</strong>
-                </div>
-                <div class="cpV12McLoading"><i></i><span>Buscando estatísticas reais da partida...</span></div>
-                ${!matchId?'<p class="cpV12McError">Esta partida não trouxe match_id no feed.</p>':""}
-              </section>`;
+          function formPills(form=[]){
+            if(!Array.isArray(form) || !form.length) return `<span class="cpV13Muted">Sem forma recente disponível</span>`;
+            return `<div class="cpV13Form">${form.slice(0,5).map(x=>
+              `<b class="${x==="V"?"win":x==="D"?"loss":"draw"}">${esc(x)}</b>`).join("")}</div>`;
           }
 
-          function renderError(rail, game, message){
-            rail.innerHTML=`
-              <section class="railCard cpV12McHead">
-                <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(statusLabel(null,game))}</b></div>
-                <div class="cpV12McTeams">
-                  <strong>${esc(home(game))}</strong><em>VS</em><strong>${esc(away(game))}</strong>
-                </div>
-                <p class="cpV12McError">${esc(message)}</p>
-              </section>`;
+          function recentCard(team,r){
+            if(!r) return `<div class="cpV13Recent"><h3>${esc(team)}</h3><p class="cpV13Muted">Histórico recente indisponível.</p></div>`;
+            return `<div class="cpV13Recent">
+              <h3>ÚLTIMOS JOGOS • ${esc(team)}</h3>
+              ${formPills(r.form)}
+              <div class="cpV13RecentGrid">
+                <div><small>Média a favor</small><b>${fmt(r.corners_for_avg)}</b></div>
+                <div><small>Média contra</small><b>${fmt(r.corners_against_avg)}</b></div>
+                <div><small>Média total</small><b>${fmt(r.corners_total_avg)}</b></div>
+                <div><small>Over 9.5</small><b>${fmt(r.over95_rate,"%")}</b></div>
+              </div>
+              <small class="cpV13Foot">${fmt(r.games)} jogos encontrados pela API</small>
+            </div>`;
           }
 
-          function renderData(rail, data, game){
-            const corners=pair(data,"corners");
-            const shots=pair(data,"shots");
-            const target=pair(data,"shots_on_target");
-            const possession=pair(data,"possession");
-            const attacks=pair(data,"dangerous_attacks");
-            const passes=pair(data,"passes");
-            const fouls=pair(data,"fouls");
-            const cards=pair(data,"yellow_cards");
-
-            const h=clean(data?.home,home(game));
-            const a=clean(data?.away,away(game));
-            const league=clean(data?.league,clean(game?.liga ?? raw(game)?.liga,"Liga"));
-            const time=clean(data?.time,clean(game?.hora ?? raw(game)?.match_time,"—"));
-            const status=statusLabel(data,game);
-            const hs=clean(data?.goals?.home ?? data?.score?.home ?? data?.home_score,"0");
-            const as=clean(data?.goals?.away ?? data?.score?.away ?? data?.away_score,"0");
-
-            const events=Array.isArray(data?.events) ? data.events.slice(-6) : [];
-
-            rail.innerHTML=`
-              <section class="railCard cpV12McHead">
-                <div class="railTitle"><span>▣ MATCH CENTER</span><b>${esc(status)}</b></div>
-                <div class="cpV12McLeague">${esc(league)} • ${esc(time)}</div>
-                <div class="cpV12McScore">
-                  <div><strong>${esc(h)}</strong><small>CASA</small></div>
-                  <b>${esc(hs)} - ${esc(as)}</b>
-                  <div><strong>${esc(a)}</strong><small>FORA</small></div>
-                </div>
-              </section>
-
-              <section class="railCard cpV12McStats">
-                <h3>ESTATÍSTICAS DA PARTIDA</h3>
-                ${metric("Escanteios",corners)}
-                ${metric("Finalizações",shots)}
-                ${metric("No alvo",target)}
-                ${metric("Posse",possession)}
-                ${metric("Ataques perigosos",attacks)}
-                ${metric("Passes",passes)}
-                ${metric("Faltas",fouls)}
-                ${metric("Cartões",cards)}
-              </section>
-
-              <section class="railCard cpV12McEvents">
-                <h3>EVENTOS / LEITURA</h3>
-                ${events.length
-                  ? `<div>${events.map(e=>`<p><b>${esc(e?.minute ?? "")}${e?.minute?"'":""}</b> ${esc(e?.label ?? e?.type ?? "Evento")}</p>`).join("")}</div>`
-                  : `<p class="cpV12McMuted">Nenhum evento detalhado disponível.</p>`
-                }
-              </section>
-            `;
+          function h2hRows(h2h){
+            const rows=Array.isArray(h2h?.matches)?h2h.matches:[];
+            if(!rows.length) return `<div class="cpV13Empty">Nenhum confronto recente encontrado pela API.</div>`;
+            return `<div class="cpV13H2HList">${rows.map(m=>`
+              <div><span>${esc(clean(m.date,"—"))}</span>
+              <b>${esc(clean(m.home,"Casa"))} ${esc(clean(m.score_home,"—"))} × ${esc(clean(m.score_away,"—"))} ${esc(clean(m.away,"Fora"))}</b>
+              <em>${m.corners_total==null?"Cantos —":`${esc(m.corners_total)} cantos`}</em></div>`).join("")}</div>`;
           }
 
-          async function openMatchCenterV12(game){
-            const rail=document.getElementById("desktopMatchRail");
-            if(!rail || !game) return;
+          function render(data,game){
+            const content=document.getElementById("cpV13Content");
+            if(!content) return;
+            const p=data?.pregame || {};
+            const rh=p?.recent?.home || null, ra=p?.recent?.away || null;
+            const sh=p?.standings?.home || null, sa=p?.standings?.away || null;
+            const h2h=p?.h2h || null;
+            const h=clean(data?.home,home(game)), a=clean(data?.away,away(game));
+            const status=statusLabel(data);
+            const cornerAvg=[num(rh?.corners_total_avg),num(ra?.corners_total_avg)].filter(x=>x!==null);
+            const totalAvg=cornerAvg.length ? (cornerAvg.reduce((x,y)=>x+y,0)/cornerAvg.length).toFixed(1) : "—";
+            const overRates=[num(rh?.over95_rate),num(ra?.over95_rate)].filter(x=>x!==null);
+            const over95=overRates.length ? Math.round(overRates.reduce((x,y)=>x+y,0)/overRates.length)+"%" : "—";
 
-            window.__selectedMatchCenterGame=game;
-            window.__selectedMatchCenterKey=String(gameId(game) || localKey(game));
+            content.innerHTML=`
+              <header class="cpV13Header">
+                <div class="cpV13Brand"><b>⚑ MATCH CENTER</b><span>ANÁLISE COMPLETA DO JOGO</span></div>
+                <div class="cpV13HeadActions"><span class="cpV13Status">${esc(status)}</span>
+                  <button class="cpV13Close" type="button" data-cpv13-close aria-label="Fechar">×</button></div>
+              </header>
 
-            rail.style.display="flex";
-            rail.style.visibility="visible";
-            rail.style.opacity="1";
+              <section class="cpV13MatchHero">
+                <div class="cpV13Team">${logo(game,"home")}<strong>${esc(h)}</strong></div>
+                <div class="cpV13Center"><small>${esc(clean(data?.league,"Competição"))}</small>
+                  <b>VS</b><span>${esc(clean(data?.date,""))} ${esc(clean(data?.time,""))}</span></div>
+                <div class="cpV13Team">${logo(game,"away")}<strong>${esc(a)}</strong></div>
+              </section>
 
-            renderLoading(rail,game);
+              <nav class="cpV13Tabs">
+                <button class="active" data-cpv13-tab="overview">VISÃO GERAL</button>
+                <button data-cpv13-tab="corners">ESCANTEIOS</button>
+                <button data-cpv13-tab="history">HISTÓRICO</button>
+                <button data-cpv13-tab="h2h">H2H</button>
+                <button data-cpv13-tab="table">TABELA</button>
+              </nav>
 
-            const matchId=gameId(game);
-            if(!matchId){
-              renderError(rail,game,"Não foi possível abrir as estatísticas porque este jogo não possui match_id.");
+              <main class="cpV13Body">
+                <section class="cpV13Panel active" data-cpv13-panel="overview">
+                  <div class="cpV13Section">
+                    <h2>RESUMO PRÉ-JOGO</h2>
+                    <div class="cpV13Stats4">
+                      ${statCard("🚩","Média total de cantos",totalAvg,"base: forma recente")}
+                      ${statCard("📈","Over 9.5",over95,"média das duas equipes")}
+                      ${statCard("🏠",`${h} • cantos a favor`,fmt(rh?.corners_for_avg),"últimos jogos")}
+                      ${statCard("✈️",`${a} • cantos a favor`,fmt(ra?.corners_for_avg),"últimos jogos")}
+                    </div>
+                  </div>
+
+                  <div class="cpV13Two">
+                    <section class="cpV13Section"><h2>POSIÇÃO NA TABELA</h2>
+                      <div class="cpV13Standings">${standingCard("CASA",h,sh)}${standingCard("FORA",a,sa)}</div>
+                    </section>
+                    <section class="cpV13Section"><h2>FORÇA EM ESCANTEIOS</h2>
+                      <div class="cpV13Strength">
+                        <div><b>${esc(h)}</b><strong>${fmt(rh?.corners_for_avg)}</strong><span>a favor</span><em>${fmt(rh?.corners_against_avg)} contra</em></div>
+                        <div><b>${esc(a)}</b><strong>${fmt(ra?.corners_for_avg)}</strong><span>a favor</span><em>${fmt(ra?.corners_against_avg)} contra</em></div>
+                      </div>
+                    </section>
+                  </div>
+
+                  <div class="cpV13Two">
+                    ${recentCard(h,rh)}
+                    ${recentCard(a,ra)}
+                  </div>
+
+                  <section class="cpV13Section">
+                    <h2>CONFRONTO DIRETO (H2H)</h2>
+                    <div class="cpV13H2HSummary">
+                      <div><small>Jogos</small><b>${fmt(h2h?.games)}</b></div>
+                      <div><small>Média de cantos</small><b>${fmt(h2h?.avg_corners)}</b></div>
+                      <div><small>Over 9.5</small><b>${fmt(h2h?.over95_rate,"%")}</b></div>
+                    </div>
+                    ${h2hRows(h2h)}
+                  </section>
+
+                  <section class="cpV13Insight">
+                    <b>💡 LEITURA DO CORNERPRO</b>
+                    <p>Esta tela usa somente os dados disponíveis no Match Center. Quando uma estatística não estiver disponível na API, o CornerPro mostra “—” em vez de inventar valores.</p>
+                  </section>
+                </section>
+
+                <section class="cpV13Panel" data-cpv13-panel="corners">
+                  <div class="cpV13Two">${recentCard(h,rh)}${recentCard(a,ra)}</div>
+                  <section class="cpV13Section"><h2>COMPARATIVO DE ESCANTEIOS</h2>
+                    <div class="cpV13Compare">
+                      <div><span>${esc(h)}</span><b>${fmt(rh?.corners_for_avg)}</b><small>média a favor</small></div>
+                      <div><span>MÉDIA TOTAL</span><b>${esc(totalAvg)}</b><small>forma recente</small></div>
+                      <div><span>${esc(a)}</span><b>${fmt(ra?.corners_for_avg)}</b><small>média a favor</small></div>
+                    </div>
+                  </section>
+                </section>
+
+                <section class="cpV13Panel" data-cpv13-panel="history">
+                  <div class="cpV13Two">${recentCard(h,rh)}${recentCard(a,ra)}</div>
+                </section>
+
+                <section class="cpV13Panel" data-cpv13-panel="h2h">
+                  <section class="cpV13Section"><h2>CONFRONTOS DIRETOS</h2>
+                    <div class="cpV13H2HSummary">
+                      <div><small>Jogos</small><b>${fmt(h2h?.games)}</b></div>
+                      <div><small>Média de cantos</small><b>${fmt(h2h?.avg_corners)}</b></div>
+                      <div><small>Over 9.5</small><b>${fmt(h2h?.over95_rate,"%")}</b></div>
+                    </div>${h2hRows(h2h)}
+                  </section>
+                </section>
+
+                <section class="cpV13Panel" data-cpv13-panel="table">
+                  <section class="cpV13Section"><h2>SITUAÇÃO NA TABELA</h2>
+                    <div class="cpV13Standings">${standingCard("CASA",h,sh)}${standingCard("FORA",a,sa)}</div>
+                    <p class="cpV13Muted cpV13TableNote">A rota atual entrega a posição das duas equipes. O ranking completo da competição será conectado depois sem usar dados fictícios.</p>
+                  </section>
+                </section>
+              </main>`;
+          }
+
+          async function open(game){
+            openShell(game);
+            const id=gameId(game);
+            if(!id){
+              const c=document.getElementById("cpV13Content");
+              c.innerHTML += `<div class="cpV13Fatal">Esta partida não possui match_id no feed.</div>`;
               return;
             }
-
             try{
-              const response=await fetch(
-                `/match_center?match_id=${encodeURIComponent(matchId)}&fresh=1&t=${Date.now()}`,
-                {cache:"no-store",headers:{"Cache-Control":"no-cache","Accept":"application/json"}}
-              );
-
-              const data=await response.json().catch(()=>null);
-
-              if(!response.ok || !data || data?.error){
-                throw new Error(data?.error || `HTTP ${response.status}`);
-              }
-
-              renderData(rail,data,game);
-            }catch(error){
-              console.error("[CP WEB V12 Match Center]",error);
-              renderError(
-                rail,
-                game,
-                `Não foi possível carregar as estatísticas desta partida: ${error?.message || "erro desconhecido"}.`
-              );
+              const res=await fetch(`/match_center?match_id=${encodeURIComponent(id)}&fresh=1&t=${Date.now()}`,{
+                cache:"no-store",headers:{"Accept":"application/json","Cache-Control":"no-cache"}
+              });
+              const data=await res.json().catch(()=>null);
+              if(!res.ok || !data || data?.error) throw new Error(data?.error || `HTTP ${res.status}`);
+              render(data,game);
+            }catch(err){
+              const c=document.getElementById("cpV13Content");
+              c.innerHTML=`
+                <header class="cpV13Header"><div class="cpV13Brand"><b>⚑ MATCH CENTER</b><span>ERRO AO CARREGAR</span></div>
+                <button class="cpV13Close" type="button" data-cpv13-close>×</button></header>
+                <div class="cpV13Fatal"><b>${esc(home(game))} × ${esc(away(game))}</b><span>${esc(err?.message || "Erro desconhecido")}</span></div>`;
             }
           }
 
-          window.cpOpenDesktopMatchCenterV12=openMatchCenterV12;
+          window.cpOpenDesktopMatchCenterV13=open;
+          window.cpCloseDesktopMatchCenterV13=close;
 
           document.addEventListener("click",event=>{
             if(!desktop()) return;
+            const closeBtn=event.target?.closest?.("[data-cpv13-close]");
+            if(closeBtn){ event.preventDefault(); close(); return; }
+
+            const tab=event.target?.closest?.("[data-cpv13-tab]");
+            if(tab){
+              const modal=document.getElementById("cpMatchOverlayV13");
+              if(!modal?.classList.contains("is-open")) return;
+              const key=tab.dataset.cpv13Tab;
+              modal.querySelectorAll("[data-cpv13-tab]").forEach(x=>x.classList.toggle("active",x===tab));
+              modal.querySelectorAll("[data-cpv13-panel]").forEach(x=>x.classList.toggle("active",x.dataset.cpv13Panel===key));
+              return;
+            }
 
             const button=event.target?.closest?.("[data-cpd3-open]");
             if(!button) return;
-
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            const game=findDesktopGame(button);
-            if(!game){
-              const rail=document.getElementById("desktopMatchRail");
-              if(rail){
-                rail.innerHTML=`<section class="railCard"><div class="railTitle"><span>▣ MATCH CENTER</span><b>ERRO</b></div><p class="cpV12McError">Não consegui localizar esta partida na lista carregada.</p></section>`;
-              }
-              return;
-            }
-
-            openMatchCenterV12(game);
+            const game=findGame(button);
+            if(game) open(game);
           },true);
+
+          document.addEventListener("keydown",e=>{
+            if(e.key==="Escape" && document.getElementById("cpMatchOverlayV13")?.classList.contains("is-open")) close();
+          });
         })();
+      
       /* WEB V25 — debug opcional dos seletores */
       window.CornerProMarketDebug = function(){
         try{
