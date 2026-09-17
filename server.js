@@ -794,14 +794,14 @@ const BIG_TEAMS = new Set([
     MODE: "block", // "block" ou "penalty"
     PENALTY_SCORE: 25
   };
-  
+
   function normClassic(x){
     return normTeamKey(x)
       .replace(/\b(fc|cf|club|clube|football|futebol)\b/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
-  
+
   // 🔥 APENAS EUROPA (como você pediu)
   const CLASSIC_PAIRS_EU = [
     // Espanha
@@ -809,47 +809,47 @@ const BIG_TEAMS = new Set([
     ["real madrid", "atletico madrid"],
     ["barcelona", "espanyol"],
     ["sevilla", "real betis"],
-  
+
     // Inglaterra
     ["arsenal", "tottenham"],
     ["liverpool", "everton"],
     ["manchester united", "manchester city"],
     ["chelsea", "tottenham"],
     ["newcastle united", "sunderland"],
-  
+
     // Itália
     ["inter", "ac milan"],
     ["juventus", "torino"],
     ["roma", "lazio"],
     ["napoli", "juventus"],
-  
+
     // Alemanha
     ["bayern munich", "borussia dortmund"],
     ["schalke", "borussia dortmund"],
     ["hamburger", "werder bremen"],
-  
+
     // França
     ["psg", "marseille"],
     ["lyon", "saint etienne"],
-  
+
     // Portugal
     ["benfica", "porto"],
     ["benfica", "sporting"],
     ["porto", "sporting"],
-  
+
     // Holanda
     ["ajax", "feyenoord"],
     ["ajax", "psv"],
     ["psv", "feyenoord"],
   ];
-  
+
   // 🔍 detector
   function isEuropeanClassic(casa, fora){
     if (!BLOCK_CLASSICS.ENABLE) return false;
-  
+
     const h = normClassic(casa);
     const a = normClassic(fora);
-  
+
     for (const [t1, t2] of CLASSIC_PAIRS_EU){
       if (
         (h.includes(t1) && a.includes(t2)) ||
@@ -858,7 +858,7 @@ const BIG_TEAMS = new Set([
         return true;
       }
     }
-  
+
     return false;
   }
 
@@ -4164,8 +4164,6 @@ app.get(
   requirePremium,
   (req, res) => res.json({ ok: true, premium: true })
 );
-
-
 
 
 // Presença real do usuário no app.
@@ -9239,8 +9237,6 @@ async function buildAllMarketEngines({ date }) {
 }
 
 
-
-
 app.get("/corner_pregame_locks", (req, res) => {
   const store = loadCornerPregameLockStore();
 
@@ -9574,8 +9570,6 @@ async function buildMobileFastList(date) {
 }
 
 
-
-
 // =========================================================
 // V55 — PRIMEIRA DECISÃO RÁPIDA PARA AMBAS MARCAM + HANDICAP
 // Objetivo: funcionar como o motor rápido de cantos.
@@ -9824,7 +9818,6 @@ app.get("/market_engines_fast", async (req, res) => {
     });
   }
 });
-
 
 
 // =========================================================
@@ -10803,7 +10796,6 @@ app.get("/quentes_ai", async (req, res) => {
 });
 
 
-
 let cornerPregameLockStore = null;
 let cornerPregameLockWriteTimer = null;
 
@@ -11746,7 +11738,6 @@ app.get("/ia_match", async (req, res) => {
 });
 
 
-
 /* =========================================================
    MATCH CENTER — 3 ETAPAS: PRÉ-JOGO / AO VIVO / ENCERRADO
    Dados reais da API. Não interfere no motor de seleção.
@@ -12005,7 +11996,6 @@ function mcNormalizeEvents(event) {
   });
   return output;
 }
-
 
 
 // =========================================================
