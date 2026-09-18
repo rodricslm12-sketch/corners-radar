@@ -139,7 +139,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
     let favoriteTeams=new Set();
 
     function favoriteUserId(){
-      return String(currentUser?.uid||window.__cornerProUserId||"").trim();
+      return String(currentUser?.uid||window.__cornerProUserId||localStorage.getItem(DAILY_UID_KEY)||"").trim();
     }
     function favoritesStorageKey(){
       const uid=favoriteUserId();
@@ -1162,6 +1162,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
         firebaseApi=await import("./firebase-client.js");
         firebaseApi.observarAutenticacao(async st=>{
           currentUser=st?.usuario||null;
+          window.__cornerProUserId=String(currentUser?.uid||"").trim();
+          loadFavorites();
+          window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid:window.__cornerProUserId,user:currentUser}}));
   
           if(!currentUser){
             currentProfile=null;
@@ -1224,6 +1227,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
   
         const r=await firebaseApi.entrarComGoogle();
         currentUser=r?.usuario||firebaseApi.firebaseAuth?.currentUser||null;
+        window.__cornerProUserId=String(currentUser?.uid||"").trim();
+        loadFavorites();
+        window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid:window.__cornerProUserId,user:currentUser}}));
   
         if(!currentUser)throw new Error("O Google não retornou um usuário autenticado.");
   
@@ -1474,6 +1480,9 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
           try{ await firebaseApi?.sair?.(); }catch(err){ console.warn("[V155 logout]",err); }
           currentUser=null;
           currentProfile=null;
+          window.__cornerProUserId="";
+          loadFavorites();
+          window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid:"",user:null}}));
           clearDailyLogin();
           syncAuth();
           lockAppForDailyLogin();
@@ -2597,7 +2606,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
             };
           
             function cpd3UserId(){
-              return String(window.__cornerProUserId||"").trim();
+              return String(window.__cornerProUserId||localStorage.getItem("cornerpro_daily_google_uid_v1")||"").trim();
             }
             function cpd3FavoritesStorageKey(){
               const uid=cpd3UserId();
@@ -5333,7 +5342,7 @@ if (window.matchMedia && window.matchMedia("(max-width:980px)").matches) {
               const CPR_FAVORITES_KEY_BASE = "cornerProFavoriteTeams:v2";
 
               function cprFavoritesStorageKey(){
-                const uid=String(window.__cornerProUserId||"").trim();
+                const uid=String(window.__cornerProUserId||localStorage.getItem("cornerpro_daily_google_uid_v1")||"").trim();
                 return uid?`${CPR_FAVORITES_KEY_BASE}:${uid}`:null;
               }
           
@@ -30797,7 +30806,7 @@ const fallbackSide = target > 0
   const KEY_BASES=["cornerProFavoriteTeams:v2","cornerProFavorites","cornerpro_mobile_favorite_teams_v1"];
   const CACHE_BASE="cornerpro_favorites_home_v147";
 
-  function favUid(){return String(window.__cornerProUserId||"").trim()}
+  function favUid(){return String(window.__cornerProUserId||localStorage.getItem("cornerpro_daily_google_uid_v1")||"").trim()}
   function scopedKeys(){
     const uid=favUid();
     return uid?KEY_BASES.map(k=>`${k}:${uid}`):[];
@@ -30919,6 +30928,16 @@ const fallbackSide = target > 0
   let api = null;
   let mode = "login";
   let busy = false;
+
+  function publishFavoriteUser(user){
+    const uid=String(user?.uid||"").trim();
+    window.__cornerProUserId=uid;
+    try{
+      if(uid) localStorage.setItem("cornerpro_daily_google_uid_v1",uid);
+      else localStorage.removeItem("cornerpro_daily_google_uid_v1");
+    }catch{}
+    window.dispatchEvent(new CustomEvent("cornerpro:auth-user",{detail:{uid,user:user||null}}));
+  }
 
   const $ = (s, r=document) => r.querySelector(s);
 
@@ -31078,6 +31097,7 @@ const fallbackSide = target > 0
       const result = await api.entrarComGoogle();
       const user = result?.usuario || result?.user || api.firebaseAuth?.currentUser;
       if (!user) throw new Error("Não foi possível confirmar sua conta Google.");
+      publishFavoriteUser(user);
       const profile = await syncServer(user, true);
       paintDesktopUser(user, profile);
       closeModal();
@@ -31114,6 +31134,7 @@ const fallbackSide = target > 0
 
       const user = result?.usuario || result?.user || api.firebaseAuth?.currentUser;
       if (!user) throw new Error("Não foi possível confirmar sua conta.");
+      publishFavoriteUser(user);
 
       const profile = await syncServer(user, true);
       paintDesktopUser(user, profile);
@@ -31146,6 +31167,7 @@ const fallbackSide = target > 0
     setBusy(true);
     try{
       await api.sairDaConta();
+      publishFavoriteUser(null);
       paintDesktopUser(null);
     }catch(err){
       console.error("[Desktop V162 logout]", err);
@@ -31217,9 +31239,11 @@ const fallbackSide = target > 0
         api.observarAutenticacao(async state => {
           const user = state?.usuario || state?.user || api.firebaseAuth?.currentUser || null;
           if (!user){
+            publishFavoriteUser(null);
             paintDesktopUser(null);
             return;
           }
+          publishFavoriteUser(user);
           try{
             const profile = await syncServer(user);
             paintDesktopUser(user, profile);
